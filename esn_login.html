@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESN Manager — Espace client</title>
+
+<!-- ⚡ Supabase JS client -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+/* ── RESET ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif;
+  display: flex;
+  min-height: 100vh;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 14px;
+}
+input, button, select { font-family: inherit; font-size: inherit; }
+
+/* ── LEFT PANEL ── */
+.left {
+  width: 460px;
+  flex-shrink: 0;
+  background: #0c1424;
+  display: flex;
+  flex-direction: column;
+  padding: 52px 48px;
+  position: relative;
+  overflow: hidden;
+}
+.left-glow  { position:absolute;width:360px;height:360px;border-radius:50%;background:radial-gradient(circle,rgba(37,99,235,.18) 0%,transparent 70%);top:-80px;right:-80px;pointer-events:none; }
+.left-glow2 { position:absolute;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(37,99,235,.10) 0%,transparent 70%);bottom:60px;left:-40px;pointer-events:none; }
+.logo { display:flex;align-items:center;gap:13px;margin-bottom:52px;position:relative;z-index:1; }
+.logo-mark { width:42px;height:42px;background:#2563eb;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;font-weight:800;color:white;letter-spacing:-.02em; }
+.logo-name  { font-size:17px;font-weight:800;color:#f8fafc;letter-spacing:-.01em; }
+.logo-sub   { font-size:11px;color:#475569;margin-top:2px; }
+.hero       { position:relative;z-index:1;margin-bottom:36px; }
+.hero h1    { font-size:27px;font-weight:800;color:#f1f5f9;line-height:1.2;letter-spacing:-.02em;margin-bottom:10px; }
+.hero h1 span { color:#60a5fa; }
+.hero p     { font-size:14px;color:#64748b;line-height:1.65; }
+.gantt-preview { position:relative;z-index:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:16px 18px;margin-bottom:32px; }
+.gantt-label   { font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#334155;margin-bottom:12px; }
+.gantt-svg     { display:block;width:100%; }
+.stats { display:flex;gap:8px;position:relative;z-index:1;margin-bottom:auto; }
+.stat  { flex:1;padding:14px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:8px;text-align:center; }
+.stat-val { font-size:20px;font-weight:800;color:#f1f5f9;letter-spacing:-.02em;display:block; }
+.stat-lbl { font-size:10px;color:#475569;margin-top:2px;display:block; }
+.left-footer { margin-top:40px;padding-top:24px;border-top:1px solid rgba(255,255,255,.07);position:relative;z-index:1;display:flex;align-items:center;gap:10px; }
+.avatar-stack { display:flex; }
+.avatar-sm { width:26px;height:26px;border-radius:50%;background:#2563eb;border:2px solid #0c1424;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:white;margin-right:-6px;flex-shrink:0; }
+.avatar-sm:nth-child(2){background:#7c3aed}
+.avatar-sm:nth-child(3){background:#0891b2}
+.left-footer-text { font-size:12px;color:#64748b;margin-left:10px; }
+.left-footer-text strong { color:#94a3b8; }
+
+/* ── RIGHT PANEL ── */
+.right { flex:1;display:flex;align-items:center;justify-content:center;padding:40px 24px; }
+.card  { background:white;border-radius:20px;padding:44px 40px;width:100%;max-width:468px;box-shadow:0 4px 40px rgba(0,0,0,.09),0 1px 4px rgba(0,0,0,.04); }
+.card-head { margin-bottom:28px; }
+.card-title { font-size:22px;font-weight:800;color:#0f172a;letter-spacing:-.02em;margin-bottom:5px; }
+.card-sub   { font-size:14px;color:#64748b; }
+
+/* Tabs */
+.tabs { display:flex;background:#f1f5f9;border-radius:10px;padding:4px;margin-bottom:28px;gap:4px; }
+.tab  { flex:1;padding:9px 12px;border:none;background:transparent;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;color:#64748b;transition:all .15s; }
+.tab.on { background:white;color:#0f172a;box-shadow:0 1px 6px rgba(0,0,0,.12); }
+.tab:focus-visible { outline:2px solid #2563eb;outline-offset:2px; }
+
+/* Form */
+.fd  { margin-bottom:16px; }
+.fd2 { display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px; }
+label { display:block;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px; }
+.inp { width:100%;border:1.5px solid #e2e8f0;border-radius:10px;padding:11px 14px;font-size:14px;color:#0f172a;outline:none;background:#fafafa;transition:border-color .15s,box-shadow .15s,background .15s; }
+.inp::placeholder { color:#94a3b8; }
+.inp:focus { border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1);background:white; }
+.inp.err   { border-color:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.1); }
+.err-msg   { font-size:12px;color:#ef4444;margin-top:5px;display:none; }
+.err-msg.show { display:block; }
+.pwd-wrap  { position:relative; }
+.pwd-wrap .inp { padding-right:46px; }
+.pwd-eye   { position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#94a3b8;display:flex;align-items:center;padding:4px;border-radius:4px;transition:color .12s; }
+.pwd-eye:hover { color:#475569; }
+.pwd-eye svg { display:block; }
+.pwd-strength { margin-top:7px;display:none; }
+.strength-bar-bg { height:3px;background:#e2e8f0;border-radius:2px;overflow:hidden; }
+.strength-bar { height:100%;border-radius:2px;transition:width .3s,background .3s;width:0; }
+.strength-lbl { font-size:11px;margin-top:4px; }
+.forgot-row { display:flex;justify-content:flex-end;margin-top:-4px;margin-bottom:16px; }
+.link { background:none;border:none;color:#2563eb;font-size:12px;font-weight:500;cursor:pointer;padding:0;font-family:inherit; }
+.link:hover { text-decoration:underline; }
+.cgu-row { display:flex;align-items:flex-start;gap:10px;margin-bottom:20px;cursor:pointer; }
+.cgu-row input[type="checkbox"] { width:16px;height:16px;margin-top:1px;flex-shrink:0;accent-color:#2563eb;cursor:pointer; }
+.cgu-row span { font-size:12px;color:#64748b;line-height:1.55; }
+.cgu-row a { color:#2563eb;text-decoration:none; }
+.cgu-row a:hover { text-decoration:underline; }
+.btn { width:100%;background:#2563eb;color:white;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s,transform .1s;font-family:inherit;letter-spacing:-.01em;display:flex;align-items:center;justify-content:center;gap:8px; }
+.btn:hover:not(:disabled) { background:#1d4ed8; }
+.btn:active:not(:disabled) { transform:scale(.99); }
+.btn:disabled { background:#93c5fd;cursor:not-allowed; }
+.spin { width:16px;height:16px;border:2px solid rgba(255,255,255,.35);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;display:none;flex-shrink:0; }
+.spin.on { display:block; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.switch-row { text-align:center;font-size:13px;color:#64748b;margin-top:22px; }
+.switch-row button { background:none;border:none;color:#2563eb;font-weight:600;cursor:pointer;font-size:13px;font-family:inherit;padding:0; }
+.switch-row button:hover { text-decoration:underline; }
+.demo-row { text-align:center;margin-top:16px;padding-top:16px;border-top:1px solid #f1f5f9; }
+.demo-row a { font-size:12px;color:#94a3b8;text-decoration:none; }
+.demo-row a:hover { color:#64748b; }
+
+/* Alert banner */
+.alert { display:none;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;line-height:1.5; }
+.alert.show { display:block; }
+.alert-err { background:#fff1f2;border:1px solid #fecdd3;color:#b91c1c; }
+.alert-ok  { background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d; }
+
+/* Success */
+.success-wrap { display:none;text-align:center;padding:12px 0; }
+.success-wrap.on { display:block; }
+.success-icon { width:64px;height:64px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px; }
+.success-title { font-size:20px;font-weight:800;color:#0f172a;margin-bottom:8px;letter-spacing:-.01em; }
+.success-msg   { font-size:14px;color:#64748b;line-height:1.6;margin-bottom:24px; }
+.btn-dashboard { display:inline-flex;align-items:center;gap:8px;background:#2563eb;color:white;border:none;border-radius:10px;padding:13px 28px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:-.01em;text-decoration:none;transition:background .15s; }
+.btn-dashboard:hover { background:#1d4ed8; }
+
+/* Responsive */
+@media (max-width:860px) {
+  body { flex-direction:column; }
+  .left { width:100%;padding:28px 24px 24px; }
+  .hero h1 { font-size:21px; }
+  .gantt-preview,.stats,.left-footer { display:none; }
+  .hero { margin-bottom:0; }
+  .logo { margin-bottom:24px; }
+  .right { padding:24px 16px 40px; }
+  .card  { padding:28px 22px;border-radius:14px; }
+}
+@keyframes pulse-red { 0%,100%{opacity:1}50%{opacity:.65} }
+.badge-anim { animation:pulse-red 1.8s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<!-- ═══ LEFT PANEL ═══ -->
+<div class="left">
+  <div class="left-glow"></div><div class="left-glow2"></div>
+  <div class="logo">
+    <div class="logo-mark">E</div>
+    <div><div class="logo-name">ESN Manager</div><div class="logo-sub">CGI Business Conseil</div></div>
+  </div>
+  <div class="hero">
+    <h1>Pilotez votre équipe.<br><span>Sans jamais rater</span><br>une fin de mission.</h1>
+    <p style="margin-top:12px">La plateforme de staffing pensée pour les ESN françaises — KPIs, planning Gantt, alertes J−14, années fiscales.</p>
+  </div>
+  <div class="gantt-preview">
+    <div class="gantt-label">Votre planning en temps réel</div>
+    <svg class="gantt-svg" viewBox="0 0 364 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="14" cy="18" r="12" fill="#2563eb"/>
+      <text x="14" y="23" text-anchor="middle" fill="white" font-size="9" font-weight="700" font-family="system-ui">AM</text>
+      <text x="32" y="15" fill="#e2e8f0" font-size="10" font-weight="600" font-family="system-ui">Alice Martin</text>
+      <text x="32" y="26" fill="#475569" font-size="9" font-family="system-ui">BNP Paribas</text>
+      <rect x="130" y="8" width="172" height="20" rx="4" fill="#22c55e" opacity=".85"/>
+      <rect x="278" y="8" width="24" height="20" rx="4" fill="#f59e0b" opacity=".9"/>
+      <rect x="305" y="8" width="36" height="20" rx="4" fill="#f59e0b"/>
+      <text x="323" y="22" text-anchor="middle" fill="white" font-size="9" font-weight="800" font-family="system-ui">J−22</text>
+      <circle cx="14" cy="55" r="12" fill="#7c3aed"/>
+      <text x="14" y="60" text-anchor="middle" fill="white" font-size="9" font-weight="700" font-family="system-ui">PJ</text>
+      <text x="32" y="52" fill="#e2e8f0" font-size="10" font-weight="600" font-family="system-ui">Prudencio Johnson</text>
+      <text x="32" y="63" fill="#475569" font-size="9" font-family="system-ui">CEGID — Cadrage GED</text>
+      <rect x="130" y="45" width="140" height="20" rx="4" fill="#22c55e" opacity=".75"/>
+      <rect x="246" y="45" width="24" height="20" rx="4" fill="#ef4444" opacity=".9"/>
+      <rect x="273" y="45" width="30" height="20" rx="4" fill="#ef4444" class="badge-anim"/>
+      <text x="288" y="59" text-anchor="middle" fill="white" font-size="9" font-weight="800" font-family="system-ui">J−4</text>
+      <circle cx="14" cy="92" r="12" fill="#0891b2"/>
+      <text x="14" y="97" text-anchor="middle" fill="white" font-size="9" font-weight="700" font-family="system-ui">SC</text>
+      <text x="32" y="89" fill="#e2e8f0" font-size="10" font-weight="600" font-family="system-ui">Sixte Chobert</text>
+      <text x="32" y="100" fill="#475569" font-size="9" font-family="system-ui">EDF — PMO</text>
+      <rect x="130" y="82" width="200" height="20" rx="4" fill="#22c55e" opacity=".85"/>
+      <text x="336" y="96" fill="#22c55e" font-size="13" font-family="system-ui" opacity=".8">→</text>
+      <circle cx="14" cy="129" r="12" fill="#334155"/>
+      <text x="14" y="134" text-anchor="middle" fill="white" font-size="9" font-weight="700" font-family="system-ui">LG</text>
+      <text x="32" y="126" fill="#e2e8f0" font-size="10" font-weight="600" font-family="system-ui">Léo Guichard</text>
+      <text x="32" y="137" fill="#475569" font-size="9" font-family="system-ui">Sanofi — PO</text>
+      <rect x="218" y="119" width="124" height="20" rx="4" fill="#60a5fa" opacity=".6"/>
+      <text x="254" y="133" text-anchor="middle" fill="white" font-size="8" font-weight="700" font-family="system-ui">À venir</text>
+    </svg>
+  </div>
+  <div class="stats">
+    <div class="stat"><span class="stat-val">15</span><span class="stat-lbl">consultants</span></div>
+    <div class="stat"><span class="stat-val">89<span style="font-size:13px;font-weight:600">%</span></span><span class="stat-lbl">staffing FY26</span></div>
+    <div class="stat"><span class="stat-val" style="font-size:14px">2 alertes</span><span class="stat-lbl">fins prochaines</span></div>
+  </div>
+  <div class="left-footer">
+    <div class="avatar-stack"><div class="avatar-sm">CD</div><div class="avatar-sm">ML</div><div class="avatar-sm">RF</div></div>
+    <div class="left-footer-text"><strong>+12 directeurs</strong> gèrent leur équipe avec ESN Manager</div>
+  </div>
+</div>
+
+<!-- ═══ RIGHT PANEL ═══ -->
+<div class="right">
+  <div class="card">
+    <div class="tabs" role="tablist">
+      <button class="tab on" id="t-login" onclick="sw('login')" role="tab">Se connecter</button>
+      <button class="tab"    id="t-signup" onclick="sw('signup')" role="tab">Créer un compte</button>
+    </div>
+
+    <!-- Alert banner (erreurs globales) -->
+    <div class="alert alert-err" id="alert-err"></div>
+    <div class="alert alert-ok"  id="alert-ok"></div>
+
+    <!-- ── LOGIN ── -->
+    <div id="f-login">
+      <div class="card-head">
+        <h2 class="card-title">Bon retour 👋</h2>
+        <p class="card-sub">Accédez à votre espace ESN Manager</p>
+      </div>
+      <div class="fd">
+        <label for="l-email">Email professionnel</label>
+        <input class="inp" type="email" id="l-email" placeholder="vous@votreesn.com" autocomplete="email">
+        <p class="err-msg" id="e-l-email">Email invalide</p>
+      </div>
+      <div class="fd">
+        <label for="l-pwd">Mot de passe</label>
+        <div class="pwd-wrap">
+          <input class="inp" type="password" id="l-pwd" placeholder="Votre mot de passe" autocomplete="current-password">
+          <button class="pwd-eye" type="button" onclick="eye('l-pwd',this)" aria-label="Afficher/masquer">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <p class="err-msg" id="e-l-pwd">Mot de passe requis</p>
+      </div>
+      <div class="forgot-row"><button class="link" type="button" onclick="forgot()">Mot de passe oublié ?</button></div>
+      <button class="btn" id="b-login" onclick="doLogin()">
+        <span id="lb-login">Se connecter</span>
+        <div class="spin" id="sp-login"></div>
+      </button>
+      <div class="switch-row">Pas encore de compte ? <button onclick="sw('signup')">Créer un compte gratuitement →</button></div>
+      <div class="demo-row"><a href="esn_manager_cgi.html">Accéder à la démo sans compte</a></div>
+    </div>
+
+    <!-- ── SIGNUP ── -->
+    <div id="f-signup" style="display:none">
+      <div class="card-head">
+        <h2 class="card-title">Démarrez gratuitement 🚀</h2>
+        <p class="card-sub">14 jours d'essai — aucune carte bancaire</p>
+      </div>
+      <div class="fd">
+        <label for="s-co">Nom de votre ESN / cabinet *</label>
+        <input class="inp" type="text" id="s-co" placeholder="ex : CGI Business Conseil" autocomplete="organization">
+        <p class="err-msg" id="e-s-co">Nom de société requis</p>
+      </div>
+      <div class="fd2">
+        <div>
+          <label for="s-fn">Prénom *</label>
+          <input class="inp" type="text" id="s-fn" placeholder="Charles" autocomplete="given-name">
+          <p class="err-msg" id="e-s-fn">Requis</p>
+        </div>
+        <div>
+          <label for="s-ln">Nom *</label>
+          <input class="inp" type="text" id="s-ln" placeholder="Dupont" autocomplete="family-name">
+          <p class="err-msg" id="e-s-ln">Requis</p>
+        </div>
+      </div>
+      <div class="fd">
+        <label for="s-em">Email professionnel *</label>
+        <input class="inp" type="email" id="s-em" placeholder="vous@votreesn.com" autocomplete="email">
+        <p class="err-msg" id="e-s-em">Email invalide</p>
+      </div>
+      <div class="fd">
+        <label for="s-pw">Mot de passe *</label>
+        <div class="pwd-wrap">
+          <input class="inp" type="password" id="s-pw" placeholder="8 caractères minimum" autocomplete="new-password" oninput="strength(this.value)">
+          <button class="pwd-eye" type="button" onclick="eye('s-pw',this)" aria-label="Afficher/masquer">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="pwd-strength" id="str-wrap">
+          <div class="strength-bar-bg"><div class="strength-bar" id="str-bar"></div></div>
+          <p class="strength-lbl" id="str-lbl"></p>
+        </div>
+        <p class="err-msg" id="e-s-pw">8 caractères minimum requis</p>
+      </div>
+      <div class="fd">
+        <label for="s-p2">Confirmer le mot de passe *</label>
+        <div class="pwd-wrap">
+          <input class="inp" type="password" id="s-p2" placeholder="Répétez votre mot de passe" autocomplete="new-password">
+          <button class="pwd-eye" type="button" onclick="eye('s-p2',this)" aria-label="Afficher/masquer">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <p class="err-msg" id="e-s-p2">Les mots de passe ne correspondent pas</p>
+      </div>
+      <label class="cgu-row">
+        <input type="checkbox" id="cgu">
+        <span>J'accepte les <a href="#" onclick="return false">conditions d'utilisation</a> et la <a href="#" onclick="return false">politique de confidentialité</a></span>
+      </label>
+      <p class="err-msg" id="e-cgu">Vous devez accepter les conditions</p>
+      <button class="btn" id="b-signup" onclick="doSignup()">
+        <span id="lb-signup">Créer mon compte</span>
+        <div class="spin" id="sp-signup"></div>
+      </button>
+      <div class="switch-row">Déjà un compte ? <button onclick="sw('login')">Se connecter</button></div>
+    </div>
+
+    <!-- ── SUCCESS ── -->
+    <div class="success-wrap" id="success">
+      <div class="success-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h3 class="success-title" id="suc-title">Connexion réussie !</h3>
+      <p class="success-msg" id="suc-msg">Votre tableau de bord vous attend.</p>
+      <a href="esn_manager_cgi.html" class="btn-dashboard" id="suc-link">
+        Accéder à mon tableau de bord
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ════════════════════════════════════════════════════════════
+   ⚙️  CONFIGURATION SUPABASE — À MODIFIER
+   1. Allez sur supabase.com → votre projet → Settings → API
+   2. Copiez "Project URL" et "anon public key"
+   3. Collez-les ci-dessous
+   ════════════════════════════════════════════════════════════ */
+var SUPABASE_URL = 'https://rwmstlesxnglpblrurqj.supabase.co';   // ← remplacez
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3bXN0bGVzeG5nbHBibHJ1cnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MjcyNTMsImV4cCI6MjA5NzEwMzI1M30.9SrsA1sYjdsqdPCnZ_sc2iTl01NKXsl7gAu2Y_VYgSQ';                  // ← remplacez
+/* ═══════════════════════════════════════════════════════════ */
+
+var sb = null;
+var configured = SUPABASE_URL !== 'https://VOTRE_ID.supabase.co';
+
+if (configured) {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  /* Vérifier la session au chargement : si déjà connecté → dashboard */
+  document.addEventListener('DOMContentLoaded', async function() {
+    try {
+      var res = await sb.auth.getSession();
+      if (res.data && res.data.session) {
+        window.location.href = 'esn_manager_cgi.html';
+      }
+    } catch(e) {}
+  });
+} else {
+  /* Mode démo : pas encore configuré */
+  document.addEventListener('DOMContentLoaded', function() {
+    showBanner('err', '⚙️ Supabase non configuré — mode démonstration actif. Les connexions ne sont pas réelles.');
+  });
+}
+
+/* ── Helpers UI ── */
+function sw(mode) {
+  var login = mode === 'login';
+  document.getElementById('f-login').style.display  = login ? 'block' : 'none';
+  document.getElementById('f-signup').style.display = login ? 'none'  : 'block';
+  document.getElementById('success').classList.remove('on');
+  document.getElementById('t-login').classList.toggle('on', login);
+  document.getElementById('t-login').setAttribute('aria-selected', String(login));
+  document.getElementById('t-signup').classList.toggle('on', !login);
+  document.getElementById('t-signup').setAttribute('aria-selected', String(!login));
+  clearErr(); hideBanner();
+}
+
+function clearErr() {
+  document.querySelectorAll('.err-msg').forEach(function(e){ e.classList.remove('show'); });
+  document.querySelectorAll('.inp').forEach(function(e){ e.classList.remove('err'); });
+}
+function showBanner(type, msg) {
+  hideBanner();
+  var el = document.getElementById('alert-' + type);
+  el.textContent = msg; el.classList.add('show');
+}
+function hideBanner() {
+  document.getElementById('alert-err').classList.remove('show');
+  document.getElementById('alert-ok').classList.remove('show');
+}
+function setErr(inpId, errId, msg) {
+  document.getElementById(inpId).classList.add('err');
+  var el = document.getElementById(errId);
+  if (msg) el.textContent = msg;
+  el.classList.add('show');
+  return false;
+}
+function isEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v); }
+function loading(btnId, spId, lbId, on) {
+  document.getElementById(btnId).disabled = on;
+  document.getElementById(spId).classList.toggle('on', on);
+  document.getElementById(lbId).style.display = on ? 'none' : '';
+}
+function showSuccess(title, msg) {
+  document.getElementById('f-login').style.display  = 'none';
+  document.getElementById('f-signup').style.display = 'none';
+  document.getElementById('suc-title').textContent  = title;
+  document.getElementById('suc-msg').textContent    = msg;
+  document.getElementById('success').classList.add('on');
+}
+function wait(ms) { return new Promise(function(r){ setTimeout(r, ms); }); }
+
+var eyeOpen  = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+var eyeClose = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+function eye(id, btn) {
+  var inp = document.getElementById(id);
+  inp.type = inp.type === 'text' ? 'password' : 'text';
+  btn.querySelector('svg').innerHTML = inp.type === 'password' ? eyeOpen : eyeClose;
+}
+
+function strength(v) {
+  var wrap = document.getElementById('str-wrap');
+  var bar  = document.getElementById('str-bar');
+  var lbl  = document.getElementById('str-lbl');
+  if (!v) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  var s = 0;
+  if (v.length >= 8)  s++;
+  if (v.length >= 12) s++;
+  if (/[A-Z]/.test(v)) s++;
+  if (/[0-9]/.test(v)) s++;
+  if (/[^A-Za-z0-9]/.test(v)) s++;
+  var lvls = [
+    {w:'18%',c:'#ef4444',t:'Très faible'},
+    {w:'35%',c:'#f97316',t:'Faible'},
+    {w:'55%',c:'#eab308',t:'Moyen'},
+    {w:'78%',c:'#22c55e',t:'Fort'},
+    {w:'100%',c:'#16a34a',t:'Très fort ✓'}
+  ];
+  var l = lvls[Math.min(s-1,4)] || lvls[0];
+  bar.style.width = l.w; bar.style.background = l.c;
+  lbl.textContent = l.t; lbl.style.color = l.c;
+}
+
+/* ── LOGIN ── */
+async function doLogin() {
+  clearErr(); hideBanner();
+  var em = document.getElementById('l-email').value.trim();
+  var pw = document.getElementById('l-pwd').value;
+  var ok = true;
+  if (!isEmail(em)) ok = setErr('l-email','e-l-email','Email invalide');
+  if (!pw)          ok = setErr('l-pwd','e-l-pwd','Mot de passe requis') && ok;
+  if (!ok) return;
+
+  loading('b-login','sp-login','lb-login', true);
+
+  if (!configured) {
+    /* Mode démo */
+    await wait(1000);
+    loading('b-login','sp-login','lb-login', false);
+    showSuccess('Connexion simulée ✓', 'Supabase non encore configuré. En mode démo, vous accédez directement au tableau de bord.');
+    setTimeout(function(){ window.location.href = 'esn_manager_cgi.html'; }, 1200);
+    return;
+  }
+
+  /* ── Supabase Auth ── */
+  var res = await sb.auth.signInWithPassword({ email: em, password: pw });
+  loading('b-login','sp-login','lb-login', false);
+
+  if (res.error) {
+    var msg = res.error.message;
+    if (msg.toLowerCase().includes('invalid') || msg.toLowerCase().includes('credentials')) {
+      showBanner('err', '❌ Email ou mot de passe incorrect. Vérifiez vos identifiants.');
+    } else {
+      showBanner('err', '❌ ' + msg);
+    }
+    return;
+  }
+
+  showSuccess('Connexion réussie !', 'Bon retour ' + em.split('@')[0] + '. Votre espace vous attend.');
+  setTimeout(function(){ window.location.href = 'esn_manager_cgi.html'; }, 900);
+}
+
+/* ── SIGNUP ── */
+async function doSignup() {
+  clearErr(); hideBanner();
+  var co  = document.getElementById('s-co').value.trim();
+  var fn  = document.getElementById('s-fn').value.trim();
+  var ln  = document.getElementById('s-ln').value.trim();
+  var em  = document.getElementById('s-em').value.trim();
+  var pw  = document.getElementById('s-pw').value;
+  var p2  = document.getElementById('s-p2').value;
+  var cgu = document.getElementById('cgu').checked;
+  var ok  = true;
+
+  if (!co)           ok = setErr('s-co','e-s-co','Nom de société requis') && ok;
+  if (!fn)           ok = setErr('s-fn','e-s-fn','Requis') && ok;
+  if (!ln)           ok = setErr('s-ln','e-s-ln','Requis') && ok;
+  if (!isEmail(em))  ok = setErr('s-em','e-s-em','Email invalide') && ok;
+  if (!pw||pw.length<8) ok = setErr('s-pw','e-s-pw','8 caractères minimum requis') && ok;
+  if (pw !== p2)     ok = setErr('s-p2','e-s-p2','Les mots de passe ne correspondent pas') && ok;
+  if (!cgu) { document.getElementById('e-cgu').classList.add('show'); ok = false; }
+  if (!ok) return;
+
+  loading('b-signup','sp-signup','lb-signup', true);
+
+  if (!configured) {
+    await wait(1200);
+    loading('b-signup','sp-signup','lb-signup', false);
+    showSuccess('Compte simulé ✓', 'Espace ' + co + ' prêt (mode démo). Configurez Supabase pour activer la vraie inscription.');
+    return;
+  }
+
+  /* ── Supabase Auth ── */
+  var res = await sb.auth.signUp({
+    email: em,
+    password: pw,
+    options: {
+      data: { company_name: co, first_name: fn, last_name: ln }
+    }
+  });
+
+  loading('b-signup','sp-signup','lb-signup', false);
+
+  if (res.error) {
+    var msg = res.error.message;
+    if (msg.toLowerCase().includes('already')) {
+      setErr('s-em','e-s-em','Cet email est déjà utilisé — connectez-vous plutôt');
+    } else {
+      showBanner('err', '❌ ' + msg);
+    }
+    return;
+  }
+
+  /* Supabase envoie un email de confirmation par défaut.
+     Si vous voulez désactiver la confirmation : Supabase → Auth → Settings → désactivez "Enable email confirmations" */
+  if (res.data.user && !res.data.session) {
+    /* Email de confirmation requis */
+    showSuccess(
+      'Vérifiez votre email 📬',
+      'Un lien de confirmation a été envoyé à ' + em + '. Cliquez sur le lien puis revenez vous connecter.'
+    );
+    document.getElementById('suc-link').style.display = 'none';
+  } else {
+    /* Connexion automatique (sans confirmation d'email) */
+    showSuccess(
+      'Bienvenue sur ESN Manager ! 🎉',
+      'Votre espace ' + co + ' est prêt. 14 jours d\'essai offerts.'
+    );
+    setTimeout(function(){ window.location.href = 'esn_manager_cgi.html'; }, 1000);
+  }
+}
+
+/* ── MOT DE PASSE OUBLIÉ ── */
+async function forgot() {
+  var em = document.getElementById('l-email').value.trim();
+  if (!isEmail(em)) { setErr('l-email','e-l-email','Entrez d\'abord votre email'); return; }
+
+  if (!configured) {
+    alert('Fonctionnalité active une fois Supabase configuré.\nUn lien de réinitialisation sera envoyé à : ' + em);
+    return;
+  }
+
+  await sb.auth.resetPasswordForEmail(em, {
+    redirectTo: window.location.origin + '/reset-password.html'
+  });
+  showBanner('ok', '✅ Lien de réinitialisation envoyé à ' + em + ' — vérifiez aussi vos spams.');
+}
+
+/* ── Touche Entrée ── */
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Enter') return;
+  if (document.getElementById('f-login').style.display  !== 'none') doLogin();
+  else if (document.getElementById('f-signup').style.display !== 'none') doSignup();
+});
+</script>
+</body>
+</html>
