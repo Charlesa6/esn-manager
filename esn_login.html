@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ESN Manager — Espace client</title>
+<title>ESN Manager \u2014 Espace client</title>
 
-<!-- ⚡ Supabase JS client -->
+<!-- \u26A1 Supabase JS client -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-/* ── RESET ── */
+/* \u2500\u2500 RESET \u2500\u2500 */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
 body {
@@ -22,7 +22,7 @@ body {
 }
 input, button, select { font-family: inherit; font-size: inherit; }
 
-/* ── LEFT PANEL ── */
+/* \u2500\u2500 LEFT PANEL \u2500\u2500 */
 .left {
   width: 460px;
   flex-shrink: 0;
@@ -58,7 +58,7 @@ input, button, select { font-family: inherit; font-size: inherit; }
 .left-footer-text { font-size:12px;color:#64748b;margin-left:10px; }
 .left-footer-text strong { color:#94a3b8; }
 
-/* ── RIGHT PANEL ── */
+/* \u2500\u2500 RIGHT PANEL \u2500\u2500 */
 .right { flex:1;display:flex;align-items:center;justify-content:center;padding:40px 24px; }
 .card  { background:white;border-radius:20px;padding:44px 40px;width:100%;max-width:468px;box-shadow:0 4px 40px rgba(0,0,0,.09),0 1px 4px rgba(0,0,0,.04); }
 .card-head { margin-bottom:28px; }
@@ -144,7 +144,7 @@ label { display:block;font-size:11px;font-weight:700;color:#475569;text-transfor
 </head>
 <body>
 
-<!-- ═══ LEFT PANEL ═══ -->
+<!-- \u2550\u2550\u2550 LEFT PANEL \u2550\u2550\u2550 -->
 <div class="left">
   <div class="left-glow"></div><div class="left-glow2"></div>
   <div class="logo">
@@ -153,7 +153,7 @@ label { display:block;font-size:11px;font-weight:700;color:#475569;text-transfor
   </div>
   <div class="hero">
     <h1>Pilotez votre équipe.<br><span>Sans jamais rater</span><br>une fin de mission.</h1>
-    <p style="margin-top:12px">La plateforme de staffing pensée pour les ESN françaises — KPIs, planning Gantt, alertes J−14, années fiscales.</p>
+    <p style="margin-top:12px">La plateforme de staffing pensée pour les ESN françaises \u2014 KPIs, planning Gantt, alertes J\u221214, années fiscales.</p>
   </div>
   <div class="gantt-preview">
     <div class="gantt-label">Votre planning en temps réel</div>
@@ -165,25 +165,25 @@ label { display:block;font-size:11px;font-weight:700;color:#475569;text-transfor
       <rect x="130" y="8" width="172" height="20" rx="4" fill="#22c55e" opacity=".85"/>
       <rect x="278" y="8" width="24" height="20" rx="4" fill="#f59e0b" opacity=".9"/>
       <rect x="305" y="8" width="36" height="20" rx="4" fill="#f59e0b"/>
-      <text x="323" y="22" text-anchor="middle" fill="white" font-size="9" font-weight="800" font-family="system-ui">J−22</text>
+      <text x="323" y="22" text-anchor="middle" fill="white" font-size="9" font-weight="800" font-family="system-ui">J\u221222</text>
       <circle cx="14" cy="55" r="12" fill="#7c3aed"/>
       <text x="14" y="60" text-anchor="middle" fill="white" font-size="9" font-weight="700" font-family="system-ui">PJ</text>
       <text x="32" y="52" fill="#e2e8f0" font-size="10" font-weight="600" font-family="system-ui">Prudencio Johnson</text>
-      <text x="32" y="63" fill="#475569" font-size="9" font-family="system-ui">CEGID — Cadrage GED</text>
+      <text x="32" y="63" fill="#475569" font-size="9" font-family="system-ui">CEGID \u2014 Cadrage GED</text>
       <rect x="130" y="45" width="140" height="20" rx="4" fill="#22c55e" opacity=".75"/>
       <rect x="246" y="45" width="24" height="20" rx="4" fill="#ef4444" opacity=".9"/>
       <rect x="273" y="45" width="30" height="20" rx="4" fill="#ef4444" class="badge-anim"/>
-      <text x="288" y="59" text-anchor="middle" fill="white" font-size="9" font-weight="800" font-family="system-ui">J−4</text>
+      <text x="288" y="59" text-anchor="middle" fill="white" font-size="9" font-weight="800" font-family="system-ui">J\u22124</text>
       <circle cx="14" cy="92" r="12" fill="#0891b2"/>
       <text x="14" y="97" text-anchor="middle" fill="white" font-size="9" font-weight="700" font-family="system-ui">SC</text>
       <text x="32" y="89" fill="#e2e8f0" font-size="10" font-weight="600" font-family="system-ui">Sixte Chobert</text>
-      <text x="32" y="100" fill="#475569" font-size="9" font-family="system-ui">EDF — PMO</text>
+      <text x="32" y="100" fill="#475569" font-size="9" font-family="system-ui">EDF \u2014 PMO</text>
       <rect x="130" y="82" width="200" height="20" rx="4" fill="#22c55e" opacity=".85"/>
-      <text x="336" y="96" fill="#22c55e" font-size="13" font-family="system-ui" opacity=".8">→</text>
+      <text x="336" y="96" fill="#22c55e" font-size="13" font-family="system-ui" opacity=".8">\u2192</text>
       <circle cx="14" cy="129" r="12" fill="#334155"/>
       <text x="14" y="134" text-anchor="middle" fill="white" font-size="9" font-weight="700" font-family="system-ui">LG</text>
       <text x="32" y="126" fill="#e2e8f0" font-size="10" font-weight="600" font-family="system-ui">Léo Guichard</text>
-      <text x="32" y="137" fill="#475569" font-size="9" font-family="system-ui">Sanofi — PO</text>
+      <text x="32" y="137" fill="#475569" font-size="9" font-family="system-ui">Sanofi \u2014 PO</text>
       <rect x="218" y="119" width="124" height="20" rx="4" fill="#60a5fa" opacity=".6"/>
       <text x="254" y="133" text-anchor="middle" fill="white" font-size="8" font-weight="700" font-family="system-ui">À venir</text>
     </svg>
@@ -199,7 +199,7 @@ label { display:block;font-size:11px;font-weight:700;color:#475569;text-transfor
   </div>
 </div>
 
-<!-- ═══ RIGHT PANEL ═══ -->
+<!-- \u2550\u2550\u2550 RIGHT PANEL \u2550\u2550\u2550 -->
 <div class="right">
   <div class="card">
     <div class="tabs" role="tablist">
@@ -211,10 +211,10 @@ label { display:block;font-size:11px;font-weight:700;color:#475569;text-transfor
     <div class="alert alert-err" id="alert-err"></div>
     <div class="alert alert-ok"  id="alert-ok"></div>
 
-    <!-- ── LOGIN ── -->
+    <!-- \u2500\u2500 LOGIN \u2500\u2500 -->
     <div id="f-login">
       <div class="card-head">
-        <h2 class="card-title">Bon retour 👋</h2>
+        <h2 class="card-title">Bon retour \uD83D\uDC4B</h2>
         <p class="card-sub">Accédez à votre espace ESN Manager</p>
       </div>
       <div class="fd">
@@ -237,15 +237,15 @@ label { display:block;font-size:11px;font-weight:700;color:#475569;text-transfor
         <span id="lb-login">Se connecter</span>
         <div class="spin" id="sp-login"></div>
       </button>
-      <div class="switch-row">Pas encore de compte ? <button onclick="sw('signup')">Créer un compte gratuitement →</button></div>
+      <div class="switch-row">Pas encore de compte ? <button onclick="sw('signup')">Créer un compte gratuitement \u2192</button></div>
       <div class="demo-row"><a href="/esn_manager_cgi.html">Accéder à la démo sans compte</a></div>
     </div>
 
-    <!-- ── SIGNUP ── -->
+    <!-- \u2500\u2500 SIGNUP \u2500\u2500 -->
     <div id="f-signup" style="display:none">
       <div class="card-head">
-        <h2 class="card-title">Démarrez gratuitement 🚀</h2>
-        <p class="card-sub">14 jours d'essai — aucune carte bancaire</p>
+        <h2 class="card-title">Démarrez gratuitement \uD83D\uDE80</h2>
+        <p class="card-sub">14 jours d'essai \u2014 aucune carte bancaire</p>
       </div>
       <div class="fd">
         <label for="s-co">Nom de votre ESN / cabinet *</label>
@@ -305,7 +305,7 @@ label { display:block;font-size:11px;font-weight:700;color:#475569;text-transfor
       <div class="switch-row">Déjà un compte ? <button onclick="sw('login')">Se connecter</button></div>
     </div>
 
-    <!-- ── SUCCESS ── -->
+    <!-- \u2500\u2500 SUCCESS \u2500\u2500 -->
     <div class="success-wrap" id="success">
       <div class="success-icon">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -323,15 +323,15 @@ label { display:block;font-size:11px;font-weight:700;color:#475569;text-transfor
 <script>
 'use strict';
 
-/* ════════════════════════════════════════════════════════════
-   ⚙️  CONFIGURATION SUPABASE — À MODIFIER
-   1. Allez sur supabase.com → votre projet → Settings → API
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   \u2699\uFE0F  CONFIGURATION SUPABASE \u2014 À MODIFIER
+   1. Allez sur supabase.com \u2192 votre projet \u2192 Settings \u2192 API
    2. Copiez "Project URL" et "anon public key"
    3. Collez-les ci-dessous
-   ════════════════════════════════════════════════════════════ */
-var SUPABASE_URL = 'https://rwmstlesxnglpblrurqj.supabase.co';   // ← remplacez
-var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3bXN0bGVzeG5nbHBibHJ1cnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MjcyNTMsImV4cCI6MjA5NzEwMzI1M30.9SrsA1sYjdsqdPCnZ_sc2iTl01NKXsl7gAu2Y_VYgSQ';                  // ← remplacez
-/* ═══════════════════════════════════════════════════════════ */
+   \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+var SUPABASE_URL = 'https://rwmstlesxnglpblrurqj.supabase.co';   // \u2190 remplacez
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3bXN0bGVzeG5nbHBibHJ1cnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MjcyNTMsImV4cCI6MjA5NzEwMzI1M30.9SrsA1sYjdsqdPCnZ_sc2iTl01NKXsl7gAu2Y_VYgSQ';                  // \u2190 remplacez
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 
 var sb = null;
 var configured = SUPABASE_URL !== 'https://VOTRE_ID.supabase.co';
@@ -339,7 +339,7 @@ var configured = SUPABASE_URL !== 'https://VOTRE_ID.supabase.co';
 if (configured) {
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  /* Vérifier la session au chargement : si déjà connecté → dashboard */
+  /* Vérifier la session au chargement : si déjà connecté \u2192 dashboard */
   document.addEventListener('DOMContentLoaded', async function() {
     try {
       var res = await sb.auth.getSession();
@@ -351,11 +351,11 @@ if (configured) {
 } else {
   /* Mode démo : pas encore configuré */
   document.addEventListener('DOMContentLoaded', function() {
-    showBanner('err', '⚙️ Supabase non configuré — mode démonstration actif. Les connexions ne sont pas réelles.');
+    showBanner('err', '\u2699\uFE0F Supabase non configuré \u2014 mode démonstration actif. Les connexions ne sont pas réelles.');
   });
 }
 
-/* ── Helpers UI ── */
+/* \u2500\u2500 Helpers UI \u2500\u2500 */
 function sw(mode) {
   var login = mode === 'login';
   document.getElementById('f-login').style.display  = login ? 'block' : 'none';
@@ -428,14 +428,14 @@ function strength(v) {
     {w:'35%',c:'#f97316',t:'Faible'},
     {w:'55%',c:'#eab308',t:'Moyen'},
     {w:'78%',c:'#22c55e',t:'Fort'},
-    {w:'100%',c:'#16a34a',t:'Très fort ✓'}
+    {w:'100%',c:'#16a34a',t:'Très fort \u2713'}
   ];
   var l = lvls[Math.min(s-1,4)] || lvls[0];
   bar.style.width = l.w; bar.style.background = l.c;
   lbl.textContent = l.t; lbl.style.color = l.c;
 }
 
-/* ── LOGIN ── */
+/* \u2500\u2500 LOGIN \u2500\u2500 */
 async function doLogin() {
   clearErr(); hideBanner();
   var em = document.getElementById('l-email').value.trim();
@@ -451,21 +451,21 @@ async function doLogin() {
     /* Mode démo */
     await wait(1000);
     loading('b-login','sp-login','lb-login', false);
-    showSuccess('Connexion simulée ✓', 'Supabase non encore configuré. En mode démo, vous accédez directement au tableau de bord.');
+    showSuccess('Connexion simulée \u2713', 'Supabase non encore configuré. En mode démo, vous accédez directement au tableau de bord.');
     setTimeout(function(){ window.location.href = '/esn_manager_cgi.html'; }, 1200);
     return;
   }
 
-  /* ── Supabase Auth ── */
+  /* \u2500\u2500 Supabase Auth \u2500\u2500 */
   var res = await sb.auth.signInWithPassword({ email: em, password: pw });
   loading('b-login','sp-login','lb-login', false);
 
   if (res.error) {
     var msg = res.error.message;
     if (msg.toLowerCase().includes('invalid') || msg.toLowerCase().includes('credentials')) {
-      showBanner('err', '❌ Email ou mot de passe incorrect. Vérifiez vos identifiants.');
+      showBanner('err', '\u274C Email ou mot de passe incorrect. Vérifiez vos identifiants.');
     } else {
-      showBanner('err', '❌ ' + msg);
+      showBanner('err', '\u274C ' + msg);
     }
     return;
   }
@@ -474,7 +474,7 @@ async function doLogin() {
   setTimeout(function(){ window.location.href = '/esn_manager_cgi.html'; }, 900);
 }
 
-/* ── SIGNUP ── */
+/* \u2500\u2500 SIGNUP \u2500\u2500 */
 async function doSignup() {
   clearErr(); hideBanner();
   var co  = document.getElementById('s-co').value.trim();
@@ -500,11 +500,11 @@ async function doSignup() {
   if (!configured) {
     await wait(1200);
     loading('b-signup','sp-signup','lb-signup', false);
-    showSuccess('Compte simulé ✓', 'Espace ' + co + ' prêt (mode démo). Configurez Supabase pour activer la vraie inscription.');
+    showSuccess('Compte simulé \u2713', 'Espace ' + co + ' prêt (mode démo). Configurez Supabase pour activer la vraie inscription.');
     return;
   }
 
-  /* ── Supabase Auth ── */
+  /* \u2500\u2500 Supabase Auth \u2500\u2500 */
   var res = await sb.auth.signUp({
     email: em,
     password: pw,
@@ -518,33 +518,33 @@ async function doSignup() {
   if (res.error) {
     var msg = res.error.message;
     if (msg.toLowerCase().includes('already')) {
-      setErr('s-em','e-s-em','Cet email est déjà utilisé — connectez-vous plutôt');
+      setErr('s-em','e-s-em','Cet email est déjà utilisé \u2014 connectez-vous plutôt');
     } else {
-      showBanner('err', '❌ ' + msg);
+      showBanner('err', '\u274C ' + msg);
     }
     return;
   }
 
   /* Supabase envoie un email de confirmation par défaut.
-     Si vous voulez désactiver la confirmation : Supabase → Auth → Settings → désactivez "Enable email confirmations" */
+     Si vous voulez désactiver la confirmation : Supabase \u2192 Auth \u2192 Settings \u2192 désactivez "Enable email confirmations" */
   if (res.data.user && !res.data.session) {
     /* Email de confirmation requis */
     showSuccess(
-      'Vérifiez votre email 📬',
+      'Vérifiez votre email \uD83D\uDCEC',
       'Un lien de confirmation a été envoyé à ' + em + '. Cliquez sur le lien puis revenez vous connecter.'
     );
     document.getElementById('suc-link').style.display = 'none';
   } else {
     /* Connexion automatique (sans confirmation d'email) */
     showSuccess(
-      'Bienvenue sur ESN Manager ! 🎉',
+      'Bienvenue sur ESN Manager ! \uD83C\uDF89',
       'Votre espace ' + co + ' est prêt. 14 jours d\'essai offerts.'
     );
     setTimeout(function(){ window.location.href = '/esn_manager_cgi.html'; }, 1000);
   }
 }
 
-/* ── MOT DE PASSE OUBLIÉ ── */
+/* \u2500\u2500 MOT DE PASSE OUBLIÉ \u2500\u2500 */
 async function forgot() {
   var em = document.getElementById('l-email').value.trim();
   if (!isEmail(em)) { setErr('l-email','e-l-email','Entrez d\'abord votre email'); return; }
@@ -557,10 +557,10 @@ async function forgot() {
   await sb.auth.resetPasswordForEmail(em, {
     redirectTo: window.location.origin + '/reset-password.html'
   });
-  showBanner('ok', '✅ Lien de réinitialisation envoyé à ' + em + ' — vérifiez aussi vos spams.');
+  showBanner('ok', '\u2705 Lien de réinitialisation envoyé à ' + em + ' \u2014 vérifiez aussi vos spams.');
 }
 
-/* ── Touche Entrée ── */
+/* \u2500\u2500 Touche Entrée \u2500\u2500 */
 document.addEventListener('keydown', function(e) {
   if (e.key !== 'Enter') return;
   if (document.getElementById('f-login').style.display  !== 'none') doLogin();

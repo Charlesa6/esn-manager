@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ESN Manager — CGI Business Conseil</title>
+<title>ESN Manager - CGI Business Conseil</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
@@ -134,18 +134,18 @@ details summary::-webkit-details-marker{display:none}
 <script>
 'use strict';
 
-/* ══════════════════════════════════════════════════════════════
-   SUPABASE CONFIG — copiez les mêmes valeurs que dans esn_login.html
-══════════════════════════════════════════════════════════════ */
-var SUPABASE_URL = 'https://rwmstlesxnglpblrurqj.supabase.co';  // ← remplacez
-var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3bXN0bGVzeG5nbHBibHJ1cnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MjcyNTMsImV4cCI6MjA5NzEwMzI1M30.9SrsA1sYjdsqdPCnZ_sc2iTl01NKXsl7gAu2Y_VYgSQ';                 // ← remplacez
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   SUPABASE CONFIG - copiez les mêmes valeurs que dans esn_login.html
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+var SUPABASE_URL = 'https://rwmstlesxnglpblrurqj.supabase.co';  // \u2190 remplacez
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3bXN0bGVzeG5nbHBibHJ1cnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MjcyNTMsImV4cCI6MjA5NzEwMzI1M30.9SrsA1sYjdsqdPCnZ_sc2iTl01NKXsl7gAu2Y_VYgSQ';                 // \u2190 remplacez
 var sb = (SUPABASE_URL !== 'https://VOTRE_ID.supabase.co')
   ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 var SB_CID = null; // company_id de l'utilisateur connecté (rempli après auth)
 
-/* ══════════════════════════════════════════════════════════════
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    DATE UTILITIES
-══════════════════════════════════════════════════════════════ */
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function pD(s){var p=s.split('-').map(Number);return new Date(p[0],p[1]-1,p[2]);}
 function fD(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function nxt(s){var d=pD(s);d.setDate(d.getDate()+1);return fD(d);}
@@ -162,9 +162,9 @@ function lvSet(cid,lvs,H,ys,ye){
   return S;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   FRENCH HOLIDAYS (Easter — Meeus/Jones/Butcher)
-══════════════════════════════════════════════════════════════ */
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   FRENCH HOLIDAYS (Easter - Meeus/Jones/Butcher)
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function easter(y){
   var a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4;
   var f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3);
@@ -178,10 +178,10 @@ function frHols(y){
   return new Set([y+'-01-01',addD(e,1),y+'-05-01',y+'-05-08',addD(e,39),addD(e,50),y+'-07-14',y+'-08-15',y+'-11-01',y+'-11-11',y+'-12-25']);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   FISCAL YEAR  (1 oct → 30 sept)
-   FY26 = 1 oct 2025 → 30 sept 2026
-══════════════════════════════════════════════════════════════ */
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   FISCAL YEAR  (1 oct \u2192 30 sept)
+   FY26 = 1 oct 2025 \u2192 30 sept 2026
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function fyStart(fy){return (fy-1)+'-10-01';}
 function fyEnd(fy){return fy+'-09-30';}
 function fyHols(fy){
@@ -194,9 +194,9 @@ function currentFY(){var d=new Date(),m=d.getMonth();return m>=9?d.getFullYear()
 function fyLbl(fy){return 'FY'+String(fy).slice(2);}
 function fyRange(fy){return 'oct. '+(fy-1)+' \u2192 sept. '+fy;}
 
-/* ══════════════════════════════════════════════════════════════
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    CONSTANTS & HELPERS
-══════════════════════════════════════════════════════════════ */
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 var TODAY=fD(new Date());
 var CY=new Date().getFullYear();
 var CFY=currentFY();
@@ -232,9 +232,9 @@ function av(name,sz){
   return '<div class="av" style="width:'+sz+'px;height:'+sz+'px;font-size:'+(sz<30?11:13)+'px">'+init+'</div>';
 }
 
-/* ══════════════════════════════════════════════════════════════
-   KPI — MARGE = (TJM − SCR) / TJM × 100
-══════════════════════════════════════════════════════════════ */
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   KPI - MARGE = (TJM \u2212 SCR) / TJM × 100
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function kpi(c,miss,lvs,y,H){
   var ys=fyStart(y),ye=fyEnd(y);
   var tWD=wDays(ys,ye,H);
@@ -246,19 +246,19 @@ function kpi(c,miss,lvs,y,H){
     var d=0,cur=mS;
     while(cur<=mE){if(isWD(cur,H)&&!lds.has(cur))d++;cur=nxt(cur);}
     var r=d*m.tjm;
-    var mar=m.tjm>0?(m.tjm-c.scr)/m.tjm*100:0; /* ← nouvelle formule */
+    var mar=m.tjm>0?(m.tjm-c.scr)/m.tjm*100:0; /* \u2190 nouvelle formule */
     bill+=d;rev+=r;
     return Object.assign({},m,{days:d,rev:r,mar:mar});
   });
   var sr=avD>0?bill/avD*100:0,avgT=bill>0?rev/bill:0;
-  var om=bill>0&&avgT>0?(avgT-c.scr)/avgT*100:null; /* ← nouvelle formule */
+  var om=bill>0&&avgT>0?(avgT-c.scr)/avgT*100:null; /* \u2190 nouvelle formule */
   return{tWD:tWD,lvD:lvD,avD:avD,bill:bill,rev:rev,sr:sr,avgT:avgT,om:om,pm:pm};
 }
 
-/* ══════════════════════════════════════════════════════════════
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    SAMPLE DATA
-══════════════════════════════════════════════════════════════ */
-/* ── Données réelles CGI Business Conseil ── */
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+/* \u2500\u2500 Données réelles CGI Business Conseil \u2500\u2500 */
 var IC=[
   {id:'c01',name:'Zian Ducastel',             title:'Consultant Confirm\u00e9',    scr:362, email:'z.ducastel@cgi.com'},
   {id:'c02',name:'Prudencio Johnson',          title:'Consultant Junior',          scr:337, email:'p.johnson@cgi.com'},
@@ -293,9 +293,9 @@ var IM=[
 ];
 var IL=[];
 
-/* ══════════════════════════════════════════════════════════════
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    STATE
-══════════════════════════════════════════════════════════════ */
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 var S={
   tab:'dashboard',
   cons:IC.map(function(c){return Object.assign({},c);}),
@@ -307,9 +307,9 @@ var S={
 };
 var H=fyHols(CFY);
 
-/* ══════════════════════════════════════════════════════════════
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    SVG BAR CHART
-══════════════════════════════════════════════════════════════ */
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function svgBars(items,cfn,unit){
   var n=items.length;if(!n)return '';
   var h=185,pad=32;
@@ -327,9 +327,9 @@ function svgBars(items,cfn,unit){
   return '<svg width="100%" height="'+h+'" style="display:block;overflow:visible">'+bars+'</svg>';
 }
 
-/* ══════════════════════════════════════════════════════════════
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    HELPERS
-══════════════════════════════════════════════════════════════ */
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function getAct(cid){
   return S.miss.find(function(m){var s=mSt(m);return m.cid===cid&&(s==='active'||s==='critical'||s==='soon');});
 }
@@ -340,9 +340,9 @@ function clientRev(ks){
   return Object.keys(map).map(function(k){return{name:k,rev:map[k]};}).sort(function(a,b){return b.rev-a.rev;});
 }
 
-/* ══════════════════════════════════════════════════════════════
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    RECOMMENDATIONS ENGINE
-══════════════════════════════════════════════════════════════ */
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function genRecs(goal){
   var ks=buildKS();
   var totR=ks.reduce(function(s,x){return s+x.k.rev;},0);
@@ -375,7 +375,7 @@ function genRecs(goal){
     var end30=S.miss.filter(function(m){var s=mSt(m);return(s==='critical'||s==='soon')&&m.ed;});
     if(end30.length>0)recs.push({
       title:'S\u00e9curiser le renouvellement des missions en fin de vie',
-      detail:end30.length+' mission(s) se terminent dans moins de 30\u00a0jours\u00a0: '+end30.map(function(m){return m.name+' chez '+m.cli+' (J\u2212'+dL(m.ed)+')';}).join(', ')+'. Engagez les discussions de prolongation maintenant — un renouvellement co\u00fbte 10\u00d7 moins cher qu\u2019un nouveau client.'
+      detail:end30.length+' mission(s) se terminent dans moins de 30\u00a0jours\u00a0: '+end30.map(function(m){return m.name+' chez '+m.cli+' (J\u2212'+dL(m.ed)+')';}).join(', ')+'. Engagez les discussions de prolongation maintenant - un renouvellement co\u00fbte 10\u00d7 moins cher qu\u2019un nouveau client.'
     });
     if(recs.length<5)recs.push({
       title:'Upsell\u00a0: \u00e9tendre le p\u00e9rim\u00e8tre chez vos clients actuels',
@@ -445,18 +445,18 @@ function genRecs(goal){
   render();
 }
 
-/* ══════════════════════════════════════════════════════════════
-   TEMPLATES — SIDEBAR
-══════════════════════════════════════════════════════════════ */
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   TEMPLATES - SIDEBAR
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function tSB(){
   var NAV=[
-    {id:'dashboard',ic:'📊',lb:'Dashboard'},
-    {id:'teams',    ic:'👥',lb:'Équipe'},
-    {id:'missions', ic:'📋',lb:'Missions'},
-    {id:'planning', ic:'📅',lb:'Planning'},
-    {id:'kpis',     ic:'📈',lb:'KPIs'},
-    {id:'leaves',   ic:'🏖️',lb:'Absences'},
-    {id:'param',    ic:'⚙️',lb:'Paramétrage'}
+    {id:'dashboard',ic:'\uD83D\uDCCA',lb:'Dashboard'},
+    {id:'teams',    ic:'\uD83D\uDC65',lb:'Équipe'},
+    {id:'missions', ic:'\uD83D\uDCCB',lb:'Missions'},
+    {id:'planning', ic:'\uD83D\uDCC5',lb:'Planning'},
+    {id:'kpis',     ic:'\uD83D\uDCC8',lb:'KPIs'},
+    {id:'leaves',   ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
+    {id:'param',    ic:'\u2699\uFE0F',lb:'Paramétrage'}
   ];
   var alC=S.miss.filter(function(m){var s=mSt(m);return s==='critical'||s==='soon';}).length;
   var fyOpts=[CFY-2,CFY-1,CFY,CFY+1].map(function(fy){return '<option value="'+fy+'"'+(fy===S.year?' selected':'')+'>'+fyLbl(fy)+'</option>';}).join('');
@@ -482,9 +482,9 @@ function tSB(){
     +'</div>';
 }
 
-/* ══════════════════════════════════════════════════════════════
-   TEMPLATE — DASHBOARD
-══════════════════════════════════════════════════════════════ */
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   TEMPLATE - DASHBOARD
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function tDash(){
   var ks=buildKS();
   var als=S.miss.filter(function(m){var s=mSt(m);return s==='critical'||s==='soon';})
@@ -496,10 +496,10 @@ function tDash(){
   var actCnt=S.miss.filter(function(m){var s=mSt(m);return s==='active'||s==='critical'||s==='soon';}).length;
 
   var cards=[
-    {ic:'👥',lb:'Consultants',v:S.cons.length,sb:"dans l'\u00e9quipe",bg:'#eff6ff'},
-    {ic:'📋',lb:'Missions actives',v:actCnt,sb:'en cours',bg:'#f0fdf4'},
-    {ic:'⚠️',lb:'Fins prochaines',v:als.length,sb:'dans les 30 jours',bg:als.length>0?'#fffbeb':'#f0fdf4'},
-    {ic:'💶',lb:'CA projeté '+fyLbl(S.year),v:fEur(totR),sb:'Staffing moy. : '+avgSr.toFixed(0)+'%',bg:'#f5f3ff'}
+    {ic:'\uD83D\uDC65',lb:'Consultants',v:S.cons.length,sb:"dans l'\u00e9quipe",bg:'#eff6ff'},
+    {ic:'\uD83D\uDCCB',lb:'Missions actives',v:actCnt,sb:'en cours',bg:'#f0fdf4'},
+    {ic:'\u26A0\uFE0F',lb:'Fins prochaines',v:als.length,sb:'dans les 30 jours',bg:als.length>0?'#fffbeb':'#f0fdf4'},
+    {ic:'\uD83D\uDCB6',lb:'CA projeté '+fyLbl(S.year),v:fEur(totR),sb:'Staffing moy. : '+avgSr.toFixed(0)+'%',bg:'#f5f3ff'}
   ].map(function(x){
     return '<div class="kc"><div class="ski" style="background:'+x.bg+'">'+x.ic+'</div>'
       +'<div style="font-size:22px;font-weight:800;color:#0f172a">'+esc(String(x.v))+'</div>'
@@ -532,7 +532,7 @@ function tDash(){
       +'<div style="display:flex;gap:20px;text-align:right;flex-shrink:0">'
       +'<div><div style="font-size:13px;font-weight:800;color:#0f172a">'+x.k.sr.toFixed(0)+'%</div><div style="font-size:10px;color:#94a3b8">staffing</div></div>'
       +'<div><div style="font-size:13px;font-weight:800;color:#0f172a">'+fEur(x.k.rev)+'</div><div style="font-size:10px;color:#94a3b8">CA</div></div>'
-      +'<div><div style="font-size:13px;font-weight:800;color:'+(x.k.om!=null?(x.k.om>=0?'#15803d':'#b91c1c'):'#94a3b8')+'">'+(x.k.om!=null?x.k.om.toFixed(0)+'%':'—')+'</div><div style="font-size:10px;color:#94a3b8">marge</div></div>'
+      +'<div><div style="font-size:13px;font-weight:800;color:'+(x.k.om!=null?(x.k.om>=0?'#15803d':'#b91c1c'):'#94a3b8')+'">'+(x.k.om!=null?x.k.om.toFixed(0)+'%':'\u2014')+'</div><div style="font-size:10px;color:#94a3b8">marge</div></div>'
       +'</div></div>';
   }).join('');
 
@@ -541,14 +541,14 @@ function tDash(){
     +'<p style="font-size:13px;color:#64748b;margin-top:4px">'+pD(TODAY).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})
     +' \u00b7 <strong>'+fyLbl(S.year)+'</strong> ('+fyRange(S.year)+')</p></div>'
     +'<div class="g4">'+cards+'</div>'
-    +(als.length?'<div class="card" style="padding:20px"><h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">⚠️ Fins de mission \u00e0 anticiper</h3><div style="display:flex;flex-direction:column;gap:10px">'+alRows+'</div></div>':'')
-    +(noM.length?'<div class="card" style="padding:20px"><h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">🔴 Sans mission active</h3><div class="gc">'+noMR+'</div></div>':'')
-    +'<div class="card" style="padding:20px"><h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:16px">📊 Vue synth\u00e9tique '+fyLbl(S.year)+'</h3>'+synR+'</div></div>';
+    +(als.length?'<div class="card" style="padding:20px"><h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">\u26A0\uFE0F Fins de mission \u00e0 anticiper</h3><div style="display:flex;flex-direction:column;gap:10px">'+alRows+'</div></div>':'')
+    +(noM.length?'<div class="card" style="padding:20px"><h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">\uD83D\uDD34 Sans mission active</h3><div class="gc">'+noMR+'</div></div>':'')
+    +'<div class="card" style="padding:20px"><h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:16px">\uD83D\uDCCA Vue synth\u00e9tique '+fyLbl(S.year)+'</h3>'+synR+'</div></div>';
 }
 
-/* ══════════════════════════════════════════════════════════════
-   TEMPLATE — TEAMS
-══════════════════════════════════════════════════════════════ */
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   TEMPLATE - TEAMS
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function tTeams(){
   var rows=S.cons.map(function(c){
     var am=getAct(c.id);var st=am?mSt(am):'none';
@@ -566,9 +566,9 @@ function tTeams(){
     +'<tbody>'+rows+(S.cons.length?'':'<tr><td colspan="6" class="emp">Aucun consultant.</td></tr>')+'</tbody></table></div></div>';
 }
 
-/* ══════════════════════════════════════════════════════════════
-   TEMPLATE — MISSIONS
-══════════════════════════════════════════════════════════════ */
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   TEMPLATE - MISSIONS
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function tMiss(){
   var ORD=['critical','soon','active','future','ended'];
   var fil=S.miss.filter(function(m){return(S.fmc==='all'||m.cid===S.fmc)&&(S.fms==='all'||mSt(m)===S.fms);}).sort(function(a,b){return ORD.indexOf(mSt(a))-ORD.indexOf(mSt(b));});
@@ -576,12 +576,12 @@ function tMiss(){
   var cards=fil.map(function(m){
     var c=S.cons.find(function(c){return c.id===m.cid;});
     var st=mSt(m);var dl=m.ed?dL(m.ed):null;
-    var flds=[['Client',m.cli],['Consultant',c?c.name:'—'],['TJM',fEur(m.tjm)],['D\u00e9but',fDt(m.sd)],['Fin',fDt(m.ed)],['Lieu',m.loc||'—'],['Resp. mission',m.mgr||'—'],['Contact client',m.ccn||'—'],['Poste contact',m.ccr||'—']];
+    var flds=[['Client',m.cli],['Consultant',c?c.name:'\u2014'],['TJM',fEur(m.tjm)],['D\u00e9but',fDt(m.sd)],['Fin',fDt(m.ed)],['Lieu',m.loc||'\u2014'],['Resp. mission',m.mgr||'\u2014'],['Contact client',m.ccn||'\u2014'],['Poste contact',m.ccr||'\u2014']];
     return '<div class="card" style="padding:18px"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">'
       +'<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
       +'<span style="font-weight:700;font-size:14px;color:#0f172a">'+esc(m.name)+'</span>'+badge(st,dl!=null&&dl>=0?dl:null)
       +(!m.ed?'<span style="font-size:11px;color:#94a3b8;font-style:italic">sans date de fin</span>':'')+'</div>'
-      +'<div class="gc3">'+flds.map(function(f){return '<div><span style="color:#94a3b8">'+esc(f[0])+' : </span><span style="font-weight:600;color:#1e293b">'+esc(f[1]||'—')+'</span></div>';}).join('')+'</div></div>'
+      +'<div class="gc3">'+flds.map(function(f){return '<div><span style="color:#94a3b8">'+esc(f[0])+' : </span><span style="font-weight:600;color:#1e293b">'+esc(f[1]||'\u2014')+'</span></div>';}).join('')+'</div></div>'
       +'<div style="display:flex;gap:10px;flex-shrink:0"><button class="lb" data-act="em" data-id="'+m.id+'">Modifier</button>'
       +'<button class="lr" data-act="dm" data-id="'+m.id+'">Suppr.</button></div></div></div>';
   }).join('');
@@ -599,12 +599,12 @@ function tMiss(){
     +'<div style="display:flex;flex-direction:column;gap:12px">'+(cards||'<div class="card" style="padding:48px;text-align:center;color:#94a3b8;font-size:13px">Aucune mission pour cette s\u00e9lection</div>')+'</div></div>';
 }
 
-/* ══════════════════════════════════════════════════════════════
-   TEMPLATE — PLANNING (Gantt)
-══════════════════════════════════════════════════════════════ */
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   TEMPLATE - PLANNING (Gantt)
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function tPlan(){
   var MN=['Jan','F\u00e9v','Mar','Avr','Mai','Jun','Jul','Ao\u00fb','Sep','Oct','Nov','D\u00e9c'];
-  /* fiscal year: Oct→Sep, so months in FY order */
+  /* fiscal year: Oct\u2192Sep, so months in FY order */
   var fyS=pD(fyStart(S.year)),fyE=pD(fyEnd(S.year));
   var ysT=fyS.getTime(),yeT=fyE.getTime(),dur=yeT-ysT;
   var nowP=((new Date().getTime()-ysT)/dur)*100;
@@ -639,9 +639,9 @@ function tPlan(){
     +rows+(S.cons.length?'':'<div class="emp">Aucun consultant</div>')+'</div></div></div>';
 }
 
-/* ══════════════════════════════════════════════════════════════
-   TEMPLATE — KPIs (with top clients, avg TJM, net contribution)
-══════════════════════════════════════════════════════════════ */
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   TEMPLATE - KPIs (with top clients, avg TJM, net contribution)
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function tKPIs(){
   var ks=buildKS();
   var totR=ks.reduce(function(s,x){return s+x.k.rev;},0);
@@ -669,8 +669,8 @@ function tKPIs(){
       +'<td class="tc" style="font-weight:700">'+k.bill+'j</td>'
       +'<td class="tc"><span style="padding:2px 8px;border-radius:6px;font-size:13px;font-weight:800;background:'+(k.sr>=80?'#dcfce7':k.sr>=50?'#fef3c7':'#fee2e2')+';color:'+(k.sr>=80?'#15803d':k.sr>=50?'#b45309':'#b91c1c')+'">'+k.sr.toFixed(1)+'%</span></td>'
       +'<td class="tr" style="font-weight:700">'+fEur(k.rev)+'</td>'
-      +'<td class="tr" style="color:#374151">'+(k.avgT>0?fEur(k.avgT):'—')+'</td>'
-      +'<td class="tr" style="font-weight:800;color:'+(k.om!=null?(k.om>=0?'#15803d':'#b91c1c'):'#94a3b8')+'">'+(k.om!=null?k.om.toFixed(1)+'%':'—')+'</td></tr>';
+      +'<td class="tr" style="color:#374151">'+(k.avgT>0?fEur(k.avgT):'\u2014')+'</td>'
+      +'<td class="tr" style="font-weight:800;color:'+(k.om!=null?(k.om>=0?'#15803d':'#b91c1c'):'#94a3b8')+'">'+(k.om!=null?k.om.toFixed(1)+'%':'\u2014')+'</td></tr>';
   }).join('');
 
   var pmR=ks.map(function(x){
@@ -689,7 +689,7 @@ function tKPIs(){
 
   var top3html=top3.length?top3.map(function(cl,i){
     var pct=Math.round(cl.rev/Math.max(totR,1)*100);
-    var medals=['🥇','🥈','🥉'];
+    var medals=['\uD83E\uDD47','\uD83E\uDD48','\uD83E\uDD49'];
     return '<div class="cli-row">'
       +'<div style="font-size:20px;flex-shrink:0">'+medals[i]+'</div>'
       +'<div style="flex:1;min-width:0">'
@@ -705,10 +705,10 @@ function tKPIs(){
     +'<div><div class="pt">KPIs \u2014 '+fyLbl(S.year)+'</div><div class="ps">Marge = (TJM \u2212 SCR) / TJM \u00d7 100 \u00b7 Staffing = Jours facturables / Jours disponibles</div></div>'
     /* 4 summary cards */
     +'<div class="g4">'
-    +'<div class="kc"><div class="ski" style="background:#eff6ff">📊</div><div style="font-size:22px;font-weight:800;color:#0f172a">'+avgSr.toFixed(1)+'%</div><div style="font-size:13px;font-weight:600;color:#374151">Staffing moyen</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">sur '+(ks[0]?ks[0].k.tWD:0)+' jours ouvrés</div></div>'
-    +'<div class="kc"><div class="ski" style="background:#f0fdf4">💶</div><div style="font-size:22px;font-weight:800;color:#0f172a">'+fEur(totR)+'</div><div style="font-size:13px;font-weight:600;color:#374151">CA total '+fyLbl(S.year)+'</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">toute l\'\u00e9quipe</div></div>'
-    +'<div class="kc"><div class="ski" style="background:#f5f3ff">📈</div><div style="font-size:22px;font-weight:800;color:#0f172a">'+(avgTJMv>0?fEur(Math.round(avgTJMv)):'—')+'</div><div style="font-size:13px;font-weight:600;color:#374151">TJM moyen \u00e9quipe</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">'+(avgM!=null?'Marge moy. : '+avgM.toFixed(1)+'%':'')+'</div></div>'
-    +'<div class="kc"><div class="ski" style="background:'+(netC>=0?'#f0fdf4':'#fff1f2')+'">'+( netC>=0?'💚':'⚡')+'</div><div style="font-size:22px;font-weight:800;color:'+(netC>=0?'#15803d':'#b91c1c')+'">'+fEur(netC)+'</div><div style="font-size:13px;font-weight:600;color:#374151">Contribution nette</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">CA \u2212 salaires ('+fEur(totSalary)+')</div></div>'
+    +'<div class="kc"><div class="ski" style="background:#eff6ff">\uD83D\uDCCA</div><div style="font-size:22px;font-weight:800;color:#0f172a">'+avgSr.toFixed(1)+'%</div><div style="font-size:13px;font-weight:600;color:#374151">Staffing moyen</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">sur '+(ks[0]?ks[0].k.tWD:0)+' jours ouvrés</div></div>'
+    +'<div class="kc"><div class="ski" style="background:#f0fdf4">\uD83D\uDCB6</div><div style="font-size:22px;font-weight:800;color:#0f172a">'+fEur(totR)+'</div><div style="font-size:13px;font-weight:600;color:#374151">CA total '+fyLbl(S.year)+'</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">toute l\'\u00e9quipe</div></div>'
+    +'<div class="kc"><div class="ski" style="background:#f5f3ff">\uD83D\uDCC8</div><div style="font-size:22px;font-weight:800;color:#0f172a">'+(avgTJMv>0?fEur(Math.round(avgTJMv)):'\u2014')+'</div><div style="font-size:13px;font-weight:600;color:#374151">TJM moyen \u00e9quipe</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">'+(avgM!=null?'Marge moy. : '+avgM.toFixed(1)+'%':'')+'</div></div>'
+    +'<div class="kc"><div class="ski" style="background:'+(netC>=0?'#f0fdf4':'#fff1f2')+'">'+( netC>=0?'\uD83D\uDC9A':'\u26A1')+'</div><div style="font-size:22px;font-weight:800;color:'+(netC>=0?'#15803d':'#b91c1c')+'">'+fEur(netC)+'</div><div style="font-size:13px;font-weight:600;color:#374151">Contribution nette</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">CA \u2212 salaires ('+fEur(totSalary)+')</div></div>'
     +'</div>'
     /* charts */
     +'<div class="gc">'
@@ -716,7 +716,7 @@ function tKPIs(){
     +'<div class="card" style="padding:20px"><div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:16px">Chiffre d\'affaires (k\u20ac)</div>'+caBars+'</div>'
     +'</div>'
     /* top 3 clients */
-    +'<div class="card" style="padding:20px"><div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:16px">🏆 Top 3 clients — CA g\u00e9n\u00e9r\u00e9</div>'+top3html+'</div>'
+    +'<div class="card" style="padding:20px"><div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:16px">\uD83C\uDFC6 Top 3 clients - CA g\u00e9n\u00e9r\u00e9</div>'+top3html+'</div>'
     /* detail table */
     +'<div class="card ov"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9"><div style="font-size:13px;font-weight:700;color:#0f172a">D\u00e9tail par consultant</div></div>'
     +'<table style="min-width:700px"><thead><tr><th>Consultant</th><th class="tc">J. ouvrés</th><th class="tc">J. absences</th><th class="tc">J. dispo.</th><th class="tc">J. fact.</th><th class="tc">Staffing</th><th class="tr">CA</th><th class="tr">TJM moy.</th><th class="tr">Marge</th></tr></thead>'
@@ -729,16 +729,16 @@ function tKPIs(){
     +'<td class="tc" style="font-weight:700">'+totBill+'j</td>'
     +'<td class="tc" style="font-weight:800">'+avgSr.toFixed(1)+'%</td>'
     +'<td class="tr" style="font-weight:700">'+fEur(totR)+'</td>'
-    +'<td class="tr" style="font-weight:700">'+(avgTJMv>0?fEur(Math.round(avgTJMv)):'—')+'</td>'
-    +'<td class="tr" style="font-weight:700">'+(avgM!=null?avgM.toFixed(1)+'%':'—')+'</td>'
+    +'<td class="tr" style="font-weight:700">'+(avgTJMv>0?fEur(Math.round(avgTJMv)):'\u2014')+'</td>'
+    +'<td class="tr" style="font-weight:700">'+(avgM!=null?avgM.toFixed(1)+'%':'\u2014')+'</td>'
     +'</tr></tfoot></table>'
     +'<div style="border-top:1px solid #f1f5f9"><div style="padding:10px 20px;background:#f8fafc;border-bottom:1px solid #f1f5f9"><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#64748b">D\u00e9tail par mission</span></div>'
     +pmR+'</div></div></div>';
 }
 
-/* ══════════════════════════════════════════════════════════════
-   TEMPLATE — LEAVES
-══════════════════════════════════════════════════════════════ */
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   TEMPLATE - LEAVES
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function tLeaves(){
   var fil=S.lvs.filter(function(l){return S.flc==='all'||l.cid===S.flc;}).sort(function(a,b){return a.s.localeCompare(b.s);});
   var co='<option value="all">Tous les consultants</option>'+S.cons.map(function(c){return '<option value="'+c.id+'"'+(c.id===S.flc?' selected':'')+'>'+esc(c.name)+'</option>';}).join('');
@@ -747,7 +747,7 @@ function tLeaves(){
     var c=S.cons.find(function(c){return c.id===l.cid;});
     var wd=wDays(l.s,l.e,H);
     var tc=(TCC[l.type]||'#f1f5f9|#475569').split('|');
-    return '<tr><td style="font-weight:600">'+(c?esc(c.name):'—')+'</td>'
+    return '<tr><td style="font-weight:600">'+(c?esc(c.name):'\u2014')+'</td>'
       +'<td><span style="display:inline-flex;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;background:'+tc[0]+';color:'+tc[1]+'">'+esc(l.type)+'</span></td>'
       +'<td>'+fDt(l.s)+'</td><td>'+fDt(l.e)+'</td>'
       +'<td class="tc" style="font-weight:700">'+wd+'j</td>'
@@ -760,13 +760,13 @@ function tLeaves(){
     +'<div style="margin-bottom:16px"><select class="ic" style="max-width:240px" id="flc">'+co+'</select></div>'
     +'<div class="card ov" style="margin-bottom:16px"><table><thead><tr><th>Consultant</th><th>Type</th><th>Du</th><th>Au</th><th class="tc">Jours ouvrés</th><th class="tr">Actions</th></tr></thead>'
     +'<tbody>'+rows+(fil.length?'':'<tr><td colspan="6" class="emp">Aucune absence enregistr\u00e9e</td></tr>')+'</tbody></table></div>'
-    +'<details><summary>📅 Jours f\u00e9ri\u00e9s fran\u00e7ais int\u00e9gr\u00e9s dans les calculs</summary>'
+    +'<details><summary>\uD83D\uDCC5 Jours f\u00e9ri\u00e9s fran\u00e7ais int\u00e9gr\u00e9s dans les calculs</summary>'
     +'<div style="margin-top:8px;padding:14px 16px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px 16px">'+hols+'</div></details></div>';
 }
 
-/* ══════════════════════════════════════════════════════════════
-   TEMPLATE — PARAMÉTRAGE & PRÉCONISATIONS
-══════════════════════════════════════════════════════════════ */
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   TEMPLATE - PARAMÉTRAGE & PRÉCONISATIONS
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function tParam(){
   var ks=buildKS();
   var totR=ks.reduce(function(s,x){return s+x.k.rev;},0);
@@ -776,18 +776,18 @@ function tParam(){
   var netC=totR-ks.reduce(function(s,x){return s+x.c.scr*x.k.tWD;},0);
 
   var context='<div class="card" style="padding:20px;margin-bottom:20px">'
-    +'<div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:14px">📌 Situation actuelle — '+fyLbl(S.year)+'</div>'
+    +'<div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:14px">\uD83D\uDCCC Situation actuelle - '+fyLbl(S.year)+'</div>'
     +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">'
-    +[['Staffing moyen',avgSr.toFixed(1)+'%'],['CA total',fEur(totR)],['TJM moyen',avgTJMv>0?fEur(Math.round(avgTJMv)):'—'],['Contribution nette',fEur(netC)]].map(function(x){
+    +[['Staffing moyen',avgSr.toFixed(1)+'%'],['CA total',fEur(totR)],['TJM moyen',avgTJMv>0?fEur(Math.round(avgTJMv)):'\u2014'],['Contribution nette',fEur(netC)]].map(function(x){
       return '<div style="text-align:center;padding:12px;background:#f8fafc;border-radius:8px">'
         +'<div style="font-size:16px;font-weight:800;color:#0f172a">'+x[1]+'</div>'
         +'<div style="font-size:11px;color:#64748b;margin-top:2px">'+x[0]+'</div></div>';
     }).join('')+'</div></div>';
 
   var goals=[
-    {id:'ca',  icon:'💶', title:'Augmenter le Chiffre d\'Affaires',       sub:'Maximiser les revenus de votre équipe de conseil'},
-    {id:'util',icon:'📊', title:'Améliorer le Taux d\'Utilisation',        sub:'Optimiser le staffing et réduire les jours non facturés'},
-    {id:'tjm', icon:'📈', title:'Augmenter le TJM Moyen',                  sub:'Améliorer les tarifs et la marge de votre équipe'}
+    {id:'ca',  icon:'\uD83D\uDCB6', title:'Augmenter le Chiffre d\'Affaires',       sub:'Maximiser les revenus de votre équipe de conseil'},
+    {id:'util',icon:'\uD83D\uDCCA', title:'Améliorer le Taux d\'Utilisation',        sub:'Optimiser le staffing et réduire les jours non facturés'},
+    {id:'tjm', icon:'\uD83D\uDCC8', title:'Augmenter le TJM Moyen',                  sub:'Améliorer les tarifs et la marge de votre équipe'}
   ];
 
   var sections=goals.map(function(g){
@@ -800,7 +800,7 @@ function tParam(){
     return '<div class="goal-card"><div class="goal-header">'
       +'<div class="goal-icon">'+g.icon+'</div>'
       +'<div style="flex:1"><div class="goal-title">'+esc(g.title)+'</div><div class="goal-sub">'+esc(g.sub)+'</div></div>'
-      +'<button class="bp" style="flex-shrink:0" data-act="gen-'+g.id+'">⚡ Générer les préconisations</button>'
+      +'<button class="bp" style="flex-shrink:0" data-act="gen-'+g.id+'">\u26A1 Générer les préconisations</button>'
       +'</div>'+recHtml+'</div>';
   }).join('');
 
@@ -810,9 +810,9 @@ function tParam(){
     +context+sections+'</div>';
 }
 
-/* ══════════════════════════════════════════════════════════════
-   TEMPLATE — MODAL
-══════════════════════════════════════════════════════════════ */
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   TEMPLATE - MODAL
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function tModal(){
   var m=S.modal;if(!m)return '';
   var tp=m.type,it=m.item,title='',body='',wide=false;
@@ -823,7 +823,7 @@ function tModal(){
     title=it?'Modifier le consultant':'Nouveau consultant';
     body='<div class="fd"><label class="fl">Nom complet *</label><input class="ic" id="mn" value="'+esc(it?it.name:'')+'" placeholder="Pr\u00e9nom Nom"></div>'
       +'<div class="fd"><label class="fl">Poste *</label><input class="ic" id="mti" value="'+esc(it?it.title:'')+'" placeholder="ex\u00a0: Consultant Senior"></div>'
-      +'<div class="fd"><label class="fl">SCR journalier (\u20ac) *</label><input class="ic" id="ms" type="number" min="0" value="'+esc(it?String(it.scr):'')+'" placeholder="450"><p class="fh">Salary Cost Revenue — co\u00fbt journalier (salaire \u00f7 jours travaillables)</p></div>'
+      +'<div class="fd"><label class="fl">SCR journalier (\u20ac) *</label><input class="ic" id="ms" type="number" min="0" value="'+esc(it?String(it.scr):'')+'" placeholder="450"><p class="fh">Salary Cost Revenue - co\u00fbt journalier (salaire \u00f7 jours travaillables)</p></div>'
       +'<div class="fd"><label class="fl">Email</label><input class="ic" id="me" type="email" value="'+esc(it?it.email:'')+'" placeholder="prenom.nom@cgi.com"></div>'
       +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="sc">'+(it?'Enregistrer':'Ajouter')+'</button></div>';
   }
@@ -837,8 +837,8 @@ function tModal(){
       +'<div class="fd"><label class="fl">Date de d\u00e9marrage *</label><input class="ic" id="msd" type="date" value="'+esc(it?it.sd:'')+'"></div>'
       +'<div class="fd"><label class="fl">Date de fin</label><input class="ic" id="med" type="date" value="'+esc(it&&it.ed?it.ed:'')+'"><p class="fh">Laisser vide si inconnue</p></div>'
       +'<div class="cs2"><div class="fd"><label class="fl">Responsable de mission (CGI)</label><input class="ic" id="mmg" value="'+esc(it?it.mgr:'')+'" placeholder="Nom du manager"></div></div>'
-      +'<div class="fd"><label class="fl">Contact client — Nom</label><input class="ic" id="mcc" value="'+esc(it?it.ccn:'')+'" placeholder="Nom du contact"></div>'
-      +'<div class="fd"><label class="fl">Contact client — Poste</label><input class="ic" id="mcr" value="'+esc(it?it.ccr:'')+'" placeholder="ex\u00a0: DSI, DAF, CDO"></div></div>'
+      +'<div class="fd"><label class="fl">Contact client - Nom</label><input class="ic" id="mcc" value="'+esc(it?it.ccn:'')+'" placeholder="Nom du contact"></div>'
+      +'<div class="fd"><label class="fl">Contact client - Poste</label><input class="ic" id="mcr" value="'+esc(it?it.ccr:'')+'" placeholder="ex\u00a0: DSI, DAF, CDO"></div></div>'
       +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="sm">'+(it?'Enregistrer':'Ajouter')+'</button></div>';
   }
   if(tp==='leave'){
@@ -856,11 +856,11 @@ function tModal(){
     +'<div class="mbd">'+body+'</div></div></div>';
 }
 
-/* ══════════════════════════════════════════════════════════════
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    RENDER
-══════════════════════════════════════════════════════════════ */
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function render(){
-  saveLocal(); /* ← sauvegarde automatique à chaque changement */
+  saveLocal(); /* \u2190 sauvegarde automatique à chaque changement */
   document.getElementById('sb').innerHTML=tSB();
   var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():tParam();
   document.getElementById('mc').innerHTML='<div class="inn">'+v+'</div>';
@@ -868,9 +868,9 @@ function render(){
   bind();
 }
 
-/* ══════════════════════════════════════════════════════════════
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    EVENT BINDING
-══════════════════════════════════════════════════════════════ */
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function bind(){
   var el=function(id){return document.getElementById(id);};
   var yr=el('yrs');if(yr)yr.onchange=function(){S.year=+this.value;H=fyHols(S.year);S.precs={};render();};
@@ -956,9 +956,9 @@ function bind(){
   }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   PERSISTENCE — localStorage auto + JSON export / import
-══════════════════════════════════════════════════════════════ */
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   PERSISTENCE - localStorage auto + JSON export / import
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 var SKEY='esn_cgi_v1';
 
 function saveLocal(){
@@ -996,16 +996,16 @@ function importJSON(file){
         if(!confirm('Importer '+d.cons.length+' consultants et '+d.miss.length+' missions ?\n(Les données actuelles seront remplacées)'))return;
         S.cons=d.cons;S.miss=d.miss;S.lvs=d.lvs||[];
         saveLocal();render();
-        alert('\u2705 Import r\u00e9ussi — '+d.cons.length+' consultants, '+d.miss.length+' missions'+(d.exported?' (sauvegarde du '+d.exported+')':'')+'.');
+        alert('\u2705 Import r\u00e9ussi - '+d.cons.length+' consultants, '+d.miss.length+' missions'+(d.exported?' (sauvegarde du '+d.exported+')':'')+'.');
       }else{alert('\u274c Fichier invalide : structure non reconnue.');}
     }catch(err){alert('\u274c Erreur de lecture : '+err.message);}
   };
   r.readAsText(file);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   SUPABASE — helpers (synchronisation non-bloquante)
-══════════════════════════════════════════════════════════════ */
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   SUPABASE - helpers (synchronisation non-bloquante)
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function mapC(r){return{id:r.id,name:r.name,title:r.title||'',scr:r.scr||0,email:r.email||''};}
 function mapM(r){return{id:r.id,cid:r.consultant_id,name:r.name,cli:r.client_name||'',tjm:r.tjm||0,sd:r.start_date,ed:r.end_date||null,loc:r.location||'',mgr:r.manager_name||'',ccn:r.client_contact_name||'',ccr:r.client_contact_role||''};}
 function mapL(r){return{id:r.id,cid:r.consultant_id,type:r.type||'Congé payé',s:r.start_date,e:r.end_date};}
@@ -1048,28 +1048,28 @@ async function sbDel(tbl,id){
 
 async function syncToSB(){
   if(!sb){alert('Supabase non configuré.');return;}
-  if(!SB_CID){alert('Session expirée — rechargez la page et reconnectez-vous via esn_login.html');return;}
+  if(!SB_CID){alert('Session expirée - rechargez la page et reconnectez-vous via esn_login.html');return;}
   var btn=document.querySelector('[data-act="sync"]');
-  if(btn){btn.textContent='Sync en cours…';btn.disabled=true;}
+  if(btn){btn.textContent='Sync en cours...';btn.disabled=true;}
   try{
     for(var i=0;i<S.cons.length;i++) await sbUpsertCons(S.cons[i]);
     for(var i=0;i<S.miss.length;i++) await sbUpsertMiss(S.miss[i]);
     for(var i=0;i<S.lvs.length;i++) await sbUpsertLeave(S.lvs[i]);
     S.sbSync=false;
-    S.sbSt='☁️ Connecté à Supabase — '+S.cons.length+' consultants';
+    S.sbSt='Supabase connecte - '+S.cons.length+' consultants';
     render();
   }catch(e){
-    alert('❌ Erreur sync :
+    alert('Erreur sync :
 '+e.message+'
 
-Ouvrez F12 → Console pour le détail.');
+Ouvrez F12 > Console pour le détail.');
   }
-  if(btn){btn.textContent='☁️ Synchroniser vers Supabase';btn.disabled=false;}
+  if(btn){btn.textContent='Synchroniser vers Supabase';btn.disabled=false;}
 }
 
 async function initApp(){
   if(sb){
-    /* 1. Vérifier la session — redirect si non connecté */
+    /* 1. Vérifier la session - redirect si non connecté */
     var sess=await sb.auth.getSession();
     if(!sess.data||!sess.data.session){
       window.location.href='/esn_login.html';return;
@@ -1081,23 +1081,23 @@ async function initApp(){
     /* 3. Charger les données depuis Supabase */
     var ok=await loadSB();
     if(!ok){
-      /* Supabase vide → utiliser localStorage et proposer de synchroniser */
+      /* Supabase vide \u2192 utiliser localStorage et proposer de synchroniser */
       loadLocal();
       if(S.cons.length>0){
         S.sbSync=true;
-        S.sbSt='🟡 Données locales — cliquez Sync pour envoyer vers Supabase';
+        S.sbSt='Donnees locales - cliquez Sync pour envoyer vers Supabase';
       }
     }else{
-      S.sbSt='☁️ Connecté à Supabase';
+      S.sbSt='Supabase connecte';
     }
   }else{
-    /* Supabase non configur\u00e9 — mode local */
+    /* Supabase non configur\u00e9 - mode local */
     loadLocal();
   }
   render();
 }
 
-/* ── START */
+/* \u2500\u2500 START */
 initApp();
 </script>
 </body>
