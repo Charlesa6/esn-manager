@@ -1059,10 +1059,7 @@ async function syncToSB(){
     S.sbSt='Supabase connecte - '+S.cons.length+' consultants';
     render();
   }catch(e){
-    alert('Erreur sync :
-'+e.message+'
-
-Ouvrez F12 > Console pour le détail.');
+    alert('Erreur sync : ' + e.message);
   }
   if(btn){btn.textContent='Synchroniser vers Supabase';btn.disabled=false;}
 }
