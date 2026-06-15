@@ -250,7 +250,7 @@ function kpi(c,miss,lvs,y,H){
     bill+=d;rev+=r;
     return Object.assign({},m,{days:d,rev:r,mar:mar});
   });
-  var sr=avD>0?bill/avD*100:0,avgT=bill>0?rev/bill:0;
+  var sr=tWD>0?bill/tWD*100:0,avgT=bill>0?rev/bill:0;
   var om=bill>0&&avgT>0?(avgT-c.scr)/avgT*100:null; /* \u2190 nouvelle formule */
   return{tWD:tWD,lvD:lvD,avD:avD,bill:bill,rev:rev,sr:sr,avgT:avgT,om:om,pm:pm};
 }
