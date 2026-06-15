@@ -238,7 +238,7 @@ label { display:block;font-size:11px;font-weight:700;color:#475569;text-transfor
         <div class="spin" id="sp-login"></div>
       </button>
       <div class="switch-row">Pas encore de compte ? <button onclick="sw('signup')">Créer un compte gratuitement →</button></div>
-      <div class="demo-row"><a href="esn_manager_cgi.html">Accéder à la démo sans compte</a></div>
+      <div class="demo-row"><a href="/esn_manager_cgi.html">Accéder à la démo sans compte</a></div>
     </div>
 
     <!-- ── SIGNUP ── -->
@@ -312,7 +312,7 @@ label { display:block;font-size:11px;font-weight:700;color:#475569;text-transfor
       </div>
       <h3 class="success-title" id="suc-title">Connexion réussie !</h3>
       <p class="success-msg" id="suc-msg">Votre tableau de bord vous attend.</p>
-      <a href="esn_manager_cgi.html" class="btn-dashboard" id="suc-link">
+      <a href="/esn_manager_cgi.html" class="btn-dashboard" id="suc-link">
         Accéder à mon tableau de bord
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
       </a>
@@ -344,7 +344,7 @@ if (configured) {
     try {
       var res = await sb.auth.getSession();
       if (res.data && res.data.session) {
-        window.location.href = 'esn_manager_cgi.html';
+        window.location.href = '/esn_manager_cgi.html';
       }
     } catch(e) {}
   });
@@ -452,7 +452,7 @@ async function doLogin() {
     await wait(1000);
     loading('b-login','sp-login','lb-login', false);
     showSuccess('Connexion simulée ✓', 'Supabase non encore configuré. En mode démo, vous accédez directement au tableau de bord.');
-    setTimeout(function(){ window.location.href = 'esn_manager_cgi.html'; }, 1200);
+    setTimeout(function(){ window.location.href = '/esn_manager_cgi.html'; }, 1200);
     return;
   }
 
@@ -471,7 +471,7 @@ async function doLogin() {
   }
 
   showSuccess('Connexion réussie !', 'Bon retour ' + em.split('@')[0] + '. Votre espace vous attend.');
-  setTimeout(function(){ window.location.href = 'esn_manager_cgi.html'; }, 900);
+  setTimeout(function(){ window.location.href = '/esn_manager_cgi.html'; }, 900);
 }
 
 /* ── SIGNUP ── */
@@ -540,7 +540,7 @@ async function doSignup() {
       'Bienvenue sur ESN Manager ! 🎉',
       'Votre espace ' + co + ' est prêt. 14 jours d\'essai offerts.'
     );
-    setTimeout(function(){ window.location.href = 'esn_manager_cgi.html'; }, 1000);
+    setTimeout(function(){ window.location.href = '/esn_manager_cgi.html'; }, 1000);
   }
 }
 

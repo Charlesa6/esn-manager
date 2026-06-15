@@ -946,8 +946,8 @@ function bind(){
   var logoutBtn=el('sb-logout');
   if(document.querySelector('[data-act="logout"]')){
     document.querySelector('[data-act="logout"]').onclick=function(){
-      if(sb){sb.auth.signOut().then(function(){window.location.href='esn_login.html';});}
-      else{window.location.href='esn_login.html';}
+      if(sb){sb.auth.signOut().then(function(){window.location.href='/esn_login.html';});}
+      else{window.location.href='/esn_login.html';}
     };
   }
   /* sync */
@@ -1072,7 +1072,7 @@ async function initApp(){
     /* 1. Vérifier la session — redirect si non connecté */
     var sess=await sb.auth.getSession();
     if(!sess.data||!sess.data.session){
-      window.location.href='esn_login.html';return;
+      window.location.href='/esn_login.html';return;
     }
     /* 2. Récupérer le company_id */
     var uid2=sess.data.session.user.id;
