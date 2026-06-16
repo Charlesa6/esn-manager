@@ -260,21 +260,21 @@ function kpi(c,miss,lvs,y,H){
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 /* \u2500\u2500 Données réelles CGI Business Conseil \u2500\u2500 */
 var IC=[
-  {id:'c01',name:'Zian Ducastel',             title:'Consultant Confirm\u00e9',    scr:362, email:'z.ducastel@cgi.com'},
-  {id:'c02',name:'Prudencio Johnson',          title:'Consultant Junior',          scr:337, email:'p.johnson@cgi.com'},
-  {id:'c03',name:'Sixte Chobert',              title:'Consultant Confirm\u00e9',    scr:356, email:'s.chobert@cgi.com'},
-  {id:'c04',name:'Romain Favre',               title:'Consultant Confirm\u00e9',    scr:370, email:'r.favre@cgi.com'},
-  {id:'c05',name:'Doha Feddoul',               title:'Consultant Junior',          scr:384, email:'d.feddoul@cgi.com'},
-  {id:'c06',name:'Louis Gignoux',              title:'Consultant Confirm\u00e9',    scr:381, email:'l.gignoux@cgi.com'},
-  {id:'c07',name:'L\u00e9o Guichard',          title:'Consultant Confirm\u00e9',    scr:388, email:'l.guichard@cgi.com'},
-  {id:'c08',name:'Pierre Lassaulx',            title:'Consultant Junior',          scr:331, email:'p.lassaulx@cgi.com'},
-  {id:'c09',name:'Charl\u00e8ne Le Roch',      title:'Consultante Confirm\u00e9e', scr:388, email:'c.leroch@cgi.com'},
-  {id:'c10',name:'Cidji Lemarchand',           title:'Consultante Confirm\u00e9e', scr:431, email:'c.lemarchand@cgi.com'},
-  {id:'c11',name:'Marie Louaisil',             title:'Consultante Junior',         scr:345, email:'m.louaisil@cgi.com'},
-  {id:'c12',name:'C\u00e9lia Marchal',         title:'Consultante Confirm\u00e9e', scr:328, email:'c.marchal@cgi.com'},
-  {id:'c13',name:'Lisa Merazi',                title:'Consultante S\u00e9nior',    scr:453, email:'l.merazi@cgi.com'},
-  {id:'c14',name:'Maiwenn Nouel De Kerangue',  title:'Consultante Confirm\u00e9e', scr:440, email:'m.nouel@cgi.com'},
-  {id:'c15',name:'Ichraq Taymouli',            title:'Consultante Confirm\u00e9e', scr:352, email:'i.taymouli@cgi.com'}
+  {id:'c01',name:'Zian Ducastel',             title:'Consultant Confirm\u00e9',    scr:362, email:'z.ducastel@cgi.com', resp:'David Soriano'},
+  {id:'c02',name:'Prudencio Johnson',          title:'Consultant Junior',          scr:337, email:'p.johnson@cgi.com', resp:'David Soriano'},
+  {id:'c03',name:'Sixte Chobert',              title:'Consultant Confirm\u00e9',    scr:356, email:'s.chobert@cgi.com', resp:'Rémi Montalbano'},
+  {id:'c04',name:'Romain Favre',               title:'Consultant Confirm\u00e9',    scr:370, email:'r.favre@cgi.com', resp:'Rémi Montalbano'},
+  {id:'c05',name:'Doha Feddoul',               title:'Consultant Junior',          scr:384, email:'d.feddoul@cgi.com', resp:'David Soriano'},
+  {id:'c06',name:'Louis Gignoux',              title:'Consultant Confirm\u00e9',    scr:381, email:'l.gignoux@cgi.com', resp:'David Soriano'},
+  {id:'c07',name:'L\u00e9o Guichard',          title:'Consultant Confirm\u00e9',    scr:388, email:'l.guichard@cgi.com', resp:'David Soriano'},
+  {id:'c08',name:'Pierre Lassaulx',            title:'Consultant Junior',          scr:331, email:'p.lassaulx@cgi.com', resp:'Rémi Montalbano'},
+  {id:'c09',name:'Charl\u00e8ne Le Roch',      title:'Consultante Confirm\u00e9e', scr:388, email:'c.leroch@cgi.com', resp:'David Soriano'},
+  {id:'c10',name:'Cidji Lemarchand',           title:'Consultante Confirm\u00e9e', scr:431, email:'c.lemarchand@cgi.com', resp:'Rémi Montalbano'},
+  {id:'c11',name:'Marie Louaisil',             title:'Consultante Junior',         scr:345, email:'m.louaisil@cgi.com', resp:'Rémi Montalbano'},
+  {id:'c12',name:'C\u00e9lia Marchal',         title:'Consultante Confirm\u00e9e', scr:328, email:'c.marchal@cgi.com', resp:'Rémi Montalbano'},
+  {id:'c13',name:'Lisa Merazi',                title:'Consultante S\u00e9nior',    scr:453, email:'l.merazi@cgi.com', resp:'David Soriano'},
+  {id:'c14',name:'Maiwenn Nouel De Kerangue',  title:'Consultante Confirm\u00e9e', scr:440, email:'m.nouel@cgi.com', resp:'Rémi Montalbano'},
+  {id:'c15',name:'Ichraq Taymouli',            title:'Consultante Confirm\u00e9e', scr:352, email:'i.taymouli@cgi.com', resp:'David Soriano'}
 ];
 var IM=[
   {id:'m01',cid:'c02',name:'Cadrage GED',       cli:'CEGID',     tjm:500, sd:'2026-05-29',ed:'2026-06-19', loc:'Lyon',     mgr:'Binta Bah',        ccn:'',ccr:''},
@@ -302,6 +302,7 @@ var S={
   miss:IM.map(function(m){return Object.assign({},m);}),
   lvs:IL.map(function(l){return Object.assign({},l);}),
   year:CFY,modal:null,fmc:'all',fms:'all',flc:'all',precs:{},
+  role:'gestionnaire',respName:'',fresp:[],_all:null,
   sbSt:'\uD83D\uDFE2 Sauvegarde locale active',
   sbSync:false
 };
@@ -338,6 +339,26 @@ function clientRev(ks){
   var map={};
   ks.forEach(function(x){x.k.pm.forEach(function(m){if(m.days>0){map[m.cli]=(map[m.cli]||0)+m.rev;}});});
   return Object.keys(map).map(function(k){return{name:k,rev:map[k]};}).sort(function(a,b){return b.rev-a.rev;});
+}
+
+/* ═══ PERMISSIONS / VUE FILTRÉE PAR RESPONSABLE ═══
+   - role 'gestionnaire' : accès à tout, peut filtrer par un ou plusieurs responsables (S.fresp)
+   - role 'responsable'  : accès limité aux consultants de son équipe (c.resp === S.respName)
+   visibleData() renvoie le sous-ensemble cons/miss/lvs à afficher (les données maîtres
+   restent dans S._all pour la sauvegarde et les mutations). */
+function visibleConsIds(){
+  var base=(S._all&&S._all.cons)||S.cons;
+  if(S.role==='responsable'){base=base.filter(function(c){return (c.resp||'')===S.respName;});}
+  else if(S.fresp&&S.fresp.length){base=base.filter(function(c){return S.fresp.indexOf(c.resp||'')>=0;});}
+  var s={};base.forEach(function(c){s[c.id]=1;});return s;
+}
+function visibleData(){
+  var ids=visibleConsIds(),src=S._all||{cons:S.cons,miss:S.miss,lvs:S.lvs};
+  return{
+    cons:src.cons.filter(function(c){return ids[c.id];}),
+    miss:src.miss.filter(function(m){return ids[m.cid];}),
+    lvs:src.lvs.filter(function(l){return ids[l.cid];})
+  };
 }
 
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
@@ -465,8 +486,30 @@ function tSB(){
       +'<span class="nbi">'+n.ic+'</span><span>'+n.lb+'</span>'
       +(n.id==='dashboard'&&alC>0?'<span class="nbb">'+alC+'</span>':'')+'</button>';
   }).join('');
+  /* ── bloc filtre responsable (gestionnaire) / libellé équipe (responsable) ── */
+  var _allC=(S._all&&S._all.cons)||S.cons;
+  var _resps=[];_allC.forEach(function(c){var r=c.resp||'';if(r&&_resps.indexOf(r)<0)_resps.push(r);});_resps.sort();
+  var respBlock;
+  if(S.role==='responsable'){
+    respBlock='<div class="syr"><div class="syr-lbl">Mon équipe</div>'
+      +'<div style="color:#cbd5e1;font-size:12px;padding:3px 2px;font-weight:600">'+esc(S.respName||'—')+'</div></div>';
+  }else{
+    var _none=(!S.fresp||!S.fresp.length);
+    var _items=_resps.map(function(r){
+      var on=S.fresp&&S.fresp.indexOf(r)>=0;
+      return '<label style="display:flex;align-items:center;gap:7px;padding:2px;color:#cbd5e1;font-size:12px;cursor:pointer">'
+        +'<input type="checkbox" data-resp="'+esc(r)+'"'+(on?' checked':'')+' style="accent-color:#2563eb;flex-shrink:0">'+esc(r)+'</label>';
+    }).join('');
+    respBlock='<div class="syr"><div class="syr-lbl">Responsable'+(_none?'':' ('+S.fresp.length+')')+'</div>'
+      +(_resps.length?_items+(_none
+          ?'<div style="font-size:10px;color:#475569;margin-top:3px">Tous affichés</div>'
+          :'<div data-resp-clear style="font-size:10px;color:#60a5fa;margin-top:3px;cursor:pointer;text-decoration:underline">Tout afficher</div>')
+        :'<div style="font-size:11px;color:#475569">Aucun responsable défini</div>')
+      +'</div>';
+  }
   return '<div class="sbl"><div class="sbn">ESN Manager</div><div class="sbs">CGI Business Conseil</div></div>'
     +'<div class="syr"><div class="syr-lbl">Exercice fiscal</div><select id="yrs">'+fyOpts+'</select></div>'
+    +respBlock
     +'<nav class="snv">'+nav+'</nav>'
     +'<div class="sft">'
     +'<div style="font-size:11px;color:#475569;margin-bottom:8px">'+S.cons.length+' consultants \u00b7 '+S.miss.length+' missions</div>'
@@ -856,10 +899,16 @@ function tModal(){
 
   if(tp==='consultant'){
     title=it?'Modifier le consultant':'Nouveau consultant';
+    /* champ Responsable : libre (datalist) pour le gestionnaire, verrouill\u00e9 sur son \u00e9quipe pour un responsable */
+    var _rl=[];((S._all&&S._all.cons)||S.cons).forEach(function(c){var r=c.resp||'';if(r&&_rl.indexOf(r)<0)_rl.push(r);});_rl.sort();
+    var respFld=(S.role==='responsable')
+      ? '<div class="fd"><label class="fl">Responsable</label><input class="ic" id="mr" value="'+esc(S.respName)+'" disabled style="background:#f1f5f9;color:#64748b"><p class="fh">Consultant rattach\u00e9 automatiquement \u00e0 votre \u00e9quipe</p></div>'
+      : '<div class="fd"><label class="fl">Responsable</label><input class="ic" id="mr" list="esn-resp-list" value="'+esc(it?(it.resp||''):'')+'" placeholder="Nom du responsable d\'\u00e9quipe"><datalist id="esn-resp-list">'+_rl.map(function(r){return '<option value="'+esc(r)+'">';}).join('')+'</datalist><p class="fh">D\u00e9finit l\'\u00e9quipe du consultant (filtrable c\u00f4t\u00e9 gestionnaire)</p></div>';
     body='<div class="fd"><label class="fl">Nom complet *</label><input class="ic" id="mn" value="'+esc(it?it.name:'')+'" placeholder="Pr\u00e9nom Nom"></div>'
       +'<div class="fd"><label class="fl">Poste *</label><input class="ic" id="mti" value="'+esc(it?it.title:'')+'" placeholder="ex\u00a0: Consultant Senior"></div>'
       +'<div class="fd"><label class="fl">SCR journalier (\u20ac) *</label><input class="ic" id="ms" type="number" min="0" value="'+esc(it?String(it.scr):'')+'" placeholder="450"><p class="fh">Salary Cost Revenue - co\u00fbt journalier (salaire \u00f7 jours travaillables)</p></div>'
       +'<div class="fd"><label class="fl">Email</label><input class="ic" id="me" type="email" value="'+esc(it?it.email:'')+'" placeholder="prenom.nom@cgi.com"></div>'
+      +respFld
       +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="sc">'+(it?'Enregistrer':'Ajouter')+'</button></div>';
   }
   if(tp==='mission'){
@@ -896,10 +945,15 @@ function tModal(){
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function render(){
   saveLocal(); /* \u2190 sauvegarde automatique à chaque changement */
+  /* ═══ filtrage par rôle / responsable : on bascule sur la vue filtrée le temps du rendu ═══ */
+  S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
+  var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;
   document.getElementById('sb').innerHTML=tSB();
   var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():tParam();
   document.getElementById('mc').innerHTML='<div class="inn">'+v+'</div>';
   document.getElementById('md').innerHTML=tModal();
+  /* on restaure les données maîtres (les handlers de bind() mutent l'ensemble complet) */
+  S.cons=S._all.cons;S.miss=S._all.miss;S.lvs=S._all.lvs;
   bind();
 }
 
@@ -916,6 +970,17 @@ function bind(){
   var fc=el('fmc');if(fc)fc.onchange=function(){S.fmc=this.value;render();};
   var fs=el('fms');if(fs)fs.onchange=function(){S.fms=this.value;render();};
   var lc=el('flc');if(lc)lc.onchange=function(){S.flc=this.value;render();};
+  /* filtre responsable (gestionnaire) */
+  var rcb=document.querySelectorAll('[data-resp]');
+  for(var rk=0;rk<rcb.length;rk++){(function(cb){cb.onchange=function(){
+    var r=cb.getAttribute('data-resp');
+    if(!S.fresp)S.fresp=[];
+    if(cb.checked){if(S.fresp.indexOf(r)<0)S.fresp.push(r);}
+    else{S.fresp=S.fresp.filter(function(x){return x!==r;});}
+    render();
+  };})(rcb[rk]);}
+  var rclr=document.querySelector('[data-resp-clear]');
+  if(rclr)rclr.onclick=function(){S.fresp=[];render();};
   /* all data-act */
   var bs=document.querySelectorAll('[data-act]');
   for(var j=0;j<bs.length;j++){(function(b){
@@ -938,11 +1003,12 @@ function bind(){
       else if(a==='dl'){if(confirm('Supprimer cette absence ?')){S.lvs=S.lvs.filter(function(l){return l.id!==id;});sbDel('leaves',id);render();}}
       else if(a==='sc'){
         var n=gv('mn'),t=gv('mti'),s=+gv('ms'),em=gv('me');
+        var rsp=(S.role==='responsable')?S.respName:gv('mr'); /* un responsable ne crée que dans son équipe */
         if(!n||!t||!s){alert('Veuillez remplir les champs obligatoires (*).');return;}
         var it=S.modal.item;
         var nc;
-        if(it){S.cons=S.cons.map(function(c){if(c.id===it.id){nc=Object.assign({},c,{name:n,title:t,scr:s,email:em});return nc;}return c;});}
-        else{nc={id:uid(),name:n,title:t,scr:s,email:em};S.cons=S.cons.concat([nc]);}
+        if(it){S.cons=S.cons.map(function(c){if(c.id===it.id){nc=Object.assign({},c,{name:n,title:t,scr:s,email:em,resp:rsp});return nc;}return c;});}
+        else{nc={id:uid(),name:n,title:t,scr:s,email:em,resp:rsp};S.cons=S.cons.concat([nc]);}
         sbUpsertCons(nc);
         S.modal=null;render();
       }
@@ -1041,28 +1107,36 @@ function importJSON(file){
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    SUPABASE - helpers (synchronisation non-bloquante)
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
-function mapC(r){return{id:r.id,name:r.name,title:r.title||'',scr:r.scr||0,email:r.email||''};}
+function mapC(r){return{id:r.id,name:r.name,title:r.title||'',scr:r.scr||0,email:r.email||'',resp:r.responsable||''};}
 function mapM(r){return{id:r.id,cid:r.consultant_id,name:r.name,cli:r.client_name||'',tjm:r.tjm||0,sd:r.start_date,ed:r.end_date||null,loc:r.location||'',mgr:r.manager_name||'',ccn:r.client_contact_name||'',ccr:r.client_contact_role||''};}
 function mapL(r){return{id:r.id,cid:r.consultant_id,type:r.type||'Congé payé',s:r.start_date,e:r.end_date};}
 
 async function loadSB(){
   if(!sb||!SB_CID)return false;
   try{
-    var res=await Promise.all([
-      sb.from('consultants').select('*').eq('company_id',SB_CID).order('name'),
-      sb.from('missions').select('*').eq('company_id',SB_CID),
-      sb.from('leaves').select('*').eq('company_id',SB_CID)
-    ]);
-    if(res[0].data)S.cons=res[0].data.map(mapC);
-    if(res[1].data)S.miss=res[1].data.map(mapM);
-    if(res[2].data)S.lvs=res[2].data.map(mapL);
+    /* un responsable ne charge que les consultants de son équipe (puis leurs missions/absences) */
+    var cq=sb.from('consultants').select('*').eq('company_id',SB_CID).order('name');
+    if(S.role==='responsable')cq=cq.eq('responsable',S.respName);
+    var cr=await cq;
+    var cons=(cr.data||[]).map(mapC);
+    var mq=sb.from('missions').select('*').eq('company_id',SB_CID);
+    var lq=sb.from('leaves').select('*').eq('company_id',SB_CID);
+    if(S.role==='responsable'){
+      var ids=cons.map(function(c){return c.id;});
+      if(!ids.length){S.cons=[];S.miss=[];S.lvs=[];return false;}
+      mq=mq.in('consultant_id',ids);lq=lq.in('consultant_id',ids);
+    }
+    var res=await Promise.all([mq,lq]);
+    S.cons=cons;
+    if(res[0].data)S.miss=res[0].data.map(mapM);
+    if(res[1].data)S.lvs=res[1].data.map(mapL);
     return S.cons.length>0;
   }catch(e){console.warn('Supabase load error:',e);return false;}
 }
 
 async function sbUpsertCons(c){
   if(!sb||!SB_CID)return;
-  var res=await sb.from('consultants').upsert({id:c.id,company_id:SB_CID,name:c.name,title:c.title,scr:c.scr,email:c.email});
+  var res=await sb.from('consultants').upsert({id:c.id,company_id:SB_CID,name:c.name,title:c.title,scr:c.scr,email:c.email,responsable:c.resp||null});
   if(res.error)throw new Error(c.name+': '+res.error.message);
 }
 async function sbUpsertMiss(m){
@@ -1106,10 +1180,14 @@ async function initApp(){
     if(!sess.data||!sess.data.session){
       window.location.href='/esn_login.html';return;
     }
-    /* 2. Récupérer le company_id */
+    /* 2. Récupérer le company_id + le rôle (gestionnaire / responsable) */
     var uid2=sess.data.session.user.id;
-    var pr=await sb.from('profiles').select('company_id').eq('id',uid2).single();
-    if(pr.data)SB_CID=pr.data.company_id;
+    var pr=await sb.from('profiles').select('*').eq('id',uid2).single();
+    if(pr.data){
+      SB_CID=pr.data.company_id;
+      S.role=(pr.data.role==='responsable')?'responsable':'gestionnaire';
+      S.respName=pr.data.responsable_name||'';
+    }
     /* 3. Charger les données depuis Supabase */
     var ok=await loadSB();
     if(!ok){
