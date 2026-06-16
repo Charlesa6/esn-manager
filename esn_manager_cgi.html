@@ -243,16 +243,49 @@ function kpi(c,miss,lvs,y,H){
   var pm=miss.filter(function(m){return m.cid===c.id;}).map(function(m){
     var mS=m.sd<ys?ys:m.sd,mE=(!m.ed||m.ed>ye)?ye:m.ed;
     if(mS>mE)return Object.assign({},m,{days:0,rev:0,mar:0});
+    var wd=(m.wdays&&m.wdays.length)?m.wdays:[1,2,3,4,5];
     var d=0,cur=mS;
-    while(cur<=mE){if(isWD(cur,H)&&!lds.has(cur))d++;cur=nxt(cur);}
-    var r=d*m.tjm;
-    var mar=m.tjm>0?(m.tjm-c.scr)/m.tjm*100:0; /* \u2190 nouvelle formule */
+    while(cur<=mE){if(isWD(cur,H)&&!lds.has(cur)&&wd.indexOf(pD(cur).getDay())>=0)d++;cur=nxt(cur);}
+    var r,mar;
+    if(m.btype==='forfait'){
+      var deal=+m.deal||0;
+      var totD=m.ed?missWD(m,m.sd,m.ed,lvs):0;          /* jours travaill\u00e9s sur toute la mission */
+      r=(m.ed&&totD>0)?deal*(d/totD):(m.ed?0:deal);     /* CA au prorata des jours ; sans date de fin \u2192 deal entier */
+      mar=r>0?(r-d*c.scr)/r*100:0;
+    }else{
+      r=d*m.tjm;
+      mar=m.tjm>0?(m.tjm-c.scr)/m.tjm*100:0;
+    }
     bill+=d;rev+=r;
     return Object.assign({},m,{days:d,rev:r,mar:mar});
   });
   var sr=tWD>0?bill/tWD*100:0,avgT=bill>0?rev/bill:0;
   var om=bill>0&&avgT>0?(avgT-c.scr)/avgT*100:null; /* \u2190 nouvelle formule */
   return{tWD:tWD,lvD:lvD,avD:avD,bill:bill,rev:rev,sr:sr,avgT:avgT,om:om,pm:pm};
+}
+
+/* \u2550\u2550\u2550 JOURS TRAVAILL\u00c9S sur une p\u00e9riode quelconque (jours coch\u00e9s, hors f\u00e9ri\u00e9s/cong\u00e9s) \u2550\u2550\u2550 */
+function holRange(a,b){
+  var sY=pD(a).getFullYear(),eY=pD(b).getFullYear(),HS=new Set();
+  for(var y=sY-1;y<=eY;y++){frHols(y).forEach(function(d){HS.add(d);});}
+  return HS;
+}
+function missWD(m,a,b,lvs){
+  if(!a||!b||a>b)return 0;
+  var wd=(m.wdays&&m.wdays.length)?m.wdays:[1,2,3,4,5];
+  var HH=holRange(a,b);
+  var lds=lvSet(m.cid,lvs,HH,a,b);
+  var n=0,c=a;
+  while(c<=b){if(isWD(c,HH)&&!lds.has(c)&&wd.indexOf(pD(c).getDay())>=0)n++;c=nxt(c);}
+  return n;
+}
+/* \u2550\u2550\u2550 FORFAIT : budget de jours (selon marge cible + SCR), jours travaill\u00e9s, jours restants \u2550\u2550\u2550 */
+function forfaitInfo(m,scr,lvs){
+  var deal=+m.deal||0,tmar=(m.tmar!=null&&m.tmar!=='')?+m.tmar:0;
+  var budget=scr>0?deal*(1-tmar/100)/scr:0;
+  var end=(m.ed&&m.ed<TODAY)?m.ed:TODAY;
+  var worked=missWD(m,m.sd,end,lvs);
+  return{deal:deal,tmar:tmar,budget:budget,worked:worked,left:budget-worked};
 }
 
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
@@ -620,12 +653,31 @@ function tMiss(){
   var cards=fil.map(function(m){
     var c=S.cons.find(function(c){return c.id===m.cid;});
     var st=mSt(m);var dl=m.ed?dL(m.ed):null;
-    var flds=[['Client',m.cli],['Consultant',c?c.name:'\u2014'],['TJM',fEur(m.tjm)],['D\u00e9but',fDt(m.sd)],['Fin',fDt(m.ed)],['Lieu',m.loc||'\u2014'],['Resp. mission',m.mgr||'\u2014'],['Contact client',m.ccn||'\u2014'],['Poste contact',m.ccr||'\u2014']];
+    var isFf=m.btype==='forfait';
+    var WJ=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+    var wdLbl=(m.wdays&&m.wdays.length&&m.wdays.length<5)?m.wdays.slice().sort().map(function(x){return WJ[x];}).join(' '):'Tous (L\u2192V)';
+    var flds=[['Client',m.cli],['Consultant',c?c.name:'\u2014'],['Type',isFf?'Forfait':'Assistance technique']];
+    if(isFf){flds.push(['CA deal',fEur((+m.deal)||0)]);flds.push(['Marge cible',(m.tmar!=null?m.tmar:0)+'%']);}
+    else{flds.push(['TJM',fEur(m.tjm)]);}
+    flds.push(['D\u00e9but',fDt(m.sd)]);flds.push(['Fin',fDt(m.ed)]);flds.push(['Jours/sem.',wdLbl]);
+    flds.push(['Lieu',m.loc||'\u2014']);flds.push(['Resp. mission',m.mgr||'\u2014']);flds.push(['Contact client',m.ccn||'\u2014']);flds.push(['Poste contact',m.ccr||'\u2014']);
+    var ffBlock='';
+    if(isFf){
+      var fi=forfaitInfo(m,c?c.scr:0,S.lvs);
+      var leftCol=fi.left<0?'#b91c1c':fi.left<=5?'#b45309':'#15803d';
+      ffBlock='<div style="margin-top:10px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;display:flex;gap:18px;flex-wrap:wrap;font-size:12px">'
+        +'<div><span style="color:#94a3b8">Budget jours : </span><strong>'+fi.budget.toFixed(1)+'</strong></div>'
+        +'<div><span style="color:#94a3b8">Travaill\u00e9s \u00e0 ce jour : </span><strong>'+fi.worked+'</strong></div>'
+        +'<div><span style="color:#94a3b8">Jours restants : </span><strong style="color:'+leftCol+'">'+fi.left.toFixed(1)+'</strong></div>'
+        +(fi.left<0?'<div style="color:#b91c1c;font-weight:600">\u26a0 budget d\u00e9pass\u00e9 \u2014 marge sous la cible</div>':'')
+        +'</div>';
+    }
     return '<div class="card" style="padding:18px"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">'
       +'<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
       +'<span style="font-weight:700;font-size:14px;color:#0f172a">'+esc(m.name)+'</span>'+badge(st,dl!=null&&dl>=0?dl:null)
+      +'<span class="badge '+(isFf?'bblu':'bgry')+'">'+(isFf?'Forfait':'AT')+'</span>'
       +(!m.ed?'<span style="font-size:11px;color:#94a3b8;font-style:italic">sans date de fin</span>':'')+'</div>'
-      +'<div class="gc3">'+flds.map(function(f){return '<div><span style="color:#94a3b8">'+esc(f[0])+' : </span><span style="font-weight:600;color:#1e293b">'+esc(f[1]||'\u2014')+'</span></div>';}).join('')+'</div></div>'
+      +'<div class="gc3">'+flds.map(function(f){return '<div><span style="color:#94a3b8">'+esc(f[0])+' : </span><span style="font-weight:600;color:#1e293b">'+esc(f[1]||'\u2014')+'</span></div>';}).join('')+'</div>'+ffBlock+'</div>'
       +'<div style="display:flex;gap:10px;flex-shrink:0"><button class="lb" data-act="em" data-id="'+m.id+'">Modifier</button>'
       +'<button class="lr" data-act="dm" data-id="'+m.id+'">Suppr.</button></div></div></div>';
   }).join('');
@@ -953,10 +1005,26 @@ function tModal(){
   }
   if(tp==='mission'){
     title=it?'Modifier la mission':'Nouvelle mission';wide=true;
+    var bt=(it&&it.btype)||'at';
+    var wdsel=(it&&it.wdays&&it.wdays.length)?it.wdays:[1,2,3,4,5];
+    var WLBL=[['1','Lun'],['2','Mar'],['3','Mer'],['4','Jeu'],['5','Ven']];
     body='<div class="g2"><div class="cs2"><div class="fd"><label class="fl">Consultant *</label><select class="ic" id="mcid">'+co+'</select></div></div>'
       +'<div class="cs2"><div class="fd"><label class="fl">Nom de la mission *</label><input class="ic" id="mmn" value="'+esc(it?it.name:'')+'" placeholder="ex\u00a0: Transformation Digitale SI"></div></div>'
       +'<div class="cs2"><div class="fd"><label class="fl">Nom du client *</label><input class="ic" id="mcl" value="'+esc(it?it.cli:'')+'" placeholder="ex\u00a0: BNP Paribas"></div></div>'
-      +'<div class="fd"><label class="fl">TJM factur\u00e9 (\u20ac) *</label><input class="ic" id="mtj" type="number" min="0" value="'+esc(it?String(it.tjm):'')+'" placeholder="750"><p class="fh">Prix journalier de vente</p></div>'
+      +'<div class="fd"><label class="fl">TJM factur\u00e9 (\u20ac)</label><input class="ic" id="mtj" type="number" min="0" value="'+esc(it?String(it.tjm):'')+'" placeholder="750"><p class="fh">Prix journalier de vente (Assistance technique)</p></div>'
+      +'<div class="cs2"><div class="fd"><label class="fl">Type de mission *</label>'
+      +'<div style="display:flex;gap:18px;padding:4px 0">'
+      +'<label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:500"><input type="radio" name="mbt" value="at"'+(bt!=='forfait'?' checked':'')+' style="accent-color:#2563eb"> Assistance technique</label>'
+      +'<label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:500"><input type="radio" name="mbt" value="forfait"'+(bt==='forfait'?' checked':'')+' style="accent-color:#2563eb"> Forfait</label>'
+      +'</div><p class="fh">AT : CA = jours travaill\u00e9s \u00d7 TJM \u00b7 Forfait : montant fixe + marge cible</p></div></div>'
+      +'<div class="cs2" id="ft-fields" style="display:'+(bt==='forfait'?'block':'none')+'"><div class="g2">'
+      +'<div class="fd"><label class="fl">Montant du deal \u2014 CA (\u20ac) *</label><input class="ic" id="mdeal" type="number" min="0" value="'+esc(it&&it.deal?String(it.deal):'')+'" placeholder="120000"></div>'
+      +'<div class="fd"><label class="fl">Marge recherch\u00e9e (%) *</label><input class="ic" id="mtmar" type="number" min="0" max="100" value="'+((it&&it.tmar!=null&&it.tmar!=='')?esc(String(it.tmar)):'')+'" placeholder="30"><p class="fh">Sert \u00e0 calculer les jours restants \u00e0 travailler</p></div>'
+      +'</div></div>'
+      +'<div class="cs2"><div class="fd"><label class="fl">Jours travaill\u00e9s / semaine</label>'
+      +'<div style="display:flex;gap:12px;flex-wrap:wrap;padding:4px 0">'
+      +WLBL.map(function(w){return '<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" class="mwd" value="'+w[0]+'"'+(wdsel.indexOf(+w[0])>=0?' checked':'')+' style="accent-color:#2563eb">'+w[1]+'</label>';}).join('')
+      +'</div><p class="fh">D\u00e9cochez les jours non travaill\u00e9s (ex : mission 3 j/semaine)</p></div></div>'
       +'<div class="fd"><label class="fl">Localisation</label><input class="ic" id="mlo" value="'+esc(it?it.loc:'')+'" placeholder="Paris (75009)"></div>'
       +'<div class="fd"><label class="fl">Date de d\u00e9marrage *</label><input class="ic" id="msd" type="date" value="'+esc(it?it.sd:'')+'"></div>'
       +'<div class="fd"><label class="fl">Date de fin</label><input class="ic" id="med" type="date" value="'+esc(it&&it.ed?it.ed:'')+'"><p class="fh">Laisser vide si inconnue</p></div>'
@@ -1056,8 +1124,16 @@ function bind(){
       else if(a==='sm'){
         var cid=gv('mcid'),mn=gv('mmn'),cl=gv('mcl'),tj=+gv('mtj'),sd=gv('msd'),ed=gv('med')||null;
         var lo=gv('mlo'),mg=gv('mmg'),cc=gv('mcc'),cr=gv('mcr');
-        if(!cid||!mn||!cl||!tj||!sd){alert('Veuillez remplir les champs obligatoires (*).');return;}
-        var d={cid:cid,name:mn,cli:cl,tjm:tj,sd:sd,ed:ed,loc:lo,mgr:mg,ccn:cc,ccr:cr};
+        var btEl=document.querySelector('input[name="mbt"]:checked');
+        var bt=btEl?btEl.value:'at';
+        var wdays=[];var wdEls=document.querySelectorAll('.mwd:checked');for(var wi=0;wi<wdEls.length;wi++)wdays.push(+wdEls[wi].value);
+        var deal=+gv('mdeal')||0,tmar=(gv('mtmar')===''?null:+gv('mtmar'));
+        if(!cid||!mn||!cl||!sd){alert('Veuillez remplir les champs obligatoires (*).');return;}
+        if(bt==='forfait'){
+          if(!deal||tmar==null){alert('Pour un forfait : indiquez le montant du deal (CA) et la marge recherchée.');return;}
+        }else if(!tj){alert('Pour une mission en Assistance technique : indiquez le TJM.');return;}
+        if(!wdays.length){alert('Sélectionnez au moins un jour travaillé.');return;}
+        var d={cid:cid,name:mn,cli:cl,tjm:tj,sd:sd,ed:ed,loc:lo,mgr:mg,ccn:cc,ccr:cr,btype:bt,wdays:wdays,deal:deal,tmar:tmar};
         var it=S.modal.item;
         var nm;
         if(it){S.miss=S.miss.map(function(m){if(m.id===it.id){nm=Object.assign({},m,d);return nm;}return m;});}
@@ -1092,6 +1168,13 @@ function bind(){
   })(bs[j]);}
   /* overlay */
   var ov=el('mov');if(ov)ov.onclick=function(e){if(e.target===ov){S.modal=null;render();}};
+  /* mission : afficher/masquer le bloc forfait selon le type choisi */
+  var mbtEls=document.querySelectorAll('input[name="mbt"]');
+  for(var mb=0;mb<mbtEls.length;mb++){mbtEls[mb].onchange=function(){
+    var ft=document.getElementById('ft-fields');
+    var sel=document.querySelector('input[name="mbt"]:checked');
+    if(ft)ft.style.display=(sel&&sel.value==='forfait')?'block':'none';
+  };}
   /* import file input */
   var impFile=el('imp-file');
   if(impFile)impFile.onchange=function(){importJSON(this.files[0]);this.value='';};
@@ -1160,7 +1243,7 @@ function importJSON(file){
    SUPABASE - helpers (synchronisation non-bloquante)
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function mapC(r){return{id:r.id,name:r.name,title:r.title||'',scr:r.scr||0,email:r.email||'',dir:r.directeur||''};}
-function mapM(r){return{id:r.id,cid:r.consultant_id,name:r.name,cli:r.client_name||'',tjm:r.tjm||0,sd:r.start_date,ed:r.end_date||null,loc:r.location||'',mgr:r.manager_name||'',ccn:r.client_contact_name||'',ccr:r.client_contact_role||''};}
+function mapM(r){return{id:r.id,cid:r.consultant_id,name:r.name,cli:r.client_name||'',tjm:r.tjm||0,sd:r.start_date,ed:r.end_date||null,loc:r.location||'',mgr:r.manager_name||'',ccn:r.client_contact_name||'',ccr:r.client_contact_role||'',btype:r.billing_type||'at',wdays:(Array.isArray(r.work_days)?r.work_days:(r.work_days?String(r.work_days).split(',').map(Number):[1,2,3,4,5])),deal:r.deal_amount||0,tmar:(r.target_margin!=null?r.target_margin:null)};}
 function mapL(r){return{id:r.id,cid:r.consultant_id,type:r.type||'Congé payé',s:r.start_date,e:r.end_date};}
 
 async function loadSB(){
@@ -1193,7 +1276,7 @@ async function sbUpsertCons(c){
 }
 async function sbUpsertMiss(m){
   if(!sb||!SB_CID)return;
-  var res=await sb.from('missions').upsert({id:m.id,company_id:SB_CID,consultant_id:m.cid,name:m.name,client_name:m.cli,tjm:m.tjm,start_date:m.sd,end_date:m.ed||null,location:m.loc,manager_name:m.mgr,client_contact_name:m.ccn,client_contact_role:m.ccr});
+  var res=await sb.from('missions').upsert({id:m.id,company_id:SB_CID,consultant_id:m.cid,name:m.name,client_name:m.cli,tjm:m.tjm,start_date:m.sd,end_date:m.ed||null,location:m.loc,manager_name:m.mgr,client_contact_name:m.ccn,client_contact_role:m.ccr,billing_type:m.btype||'at',work_days:(m.wdays&&m.wdays.length?m.wdays:[1,2,3,4,5]),deal_amount:(m.deal||null),target_margin:((m.tmar!=null&&m.tmar!=='')?m.tmar:null)});
   if(res.error)throw new Error(m.name+': '+res.error.message);
 }
 async function sbUpsertLeave(l){
