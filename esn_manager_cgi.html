@@ -285,7 +285,28 @@ function forfaitInfo(m,scr,lvs){
   var budget=scr>0?deal*(1-tmar/100)/scr:0;
   var end=(m.ed&&m.ed<TODAY)?m.ed:TODAY;
   var worked=missWD(m,m.sd,end,lvs);
-  return{deal:deal,tmar:tmar,budget:budget,worked:worked,left:budget-worked};
+  var left=budget-worked;
+  /* jours réellement disponibles d'ici la date de fin (capacité restante) */
+  var startAvail=m.sd>TODAY?m.sd:TODAY;
+  var avail=m.ed?missWD(m,startAvail,m.ed,lvs):null;
+  var slack=(avail!=null)?avail-left:null;
+  return{deal:deal,tmar:tmar,budget:budget,worked:worked,left:left,avail:avail,slack:slack};
+}
+
+/* ═══ ACTIVITÉ JOUR PAR JOUR ═══ */
+function missOnDay(cid,day){
+  return S.miss.find(function(m){
+    if(m.cid!==cid||m.sd>day||(m.ed&&day>m.ed))return false;
+    var wd=(m.wdays&&m.wdays.length)?m.wdays:[1,2,3,4,5];
+    return wd.indexOf(pD(day).getDay())>=0;
+  });
+}
+function leaveOnDay(cid,day){
+  return S.lvs.find(function(l){return l.cid===cid&&l.s<=day&&day<=l.e;});
+}
+function shiftMonth(ym,delta){
+  var p=ym.split('-'),dd=new Date(+p[0],+p[1]-1+delta,1);
+  return dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0');
 }
 
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
@@ -334,8 +355,8 @@ var S={
   cons:IC.map(function(c){return Object.assign({},c);}),
   miss:IM.map(function(m){return Object.assign({},m);}),
   lvs:IL.map(function(l){return Object.assign({},l);}),
-  year:CFY,modal:null,fmc:'all',fms:'all',flc:'all',precs:{},
-  role:'gestionnaire',dirName:'',fdir:[],invites:[],_all:null,
+  year:CFY,modal:null,fmc:'all',fms:'all',fmt:'all',flc:'all',precs:{},
+  role:'gestionnaire',dirName:'',fdir:[],invites:[],actCid:'',actMonth:'',_all:null,
   sbSt:'\uD83D\uDFE2 Sauvegarde locale active',
   sbSync:false
 };
@@ -513,6 +534,7 @@ function tSB(){
     {id:'param',    ic:'\u2699\uFE0F',lb:'Paramétrage'}
   ];
   if(S.role==='gestionnaire')NAV.push({id:'directeurs',ic:'🛡️',lb:'Directeurs'});
+  NAV.splice(4,0,{id:'activite',ic:'🗓️',lb:'Activité'});
   var alC=S.miss.filter(function(m){var s=mSt(m);return s==='critical'||s==='soon';}).length;
   var fyOpts=[CFY-2,CFY-1,CFY,CFY+1].map(function(fy){return '<option value="'+fy+'"'+(fy===S.year?' selected':'')+'>'+fyLbl(fy)+'</option>';}).join('');
   var nav=NAV.map(function(n){
@@ -648,7 +670,7 @@ function tTeams(){
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function tMiss(){
   var ORD=['critical','soon','active','future','ended'];
-  var fil=S.miss.filter(function(m){return(S.fmc==='all'||m.cid===S.fmc)&&(S.fms==='all'||mSt(m)===S.fms);}).sort(function(a,b){return ORD.indexOf(mSt(a))-ORD.indexOf(mSt(b));});
+  var fil=S.miss.filter(function(m){return(S.fmc==='all'||m.cid===S.fmc)&&(S.fms==='all'||mSt(m)===S.fms)&&(S.fmt==='all'||(m.btype||'at')===S.fmt);}).sort(function(a,b){return ORD.indexOf(mSt(a))-ORD.indexOf(mSt(b));});
   var co='<option value="all">Tous les consultants</option>'+S.cons.map(function(c){return '<option value="'+c.id+'"'+(c.id===S.fmc?' selected':'')+'>'+esc(c.name)+'</option>';}).join('');
   var cards=fil.map(function(m){
     var c=S.cons.find(function(c){return c.id===m.cid;});
@@ -665,10 +687,18 @@ function tMiss(){
     if(isFf){
       var fi=forfaitInfo(m,c?c.scr:0,S.lvs);
       var leftCol=fi.left<0?'#b91c1c':fi.left<=5?'#b45309':'#15803d';
+      var feas='';
+      if(st!=='ended'){
+        if(!m.ed){feas='<div style="color:#b45309;font-weight:600">\u26a0 date de fin manquante \u2014 faisabilit\u00e9 non \u00e9valuable</div>';}
+        else{var okF=fi.slack>=0;
+          feas='<div><span style="color:#94a3b8">Jours dispo d\'ici la fin : </span><strong>'+fi.avail+'</strong></div>'
+            +'<div style="font-weight:700;color:'+(okF?'#15803d':'#b91c1c')+'">'+(okF?'\u2713 Faisable \u2014 marge '+fi.slack.toFixed(1)+' j':'\u2717 D\u00e9lai insuffisant \u2014 manque '+Math.abs(fi.slack).toFixed(1)+' j')+'</div>';}
+      }
       ffBlock='<div style="margin-top:10px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;display:flex;gap:18px;flex-wrap:wrap;font-size:12px">'
         +'<div><span style="color:#94a3b8">Budget jours : </span><strong>'+fi.budget.toFixed(1)+'</strong></div>'
         +'<div><span style="color:#94a3b8">Travaill\u00e9s \u00e0 ce jour : </span><strong>'+fi.worked+'</strong></div>'
         +'<div><span style="color:#94a3b8">Jours restants : </span><strong style="color:'+leftCol+'">'+fi.left.toFixed(1)+'</strong></div>'
+        +feas
         +(fi.left<0?'<div style="color:#b91c1c;font-weight:600">\u26a0 budget d\u00e9pass\u00e9 \u2014 marge sous la cible</div>':'')
         +'</div>';
     }
@@ -691,7 +721,11 @@ function tMiss(){
     +'<option value="soon"'+(S.fms==='soon'?' selected':'')+'>Fin &lt;30j</option>'
     +'<option value="active"'+(S.fms==='active'?' selected':'')+'>En mission</option>'
     +'<option value="future"'+(S.fms==='future'?' selected':'')+'>À venir</option>'
-    +'<option value="ended"'+(S.fms==='ended'?' selected':'')+'>Termin\u00e9es</option></select></div>'
+    +'<option value="ended"'+(S.fms==='ended'?' selected':'')+'>Termin\u00e9es</option></select>'
+    +'<select class="ic" style="max-width:170px" id="fmt">'
+    +'<option value="all"'+(S.fmt==='all'?' selected':'')+'>Tous types</option>'
+    +'<option value="at"'+(S.fmt==='at'?' selected':'')+'>Assistance technique</option>'
+    +'<option value="forfait"'+(S.fmt==='forfait'?' selected':'')+'>Forfait</option></select></div>'
     +'<div style="display:flex;flex-direction:column;gap:12px">'+(cards||'<div class="card" style="padding:48px;text-align:center;color:#94a3b8;font-size:13px">Aucune mission pour cette s\u00e9lection</div>')+'</div></div>';
 }
 
@@ -983,6 +1017,70 @@ function tDirecteurs(){
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    TEMPLATE - MODAL
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+function tActivite(){
+  if(!S.cons.length)return '<div class="emp">Aucun consultant.</div>';
+  if(!S.actCid||!S.cons.find(function(c){return c.id===S.actCid;}))S.actCid=S.cons[0].id;
+  if(!S.actMonth)S.actMonth=TODAY.slice(0,7);
+  var cid=S.actCid,c=S.cons.find(function(x){return x.id===cid;});
+  var ym=S.actMonth.split('-'),year=+ym[0],mon=+ym[1];
+  var hset=frHols(year);
+  var firstDow=(new Date(year,mon-1,1).getDay()+6)%7;
+  var dim=new Date(year,mon,0).getDate();
+  var MNAMES=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  var co=S.cons.map(function(x){return '<option value="'+x.id+'"'+(x.id===cid?' selected':'')+'>'+esc(x.name)+'</option>';}).join('');
+  var cells='',billed=0,leaveD=0,internD=0;
+  for(var i=0;i<firstDow;i++)cells+='<div style="background:#f8fafc;border-radius:8px;min-height:62px"></div>';
+  for(var d=1;d<=dim;d++){
+    var ds=fD(new Date(year,mon-1,d));
+    var we=isWE(ds),hol=hset.has(ds);
+    var bg='#fff',bd='#e2e8f0',main='',sub='',txt='#0f172a',clk=false;
+    if(we||hol){bg='#f8fafc';bd='#eef2f7';main=hol?'Férié':'';txt='#cbd5e1';}
+    else{
+      var lv=leaveOnDay(cid,ds);
+      if(lv){
+        var intern=(lv.type==='Mission interne'||lv.type==='Inter-contrat');
+        bg=intern?'#f0fdfa':'#fffbeb';bd=intern?'#99f6e4':'#fde68a';
+        main=lv.type;sub=intern?'Non facturé':'Absence';clk=true;
+        if(intern)internD++;else leaveD++;
+      }else{
+        var mm=missOnDay(cid,ds);
+        if(mm){bg='#eff6ff';bd='#bfdbfe';main=mm.cli;sub=mm.name;billed++;clk=true;}
+        else{main='Disponible';txt='#94a3b8';clk=true;}
+      }
+    }
+    var isToday=(ds===TODAY);
+    var style='background:'+bg+';border:'+(isToday?'2px solid #2563eb':'1px solid '+bd)+';border-radius:8px;min-height:62px;padding:5px 7px;overflow:hidden;'+(clk?'cursor:pointer':'');
+    cells+='<div'+(clk?' data-act="day" data-day="'+ds+'"':'')+' style="'+style+'">'
+      +'<div style="font-size:11px;font-weight:700;color:'+txt+'">'+d+'</div>'
+      +(main?'<div style="font-size:10px;font-weight:600;color:#0f172a;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(main)+'</div>':'')
+      +(sub?'<div style="font-size:9px;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(sub)+'</div>':'')
+      +'</div>';
+  }
+  var dows=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(function(x){return '<div style="font-size:10px;font-weight:700;color:#94a3b8;text-align:center;text-transform:uppercase">'+x+'</div>';}).join('');
+  var lg=function(b,bd2,t){return '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:'+b+';border:1px solid '+bd2+'"></span>'+t+'</span>';};
+  return '<div class="vw">'
+    +'<div class="ph"><div><div class="pt">Activité — '+esc(c.name)+'</div><div class="ps">Cliquez un jour pour le marquer congé ou interne (non facturé)</div></div></div>'
+    +'<div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">'
+    +'<select class="ic" style="max-width:240px" id="act-cid">'+co+'</select>'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-left:auto">'
+    +'<button class="bg" data-act="act-prev" style="padding:6px 12px">‹</button>'
+    +'<div style="font-weight:700;min-width:150px;text-align:center">'+MNAMES[mon-1]+' '+year+'</div>'
+    +'<button class="bg" data-act="act-next" style="padding:6px 12px">›</button>'
+    +'<button class="bg" data-act="act-today" style="padding:6px 12px">Aujourd\'hui</button>'
+    +'</div></div>'
+    +'<div class="card" style="padding:16px">'
+    +'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px">'+dows+'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">'+cells+'</div>'
+    +'<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:#475569">'
+    +'<div><strong>'+billed+'</strong> j facturables</div>'
+    +'<div><strong>'+internD+'</strong> j internes (non facturés)</div>'
+    +'<div><strong>'+leaveD+'</strong> j congés/absence</div>'
+    +'</div>'
+    +'<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:#64748b">'
+    +lg('#eff6ff','#bfdbfe','Mission')+lg('#fffbeb','#fde68a','Congé/absence')+lg('#f0fdfa','#99f6e4','Interne (non facturé)')
+    +'</div></div></div>';
+}
+
 function tModal(){
   var m=S.modal;if(!m)return '';
   var tp=m.type,it=m.item,title='',body='',wide=false;
@@ -1043,6 +1141,23 @@ function tModal(){
       +'<div class="fd"><label class="fl">Au *</label><input class="ic" id="mle" type="date" value="'+esc(it?it.e:'')+'"></div></div>'
       +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="sl">'+(it?'Enregistrer':'Ajouter')+'</button></div>';
   }
+  if(tp==='dayexc'){
+    var dd=m.day,dcid=m.cid,dc=S.cons.find(function(x){return x.id===dcid;});
+    title=fDt(dd)+' — '+(dc?dc.name:'');
+    var lv=S.lvs.find(function(l){return l.cid===dcid&&l.s<=dd&&dd<=l.e;});
+    if(lv&&lv.s===dd&&lv.e===dd){
+      body='<p style="font-size:13px;color:#475569;margin-bottom:14px">Actuellement : <strong>'+esc(lv.type)+'</strong></p>'
+        +'<div class="br"><button class="bg" data-act="mc">Fermer</button><button class="bp" data-act="day-clear" data-id="'+lv.id+'">Réactiver (jour travaillé)</button></div>';
+    }else if(lv){
+      body='<p style="font-size:13px;color:#475569">Ce jour est couvert par une absence du <strong>'+fDt(lv.s)+'</strong> au <strong>'+fDt(lv.e)+'</strong> ('+esc(lv.type)+').<br>Modifiez-la dans l\'onglet <strong>Absences</strong>.</p>'
+        +'<div class="br"><button class="bp" data-act="mc">Fermer</button></div>';
+    }else{
+      var lo=LTYPES.map(function(t){return '<option value="'+t+'"'+(t==='Mission interne'?' selected':'')+'>'+esc(t)+'</option>';}).join('');
+      body='<p style="font-size:13px;color:#475569;margin-bottom:12px">Marquer ce jour comme <strong>non travaillé</strong> :</p>'
+        +'<div class="fd"><label class="fl">Motif</label><select class="ic" id="dexc-type">'+lo+'</select><p class="fh">« Mission interne » / « Inter-contrat » = non facturé au client</p></div>'
+        +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="day-set">Marquer non travaillé</button></div>';
+    }
+  }
   return '<div class="mov" id="mov"><div class="mbox '+(wide?'mw':'mn')+'">'
     +'<div class="mhd"><h3>'+esc(title)+'</h3><button class="mcl" data-act="mc">&times;</button></div>'
     +'<div class="mbd">'+body+'</div></div></div>';
@@ -1057,7 +1172,7 @@ function render(){
   S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
   var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;
   document.getElementById('sb').innerHTML=tSB();
-  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='directeurs'?tDirecteurs():tParam();
+  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():tParam();
   document.getElementById('mc').innerHTML='<div class="inn">'+v+'</div>';
   document.getElementById('md').innerHTML=tModal();
   /* on restaure les données maîtres (les handlers de bind() mutent l'ensemble complet) */
@@ -1077,6 +1192,8 @@ function bind(){
   /* filters */
   var fc=el('fmc');if(fc)fc.onchange=function(){S.fmc=this.value;render();};
   var fs=el('fms');if(fs)fs.onchange=function(){S.fms=this.value;render();};
+  var ftf=el('fmt');if(ftf)ftf.onchange=function(){S.fmt=this.value;render();};
+  var acc=el('act-cid');if(acc)acc.onchange=function(){S.actCid=this.value;render();};
   var lc=el('flc');if(lc)lc.onchange=function(){S.flc=this.value;render();};
   /* filtre directeur (gestionnaire) */
   var rcb=document.querySelectorAll('[data-dir]');
@@ -1164,6 +1281,19 @@ function bind(){
       else if(a==='inv-del'){
         if(confirm('Supprimer ce directeur / cette invitation ?')){sbDelInvite(id).then(function(){loadInvites().then(render);});}
       }
+      /* activité jour par jour */
+      else if(a==='day'){S.modal={type:'dayexc',day:b.getAttribute('data-day'),cid:S.actCid};render();}
+      else if(a==='day-set'){
+        var dt=gv('dexc-type'),dd=S.modal.day,dcid=S.modal.cid;
+        var nl={id:uid(),cid:dcid,type:dt,s:dd,e:dd};
+        S.lvs=S.lvs.concat([nl]);sbUpsertLeave(nl);S.modal=null;render();
+      }
+      else if(a==='day-clear'){
+        S.lvs=S.lvs.filter(function(l){return l.id!==id;});sbDel('leaves',id);S.modal=null;render();
+      }
+      else if(a==='act-prev'){S.actMonth=shiftMonth(S.actMonth||TODAY.slice(0,7),-1);render();}
+      else if(a==='act-next'){S.actMonth=shiftMonth(S.actMonth||TODAY.slice(0,7),1);render();}
+      else if(a==='act-today'){S.actMonth=TODAY.slice(0,7);render();}
     };
   })(bs[j]);}
   /* overlay */
