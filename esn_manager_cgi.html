@@ -400,6 +400,8 @@ function svgBars(items,cfn,unit){
 function getAct(cid){
   return S.miss.find(function(m){var s=mSt(m);return m.cid===cid&&(s==='active'||s==='critical'||s==='soon');});
 }
+/* Consultant ayant quitté l'entreprise avant aujourd'hui */
+function isGone(c){return !!(c.depart&&c.depart<TODAY);}
 function buildKS(){return S.cons.map(function(c){return{c:c,k:kpi(c,S.miss,S.lvs,S.year,H)};});}
 function clientRev(ks){
   var map={};
@@ -440,7 +442,7 @@ function genRecs(goal){
   var recs=[];
 
   if(goal==='ca'){
-    var noM=S.cons.filter(function(c){return !getAct(c.id);});
+    var noM=S.cons.filter(function(c){return !getAct(c.id)&&!isGone(c);});
     if(noM.length>0)recs.push({
       title:'Action urgente : staffer les consultants sans mission',
       detail:noM.map(function(c){return c.name;}).join(', ')+' ne sont pas en mission. Chaque jour factur\u00e9 g\u00e9n\u00e8re en moyenne '+fEur(Math.round(avgTJMv))+'. Lancez imm\u00e9diatement des appels d\u2019offres ou sollicitez vos clients existants pour un besoin compl\u00e9mentaire.'
@@ -471,7 +473,7 @@ function genRecs(goal){
   }
 
   if(goal==='util'){
-    var noM2=S.cons.filter(function(c){return !getAct(c.id);});
+    var noM2=S.cons.filter(function(c){return !getAct(c.id)&&!isGone(c);});
     if(noM2.length>0)recs.push({
       title:'Priorit\u00e9 absolue\u00a0: '+noM2.length+' consultant(s) sans mission',
       detail:noM2.map(function(c){return c.name;}).join(', ')+' n\u2019ont aucune mission. Chaque semaine non factur\u00e9e repr\u00e9sente '+fEur(Math.round(avgTJMv*5))+' de CA perdu. D\u00e9clenchez des entretiens clients d\u00e8s cette semaine.'
@@ -598,10 +600,14 @@ function tSB(){
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function tDash(){
   var ks=buildKS();
-  var als=S.miss.filter(function(m){var s=mSt(m);return s==='critical'||s==='soon';})
+  var als=S.miss.filter(function(m){
+    var s=mSt(m);
+    var c=S.cons.find(function(c){return c.id===m.cid;});
+    return (s==='critical'||s==='soon')&&(!c||!isGone(c));
+  })
     .map(function(m){return Object.assign({},m,{c:S.cons.find(function(c){return c.id===m.cid;}),dl:dL(m.ed)});})
     .sort(function(a,b){return a.dl-b.dl;});
-  var noM=S.cons.filter(function(c){return !getAct(c.id);});
+  var noM=S.cons.filter(function(c){return !getAct(c.id)&&!isGone(c);});
   var totR=ks.reduce(function(s,x){return s+x.k.rev;},0);
   var avgSr=ks.reduce(function(s,x){return s+x.k.sr;},0)/(ks.length||1);
   var actCnt=S.miss.filter(function(m){var s=mSt(m);return s==='active'||s==='critical'||s==='soon';}).length;
@@ -634,7 +640,7 @@ function tDash(){
       +badge('none')+'</div>';
   }).join('');
 
-  var synR=ks.map(function(x){
+  var synR=ks.filter(function(x){return !isGone(x.c);}).map(function(x){
     var am=getAct(x.c.id);var st=am?mSt(am):'none';
     return '<div style="display:flex;align-items:center;gap:14px;padding:10px 8px;border-bottom:1px solid #f8fafc">'
       +av(x.c.name,34)+'<div style="flex:1;min-width:0">'
