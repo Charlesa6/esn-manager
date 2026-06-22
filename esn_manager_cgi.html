@@ -238,11 +238,20 @@ function av(name,sz){
 function kpi(c,miss,lvs,y,H){
   var ys=fyStart(y),ye=fyEnd(y);
   /* Borner sur la période d'activité réelle du consultant dans le FY */
-  var cs=(c.arrive&&c.arrive>ys)?c.arrive:ys;   /* début : max(fyStart, arrivée) */
-  var ce=(c.depart&&c.depart<ye)?c.depart:ye;   /* fin   : min(fyEnd,   départ)  */
+  var cs=(c.arrive&&c.arrive>ys)?c.arrive:ys;
+  var ce=(c.depart&&c.depart<ye)?c.depart:ye;
   var tWD=cs<=ce?wDays(cs,ce,H):0;
   var lds=lvSet(c.id,lvs,H,cs,ce);
   var lvD=lds.size,avD=tWD-lvD,bill=0,rev=0;
+
+  /* Absences qui comptent dans le staffing : arrêts + congés légitimes */
+  var COUNTED=['Maladie','Congé maternité','Congé payé','RTT'];
+  var sickSet=new Set();
+  lvs.filter(function(l){return l.cid===c.id&&COUNTED.indexOf(l.type)>=0;}).forEach(function(l){
+    var a=l.s<cs?cs:l.s,b=l.e>ce?ce:l.e;
+    while(a<=b){if(isWD(a,H))sickSet.add(a);a=nxt(a);}
+  });
+  var sickD=sickSet.size;
   var pm=miss.filter(function(m){return m.cid===c.id;}).map(function(m){
     var mS=m.sd<cs?cs:m.sd,mE=(!m.ed||m.ed>ce)?ce:m.ed;
     if(mS>mE)return Object.assign({},m,{days:0,rev:0,mar:0});
@@ -262,9 +271,9 @@ function kpi(c,miss,lvs,y,H){
     bill+=d;rev+=r;
     return Object.assign({},m,{days:d,rev:r,mar:mar});
   });
-  var sr=tWD>0?bill/tWD*100:0,avgT=bill>0?rev/bill:0;
+  var sr=tWD>0?(bill+sickD)/tWD*100:0,avgT=bill>0?rev/bill:0;
   var om=bill>0&&avgT>0?(avgT-c.scr)/avgT*100:null; /* \u2190 nouvelle formule */
-  return{tWD:tWD,lvD:lvD,avD:avD,bill:bill,rev:rev,sr:sr,avgT:avgT,om:om,pm:pm};
+  return{tWD:tWD,lvD:lvD,avD:avD,sickD:sickD,bill:bill,rev:rev,sr:sr,avgT:avgT,om:om,pm:pm};
 }
 
 /* \u2550\u2550\u2550 JOURS TRAVAILL\u00c9S sur une p\u00e9riode quelconque (jours coch\u00e9s, hors f\u00e9ri\u00e9s/cong\u00e9s) \u2550\u2550\u2550 */
@@ -892,7 +901,7 @@ function tKPIs(){
 
   return '<div class="vw">'
     +'<div style="margin-bottom:24px"><div class="pt">KPIs &mdash; '+fyLbl(S.year)+'</div>'
-    +'<div class="ps">Marge = (TJM &minus; SCR) / TJM &times; 100 &middot; Staffing = Jours facturables / Jours disponibles</div></div>'
+    +'<div class="ps">Marge = (TJM &minus; SCR) / TJM &times; 100 &middot; Staffing = (Facturables + Congés + Maladie/Maternité) / Jours ouvrés FY × 100</div></div>'
     +hero
     +'<div style="display:grid;grid-template-columns:1fr 300px;gap:16px;margin-bottom:24px">'
     +'<div class="card" style="padding:20px"><div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:16px">Staffing par consultant (%)</div>'+srBars+'</div>'
