@@ -384,7 +384,8 @@ var S={
   year:CFY,modal:null,fmc:'all',fms:'all',fmt:'all',flc:'all',precs:{},
   role:'gestionnaire',dirName:'',fdir:[],invites:[],actCid:'',actMonth:'',_all:null,
   sbSt:'\uD83D\uDFE2 Sauvegarde locale active',
-  sbSync:false
+  sbSync:false,
+  imp:null
 };
 var H=fyHols(CFY);
 
@@ -565,6 +566,7 @@ function tSB(){
     {id:'planning', ic:'\uD83D\uDCC5',lb:'Planning'},
     {id:'kpis',     ic:'\uD83D\uDCC8',lb:'KPIs'},
     {id:'leaves',   ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
+    {id:'imputations',ic:'\uD83D\uDCCA',lb:'Imputations'},
     {id:'param',    ic:'\u2699\uFE0F',lb:'Paramétrage'}
   ];
   if(S.role==='gestionnaire')NAV.push({id:'directeurs',ic:'🛡️',lb:'Directeurs'});
@@ -1234,7 +1236,7 @@ function render(){
   S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
   var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;
   document.getElementById('sb').innerHTML=tSB();
-  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():tParam();
+  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='imputations'?tImpute():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():tParam();
   document.getElementById('mc').innerHTML='<div class="inn">'+v+'</div>';
   document.getElementById('md').innerHTML=tModal();
   /* on restaure les données maîtres (les handlers de bind() mutent l'ensemble complet) */
@@ -1371,7 +1373,20 @@ function bind(){
   /* import file input */
   var impFile=el('imp-file');
   if(impFile)impFile.onchange=function(){importJSON(this.files[0]);this.value='';};
-  /* logout */
+  /* logout & sync */
+  /* Imputations : file input + drag-and-drop */
+  var impFi=el('imp-fi');
+  if(impFi)impFi.onchange=function(){if(this.files[0])handleImpFile(this.files[0]);this.value='';};
+  var impDz=el('imp-dz');
+  if(impDz){
+    impDz.addEventListener('dragover',function(e){e.preventDefault();impDz.style.borderColor='#2563eb';impDz.style.background='#eff6ff';});
+    impDz.addEventListener('dragleave',function(){impDz.style.borderColor='#e2e8f0';impDz.style.background='#fff';});
+    impDz.addEventListener('drop',function(e){
+      e.preventDefault();impDz.style.borderColor='#e2e8f0';impDz.style.background='#fff';
+      var f=e.dataTransfer.files[0];if(f)handleImpFile(f);
+    });
+    impDz.addEventListener('click',function(e){if(e.target.tagName!=='LABEL'&&e.target.tagName!=='INPUT'){var fi=el('imp-fi');if(fi)fi.click();}});
+  }
   var logoutBtn=el('sb-logout');
   if(document.querySelector('[data-act="logout"]')){
     document.querySelector('[data-act="logout"]').onclick=function(){
@@ -1552,7 +1567,230 @@ async function initApp(){
   render();
 }
 
-/* \u2500\u2500 START */
+/* \u2500\u25
+/* ======================================================
+   IMPUTATIONS - Import Excel et consolidation
+   ====================================================== */
+
+function loadXLSX(cb){
+  if(window.XLSX){cb();return;}
+  var s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  s.onload=function(){cb();};
+  s.onerror=function(){alert('Impossible de charger la librairie Excel. V\u00e9rifiez votre connexion.');};
+  document.head.appendChild(s);
+}
+
+function handleImpFile(file){
+  if(!file)return;
+  var ext=file.name.split('.').pop().toLowerCase();
+  if(['xlsx','xls','csv'].indexOf(ext)<0){alert('Format non support\u00e9. Utilisez .xlsx, .xls ou .csv');return;}
+  loadXLSX(function(){
+    var r=new FileReader();
+    r.onload=function(e){
+      try{
+        var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
+        var ws=wb.Sheets[wb.SheetNames[0]];
+        var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        var data=rows.filter(function(row){return row.some(function(c){return c!=='';});});
+        if(data.length<2){alert('Fichier vide ou non reconnu.');return;}
+        var headers=data[0].map(function(h){return String(h||'').trim();});
+        var am={};
+        headers.forEach(function(h,i){
+          var l=h.toLowerCase().replace(/[\u0300-\u036f]/g,'');
+          if(am.cons===undefined&&(l.includes('collaborateur')||l.includes('consultant')||l.includes('salarie')||l.includes('employe')||l.includes('prenom')||l.includes('nom')))am.cons=i;
+          if(am.date===undefined&&(l.includes('date')||l.includes('mois')||l.includes('periode')))am.date=i;
+          if(am.client===undefined&&(l.includes('client')||l.includes('societe')||l.includes('compte')||l.includes('affaire')))am.client=i;
+          if(am.miss===undefined&&(l.includes('mission')||l.includes('projet')||l.includes('code affaire')))am.miss=i;
+          if(am.jours===undefined&&(l.includes('jour')||l.includes('unite')||l.includes('quantite')||l.includes('qte')||l.includes('nombre')))am.jours=i;
+          if(am.tjm===undefined&&(l.includes('tjm')||l.includes('tarif')||l.includes('prix vente')||l.includes('taux journalier')))am.tjm=i;
+          if(am.montant===undefined&&(l.includes('montant')||l.includes('total')||l.includes('facture')||l.includes('ca ')||l.includes('chiffre')))am.montant=i;
+        });
+        S.imp={file:file.name,sheet:wb.SheetNames[0],headers:headers,raw:data.slice(1),map:am,rows:[],results:null};
+        render();
+      }catch(err){alert('Erreur de lecture : '+err.message);}
+    };
+    r.readAsArrayBuffer(file);
+  });
+}
+
+function applyImpMap(){
+  var imp=S.imp;if(!imp)return;
+  var cm={};
+  ['cons','date','client','miss','jours','tjm','montant'].forEach(function(f){
+    var el=document.getElementById('im-'+f);
+    if(el&&el.value!=='')cm[f]=parseInt(el.value);
+  });
+  if(cm.cons===undefined){alert('S\u00e9lectionnez la colonne Consultant.');return;}
+  if(cm.jours===undefined&&cm.montant===undefined){alert('S\u00e9lectionnez Jours ou Montant.');return;}
+  imp.map=cm;
+  imp.rows=imp.raw.map(function(row){
+    var j=cm.jours!==undefined?parseFloat(String(row[cm.jours]).replace(',','.'))||0:0;
+    var t=cm.tjm!==undefined?parseFloat(String(row[cm.tjm]).replace(',','.'))||0:0;
+    var m=cm.montant!==undefined?parseFloat(String(row[cm.montant]).replace(',','.'))||0:j*t;
+    if(j===0&&m>0&&t>0)j=m/t;
+    return{
+      cons:String(row[cm.cons]||'').trim(),
+      date:cm.date!==undefined?String(row[cm.date]||''):'',
+      client:cm.client!==undefined?String(row[cm.client]||'').trim():'',
+      miss:cm.miss!==undefined?String(row[cm.miss]||'').trim():'',
+      jours:j,tjm:t,montant:m||(j*t)
+    };
+  }).filter(function(r){return r.cons&&(r.jours>0||r.montant>0);});
+  var byKey={};
+  imp.rows.forEach(function(r){
+    var key=r.cons.toLowerCase().trim();
+    if(!byKey[key])byKey[key]={name:r.cons,jours:0,montant:0,rows:[]};
+    byKey[key].jours+=r.jours;
+    byKey[key].montant+=r.montant;
+    byKey[key].rows.push(r);
+  });
+  function norm(n){return n.toLowerCase().replace(/[^a-z0-9 ]/gi,'').trim();}
+  var matched={};
+  var results=S.cons.filter(function(c){return !isGone(c);}).map(function(c){
+    var cn=norm(c.name);var cp=cn.split(' ');
+    var best=null,bestScore=0;
+    Object.keys(byKey).forEach(function(key){
+      var kn=norm(key);var kp=kn.split(' ');
+      var score=0;
+      cp.forEach(function(p){if(p.length>2&&kp.indexOf(p)>=0)score++;});
+      if(score>bestScore){bestScore=score;best=byKey[key];}
+    });
+    if(best&&bestScore>=1)matched[norm(best.name)]=true;
+    var k=kpi(c,S.miss,S.lvs,S.year,H);
+    var impJ=best?best.jours:0;
+    var impCA=best?best.montant:0;
+    var impTJM=impJ>0?impCA/impJ:0;
+    return{c:c,k:k,imp:best,
+      appJ:k.bill,impJ:impJ,ecartJ:impJ-k.bill,
+      appCA:k.rev,impCA:impCA,ecartCA:impCA-k.rev,
+      appTJM:k.avgT,impTJM:impTJM,ecartTJM:impTJM-k.avgT};
+  });
+  var unmatched=Object.values(byKey).filter(function(b){return !matched[norm(b.name)];});
+  imp.results={rows:results,unmatched:unmatched,
+    totalImpJ:imp.rows.reduce(function(s,r){return s+r.jours;},0),
+    totalImpCA:imp.rows.reduce(function(s,r){return s+r.montant;},0)};
+  render();
+}
+
+function clearImp(){S.imp=null;render();}
+
+function tImpute(){
+  var imp=S.imp;
+  /* Etat 1 : zone upload */
+  if(!imp){
+    return '<div class="vw">'
+      +'<div class="ph"><div><div class="pt">Imputations r\u00e9elles</div>'
+      +'<div class="ps">Importez vos fichiers de facturation pour comparer avec les donn\u00e9es saisies</div></div></div>'
+      +'<div class="card" style="padding:60px 32px;text-align:center;border:2px dashed #e2e8f0;background:#fff;border-radius:16px" id="imp-dz">'
+      +'<div style="margin:0 auto 20px;color:#94a3b8"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>'
+      +'<div style="font-size:16px;font-weight:700;color:#0f172a;margin-bottom:8px">Glissez votre fichier ici</div>'
+      +'<div style="font-size:13px;color:#64748b;margin-bottom:24px">ou cliquez pour parcourir (.xlsx, .xls, .csv)</div>'
+      +'<label style="display:inline-block;background:#2563eb;color:#fff;padding:11px 28px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer">'
+      +'Choisir un fichier<input type="file" id="imp-fi" accept=".xlsx,.xls,.csv" style="display:none"></label>'
+      +'</div>'
+      +'<div class="card" style="padding:20px;margin-top:16px">'
+      +'<div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:10px">Format attendu</div>'
+      +'<div style="font-size:12px;color:#64748b;line-height:1.8">Votre fichier doit contenir au minimum une colonne <strong>Consultant</strong> et une colonne <strong>Jours</strong> ou <strong>Montant</strong>.'
+      +' Les colonnes Client, Mission, TJM et Date sont optionnelles. L\'application d\u00e9tecte automatiquement les colonnes.</div>'
+      +'</div></div>';
+  }
+  /* Etat 2 : mapping colonnes */
+  if(!imp.results){
+    var FIELDS=[['cons','Consultant *','Nom ou pr\u00e9nom du collaborateur'],['date','Date / P\u00e9riode','Mois ou date de la prestation'],['client','Client','Soci\u00e9t\u00e9 cliente'],['miss','Mission / Projet','Code ou libell\u00e9 de la mission'],['jours','Jours *','Nombre de jours factur\u00e9s'],['tjm','TJM','Prix de vente journalier (\u20ac)'],['montant','Montant','CA factur\u00e9 (en l\'absence de Jours x TJM)']];
+    var baseOpts='<option value="">-- Ignorer --</option>'+imp.headers.map(function(h,i){return '<option value="'+i+'">'+(i+1)+'. '+esc(h)+'</option>';}).join('');
+    var formHtml=FIELDS.map(function(f){
+      var sel='<select class="ic" id="im-'+f[0]+'">';
+      sel+=baseOpts.replace(new RegExp('value="'+imp.map[f[0]]+'"'),'value="'+imp.map[f[0]]+'" selected');
+      sel+='</select>';
+      return '<div class="fd" style="margin-bottom:12px"><label class="fl">'+f[1]+'</label>'+sel+'<p style="font-size:11px;color:#94a3b8;margin-top:3px">'+f[2]+'</p></div>';
+    }).join('');
+    var prevRows=imp.raw.slice(0,4).map(function(row){
+      return '<tr>'+imp.headers.map(function(h,i){return '<td style="padding:5px 8px;font-size:11px;border-bottom:1px solid #f1f5f9;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis">'+esc(String(row[i]||''))+'</td>';}).join('')+'</tr>';
+    }).join('');
+    var prevTbl='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
+      +'<thead><tr>'+imp.headers.map(function(h){return '<th style="padding:5px 8px;font-size:11px;font-weight:700;color:#64748b;background:#f8fafc;border-bottom:1px solid #e2e8f0;text-align:left;white-space:nowrap">'+esc(h)+'</th>';}).join('')+'</tr></thead>'
+      +'<tbody>'+prevRows+'</tbody></table>'
+      +'<div style="font-size:11px;color:#94a3b8;margin-top:6px">Aper\u00e7u : 4 premi\u00e8res lignes sur '+imp.raw.length+' au total</div></div>';
+    return '<div class="vw">'
+      +'<div class="ph"><div><div class="pt">Imputations r\u00e9elles</div>'
+      +'<div class="ps">Fichier : <strong>'+esc(imp.file)+'</strong> \u00b7 Feuille : '+esc(imp.sheet)+' \u00b7 '+imp.raw.length+' lignes</div></div>'
+      +'<button class="bg" onclick="clearImp()">Changer de fichier</button></div>'
+      +'<div style="display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start">'
+      +'<div class="card" style="padding:22px"><div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:4px">Association des colonnes</div>'
+      +'<div style="font-size:12px;color:#64748b;margin-bottom:18px">Faites correspondre chaque colonne du fichier. * = obligatoire.</div>'
+      +formHtml
+      +'<button class="bp" style="width:100%;margin-top:4px" onclick="applyImpMap()">Consolider les donn\u00e9es</button></div>'
+      +'<div class="card" style="padding:22px"><div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:12px">Aper\u00e7u du fichier</div>'+prevTbl+'</div>'
+      +'</div></div>';
+  }
+  /* Etat 3 : resultats */
+  var res=imp.results;
+  var totalAppJ=res.rows.reduce(function(s,r){return s+r.appJ;},0);
+  var totalAppCA=res.rows.reduce(function(s,r){return s+r.appCA;},0);
+  var ecartJ=res.totalImpJ-totalAppJ;
+  var ecartCA=res.totalImpCA-totalAppCA;
+  function ecC(v){return v===0?'#374151':v>0?'#16a34a':'#dc2626';}
+  function sgn(v,unit){var s=(v>0?'+':'')+Math.round(v);return s+(unit||'');}
+  function sgnCA(v){return (v>0?'+':'')+fEur(Math.round(v));}
+  var TH='padding:8px 10px;font-size:11px;font-weight:700;text-align:right;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;';
+  var THL='padding:8px 10px;font-size:11px;font-weight:700;text-align:left;color:#64748b;border-bottom:1px solid #e2e8f0;';
+  var TD='padding:8px 10px;font-size:12px;text-align:right;border-bottom:1px solid #f1f5f9;';
+  var TDL='padding:8px 10px;font-size:12px;font-weight:600;color:#0f172a;border-bottom:1px solid #f1f5f9;';
+  var hero='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">'
+    +'<div class="card" style="padding:18px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px">Jours import\u00e9s</div>'
+    +'<div style="font-size:26px;font-weight:900;color:#0f172a">'+Math.round(res.totalImpJ)+'j</div>'
+    +'<div style="font-size:11px;color:#64748b;margin-top:4px">vs '+Math.round(totalAppJ)+'j saisis</div></div>'
+    +'<div class="card" style="padding:18px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px">CA r\u00e9el</div>'
+    +'<div style="font-size:26px;font-weight:900;color:#2563eb">'+fEur(Math.round(res.totalImpCA))+'</div>'
+    +'<div style="font-size:11px;color:#64748b;margin-top:4px">vs '+fEur(Math.round(totalAppCA))+' saisis</div></div>'
+    +'<div class="card" style="padding:18px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px">\u00c9cart jours</div>'
+    +'<div style="font-size:26px;font-weight:900;color:'+ecC(ecartJ)+'">'+sgn(ecartJ,'j')+'</div>'
+    +'<div style="font-size:11px;color:#64748b;margin-top:4px">'+(Math.abs(ecartJ)<1?'Pas d\'\u00e9cart':ecartJ>0?'plus dans le fichier':'moins dans le fichier')+'</div></div>'
+    +'<div class="card" style="padding:18px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px">\u00c9cart CA</div>'
+    +'<div style="font-size:26px;font-weight:900;color:'+ecC(ecartCA)+'">'+sgnCA(ecartCA)+'</div>'
+    +'<div style="font-size:11px;color:#64748b;margin-top:4px">'+(Math.abs(ecartCA)<1?'Pas d\'\u00e9cart':ecartCA>0?'CA r\u00e9el sup\u00e9rieur':'CA r\u00e9el inf\u00e9rieur')+'</div></div>'
+    +'</div>';
+  var thead='<thead><tr>'
+    +'<th style="'+THL+'">Consultant</th>'
+    +'<th style="'+TH+'">Jours saisi</th><th style="'+TH+'">Jours r\u00e9els</th><th style="'+TH+';font-weight:800"">\u00c9cart j</th>'
+    +'<th style="'+TH+'">TJM saisi</th><th style="'+TH+'">TJM r\u00e9el</th><th style="'+TH+'">\u00c9cart TJM</th>'
+    +'<th style="'+TH+'">CA saisi</th><th style="'+TH+'">CA r\u00e9el</th><th style="'+TH+'">\u00c9cart CA</th>'
+    +'</tr></thead>';
+  var tbody='<tbody>'+res.rows.map(function(r){
+    var noD=!r.imp;
+    var jCol=Math.abs(r.ecartJ)>3?ecC(r.ecartJ):'#374151';
+    var cCol=Math.abs(r.ecartCA)>500?ecC(r.ecartCA):'#374151';
+    var tCol=Math.abs(r.ecartTJM)>30?ecC(r.ecartTJM):'#374151';
+    return '<tr>'
+      +'<td style="'+TDL+'">'+esc(r.c.name)+'</td>'
+      +'<td style="'+TD+'">'+Math.round(r.appJ)+'j</td>'
+      +'<td style="'+TD+(noD?';color:#94a3b8':'')+'">'+(noD?'\u2014':Math.round(r.impJ)+'j')+'</td>'
+      +'<td style="'+TD+';color:'+jCol+';font-weight:700">'+(noD?'\u2014':sgn(r.ecartJ,'j'))+'</td>'
+      +'<td style="'+TD+'">'+(r.appTJM>0?fEur(Math.round(r.appTJM)):'\u2014')+'</td>'
+      +'<td style="'+TD+'">'+(noD||r.impTJM===0?'\u2014':fEur(Math.round(r.impTJM)))+'</td>'
+      +'<td style="'+TD+';color:'+tCol+';font-weight:700">'+(noD||r.impTJM===0?'\u2014':sgn(Math.round(r.ecartTJM),'\u20ac'))+'</td>'
+      +'<td style="'+TD+'">'+fEur(Math.round(r.appCA))+'</td>'
+      +'<td style="'+TD+(noD?';color:#94a3b8':'')+'">'+(noD?'Non trouv\u00e9':fEur(Math.round(r.impCA)))+'</td>'
+      +'<td style="'+TD+';color:'+cCol+';font-weight:700">'+(noD?'\u2014':sgnCA(r.ecartCA))+'</td>'
+      +'</tr>';
+  }).join('')+'</tbody>';
+  var unmatch=res.unmatched.length?'<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 16px;margin-top:12px">'
+    +'<div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:6px">'+res.unmatched.length+' collaborateur(s) import\u00e9(s) non retrouv\u00e9(s) dans l\'application</div>'
+    +'<div style="font-size:12px;color:#78350f">'+res.unmatched.map(function(b){return esc(b.name)+' ('+Math.round(b.jours)+'j / '+fEur(Math.round(b.montant))+')';}).join(' \u00b7 ')+'</div>'
+    +'</div>':'';
+  return '<div class="vw">'
+    +'<div class="ph"><div><div class="pt">Imputations r\u00e9elles</div>'
+    +'<div class="ps">Fichier : <strong>'+esc(imp.file)+'</strong> \u00b7 '+imp.rows.length+' lignes \u00b7 '+fyLbl(S.year)+'</div></div>'
+    +'<div style="display:flex;gap:8px"><button class="bg" onclick="S.imp.results=null;render()">Modifier le mapping</button><button class="bg" onclick="clearImp()">Nouvel import</button></div></div>'
+    +hero
+    +'<div class="card ov">'
+    +'<div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">Comparaison par consultant \u2014 Saisi vs R\u00e9el</div>'
+    +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'+thead+tbody+'</table></div>'
+    +unmatch+'</div></div>';
+}
+
+/* ======================================================*/
 (function(){
   var m=window.innerWidth<768;
   var s=localStorage.getItem('sb-col');
