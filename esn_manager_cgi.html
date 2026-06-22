@@ -806,7 +806,7 @@ function tPlan(){
     ['#22c55e','En mission'],['#ef4444','Fin &lt;14j'],['#f59e0b','Fin &lt;30j'],['#d1d5db','Termin\u00e9e'],['#fbbf24','Cong\u00e9s pay\u00e9s'],['#1d4ed8','Arr\u00eat / Maternit\u00e9'],['#a78bfa','RTT'],['#34d399','Formation'],['#60a5fa','Mission interne']].map(function(x){return '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#64748b"><div style="width:12px;height:12px;border-radius:3px;background:'+x[0]+'"></div>'+x[1]+'</div>';}).join('');
 
   return '<div><div class="ph"><div><div class="pt">Planning '+fyLbl(S.year)+'</div>'
-    +'<div class="ps">'+fyRange(S.year)+' \u00b7 ligne bleue = aujourd\'hui \u00b7 bandes basses = absences</div></div>'
+    +'<div class="ps">'+fyRange(S.year)+' \u00b7 ligne bleue = aujourd\'hui \u00b7 </div></div>'
     +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+lgd+'</div></div>'
     +'<div class="card gwp"><div class="gin"><div class="ghd"><div class="glh">Consultant</div><div class="gms">'+mths+'</div></div>'
     +rows+(activeCons.length?'':'<div class="emp">Aucun consultant</div>')+'</div></div></div>';
