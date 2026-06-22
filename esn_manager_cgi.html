@@ -761,8 +761,8 @@ function tPlan(){
   var ysT=fyS.getTime(),yeT=fyE.getTime(),dur=yeT-ysT;
   var nowP=((new Date().getTime()-ysT)/dur)*100;
   var fyMonths=['Oct','Nov','D\u00e9c','Jan','F\u00e9v','Mar','Avr','Mai','Jun','Jul','Ao\u00fb','Sep'];
-  var COL={active:'#22c55e',critical:'#ef4444',soon:'#f59e0b',future:'#93c5fd',ended:'#d1d5db'};
-  var LVC={'Maladie':'#f87171','Cong\u00e9 maternit\u00e9':'#f472b6','Cong\u00e9 pay\u00e9':'#fbbf24','RTT':'#a78bfa','Formation':'#34d399','Cong\u00e9 sans solde':'#cbd5e1','Mission interne':'#60a5fa','Autre':'#d1d5db'};
+  var COL={active:'#22c55e',critical:'#ef4444',soon:'#f59e0b',future:'#22c55e',ended:'#d1d5db'};
+  var LVC={'Maladie':'#1d4ed8','Cong\u00e9 maternit\u00e9':'#1d4ed8','Cong\u00e9 pay\u00e9':'#fbbf24','RTT':'#a78bfa','Formation':'#34d399','Cong\u00e9 sans solde':'#cbd5e1','Mission interne':'#60a5fa','Autre':'#d1d5db'};
 
   var activeCons=S.cons.filter(function(c){return !isGone(c);});
 
@@ -791,7 +791,7 @@ function tPlan(){
       var wid=Math.max(0.4,Math.min(100-left,(e-s)/dur*100));
       var col=LVC[l.type]||'#d1d5db';
       var tip=esc(l.type+' : du '+fDt(l.s)+' au '+fDt(l.e));
-      return '<div style="position:absolute;bottom:0;left:'+left+'%;width:'+wid+'%;height:7px;background:'+col+';border-radius:2px 2px 0 0;opacity:.9;z-index:5;" title="'+tip+'"></div>';
+      return '<div class="gbar" style="left:'+left+'%;width:'+wid+'%;background:'+col+';opacity:.88;z-index:5;" title="'+tip+'"><span>'+esc(l.type)+'</span></div>';
     }).join('');
 
     return '<div class="grw" style="background:'+(ci%2===0?'#fff':'#f8fafc')+'">'
@@ -804,8 +804,7 @@ function tPlan(){
   var mths=fyMonths.map(function(m){return '<div class="gm">'+m+'</div>';}).join('');
   var lgd=[
     ['#22c55e','En mission'],['#f59e0b','Fin &lt;30j'],['#ef4444','Fin &lt;14j'],['#93c5fd','\u00c0 venir'],['#d1d5db','Termin\u00e9e'],
-    ['#fbbf24','Cong\u00e9s pay\u00e9s'],['#f87171','Arr\u00eat maladie'],['#f472b6','Maternit\u00e9'],['#a78bfa','RTT'],['#34d399','Formation'],['#60a5fa','Mission interne']
-  ].map(function(x){return '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#64748b"><div style="width:12px;height:12px;border-radius:3px;background:'+x[0]+'"></div>'+x[1]+'</div>';}).join('');
+   ['#22c55e','En mission'],['#ef4444','Fin &lt;14j'],['#f59e0b','Fin &lt;30j'],['#d1d5db','Termin\u00e9e'],['#fbbf24','Cong\u00e9s pay\u00e9s'],['#1d4ed8','Arr\u00eat / Maternit\u00e9'],['#a78bfa','RTT'],['#34d399','Formation'],['#60a5fa','Mission interne']].map(function(x){return '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#64748b"><div style="width:12px;height:12px;border-radius:3px;background:'+x[0]+'"></div>'+x[1]+'</div>';}).join('');
 
   return '<div><div class="ph"><div><div class="pt">Planning '+fyLbl(S.year)+'</div>'
     +'<div class="ps">'+fyRange(S.year)+' \u00b7 ligne bleue = aujourd\'hui \u00b7 bandes basses = absences</div></div>'
