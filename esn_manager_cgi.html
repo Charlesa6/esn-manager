@@ -237,11 +237,14 @@ function av(name,sz){
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function kpi(c,miss,lvs,y,H){
   var ys=fyStart(y),ye=fyEnd(y);
-  var tWD=wDays(ys,ye,H);
-  var lds=lvSet(c.id,lvs,H,ys,ye);
+  /* Borner sur la période d'activité réelle du consultant dans le FY */
+  var cs=(c.arrive&&c.arrive>ys)?c.arrive:ys;   /* début : max(fyStart, arrivée) */
+  var ce=(c.depart&&c.depart<ye)?c.depart:ye;   /* fin   : min(fyEnd,   départ)  */
+  var tWD=cs<=ce?wDays(cs,ce,H):0;
+  var lds=lvSet(c.id,lvs,H,cs,ce);
   var lvD=lds.size,avD=tWD-lvD,bill=0,rev=0;
   var pm=miss.filter(function(m){return m.cid===c.id;}).map(function(m){
-    var mS=m.sd<ys?ys:m.sd,mE=(!m.ed||m.ed>ye)?ye:m.ed;
+    var mS=m.sd<cs?cs:m.sd,mE=(!m.ed||m.ed>ce)?ce:m.ed;
     if(mS>mE)return Object.assign({},m,{days:0,rev:0,mar:0});
     var wd=(m.wdays&&m.wdays.length)?m.wdays:[1,2,3,4,5];
     var d=0,cur=mS;
@@ -1098,6 +1101,10 @@ function tModal(){
       +'<div class="fd"><label class="fl">Poste *</label><input class="ic" id="mti" value="'+esc(it?it.title:'')+'" placeholder="ex\u00a0: Consultant Senior"></div>'
       +'<div class="fd"><label class="fl">SCR journalier (\u20ac) *</label><input class="ic" id="ms" type="number" min="0" value="'+esc(it?String(it.scr):'')+'" placeholder="450"><p class="fh">Salary Cost Revenue - co\u00fbt journalier (salaire \u00f7 jours travaillables)</p></div>'
       +'<div class="fd"><label class="fl">Email</label><input class="ic" id="me" type="email" value="'+esc(it?it.email:'')+'" placeholder="prenom.nom@cgi.com"></div>'
+      +'<div class="cs2">'
+      +'<div class="fd"><label class="fl">Date d\'arriv\u00e9e dans l\'\u00e9quipe</label><input class="ic" id="marr" type="date" value="'+esc(it&&it.arrive?it.arrive:'')+'"><p class="fh">Laissez vide si pr\u00e9sent depuis le d\u00e9but du FY</p></div>'
+      +'<div class="fd"><label class="fl">Date de d\u00e9part</label><input class="ic" id="mdep" type="date" value="'+esc(it&&it.depart?it.depart:'')+'"><p class="fh">Laissez vide si toujours en poste</p></div>'
+      +'</div>'
       +dirFld
       +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="sc">'+(it?'Enregistrer':'Ajouter')+'</button></div>';
   }
@@ -1228,12 +1235,13 @@ function bind(){
       else if(a==='dl'){if(confirm('Supprimer cette absence ?')){S.lvs=S.lvs.filter(function(l){return l.id!==id;});sbDel('leaves',id);render();}}
       else if(a==='sc'){
         var n=gv('mn'),t=gv('mti'),s=+gv('ms'),em=gv('me');
+        var arr=gv('marr')||null,dep=gv('mdep')||null;
         var rdir=(S.role==='directeur')?S.dirName:gv('mdir'); /* un directeur ne crée que dans son équipe */
         if(!n||!t||!s){alert('Veuillez remplir les champs obligatoires (*).');return;}
         var it=S.modal.item;
         var nc;
-        if(it){S.cons=S.cons.map(function(c){if(c.id===it.id){nc=Object.assign({},c,{name:n,title:t,scr:s,email:em,dir:rdir});return nc;}return c;});}
-        else{nc={id:uid(),name:n,title:t,scr:s,email:em,dir:rdir};S.cons=S.cons.concat([nc]);}
+        if(it){S.cons=S.cons.map(function(c){if(c.id===it.id){nc=Object.assign({},c,{name:n,title:t,scr:s,email:em,dir:rdir,arrive:arr,depart:dep});return nc;}return c;});}
+        else{nc={id:uid(),name:n,title:t,scr:s,email:em,dir:rdir,arrive:arr,depart:dep};S.cons=S.cons.concat([nc]);}
         sbUpsertCons(nc);
         S.modal=null;render();
       }
@@ -1372,7 +1380,7 @@ function importJSON(file){
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    SUPABASE - helpers (synchronisation non-bloquante)
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
-function mapC(r){return{id:r.id,name:r.name,title:r.title||'',scr:r.scr||0,email:r.email||'',dir:r.directeur||''};}
+function mapC(r){return{id:r.id,name:r.name,title:r.title||'',scr:r.scr||0,email:r.email||'',dir:r.directeur||'',arrive:r.arrive||null,depart:r.depart||null};}
 function mapM(r){return{id:r.id,cid:r.consultant_id,name:r.name,cli:r.client_name||'',tjm:r.tjm||0,sd:r.start_date,ed:r.end_date||null,loc:r.location||'',mgr:r.manager_name||'',ccn:r.client_contact_name||'',ccr:r.client_contact_role||'',btype:r.billing_type||'at',wdays:(Array.isArray(r.work_days)?r.work_days:(r.work_days?String(r.work_days).split(',').map(Number):[1,2,3,4,5])),deal:r.deal_amount||0,tmar:(r.target_margin!=null?r.target_margin:null)};}
 function mapL(r){return{id:r.id,cid:r.consultant_id,type:r.type||'Congé payé',s:r.start_date,e:r.end_date};}
 
@@ -1401,7 +1409,7 @@ async function loadSB(){
 
 async function sbUpsertCons(c){
   if(!sb||!SB_CID)return;
-  var res=await sb.from('consultants').upsert({id:c.id,company_id:SB_CID,name:c.name,title:c.title,scr:c.scr,email:c.email,directeur:c.dir||null});
+  var res=await sb.from('consultants').upsert({id:c.id,company_id:SB_CID,name:c.name,title:c.title,scr:c.scr,email:c.email,directeur:c.dir||null,arrive:c.arrive||null,depart:c.depart||null});
   if(res.error)throw new Error(c.name+': '+res.error.message);
 }
 async function sbUpsertMiss(m){
