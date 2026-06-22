@@ -11,8 +11,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 input,select,button{font-family:inherit;font-size:inherit}
 button{cursor:pointer}
 #app{display:flex;height:100vh;overflow:hidden}
-#sb{width:210px;background:#0f172a;display:flex;flex-direction:column;flex-shrink:0}
+#sb{width:210px;background:#0f172a;display:flex;flex-direction:column;flex-shrink:0;transition:width .22s cubic-bezier(.4,0,.2,1);overflow:hidden}
 #mc{flex:1;overflow-y:auto;background:#f1f5f9}
+/* Sidebar collapsible */
+body.sb-col #sb{width:0}
+#sb-open{position:fixed;top:12px;left:12px;z-index:300;width:36px;height:36px;background:#0f172a;border:none;border-radius:9px;cursor:pointer;color:#f8fafc;font-size:18px;display:none;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+body.sb-col #sb-open{display:flex}
+/* Mobile : sidebar en overlay */
+@media(max-width:767px){
+  #sb{position:fixed;top:0;left:0;bottom:0;z-index:200;width:0}
+  body:not(.sb-col) #sb{width:210px;box-shadow:4px 0 24px rgba(0,0,0,.45)}
+  #sb-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:199}
+  body:not(.sb-col) #sb-backdrop{display:block}
+  #mc{overflow-y:auto}
+}
 .inn{padding:24px;max-width:1200px;margin:0 auto}
 /* sidebar */
 .sbl{padding:20px 20px 14px}
@@ -125,6 +137,8 @@ details summary::-webkit-details-marker{display:none}
 </style>
 </head>
 <body>
+<button id="sb-open" onclick="toggleSB()" aria-label="Ouvrir le menu">&#9776;</button>
+<div id="sb-backdrop" onclick="toggleSB()"></div>
 <div id="app">
   <div id="sb"></div>
   <div id="mc"></div>
@@ -583,7 +597,8 @@ function tSB(){
         :'<div style="font-size:11px;color:#475569">Aucun directeur défini</div>')
       +'</div>';
   }
-  return '<div class="sbl"><div class="sbn">ESN Manager</div><div class="sbs">CGI Business Conseil</div></div>'
+  return '<div class="sbl" style="display:flex;align-items:flex-start;justify-content:space-between"><div><div class="sbn">ESN Manager</div><div class="sbs">CGI Business Conseil</div></div>'
+    +'<button onclick="toggleSB()" style="background:none;border:none;color:#475569;cursor:pointer;font-size:16px;padding:2px 0 0;line-height:1;flex-shrink:0" aria-label="R\u00e9duire">&#8592;</button></div>'
     +'<div class="syr"><div class="syr-lbl">Exercice fiscal</div><select id="yrs">'+fyOpts+'</select></div>'
     +dirBlock
     +'<nav class="snv">'+nav+'</nav>'
@@ -806,7 +821,7 @@ function tPlan(){
     ['#22c55e','En mission'],['#ef4444','Fin &lt;14j'],['#f59e0b','Fin &lt;30j'],['#d1d5db','Termin\u00e9e'],['#fbbf24','Cong\u00e9s pay\u00e9s'],['#1d4ed8','Arr\u00eat / Maternit\u00e9'],['#a78bfa','RTT'],['#34d399','Formation'],['#60a5fa','Mission interne']].map(function(x){return '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#64748b"><div style="width:12px;height:12px;border-radius:3px;background:'+x[0]+'"></div>'+x[1]+'</div>';}).join('');
 
   return '<div><div class="ph"><div><div class="pt">Planning '+fyLbl(S.year)+'</div>'
-    +'<div class="ps">'+fyRange(S.year)+' \u00b7 ligne bleue = aujourd\'hui \u00b7 </div></div>'
+    +'<div class="ps">'+fyRange(S.year)+' \u00b7 ligne bleue = aujourd\'hui</div></div>'
     +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+lgd+'</div></div>'
     +'<div class="card gwp"><div class="gin"><div class="ghd"><div class="glh">Consultant</div><div class="gms">'+mths+'</div></div>'
     +rows+(activeCons.length?'':'<div class="emp">Aucun consultant</div>')+'</div></div></div>';
@@ -1538,6 +1553,15 @@ async function initApp(){
 }
 
 /* \u2500\u2500 START */
+(function(){
+  var m=window.innerWidth<768;
+  var s=localStorage.getItem('sb-col');
+  if(m||(s==='true'))document.body.classList.add('sb-col');
+})();
+function toggleSB(){
+  document.body.classList.toggle('sb-col');
+  localStorage.setItem('sb-col',document.body.classList.contains('sb-col'));
+}
 initApp();
 </script>
 </body>
