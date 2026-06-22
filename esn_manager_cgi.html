@@ -402,6 +402,12 @@ function getAct(cid){
 }
 /* Consultant ayant quitté l'entreprise avant aujourd'hui */
 function isGone(c){return !!(c.depart&&c.depart<TODAY);}
+/* Absence active aujourd'hui (hors inter-contrat) */
+function getActiveLv(cid){
+  return S.lvs.find(function(l){
+    return l.cid===cid&&l.type!=='Inter-contrat'&&l.s<=TODAY&&l.e>=TODAY;
+  });
+}
 function buildKS(){return S.cons.map(function(c){return{c:c,k:kpi(c,S.miss,S.lvs,S.year,H)};});}
 function clientRev(ks){
   var map={};
@@ -442,7 +448,7 @@ function genRecs(goal){
   var recs=[];
 
   if(goal==='ca'){
-    var noM=S.cons.filter(function(c){return !getAct(c.id)&&!isGone(c);});
+    var noM=S.cons.filter(function(c){return !getAct(c.id)&&!isGone(c)&&!getActiveLv(c.id);});
     if(noM.length>0)recs.push({
       title:'Action urgente : staffer les consultants sans mission',
       detail:noM.map(function(c){return c.name;}).join(', ')+' ne sont pas en mission. Chaque jour factur\u00e9 g\u00e9n\u00e8re en moyenne '+fEur(Math.round(avgTJMv))+'. Lancez imm\u00e9diatement des appels d\u2019offres ou sollicitez vos clients existants pour un besoin compl\u00e9mentaire.'
@@ -473,7 +479,7 @@ function genRecs(goal){
   }
 
   if(goal==='util'){
-    var noM2=S.cons.filter(function(c){return !getAct(c.id)&&!isGone(c);});
+    var noM2=S.cons.filter(function(c){return !getAct(c.id)&&!isGone(c)&&!getActiveLv(c.id);});
     if(noM2.length>0)recs.push({
       title:'Priorit\u00e9 absolue\u00a0: '+noM2.length+' consultant(s) sans mission',
       detail:noM2.map(function(c){return c.name;}).join(', ')+' n\u2019ont aucune mission. Chaque semaine non factur\u00e9e repr\u00e9sente '+fEur(Math.round(avgTJMv*5))+' de CA perdu. D\u00e9clenchez des entretiens clients d\u00e8s cette semaine.'
@@ -607,7 +613,7 @@ function tDash(){
   })
     .map(function(m){return Object.assign({},m,{c:S.cons.find(function(c){return c.id===m.cid;}),dl:dL(m.ed)});})
     .sort(function(a,b){return a.dl-b.dl;});
-  var noM=S.cons.filter(function(c){return !getAct(c.id)&&!isGone(c);});
+  var noM=S.cons.filter(function(c){return !getAct(c.id)&&!isGone(c)&&!getActiveLv(c.id);});
   var totR=ks.reduce(function(s,x){return s+x.k.rev;},0);
   var avgSr=ks.reduce(function(s,x){return s+x.k.sr;},0)/(ks.length||1);
   var actCnt=S.miss.filter(function(m){var s=mSt(m);return s==='active'||s==='critical'||s==='soon';}).length;
@@ -751,40 +757,61 @@ function tMiss(){
    TEMPLATE - PLANNING (Gantt)
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function tPlan(){
-  var MN=['Jan','F\u00e9v','Mar','Avr','Mai','Jun','Jul','Ao\u00fb','Sep','Oct','Nov','D\u00e9c'];
-  /* fiscal year: Oct\u2192Sep, so months in FY order */
   var fyS=pD(fyStart(S.year)),fyE=pD(fyEnd(S.year));
   var ysT=fyS.getTime(),yeT=fyE.getTime(),dur=yeT-ysT;
   var nowP=((new Date().getTime()-ysT)/dur)*100;
-  /* month labels for FY: oct to sep */
   var fyMonths=['Oct','Nov','D\u00e9c','Jan','F\u00e9v','Mar','Avr','Mai','Jun','Jul','Ao\u00fb','Sep'];
   var COL={active:'#22c55e',critical:'#ef4444',soon:'#f59e0b',future:'#93c5fd',ended:'#d1d5db'};
-  var rows=S.cons.map(function(c,ci){
+  var LVC={'Maladie':'#f87171','Cong\u00e9 maternit\u00e9':'#f472b6','Cong\u00e9 pay\u00e9':'#fbbf24','RTT':'#a78bfa','Formation':'#34d399','Cong\u00e9 sans solde':'#cbd5e1','Mission interne':'#60a5fa','Autre':'#d1d5db'};
+
+  var activeCons=S.cons.filter(function(c){return !isGone(c);});
+
+  var rows=activeCons.map(function(c,ci){
     var cm=S.miss.filter(function(m){return m.cid===c.id;});
+    var cl=S.lvs.filter(function(l){return l.cid===c.id&&l.type!=='Inter-contrat';});
     var grid='';for(var i=0;i<11;i++)grid+='<div style="position:absolute;top:0;bottom:0;width:1px;background:#f1f5f9;left:'+((i+1)/12*100)+'%"></div>';
-    var today=nowP>=0&&nowP<=100?'<div style="position:absolute;top:0;bottom:0;width:2px;background:#3b82f6;z-index:10;left:'+nowP+'%"></div>':'';
+    var todayLine=nowP>=0&&nowP<=100?'<div style="position:absolute;top:0;bottom:0;width:2px;background:#3b82f6;z-index:10;left:'+nowP+'%"></div>':'';
+
     var bars=cm.map(function(m){
       var s=Math.max(pD(m.sd).getTime(),ysT);
       var e=Math.min(m.ed?pD(m.ed).getTime():yeT,yeT);
       if(s>yeT||e<ysT)return '';
-      var l=(s-ysT)/dur*100,w=(e-s)/dur*100;
-      var left=Math.max(0,l),wid=Math.max(0.6,Math.min(100-left,w));
+      var left=Math.max(0,(s-ysT)/dur*100);
+      var wid=Math.max(0.6,Math.min(100-left,(e-s)/dur*100));
       var st=mSt(m);var dl=m.ed?dL(m.ed):null;
       var tip=esc(m.name+'\n'+m.cli+'\nTJM : '+fEur(m.tjm)+'\nDu '+fDt(m.sd)+' au '+fDt(m.ed)+(dl!=null&&dl>=0?'\n\u26a0 J\u2212'+dl:''));
       return '<div class="gbar" style="left:'+left+'%;width:'+wid+'%;background:'+(COL[st]||'#22c55e')+'" title="'+tip+'"><span>'+esc(m.cli)+'</span></div>';
     }).join('');
+
+    var lvBars=cl.map(function(l){
+      var s=Math.max(pD(l.s).getTime(),ysT);
+      var e=Math.min(pD(l.e).getTime(),yeT);
+      if(s>yeT||e<ysT)return '';
+      var left=Math.max(0,(s-ysT)/dur*100);
+      var wid=Math.max(0.4,Math.min(100-left,(e-s)/dur*100));
+      var col=LVC[l.type]||'#d1d5db';
+      var tip=esc(l.type+' : du '+fDt(l.s)+' au '+fDt(l.e));
+      return '<div style="position:absolute;bottom:0;left:'+left+'%;width:'+wid+'%;height:7px;background:'+col+';border-radius:2px 2px 0 0;opacity:.9;z-index:5;" title="'+tip+'"></div>';
+    }).join('');
+
     return '<div class="grw" style="background:'+(ci%2===0?'#fff':'#f8fafc')+'">'
       +'<div class="glb">'+av(c.name,28)+'<div style="min-width:0">'
       +'<div style="font-size:12px;font-weight:600;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.name.split(' ')[0])+'</div>'
       +'<div style="font-size:10px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.title.split(' ')[0])+'</div>'
-      +'</div></div><div class="gtr">'+grid+today+bars+'</div></div>';
+      +'</div></div><div class="gtr">'+grid+todayLine+bars+lvBars+'</div></div>';
   }).join('');
+
   var mths=fyMonths.map(function(m){return '<div class="gm">'+m+'</div>';}).join('');
-  var lgd=[['#22c55e','En mission'],['#f59e0b','Fin &lt;30j'],['#ef4444','Fin &lt;14j'],['#93c5fd','\u00c0 venir'],['#d1d5db','Termin\u00e9e']].map(function(x){return '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#64748b"><div style="width:12px;height:12px;border-radius:3px;background:'+x[0]+'"></div>'+x[1]+'</div>';}).join('');
-  return '<div><div class="ph"><div><div class="pt">Planning '+fyLbl(S.year)+'</div><div class="ps">'+fyRange(S.year)+' \u00b7 ligne bleue = aujourd\'hui</div></div>'
-    +'<div style="display:flex;gap:12px;flex-wrap:wrap">'+lgd+'</div></div>'
+  var lgd=[
+    ['#22c55e','En mission'],['#f59e0b','Fin &lt;30j'],['#ef4444','Fin &lt;14j'],['#93c5fd','\u00c0 venir'],['#d1d5db','Termin\u00e9e'],
+    ['#fbbf24','Cong\u00e9s pay\u00e9s'],['#f87171','Arr\u00eat maladie'],['#f472b6','Maternit\u00e9'],['#a78bfa','RTT'],['#34d399','Formation'],['#60a5fa','Mission interne']
+  ].map(function(x){return '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#64748b"><div style="width:12px;height:12px;border-radius:3px;background:'+x[0]+'"></div>'+x[1]+'</div>';}).join('');
+
+  return '<div><div class="ph"><div><div class="pt">Planning '+fyLbl(S.year)+'</div>'
+    +'<div class="ps">'+fyRange(S.year)+' \u00b7 ligne bleue = aujourd\'hui \u00b7 bandes basses = absences</div></div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+lgd+'</div></div>'
     +'<div class="card gwp"><div class="gin"><div class="ghd"><div class="glh">Consultant</div><div class="gms">'+mths+'</div></div>'
-    +rows+(S.cons.length?'':'<div class="emp">Aucun consultant</div>')+'</div></div></div>';
+    +rows+(activeCons.length?'':'<div class="emp">Aucun consultant</div>')+'</div></div></div>';
 }
 
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
