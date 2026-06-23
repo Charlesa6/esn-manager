@@ -1822,16 +1822,11 @@ function tImpute(){
   S.impHistory.forEach(function(h){h.rows.forEach(function(r){var fy=dateToFY(r.date);if(fy&&allFYs.indexOf(fy)<0)allFYs.push(fy);});});
   allFYs.sort();
 
-  /* ── Lignes du tableau : union des codes projets plan + r\u00e9el ── */
-  var allPkeys=[];
-  Object.keys(planByProj).forEach(function(k){if(allPkeys.indexOf(k)<0)allPkeys.push(k);});
-  Object.keys(actByProj).forEach(function(k){if(allPkeys.indexOf(k)<0)allPkeys.push(k);});
-
+  /* Lignes du tableau : uniquement les codes projets li\u00e9s \u00e0 une mission de l\u2019app */
   var tblRows=[];
-  allPkeys.forEach(function(pkey){
-    var plan=planByProj[pkey]||null;
+  Object.keys(planByProj).forEach(function(pkey){
+    var plan=planByProj[pkey];   /* toujours pr\u00e9sent puisqu\u2019on it\u00e8re sur planByProj */
     var act=actByProj[pkey]||null;
-    if(!plan&&(!act||act.caAct===0))return;
     tblRows.push({
       pcode:plan?plan.pcode:(act?act.pcode:pkey),
       miss:plan?plan.miss:'',
