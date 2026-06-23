@@ -1615,7 +1615,7 @@ function handleImpFile(file){
 function applyImpMap(){
   var imp=S.imp;if(!imp)return;
   var cm={};
-  ['cons','typeAnal','date','montant','nbj'].forEach(function(f){
+  ['cons','typeAnal','date','montant'].forEach(function(f){
     var el=document.getElementById('im-'+f);
     if(el&&el.value!=='')cm[f]=parseInt(el.value);
   });
@@ -1636,48 +1636,76 @@ function applyImpMap(){
   }
   function norm(n){return n.toLowerCase().replace(/[^a-z0-9 ]/gi,'').trim();}
 
-  /* Parser les lignes */
+  /* Parser : garder uniquement SHR et CST */
   imp.rows=imp.raw.map(function(row){
     var tAnal=cm.typeAnal!==undefined?String(row[cm.typeAnal]||'').trim().toUpperCase():'';
     var nom=parseName(row[cm.cons]);
     var montant=parseFloat(String(row[cm.montant]||'0').replace(',','.'))||0;
     var date=parseDate(cm.date!==undefined?row[cm.date]:null);
-    /* Jours : champ d\u00e9di\u00e9 si mapp\u00e9, sinon 1 par entr\u00e9e BIL */
-    var jours=cm.nbj!==undefined?parseFloat(String(row[cm.nbj]||'0').replace(',','.'))||0:(tAnal==='BIL'?1:0);
-    return{cons:nom,typeAnal:tAnal,montant:montant,date:date,jours:jours};
+    return{cons:nom,typeAnal:tAnal,montant:montant,date:date};
   }).filter(function(r){
-    if(!r.cons||r.montant<=0)return false;
-    if(cm.typeAnal!==undefined)return r.typeAnal==='BIL'||r.typeAnal==='CST';
-    return true;
+    if(!r.cons||!r.date)return false;
+    if(cm.typeAnal!==undefined)return r.typeAnal==='SHR'||r.typeAnal==='CST';
+    return r.montant!==0;
   });
 
   /* Ann\u00e9es distinctes */
   var years=[];
   imp.rows.forEach(function(r){
-    if(r.date&&r.date.length>=4){var yr=r.date.substring(0,4);if(years.indexOf(yr)<0)years.push(yr);}
+    var yr=r.date.substring(0,4);
+    if(yr&&years.indexOf(yr)<0)years.push(yr);
   });
   years.sort();
 
-  /* Agr\u00e9gation par groupe (objet {nom: {bil,cst}}) */
-  function addToGroup(grp,r){
-    var key=norm(r.cons);
-    if(!grp[key])grp[key]={name:r.cons,bil:{n:0,ca:0,jours:0},cst:{n:0,cost:0,jours:0}};
-    if(r.typeAnal==='BIL'||(cm.typeAnal===undefined)){
-      grp[key].bil.n++;grp[key].bil.ca+=r.montant;grp[key].bil.jours+=r.jours;
-    }else if(r.typeAnal==='CST'){
-      grp[key].cst.n++;grp[key].cst.cost+=r.montant;grp[key].cst.jours+=r.jours;
-    }
+  /*
+   * Construire un groupe {consKey -> {name, shr:{ca,jours}, cst:{cost,jours}}}
+   * pour une ann\u00e9e donn\u00e9e ('all' = toutes).
+   *
+   * R\u00e8gle jours SHR :
+   *   - Regrouper les lignes SHR par (consultant, Trans Date)
+   *   - Calculer le montant net par date (positif + n\u00e9gatif s\'annulent)
+   *   - Chaque date avec un net > 0 = 1 jour facturable
+   */
+  function buildGroup(rows, yr){
+    var shrByDate={};  /* {consKey: {date: netMontant}} */
+    var cstByCons={};  /* {consKey: {name, cost}} */
+
+    rows.forEach(function(r){
+      if(yr!=='all'&&r.date.substring(0,4)!==yr)return;
+      var key=norm(r.cons);
+      if(r.typeAnal==='SHR'||cm.typeAnal===undefined){
+        if(!shrByDate[key])shrByDate[key]={name:r.cons,dates:{}};
+        shrByDate[key].dates[r.date]=(shrByDate[key].dates[r.date]||0)+r.montant;
+      }else if(r.typeAnal==='CST'){
+        if(!cstByCons[key])cstByCons[key]={name:r.cons,n:0,cost:0};
+        cstByCons[key].n++;cstByCons[key].cost+=r.montant;
+      }
+    });
+
+    var grp={};
+    /* SHR : sommer CA net, compter jours (dates avec net > 0) */
+    Object.keys(shrByDate).forEach(function(key){
+      var d=shrByDate[key];
+      if(!grp[key])grp[key]={name:d.name,shr:{ca:0,jours:0},cst:{cost:0,jours:0}};
+      Object.keys(d.dates).forEach(function(date){
+        var net=d.dates[date];
+        if(net>0){grp[key].shr.ca+=net;grp[key].shr.jours++;}
+      });
+    });
+    /* CST : sommer co\u00fbts */
+    Object.keys(cstByCons).forEach(function(key){
+      var d=cstByCons[key];
+      if(!grp[key])grp[key]={name:d.name,shr:{ca:0,jours:0},cst:{cost:0,jours:0}};
+      grp[key].cst.cost+=d.cost;grp[key].cst.jours+=d.n;
+    });
+    return grp;
   }
 
-  /* Construire byYear */
-  var byYear={all:{}};
-  years.forEach(function(yr){byYear[yr]={};});
-  imp.rows.forEach(function(r){
-    addToGroup(byYear.all,r);
-    if(r.date&&r.date.length>=4){var yr=r.date.substring(0,4);if(byYear[yr])addToGroup(byYear[yr],r);}
-  });
+  /* Pr\u00e9-calculer pour toutes les ann\u00e9es */
+  var byYear={all:buildGroup(imp.rows,'all')};
+  years.forEach(function(yr){byYear[yr]=buildGroup(imp.rows,yr);});
 
-  /* Calculer les r\u00e9sultats pour un groupe donn\u00e9 */
+  /* Construire les r\u00e9sultats comparatifs pour un groupe */
   function buildResults(grp){
     var matched={};
     var rows=S.cons.filter(function(c){return !isGone(c);}).map(function(c){
@@ -1691,8 +1719,8 @@ function applyImpMap(){
       });
       if(best&&bestScore>=1)matched[norm(best.name)]=true;
       var k=kpi(c,S.miss,S.lvs,S.year,H);
-      var impCA=best?best.bil.ca:0;
-      var impJ=best?best.bil.jours:0;
+      var impCA=best?best.shr.ca:0;
+      var impJ=best?best.shr.jours:0;
       var impTJM=impJ>0?impCA/impJ:0;
       var impCost=best?best.cst.cost:0;
       var impSCR=best&&best.cst.jours>0?impCost/best.cst.jours:0;
@@ -1700,22 +1728,20 @@ function applyImpMap(){
         appJ:k.bill,impJ:impJ,ecartJ:impJ-k.bill,
         appCA:k.rev,impCA:impCA,ecartCA:impCA-k.rev,
         appTJM:k.avgT,impTJM:impTJM,ecartTJM:impTJM-k.avgT,
-        appCost:c.scr*k.tWD,impCost:impCost,ecartCost:impCost-(c.scr*k.tWD),
-        appSCR:c.scr,impSCR:impSCR,ecartSCR:impSCR-c.scr};
+        appCost:c.scr*k.tWD,impCost:impCost,
+        appSCR:c.scr,impSCR:impSCR};
     });
     var unmatched=Object.values(grp).filter(function(b){return !matched[norm(b.name)];});
-    var totalImpCA=Object.values(grp).reduce(function(s,b){return s+b.bil.ca;},0);
-    var totalImpCost=Object.values(grp).reduce(function(s,b){return s+b.cst.cost;},0);
-    var totalImpJ=Object.values(grp).reduce(function(s,b){return s+b.bil.jours;},0);
-    return{rows:rows,unmatched:unmatched,totalImpCA:totalImpCA,totalImpCost:totalImpCost,totalImpJ:totalImpJ};
+    var totalSHR_CA=Object.values(grp).reduce(function(s,b){return s+b.shr.ca;},0);
+    var totalSHR_J=Object.values(grp).reduce(function(s,b){return s+b.shr.jours;},0);
+    var totalCST=Object.values(grp).reduce(function(s,b){return s+b.cst.cost;},0);
+    return{rows:rows,unmatched:unmatched,totalImpCA:totalSHR_CA,totalImpJ:totalSHR_J,totalImpCost:totalCST};
   }
 
-  /* Pr\u00e9-calculer pour toutes les ann\u00e9es */
   var computed={all:buildResults(byYear.all)};
   years.forEach(function(yr){computed[yr]=buildResults(byYear[yr]||{});});
-
   imp.results={computed:computed,years:years};
-  imp.selYear=imp.selYear||'all';
+  imp.selYear='all';
   render();
 }
 
@@ -1745,10 +1771,9 @@ function tImpute(){
   if(!imp.results){
     var FIELDS=[
       ['cons',     'Nom / Consultant *', 'Colonne contenant le nom (format NOM, Pr\u00e9nom accept\u00e9)'],
-      ['typeAnal', 'Type ANAL',          'BIL = facturation TJM \u00b7 CST = co\u00fbt SCR'],
+      ['typeAnal', 'Type ANAL',          'SHR = facturation TJM \u00b7 CST = co\u00fbt SCR \u2014 les autres types sont ignor\u00e9s'],
       ['date',     'Date (Trans Date)',  'Date de la transaction \u2014 utilis\u00e9e pour le filtre par ann\u00e9e'],
       ['montant',  'Montant *',          'Montant en devise (Foreign Amount)'],
-      ['nbj',      'Nombre de jours',    'Jours factur\u00e9s par ligne (ex: Nbr of Days) \u2014 optionnel']
     ];
     /* N'afficher que les colonnes pertinentes (ou toutes si <15 colonnes) */
     var relevantIdx=imp.headers.reduce(function(acc,h,i){
@@ -1789,7 +1814,7 @@ function tImpute(){
   var computed=imp.results.computed;
   var years=imp.results.years;
   var res=computed[selYear]||computed.all;
-  var hasBIL=imp.rows.some(function(r){return r.typeAnal==='BIL'||imp.map.typeAnal===undefined;});
+  var hasSHR=imp.rows.some(function(r){return r.typeAnal==='SHR'||imp.map.typeAnal===undefined;});
   var hasCST=imp.rows.some(function(r){return r.typeAnal==='CST';});
   var hasJours=imp.map.nbj!==undefined;
   var totalAppCA=res.rows.reduce(function(s,r){return s+r.appCA;},0);
@@ -1817,12 +1842,12 @@ function tImpute(){
 
   /* Hero cards */
   var hero='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">'
-    +'<div class="card" style="padding:18px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px">CA import\u00e9 (BIL)</div>'
+    +'<div class="card" style="padding:18px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px">CA import\u00e9 (SHR)</div>'
     +'<div style="font-size:26px;font-weight:900;color:#2563eb">'+fEur(Math.round(res.totalImpCA))+'</div>'
     +'<div style="font-size:11px;color:#64748b;margin-top:4px">vs '+fEur(Math.round(totalAppCA))+' saisi</div></div>'
     +'<div class="card" style="padding:18px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px">Jours factur\u00e9s</div>'
     +'<div style="font-size:26px;font-weight:900;color:#0f172a">'+fJ(res.totalImpJ)+'</div>'
-    +'<div style="font-size:11px;color:#64748b;margin-top:4px">'+(hasJours?'donn\u00e9es fichier':'1 ligne = 1 unit\u00e9')+'</div></div>'
+    +'<div style="font-size:11px;color:#64748b;margin-top:4px">dates SHR à montant net positif</div></div>'
     +'<div class="card" style="padding:18px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px">\u00c9cart CA</div>'
     +'<div style="font-size:26px;font-weight:900;color:'+ecC(ecartCA)+'">'+sgnCA(ecartCA)+'</div>'
     +'<div style="font-size:11px;color:#64748b;margin-top:4px">'+(Math.abs(ecartCA)<1?'Aucun \u00e9cart':ecartCA>0?'CA r\u00e9el sup\u00e9rieur':'CA r\u00e9el inf\u00e9rieur')+'</div></div>'
@@ -1836,7 +1861,7 @@ function tImpute(){
     +'<th style="'+THL+'">Consultant</th>'
     +'<th style="'+TH+'">Jours factur\u00e9s</th>'
     +'<th style="'+TH+'">CA saisi</th><th style="'+TH+'">CA r\u00e9el</th><th style="'+TH+'">\u00c9cart CA</th>'
-    +(hasBIL?'<th style="'+TH+'">TJM saisi</th><th style="'+TH+'">TJM r\u00e9el</th>':'')
+    +(hasSHR?'<th style="'+TH+'">TJM saisi</th><th style="'+TH+'">TJM r\u00e9el</th>':'')
     +(hasCST?'<th style="'+TH+'">SCR saisi</th><th style="'+TH+'">SCR r\u00e9el</th>':'')
     +'</tr></thead>';
   var tbody='<tbody>'+res.rows.filter(function(r){return r.imp;}).map(function(r){
@@ -1847,7 +1872,7 @@ function tImpute(){
       +'<td style="'+TD+'">'+fEur(Math.round(r.appCA))+'</td>'
       +'<td style="'+TD+'">'+fEur(Math.round(r.impCA))+'</td>'
       +'<td style="'+TD+';color:'+cCol+';font-weight:700">'+sgnCA(r.ecartCA)+'</td>'
-      +(hasBIL?'<td style="'+TD+'">'+(r.appTJM>0?fEur(Math.round(r.appTJM)):'\u2014')+'</td>'
+      +(hasSHR?'<td style="'+TD+'">'+(r.appTJM>0?fEur(Math.round(r.appTJM)):'\u2014')+'</td>'
         +'<td style="'+TD+'">'+(r.impTJM>0?fEur(Math.round(r.impTJM)):'\u2014')+'</td>':'')
       +(hasCST?'<td style="'+TD+'">'+fEur(Math.round(r.appSCR))+'</td>'
         +'<td style="'+TD+'">'+(r.impSCR>0?fEur(Math.round(r.impSCR)):'\u2014')+'</td>':'')
@@ -1874,7 +1899,7 @@ function tImpute(){
     +'<div class="card ov">'
     +'<div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between">'
     +'<div style="font-size:13px;font-weight:700;color:#0f172a">Comparaison par consultant \u2014 '+(selYear==='all'?'Toutes ann\u00e9es':selYear)+'</div>'
-    +'<div style="font-size:11px;color:#94a3b8">'+(hasJours?'Jours depuis Nbr of Days':'Jours = nb lignes BIL')+'</div>'
+    +'<div style="font-size:11px;color:#94a3b8">Jours = dates SHR à montant net > 0</div>'
     +'</div>'
     +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'+thead+tbody+'</table></div>'
     +noMatchHtml+unmatch+'</div></div>';
