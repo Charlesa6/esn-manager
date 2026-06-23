@@ -1626,8 +1626,6 @@ function applyImpMap(){
       if(el&&el.value!=='')cm[f]=parseInt(el.value);
     });
 
-    console.log('Mapping:', JSON.stringify(cm), '| Lignes brutes:', imp.raw.length);
-
     if(cm.cons===undefined){alert('Colonne Consultant non s\u00e9lectionn\u00e9e.');return;}
     if(cm.montant===undefined){alert('Colonne Montant non s\u00e9lectionn\u00e9e.');return;}
     imp.map=cm;
@@ -1645,7 +1643,9 @@ function applyImpMap(){
     }
     function norm(n){return n.toLowerCase().replace(/[^a-z0-9 ]/gi,'').trim();}
 
-    /* Parser les lignes - garder SHR et CST */
+    var useProjet = cm.projet!==undefined;
+
+    /* Parser les lignes */
     imp.rows=imp.raw.map(function(row){
       var tAnal=cm.typeAnal!==undefined?String(row[cm.typeAnal]||'').trim().toUpperCase():'SHR';
       var nom=parseName(row[cm.cons]);
@@ -1655,16 +1655,16 @@ function applyImpMap(){
       return{cons:nom,typeAnal:tAnal,montant:montant,date:date,projet:projet};
     }).filter(function(r){
       if(!r.cons)return false;
-      if(cm.typeAnal!==undefined)return (r.typeAnal==='SHR'||r.typeAnal==='CST')&&r.montant!==0;
+      if(cm.typeAnal!==undefined)return(r.typeAnal==='SHR'||r.typeAnal==='CST')&&r.montant!==0;
       return r.montant!==0;
     });
 
     if(imp.rows.length===0){
-      alert('Aucune ligne SHR ou CST trouv\u00e9e.\n\nV\u00e9rifiez que la colonne "Type ANAL" est bien mapp\u00e9e et contient des valeurs "SHR".');
+      alert('Aucune ligne SHR ou CST trouv\u00e9e.\nV\u00e9rifiez que la colonne "Type ANAL" est bien mapp\u00e9e et contient des valeurs "SHR".');
       return;
     }
 
-    /* Ann\u00e9es distinctes */
+    /* Ann\u00e9es distinctes depuis Trans Date */
     var years=[];
     if(cm.date!==undefined){
       imp.rows.forEach(function(r){
@@ -1673,31 +1673,40 @@ function applyImpMap(){
       years.sort();
     }
 
-    /* Construire un groupe pour une ann\u00e9e donn\u00e9e.
-     * Si cm.projet est mapp\u00e9 : regrouper par code projet (cl\u00e9 = projetCode)
-     * Sinon : regrouper par nom consultant (cl\u00e9 = norm(cons))
+    /*
+     * buildGroup(rows, yr)
+     * ─────────────────────
+     * Cl\u00e9 de regroupement SHR :
+     *   Mode projet  : projetCode + '|' + norm(cons)   <- un bucket PAR (mission, consultant)
+     *   Mode consultant : norm(cons)
      *
-     * R\u00e8gle jours SHR : netter par (consultant|projet, Trans Date)
-     * Une date avec montant net > 0 = 1 jour facturable.
+     * R\u00e8gle jours : netter par (cl\u00e9, Trans Date).
+     * Date avec montant net > 0 = 1 jour facturable.
      */
-    var useProjet = cm.projet !== undefined;
-
     function buildGroup(rows, yr){
-      /* byDate : {groupKey: {name, dates:{date:netAmount}}} */
-      var byDate={};
-      /* CST toujours regroup\u00e9 par consultant */
-      var byCst={};
+      var byDate={};  /* {grpKey: {proj, cons, dates:{date:netAmount}}} */
+      var byCst={};   /* {consKey: {name, cost, n}} */
 
       rows.forEach(function(r){
         if(yr!=='all'&&(!r.date||r.date.substring(0,4)!==yr))return;
+
         if(r.typeAnal==='SHR'||cm.typeAnal===undefined){
-          /* Cl\u00e9 de regroupement SHR */
-          var grpKey = useProjet&&r.projet ? r.projet.toLowerCase() : norm(r.cons);
-          var grpName= useProjet&&r.projet ? r.projet : r.cons;
-          if(!byDate[grpKey])byDate[grpKey]={name:grpName,dates:{}};
+          var grpKey, projLabel, consLabel;
+          if(useProjet&&r.projet){
+            /* Regrouper par (projet, consultant) pour isoler chaque mission */
+            grpKey   = r.projet.toLowerCase()+'|'+norm(r.cons);
+            projLabel= r.projet;
+            consLabel= r.cons;
+          } else {
+            grpKey   = norm(r.cons);
+            projLabel= '';
+            consLabel= r.cons;
+          }
+          if(!byDate[grpKey])byDate[grpKey]={proj:projLabel,cons:consLabel,dates:{}};
           var dt=r.date||'unknown';
           byDate[grpKey].dates[dt]=(byDate[grpKey].dates[dt]||0)+r.montant;
         }
+
         if(r.typeAnal==='CST'){
           var ck=norm(r.cons);
           if(!byCst[ck])byCst[ck]={name:r.cons,cost:0,n:0};
@@ -1705,19 +1714,26 @@ function applyImpMap(){
         }
       });
 
-      /* Transformer byDate en {grpKey: {name, shr:{ca,jours}, cst:{...}}} */
+      /* Transformer en grp */
       var grp={};
       Object.keys(byDate).forEach(function(key){
         var d=byDate[key];
-        grp[key]={name:d.name,shr:{ca:0,jours:0},cst:{cost:0,n:0}};
+        grp[key]={proj:d.proj,cons:d.cons,shr:{ca:0,jours:0},cst:{cost:0,n:0}};
         Object.keys(d.dates).forEach(function(dt){
           var net=d.dates[dt];
           if(net>0){grp[key].shr.ca+=net;grp[key].shr.jours++;}
         });
       });
       Object.keys(byCst).forEach(function(ck){
-        if(!grp[ck])grp[ck]={name:byCst[ck].name,shr:{ca:0,jours:0},cst:{cost:0,n:0}};
-        grp[ck].cst.cost+=byCst[ck].cost;grp[ck].cst.n+=byCst[ck].n;
+        /* CST par consultant */
+        var consGrpKey = useProjet ? ('|'+ck) : ck;  /* pr\u00e9fixe vide si pas de projet */
+        /* Chercher une cl\u00e9 correspondant \u00e0 ce consultant */
+        Object.keys(grp).filter(function(k){return k.endsWith('|'+ck)||k===ck;}).forEach(function(k){
+          grp[k].cst.cost+=byCst[ck].cost;grp[k].cst.n+=byCst[ck].n;
+        });
+        /* Si aucune cl\u00e9 SHR pour ce consultant, cr\u00e9er une cl\u00e9 orpheline */
+        var found=Object.keys(grp).some(function(k){return k.endsWith('|'+ck)||k===ck;});
+        if(!found){grp['|'+ck]={proj:'',cons:byCst[ck].name,shr:{ca:0,jours:0},cst:{cost:byCst[ck].cost,n:byCst[ck].n}};}
       });
       return grp;
     }
@@ -1725,24 +1741,35 @@ function applyImpMap(){
     var byYear={all:buildGroup(imp.rows,'all')};
     years.forEach(function(yr){byYear[yr]=buildGroup(imp.rows,yr);});
 
-    /* Construire les r\u00e9sultats comparatifs */
+    /* buildResults : comparaison avec les donn\u00e9es de l\u2019app */
     function buildResults(grp){
-      var matchedGrp={};
+      var fyS=fyStart(S.year),fyE=fyEnd(S.year);  /* Oct → Sep du FY s\u00e9lectionn\u00e9 */
 
       if(useProjet){
-        /* Mode PROJET : une ligne par mission ayant un pcode */
+        /* Mode MISSION : 1 ligne = 1 mission identifi\u00e9e par (pcode, consultant) */
+        var matchedKeys={};
         var missRows=[];
+
         S.miss.filter(function(m){return m.pcode&&m.pcode.trim();}).forEach(function(m){
-          var pkey=m.pcode.trim().toLowerCase();
-          var imp2=grp[pkey];
           var c=S.cons.find(function(c){return c.id===m.cid;});
           if(!c||isGone(c))return;
-          if(imp2)matchedGrp[pkey]=true;
-          var k=kpi(c,S.miss,S.lvs,S.year,H);
-          /* CA/jours de l\u2019app pour cette mission sp\u00e9cifique */
-          var mKpi=k.pm.find(function(p){return p.id===m.id;});
-          var appJ=mKpi?mKpi.days:0;
-          var appCA=mKpi?mKpi.rev:0;
+
+          /* Cl\u00e9 de recherche : projetCode|normCons */
+          var pkey=m.pcode.trim().toLowerCase()+'|'+norm(c.name);
+          var imp2=grp[pkey];
+          if(imp2)matchedKeys[pkey]=true;
+
+          /* Jours (APP) : jours facturables pour cette mission dans le FY s\u00e9lectionn\u00e9 */
+          var mS=m.sd<fyS?fyS:m.sd;
+          var mE=(!m.ed||m.ed>fyE)?fyE:m.ed;
+          var appJ=0,appCA=0;
+          if(mS<=mE){
+            var k=kpi(c,S.miss,S.lvs,S.year,H);
+            var mKpi=k.pm.find(function(p){return p.id===m.id;});
+            appJ=mKpi?mKpi.days:0;
+            appCA=mKpi?mKpi.rev:0;
+          }
+
           var impCA=imp2?imp2.shr.ca:0;
           var impJ=imp2?imp2.shr.jours:0;
           var impTJM=impJ>0?impCA/impJ:0;
@@ -1754,11 +1781,14 @@ function applyImpMap(){
             imp:imp2||null
           });
         });
-        var unmatched=Object.keys(grp).filter(function(k){return !matchedGrp[k];}).map(function(k){return grp[k];});
+
+        /* Non-match\u00e9s : cl\u00e9s dans le fichier sans mission dans l\u2019app */
+        var unmatched=Object.keys(grp).filter(function(k){return !matchedKeys[k]&&grp[k].shr.ca>0;}).map(function(k){return grp[k];});
         var tCA=missRows.reduce(function(s,r){return s+r.impCA;},0);
         var tJ=missRows.reduce(function(s,r){return s+r.impJ;},0);
         var tCost=Object.values(grp).reduce(function(s,b){return s+b.cst.cost;},0);
         return{mode:'projet',rows:missRows,unmatched:unmatched,totalImpCA:tCA,totalImpJ:tJ,totalImpCost:tCost};
+
       } else {
         /* Mode CONSULTANT */
         var matched={};
@@ -1766,12 +1796,12 @@ function applyImpMap(){
           var cn=norm(c.name);var cp=cn.split(' ');
           var best=null,bestScore=0;
           Object.keys(grp).forEach(function(key){
-            var kn=norm(grp[key].name);var kp=kn.split(' ');
+            var kn=norm(grp[key].cons||grp[key].name||'');var kp=kn.split(' ');
             var score=0;
             cp.forEach(function(p){if(p.length>2&&kp.indexOf(p)>=0)score++;});
             if(score>bestScore){bestScore=score;best=grp[key];}
           });
-          if(best&&bestScore>=1)matched[norm(best.name)]=true;
+          if(best&&bestScore>=1)matched[norm(best.cons||best.name||'')]=true;
           var k=kpi(c,S.miss,S.lvs,S.year,H);
           var impCA=best?best.shr.ca:0;
           var impJ=best?best.shr.jours:0;
@@ -1784,7 +1814,7 @@ function applyImpMap(){
             appTJM:k.avgT,impTJM:impTJM,ecartTJM:impTJM-k.avgT,
             appCost:c.scr*(k.tWD||0),impCost:impCost,appSCR:c.scr,impSCR:impSCR};
         });
-        var unmatched2=Object.values(grp).filter(function(b){return !matched[norm(b.name)];});
+        var unmatched2=Object.values(grp).filter(function(b){return !matched[norm(b.cons||b.name||'')];});
         var tCA2=Object.values(grp).reduce(function(s,b){return s+b.shr.ca;},0);
         var tJ2=Object.values(grp).reduce(function(s,b){return s+b.shr.jours;},0);
         var tCost2=Object.values(grp).reduce(function(s,b){return s+b.cst.cost;},0);
@@ -1799,7 +1829,7 @@ function applyImpMap(){
     render();
 
   }catch(err){
-    console.error('applyImpMap error:',err);
+    console.error('applyImpMap:',err);
     alert('Erreur :\n'+err.message+'\n\nF12 \u2192 Console pour le d\u00e9tail.');
   }
 }
