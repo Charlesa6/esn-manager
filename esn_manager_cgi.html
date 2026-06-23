@@ -1172,6 +1172,7 @@ function tModal(){
     var WLBL=[['1','Lun'],['2','Mar'],['3','Mer'],['4','Jeu'],['5','Ven']];
     body='<div class="g2"><div class="cs2"><div class="fd"><label class="fl">Consultant *</label><select class="ic" id="mcid">'+co+'</select></div></div>'
       +'<div class="cs2"><div class="fd"><label class="fl">Nom de la mission *</label><input class="ic" id="mmn" value="'+esc(it?it.name:'')+'" placeholder="ex\u00a0: Transformation Digitale SI"></div></div>'
+      +'<div class="cs2"><div class="fd"><label class="fl">Code projet</label><input class="ic" id="mpcd" value="'+(it&&it.pcode?esc(it.pcode):'')+'" placeholder="ex\\u00a0: 300000000106376"><p class="fh">Code de facturation PSA/SAP \\u2014 utilis\\u00e9 pour le recoupement des imputations import\\u00e9es</p></div></div>'
       +'<div class="cs2"><div class="fd"><label class="fl">Nom du client *</label><input class="ic" id="mcl" value="'+esc(it?it.cli:'')+'" placeholder="ex\u00a0: BNP Paribas"></div></div>'
       +'<div class="fd"><label class="fl">TJM factur\u00e9 (\u20ac)</label><input class="ic" id="mtj" type="number" min="0" value="'+esc(it?String(it.tjm):'')+'" placeholder="750"><p class="fh">Prix journalier de vente (Assistance technique)</p></div>'
       +'<div class="cs2"><div class="fd"><label class="fl">Type de mission *</label>'
@@ -1315,7 +1316,8 @@ function bind(){
           if(!deal||tmar==null){alert('Pour un forfait : indiquez le montant du deal (CA) et la marge recherchée.');return;}
         }else if(!tj){alert('Pour une mission en Assistance technique : indiquez le TJM.');return;}
         if(!wdays.length){alert('Sélectionnez au moins un jour travaillé.');return;}
-        var d={cid:cid,name:mn,cli:cl,tjm:tj,sd:sd,ed:ed,loc:lo,mgr:mg,ccn:cc,ccr:cr,btype:bt,wdays:wdays,deal:deal,tmar:tmar};
+        var pcode=gv('mpcd')||'';
+        var d={cid:cid,name:mn,cli:cl,tjm:tj,sd:sd,ed:ed,loc:lo,mgr:mg,ccn:cc,ccr:cr,btype:bt,wdays:wdays,deal:deal,tmar:tmar,pcode:pcode};
         var it=S.modal.item;
         var nm;
         if(it){S.miss=S.miss.map(function(m){if(m.id===it.id){nm=Object.assign({},m,d);return nm;}return m;});}
@@ -1451,7 +1453,7 @@ function importJSON(file){
    SUPABASE - helpers (synchronisation non-bloquante)
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function mapC(r){return{id:r.id,name:r.name,title:r.title||'',scr:r.scr||0,email:r.email||'',dir:r.directeur||'',arrive:r.arrive||null,depart:r.depart||null};}
-function mapM(r){return{id:r.id,cid:r.consultant_id,name:r.name,cli:r.client_name||'',tjm:r.tjm||0,sd:r.start_date,ed:r.end_date||null,loc:r.location||'',mgr:r.manager_name||'',ccn:r.client_contact_name||'',ccr:r.client_contact_role||'',btype:r.billing_type||'at',wdays:(Array.isArray(r.work_days)?r.work_days:(r.work_days?String(r.work_days).split(',').map(Number):[1,2,3,4,5])),deal:r.deal_amount||0,tmar:(r.target_margin!=null?r.target_margin:null)};}
+function mapM(r){return{id:r.id,cid:r.consultant_id,name:r.name,cli:r.client_name||'',tjm:r.tjm||0,sd:r.start_date,ed:r.end_date||null,loc:r.location||'',mgr:r.manager_name||'',ccn:r.client_contact_name||'',ccr:r.client_contact_role||'',pcode:r.code_projet||'',btype:r.billing_type||'at',wdays:(Array.isArray(r.work_days)?r.work_days:(r.work_days?String(r.work_days).split(',').map(Number):[1,2,3,4,5])),deal:r.deal_amount||0,tmar:(r.target_margin!=null?r.target_margin:null)};}
 function mapL(r){return{id:r.id,cid:r.consultant_id,type:r.type||'Congé payé',s:r.start_date,e:r.end_date};}
 
 async function loadSB(){
@@ -1484,7 +1486,7 @@ async function sbUpsertCons(c){
 }
 async function sbUpsertMiss(m){
   if(!sb||!SB_CID)return;
-  var res=await sb.from('missions').upsert({id:m.id,company_id:SB_CID,consultant_id:m.cid,name:m.name,client_name:m.cli,tjm:m.tjm,start_date:m.sd,end_date:m.ed||null,location:m.loc,manager_name:m.mgr,client_contact_name:m.ccn,client_contact_role:m.ccr,billing_type:m.btype||'at',work_days:(m.wdays&&m.wdays.length?m.wdays:[1,2,3,4,5]),deal_amount:(m.deal||null),target_margin:((m.tmar!=null&&m.tmar!=='')?m.tmar:null)});
+  var res=await sb.from('missions').upsert({id:m.id,company_id:SB_CID,consultant_id:m.cid,name:m.name,client_name:m.cli,tjm:m.tjm,start_date:m.sd,end_date:m.ed||null,location:m.loc,manager_name:m.mgr,client_contact_name:m.ccn,client_contact_role:m.ccr,billing_type:m.btype||'at',work_days:(m.wdays&&m.wdays.length?m.wdays:[1,2,3,4,5]),deal_amount:(m.deal||null),target_margin:((m.tmar!=null&&m.tmar!=='')?m.tmar:null),code_projet:m.pcode||null});
   if(res.error)throw new Error(m.name+': '+res.error.message);
 }
 async function sbUpsertLeave(l){
@@ -1602,6 +1604,7 @@ function handleImpFile(file){
           if(am.typeAnal===undefined&&(l==='type anal.'||l==='type anal'||l.includes('type anal')))am.typeAnal=i;
           if(am.date===undefined&&(l==='trans date'||l==='trans. date'||l.includes('trans date')||l.includes('date')||l.includes('mois')||l.includes('periode')))am.date=i;
           if(am.montant===undefined&&(l==='foreign amount'||l.includes('foreign amount')||l.includes('montant')||l.includes('total')||l.includes('amount')||l.includes('facture')))am.montant=i;
+          if(am.projet===undefined&&(l==='projet'||l==='project'||l.includes('projet')||l.includes('project code')))am.projet=i;
           if(am.nbj===undefined&&(l==='nbr of days'||l==='nb jours'||l.includes('nbr of days')||l.includes('nombre de jour')||l.includes('nb jour')||l==='qt\u00e9'||l==='qte'))am.nbj=i;
         });
         S.imp={file:file.name,sheet:wb.SheetNames[0],headers:headers,raw:data.slice(1),map:am,rows:[],results:null,selYear:'all'};
@@ -1617,26 +1620,16 @@ function applyImpMap(){
     var imp=S.imp;
     if(!imp){alert('Aucun fichier charg\u00e9.');return;}
 
-    /* Lire les valeurs des dropdowns */
     var cm={};
-    ['cons','typeAnal','date','montant'].forEach(function(f){
+    ['cons','typeAnal','date','montant','projet'].forEach(function(f){
       var el=document.getElementById('im-'+f);
       if(el&&el.value!=='')cm[f]=parseInt(el.value);
     });
 
-    /* Debug : afficher ce qui a \u00e9t\u00e9 d\u00e9tect\u00e9 */
-    console.log('Mapping d\u00e9tect\u00e9 :', JSON.stringify(cm));
-    console.log('Lignes brutes :', imp.raw.length);
+    console.log('Mapping:', JSON.stringify(cm), '| Lignes brutes:', imp.raw.length);
 
-    if(cm.cons===undefined){
-      alert('Colonne Consultant non s\u00e9lectionn\u00e9e.\nV\u00e9rifiez le dropdown "Nom / Consultant *".');
-      return;
-    }
-    if(cm.montant===undefined){
-      alert('Colonne Montant non s\u00e9lectionn\u00e9e.\nV\u00e9rifiez le dropdown "Montant *".');
-      return;
-    }
-
+    if(cm.cons===undefined){alert('Colonne Consultant non s\u00e9lectionn\u00e9e.');return;}
+    if(cm.montant===undefined){alert('Colonne Montant non s\u00e9lectionn\u00e9e.');return;}
     imp.map=cm;
 
     function parseName(raw){
@@ -1652,69 +1645,79 @@ function applyImpMap(){
     }
     function norm(n){return n.toLowerCase().replace(/[^a-z0-9 ]/gi,'').trim();}
 
-    /* Parser : garder SHR et CST */
+    /* Parser les lignes - garder SHR et CST */
     imp.rows=imp.raw.map(function(row){
       var tAnal=cm.typeAnal!==undefined?String(row[cm.typeAnal]||'').trim().toUpperCase():'SHR';
       var nom=parseName(row[cm.cons]);
       var montant=parseFloat(String(row[cm.montant]||'0').replace(',','.'))||0;
       var date=parseDate(cm.date!==undefined?row[cm.date]:null);
-      return{cons:nom,typeAnal:tAnal,montant:montant,date:date};
+      var projet=cm.projet!==undefined?String(row[cm.projet]||'').trim():'';
+      return{cons:nom,typeAnal:tAnal,montant:montant,date:date,projet:projet};
     }).filter(function(r){
       if(!r.cons)return false;
       if(cm.typeAnal!==undefined)return (r.typeAnal==='SHR'||r.typeAnal==='CST')&&r.montant!==0;
       return r.montant!==0;
     });
 
-    console.log('Lignes apr\u00e8s filtre SHR/CST :', imp.rows.length,
-      '| SHR:', imp.rows.filter(function(r){return r.typeAnal==='SHR';}).length,
-      '| CST:', imp.rows.filter(function(r){return r.typeAnal==='CST';}).length);
-
     if(imp.rows.length===0){
-      alert('Aucune ligne SHR ou CST trouv\u00e9e dans le fichier.\n\nV\u00e9rifiez que :\n1. La colonne "Type ANAL" est bien mapp\u00e9e\n2. Le fichier contient bien des valeurs "SHR" dans cette colonne');
+      alert('Aucune ligne SHR ou CST trouv\u00e9e.\n\nV\u00e9rifiez que la colonne "Type ANAL" est bien mapp\u00e9e et contient des valeurs "SHR".');
       return;
     }
 
-    /* Ann\u00e9es distinctes (ignorer si date non mapp\u00e9e) */
+    /* Ann\u00e9es distinctes */
     var years=[];
     if(cm.date!==undefined){
       imp.rows.forEach(function(r){
-        if(r.date&&r.date.length>=4){
-          var yr=r.date.substring(0,4);
-          if(yr&&years.indexOf(yr)<0)years.push(yr);
-        }
+        if(r.date&&r.date.length>=4){var yr=r.date.substring(0,4);if(yr&&years.indexOf(yr)<0)years.push(yr);}
       });
       years.sort();
     }
 
-    /* Construire un groupe {consKey -> {name, shr:{ca,jours}, cst:{cost,jours}}} */
-    function buildGroup(rows,yr){
-      var shrByDate={};
-      var cstByCons={};
+    /* Construire un groupe pour une ann\u00e9e donn\u00e9e.
+     * Si cm.projet est mapp\u00e9 : regrouper par code projet (cl\u00e9 = projetCode)
+     * Sinon : regrouper par nom consultant (cl\u00e9 = norm(cons))
+     *
+     * R\u00e8gle jours SHR : netter par (consultant|projet, Trans Date)
+     * Une date avec montant net > 0 = 1 jour facturable.
+     */
+    var useProjet = cm.projet !== undefined;
+
+    function buildGroup(rows, yr){
+      /* byDate : {groupKey: {name, dates:{date:netAmount}}} */
+      var byDate={};
+      /* CST toujours regroup\u00e9 par consultant */
+      var byCst={};
+
       rows.forEach(function(r){
         if(yr!=='all'&&(!r.date||r.date.substring(0,4)!==yr))return;
-        var key=norm(r.cons);
-        if(r.typeAnal==='SHR'){
-          if(!shrByDate[key])shrByDate[key]={name:r.cons,dates:{}};
+        if(r.typeAnal==='SHR'||cm.typeAnal===undefined){
+          /* Cl\u00e9 de regroupement SHR */
+          var grpKey = useProjet&&r.projet ? r.projet.toLowerCase() : norm(r.cons);
+          var grpName= useProjet&&r.projet ? r.projet : r.cons;
+          if(!byDate[grpKey])byDate[grpKey]={name:grpName,dates:{}};
           var dt=r.date||'unknown';
-          shrByDate[key].dates[dt]=(shrByDate[key].dates[dt]||0)+r.montant;
-        }else if(r.typeAnal==='CST'){
-          if(!cstByCons[key])cstByCons[key]={name:r.cons,n:0,cost:0};
-          cstByCons[key].n++;cstByCons[key].cost+=r.montant;
+          byDate[grpKey].dates[dt]=(byDate[grpKey].dates[dt]||0)+r.montant;
+        }
+        if(r.typeAnal==='CST'){
+          var ck=norm(r.cons);
+          if(!byCst[ck])byCst[ck]={name:r.cons,cost:0,n:0};
+          byCst[ck].cost+=r.montant;byCst[ck].n++;
         }
       });
+
+      /* Transformer byDate en {grpKey: {name, shr:{ca,jours}, cst:{...}}} */
       var grp={};
-      Object.keys(shrByDate).forEach(function(key){
-        var d=shrByDate[key];
-        if(!grp[key])grp[key]={name:d.name,shr:{ca:0,jours:0},cst:{cost:0,jours:0}};
+      Object.keys(byDate).forEach(function(key){
+        var d=byDate[key];
+        grp[key]={name:d.name,shr:{ca:0,jours:0},cst:{cost:0,n:0}};
         Object.keys(d.dates).forEach(function(dt){
           var net=d.dates[dt];
           if(net>0){grp[key].shr.ca+=net;grp[key].shr.jours++;}
         });
       });
-      Object.keys(cstByCons).forEach(function(key){
-        var d=cstByCons[key];
-        if(!grp[key])grp[key]={name:d.name,shr:{ca:0,jours:0},cst:{cost:0,jours:0}};
-        grp[key].cst.cost+=d.cost;grp[key].cst.jours+=d.n;
+      Object.keys(byCst).forEach(function(ck){
+        if(!grp[ck])grp[ck]={name:byCst[ck].name,shr:{ca:0,jours:0},cst:{cost:0,n:0}};
+        grp[ck].cst.cost+=byCst[ck].cost;grp[ck].cst.n+=byCst[ck].n;
       });
       return grp;
     }
@@ -1722,36 +1725,71 @@ function applyImpMap(){
     var byYear={all:buildGroup(imp.rows,'all')};
     years.forEach(function(yr){byYear[yr]=buildGroup(imp.rows,yr);});
 
+    /* Construire les r\u00e9sultats comparatifs */
     function buildResults(grp){
-      var matched={};
-      var rows=S.cons.filter(function(c){return !isGone(c);}).map(function(c){
-        var cn=norm(c.name);var cp=cn.split(' ');
-        var best=null,bestScore=0;
-        Object.keys(grp).forEach(function(key){
-          var kn=norm(grp[key].name);var kp=kn.split(' ');
-          var score=0;
-          cp.forEach(function(p){if(p.length>2&&kp.indexOf(p)>=0)score++;});
-          if(score>bestScore){bestScore=score;best=grp[key];}
+      var matchedGrp={};
+
+      if(useProjet){
+        /* Mode PROJET : une ligne par mission ayant un pcode */
+        var missRows=[];
+        S.miss.filter(function(m){return m.pcode&&m.pcode.trim();}).forEach(function(m){
+          var pkey=m.pcode.trim().toLowerCase();
+          var imp2=grp[pkey];
+          var c=S.cons.find(function(c){return c.id===m.cid;});
+          if(!c||isGone(c))return;
+          if(imp2)matchedGrp[pkey]=true;
+          var k=kpi(c,S.miss,S.lvs,S.year,H);
+          /* CA/jours de l\u2019app pour cette mission sp\u00e9cifique */
+          var mKpi=k.pm.find(function(p){return p.id===m.id;});
+          var appJ=mKpi?mKpi.days:0;
+          var appCA=mKpi?mKpi.rev:0;
+          var impCA=imp2?imp2.shr.ca:0;
+          var impJ=imp2?imp2.shr.jours:0;
+          var impTJM=impJ>0?impCA/impJ:0;
+          missRows.push({
+            m:m,c:c,
+            appJ:appJ,impJ:impJ,ecartJ:impJ-appJ,
+            appCA:appCA,impCA:impCA,ecartCA:impCA-appCA,
+            appTJM:m.tjm,impTJM:impTJM,ecartTJM:impTJM-m.tjm,
+            imp:imp2||null
+          });
         });
-        if(best&&bestScore>=1)matched[norm(best.name)]=true;
-        var k=kpi(c,S.miss,S.lvs,S.year,H);
-        var impCA=best?best.shr.ca:0;
-        var impJ=best?best.shr.jours:0;
-        var impTJM=impJ>0?impCA/impJ:0;
-        var impCost=best?best.cst.cost:0;
-        var impSCR=best&&best.cst.jours>0?impCost/best.cst.jours:0;
-        return{c:c,k:k,imp:best,
-          appJ:k.bill,impJ:impJ,ecartJ:impJ-k.bill,
-          appCA:k.rev,impCA:impCA,ecartCA:impCA-k.rev,
-          appTJM:k.avgT,impTJM:impTJM,ecartTJM:impTJM-k.avgT,
-          appCost:c.scr*(k.tWD||0),impCost:impCost,
-          appSCR:c.scr,impSCR:impSCR};
-      });
-      var unmatched=Object.values(byYear.all).filter(function(b){return !matched[norm(b.name)];});
-      var tCA=Object.values(grp).reduce(function(s,b){return s+b.shr.ca;},0);
-      var tJ=Object.values(grp).reduce(function(s,b){return s+b.shr.jours;},0);
-      var tCost=Object.values(grp).reduce(function(s,b){return s+b.cst.cost;},0);
-      return{rows:rows,unmatched:unmatched,totalImpCA:tCA,totalImpJ:tJ,totalImpCost:tCost};
+        var unmatched=Object.keys(grp).filter(function(k){return !matchedGrp[k];}).map(function(k){return grp[k];});
+        var tCA=missRows.reduce(function(s,r){return s+r.impCA;},0);
+        var tJ=missRows.reduce(function(s,r){return s+r.impJ;},0);
+        var tCost=Object.values(grp).reduce(function(s,b){return s+b.cst.cost;},0);
+        return{mode:'projet',rows:missRows,unmatched:unmatched,totalImpCA:tCA,totalImpJ:tJ,totalImpCost:tCost};
+      } else {
+        /* Mode CONSULTANT */
+        var matched={};
+        var rows=S.cons.filter(function(c){return !isGone(c);}).map(function(c){
+          var cn=norm(c.name);var cp=cn.split(' ');
+          var best=null,bestScore=0;
+          Object.keys(grp).forEach(function(key){
+            var kn=norm(grp[key].name);var kp=kn.split(' ');
+            var score=0;
+            cp.forEach(function(p){if(p.length>2&&kp.indexOf(p)>=0)score++;});
+            if(score>bestScore){bestScore=score;best=grp[key];}
+          });
+          if(best&&bestScore>=1)matched[norm(best.name)]=true;
+          var k=kpi(c,S.miss,S.lvs,S.year,H);
+          var impCA=best?best.shr.ca:0;
+          var impJ=best?best.shr.jours:0;
+          var impTJM=impJ>0?impCA/impJ:0;
+          var impCost=best?best.cst.cost:0;
+          var impSCR=best&&best.cst.n>0?impCost/best.cst.n:0;
+          return{c:c,k:k,imp:best,
+            appJ:k.bill,impJ:impJ,ecartJ:impJ-k.bill,
+            appCA:k.rev,impCA:impCA,ecartCA:impCA-k.rev,
+            appTJM:k.avgT,impTJM:impTJM,ecartTJM:impTJM-k.avgT,
+            appCost:c.scr*(k.tWD||0),impCost:impCost,appSCR:c.scr,impSCR:impSCR};
+        });
+        var unmatched2=Object.values(grp).filter(function(b){return !matched[norm(b.name)];});
+        var tCA2=Object.values(grp).reduce(function(s,b){return s+b.shr.ca;},0);
+        var tJ2=Object.values(grp).reduce(function(s,b){return s+b.shr.jours;},0);
+        var tCost2=Object.values(grp).reduce(function(s,b){return s+b.cst.cost;},0);
+        return{mode:'consultant',rows:rows,unmatched:unmatched2,totalImpCA:tCA2,totalImpJ:tJ2,totalImpCost:tCost2};
+      }
     }
 
     var computed={all:buildResults(byYear.all)};
@@ -1761,8 +1799,8 @@ function applyImpMap(){
     render();
 
   }catch(err){
-    console.error('applyImpMap error:', err);
-    alert('Erreur lors de la consolidation :\n\n'+err.message+'\n\nOuvrez F12 \u2192 Console pour le d\u00e9tail.');
+    console.error('applyImpMap error:',err);
+    alert('Erreur :\n'+err.message+'\n\nF12 \u2192 Console pour le d\u00e9tail.');
   }
 }
 
@@ -1795,11 +1833,12 @@ function tImpute(){
       ['typeAnal', 'Type ANAL',          'SHR = facturation TJM \u00b7 CST = co\u00fbt SCR \u2014 les autres types sont ignor\u00e9s'],
       ['date',     'Date (Trans Date)',  'Date de la transaction \u2014 utilis\u00e9e pour le filtre par ann\u00e9e'],
       ['montant',  'Montant *',          'Montant en devise (Foreign Amount)'],
+      ['projet',   'Projet (code mission)', 'Code projet PSA/SAP - recoupage avec le code projet des missions de l\'app']
     ];
     /* N'afficher que les colonnes pertinentes (ou toutes si <15 colonnes) */
     var relevantIdx=imp.headers.reduce(function(acc,h,i){
       var l=h.toLowerCase().trim();
-      if(l==='nom'||l.includes('type anal')||l.includes('trans date')||l.includes('foreign amount')||
+      if(l==='nom'||l==='projet'||l.includes('type anal')||l.includes('trans date')||l.includes('foreign amount')||
          l.includes('collaborateur')||l.includes('consultant')||l.includes('date')||l.includes('montant')||l.includes('amount'))acc.push(i);
       return acc;
     },[]);
@@ -1835,92 +1874,120 @@ function tImpute(){
   var computed=imp.results.computed;
   var years=imp.results.years;
   var res=computed[selYear]||computed.all;
-  var hasSHR=imp.rows.some(function(r){return r.typeAnal==='SHR'||imp.map.typeAnal===undefined;});
-  var hasCST=imp.rows.some(function(r){return r.typeAnal==='CST';});
-  var hasJours=imp.map.nbj!==undefined;
+  var isProjet=res.mode==='projet';
   var totalAppCA=res.rows.reduce(function(s,r){return s+r.appCA;},0);
-  var totalAppCost=res.rows.reduce(function(s,r){return s+r.appCost;},0);
   var ecartCA=res.totalImpCA-totalAppCA;
-  var ecartCost=res.totalImpCost-totalAppCost;
   function ecC(v){return v===0?'#374151':v>0?'#16a34a':'#dc2626';}
   function sgn(v,u){return (v>0?'+':'')+Math.round(v)+(u||'');}
   function sgnCA(v){return (v>0?'+':'')+fEur(Math.round(v));}
-  function fJ(v){return v>0?v.toFixed(v%1===0?0:2)+'j':'0j';}
+  function fJ(v){return v>0?(Math.round(v*10)/10)+'j':'0j';}
   var TH='padding:8px 10px;font-size:11px;font-weight:700;text-align:right;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;';
   var THL='padding:8px 10px;font-size:11px;font-weight:700;text-align:left;color:#64748b;border-bottom:1px solid #e2e8f0;';
   var TD='padding:8px 10px;font-size:12px;text-align:right;border-bottom:1px solid #f1f5f9;';
   var TDL='padding:8px 10px;font-size:12px;font-weight:600;color:#0f172a;border-bottom:1px solid #f1f5f9;';
+  var TDS='padding:8px 10px;font-size:12px;color:#64748b;border-bottom:1px solid #f1f5f9;';
 
   /* Filtre ann\u00e9e */
-  var yearBtns=['<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">'];
+  var yearBtns='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">';
   (['all'].concat(years)).forEach(function(yr){
     var active=yr===selYear;
-    var lbl=yr==='all'?'Toutes ann\u00e9es':yr;
-    yearBtns.push('<button onclick="S.imp.selYear=\''+yr+'\';render()" style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid '+(active?'#2563eb':'#e2e8f0')+';background:'+(active?'#2563eb':'#fff')+';color:'+(active?'#fff':'#64748b')+'">'+(lbl==='all'?'Toutes ann\u00e9es':lbl)+'</button>');
+    yearBtns+='<button onclick="S.imp.selYear=\''+yr+'\';render()" style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid '+(active?'#2563eb':'#e2e8f0')+';background:'+(active?'#2563eb':'#fff')+';color:'+(active?'#fff':'#64748b')+'">'+(yr==='all'?'Toutes ann\u00e9es':yr)+'</button>';
   });
-  yearBtns.push('</div>');
-  var yearFilter=yearBtns.join('');
+  yearBtns+='</div>';
 
-  /* Hero cards */
+  /* Hero */
   var hero='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">'
     +'<div class="card" style="padding:18px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px">CA import\u00e9 (SHR)</div>'
     +'<div style="font-size:26px;font-weight:900;color:#2563eb">'+fEur(Math.round(res.totalImpCA))+'</div>'
     +'<div style="font-size:11px;color:#64748b;margin-top:4px">vs '+fEur(Math.round(totalAppCA))+' saisi</div></div>'
     +'<div class="card" style="padding:18px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px">Jours factur\u00e9s</div>'
     +'<div style="font-size:26px;font-weight:900;color:#0f172a">'+fJ(res.totalImpJ)+'</div>'
-    +'<div style="font-size:11px;color:#64748b;margin-top:4px">dates SHR à montant net positif</div></div>'
+    +'<div style="font-size:11px;color:#64748b;margin-top:4px">dates SHR \u00e0 montant net &gt; 0</div></div>'
     +'<div class="card" style="padding:18px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px">\u00c9cart CA</div>'
     +'<div style="font-size:26px;font-weight:900;color:'+ecC(ecartCA)+'">'+sgnCA(ecartCA)+'</div>'
-    +'<div style="font-size:11px;color:#64748b;margin-top:4px">'+(Math.abs(ecartCA)<1?'Aucun \u00e9cart':ecartCA>0?'CA r\u00e9el sup\u00e9rieur':'CA r\u00e9el inf\u00e9rieur')+'</div></div>'
+    +'<div style="font-size:11px;color:#64748b;margin-top:4px">'+(Math.abs(ecartCA)<1?'Aucun \u00e9cart':ecartCA>0?'CA r\u00e9el sup.':'CA r\u00e9el inf.')+'</div></div>'
     +'<div class="card" style="padding:18px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px">Co\u00fbt import\u00e9 (CST)</div>'
     +'<div style="font-size:26px;font-weight:900;color:#7c3aed">'+fEur(Math.round(res.totalImpCost))+'</div>'
-    +'<div style="font-size:11px;color:#64748b;margin-top:4px">vs '+fEur(Math.round(totalAppCost))+' saisi</div></div>'
+    +'<div style="font-size:11px;color:#64748b;margin-top:4px">mode '+(isProjet?'par mission':'par consultant')+'</div></div>'
     +'</div>';
 
   /* Tableau */
-  var thead='<thead><tr>'
-    +'<th style="'+THL+'">Consultant</th>'
-    +'<th style="'+TH+'">Jours factur\u00e9s</th>'
-    +'<th style="'+TH+'">CA saisi</th><th style="'+TH+'">CA r\u00e9el</th><th style="'+TH+'">\u00c9cart CA</th>'
-    +(hasSHR?'<th style="'+TH+'">TJM saisi</th><th style="'+TH+'">TJM r\u00e9el</th>':'')
-    +(hasCST?'<th style="'+TH+'">SCR saisi</th><th style="'+TH+'">SCR r\u00e9el</th>':'')
-    +'</tr></thead>';
-  var tbody='<tbody>'+res.rows.filter(function(r){return r.imp;}).map(function(r){
-    var cCol=Math.abs(r.ecartCA)>500?ecC(r.ecartCA):'#374151';
-    return '<tr>'
-      +'<td style="'+TDL+'">'+esc(r.c.name)+'</td>'
-      +'<td style="'+TD+';font-weight:700;color:#0f172a">'+fJ(r.impJ)+'</td>'
-      +'<td style="'+TD+'">'+fEur(Math.round(r.appCA))+'</td>'
-      +'<td style="'+TD+'">'+fEur(Math.round(r.impCA))+'</td>'
-      +'<td style="'+TD+';color:'+cCol+';font-weight:700">'+sgnCA(r.ecartCA)+'</td>'
-      +(hasSHR?'<td style="'+TD+'">'+(r.appTJM>0?fEur(Math.round(r.appTJM)):'\u2014')+'</td>'
-        +'<td style="'+TD+'">'+(r.impTJM>0?fEur(Math.round(r.impTJM)):'\u2014')+'</td>':'')
-      +(hasCST?'<td style="'+TD+'">'+fEur(Math.round(r.appSCR))+'</td>'
-        +'<td style="'+TD+'">'+(r.impSCR>0?fEur(Math.round(r.impSCR)):'\u2014')+'</td>':'')
-      +'</tr>';
-  }).join('');
+  var thead, tbody;
+  if(isProjet){
+    /* Mode mission */
+    thead='<thead><tr>'
+      +'<th style="'+THL+'">Code projet</th>'
+      +'<th style="'+THL+'">Mission</th>'
+      +'<th style="'+THL+'">Consultant</th>'
+      +'<th style="'+TH+'">Jours (app)</th><th style="'+TH+'">Jours (SHR)</th><th style="'+TH+'">\u00c9cart j</th>'
+      +'<th style="'+TH+'">CA (app)</th><th style="'+TH+'">CA (SHR)</th><th style="'+TH+'">\u00c9cart CA</th>'
+      +'<th style="'+TH+'">TJM (app)</th><th style="'+TH+'">TJM (SHR)</th>'
+      +'</tr></thead>';
+    tbody='<tbody>'+res.rows.map(function(r){
+      var noD=!r.imp;
+      var jCol=Math.abs(r.ecartJ)>2?ecC(r.ecartJ):'#374151';
+      var cCol=Math.abs(r.ecartCA)>500?ecC(r.ecartCA):'#374151';
+      return '<tr>'
+        +'<td style="'+TDL+'">'+esc(r.m.pcode)+'</td>'
+        +'<td style="'+TDS+'">'+esc(r.m.name)+' \u2014 '+esc(r.m.cli)+'</td>'
+        +'<td style="'+TDS+'">'+esc(r.c.name)+'</td>'
+        +'<td style="'+TD+'">'+fJ(r.appJ)+'</td>'
+        +'<td style="'+TD+(noD?';color:#94a3b8':'')+'">'+(noD?'\u2014':fJ(r.impJ))+'</td>'
+        +'<td style="'+TD+';color:'+jCol+';font-weight:700">'+(noD?'\u2014':sgn(r.ecartJ,'j'))+'</td>'
+        +'<td style="'+TD+'">'+fEur(Math.round(r.appCA))+'</td>'
+        +'<td style="'+TD+(noD?';color:#94a3b8':'')+'">'+(noD?'Non trouv\u00e9':fEur(Math.round(r.impCA)))+'</td>'
+        +'<td style="'+TD+';color:'+cCol+';font-weight:700">'+(noD?'\u2014':sgnCA(r.ecartCA))+'</td>'
+        +'<td style="'+TD+'">'+(r.appTJM>0?fEur(r.appTJM):'\u2014')+'</td>'
+        +'<td style="'+TD+'">'+(noD||r.impTJM===0?'\u2014':fEur(Math.round(r.impTJM)))+'</td>'
+        +'</tr>';
+    }).join('')+'</tbody>';
+  } else {
+    /* Mode consultant */
+    thead='<thead><tr>'
+      +'<th style="'+THL+'">Consultant</th>'
+      +'<th style="'+TH+'">Jours factur\u00e9s</th>'
+      +'<th style="'+TH+'">CA saisi</th><th style="'+TH+'">CA r\u00e9el</th><th style="'+TH+'">\u00c9cart CA</th>'
+      +'<th style="'+TH+'">TJM saisi</th><th style="'+TH+'">TJM r\u00e9el</th>'
+      +'</tr></thead>';
+    tbody='<tbody>'+res.rows.filter(function(r){return r.imp;}).map(function(r){
+      var cCol=Math.abs(r.ecartCA)>500?ecC(r.ecartCA):'#374151';
+      return '<tr>'
+        +'<td style="'+TDL+'">'+esc(r.c.name)+'</td>'
+        +'<td style="'+TD+';font-weight:700;color:#0f172a">'+fJ(r.impJ)+'</td>'
+        +'<td style="'+TD+'">'+fEur(Math.round(r.appCA))+'</td>'
+        +'<td style="'+TD+'">'+fEur(Math.round(r.impCA))+'</td>'
+        +'<td style="'+TD+';color:'+cCol+';font-weight:700">'+sgnCA(r.ecartCA)+'</td>'
+        +'<td style="'+TD+'">'+(r.appTJM>0?fEur(Math.round(r.appTJM)):'\u2014')+'</td>'
+        +'<td style="'+TD+'">'+(r.impTJM>0?fEur(Math.round(r.impTJM)):'\u2014')+'</td>'
+        +'</tr>';
+    }).join('')+'</tbody>';
+  }
 
-  /* Consultants sans donn\u00e9es import\u00e9es */
-  var noMatch=res.rows.filter(function(r){return !r.imp;});
-  var noMatchHtml=noMatch.length?'<div style="padding:10px 14px;font-size:12px;color:#94a3b8;border-top:1px solid #f1f5f9">'
-    +noMatch.length+' consultant(s) sans imputation import\u00e9e pour cette p\u00e9riode : '
-    +noMatch.map(function(r){return esc(r.c.name);}).join(', ')+'</div>':'';
+  var noMatchHtml=(!isProjet&&res.rows.filter(function(r){return !r.imp;}).length)?
+    '<div style="padding:10px 14px;font-size:12px;color:#94a3b8;border-top:1px solid #f1f5f9">'
+    +'Sans correspondance : '+res.rows.filter(function(r){return !r.imp;}).map(function(r){return esc(r.c.name);}).join(', ')+'</div>':'';
 
   var unmatch=res.unmatched.length?'<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;margin-top:12px">'
-    +'<div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:4px">'+res.unmatched.length+' collaborateur(s) import\u00e9(s) non retrouv\u00e9(s) dans l\'application</div>'
-    +'<div style="font-size:12px;color:#78350f">'+res.unmatched.map(function(b){return esc(b.name)+' (BIL: '+fEur(Math.round(b.shr.ca))+' / '+fJ(b.shr.jours)+')';}).join(' \u00b7 ')+'</div>'
-    +'</div>':'';
+    +'<div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:4px">'
+    +(isProjet?res.unmatched.length+' code(s) projet sans mission correspondante':res.unmatched.length+' collaborateur(s) non retrouvé(s)')+'</div>'
+    +'<div style="font-size:12px;color:#78350f">'+res.unmatched.map(function(b){return esc(b.name)+' ('+fEur(Math.round(b.shr.ca))+' / '+fJ(b.shr.jours)+')';}).join(' \u00b7 ')+'</div></div>':'';
+
+  var tableTitle=isProjet
+    ?'Comparaison par mission (code projet) \u2014 '+(selYear==='all'?'Toutes ann\u00e9es':selYear)
+    :'Comparaison par consultant \u2014 '+(selYear==='all'?'Toutes ann\u00e9es':selYear);
+  var tableSubtitle=isProjet
+    ?'Chaque ligne = 1 mission avec code projet \u00b7 dates SHR \u00e0 montant net > 0 = 1 jour'
+    :'Jours = dates SHR \u00e0 montant net > 0';
 
   return '<div class="vw">'
     +'<div class="ph"><div><div class="pt">Imputations r\u00e9elles</div>'
-    +'<div class="ps">Fichier : <strong>'+esc(imp.file)+'</strong> \u00b7 '+imp.rows.length+' lignes (BIL+CST)</div></div>'
+    +'<div class="ps">Fichier : <strong>'+esc(imp.file)+'</strong> \u00b7 '+imp.rows.length+' lignes (SHR+CST)</div></div>'
     +'<div style="display:flex;gap:8px"><button class="bg" onclick="S.imp.results=null;render()">Modifier</button><button class="bg" onclick="clearImp()">Nouvel import</button></div></div>'
-    +yearFilter
-    +hero
+    +yearBtns+hero
     +'<div class="card ov">'
     +'<div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between">'
-    +'<div style="font-size:13px;font-weight:700;color:#0f172a">Comparaison par consultant \u2014 '+(selYear==='all'?'Toutes ann\u00e9es':selYear)+'</div>'
-    +'<div style="font-size:11px;color:#94a3b8">Jours = dates SHR à montant net > 0</div>'
+    +'<div style="font-size:13px;font-weight:700;color:#0f172a">'+tableTitle+'</div>'
+    +'<div style="font-size:11px;color:#94a3b8">'+tableSubtitle+'</div>'
     +'</div>'
     +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'+thead+tbody+'</table></div>'
     +noMatchHtml+unmatch+'</div></div>';
