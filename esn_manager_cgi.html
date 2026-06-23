@@ -1775,43 +1775,61 @@ function tImpute(){
     }
   });
 
-  /* ── R\u00e9el : SHR group\u00e9s par (projet, date) \u2014 netter par date ── */
-  var shrDates={};   /* {pkey: {pcode,cons,dates:{dt:net}}} */
+  /* ── R\u00e9el : SHR group\u00e9s par (projet, consultant, date)
+   *
+   * Cl\u00e9 = pkey|consKey  -> isole chaque consultant sur chaque projet
+   * Jours  : dates \u00e0 montant net > 0
+   * CA     : somme des montants nets positifs par date
+   * TJM r\u00e9el : moyenne des Foreign Amount positifs (valeur directe, pas CA/jours)
+   * ────────────────────────────────────────────────────── */
   var lastMap=S.impHistory[S.impHistory.length-1].map;
   var useProjet=lastMap.projet!==undefined;
 
+  var shrPC={};  /* {pkey|ck : {pcode,cons,dates:{dt:net},posAmts:[]}} */
   S.impHistory.forEach(function(h){
     h.rows.forEach(function(r){
       if(r.typeAnal!=='SHR')return;
       if(!r.date)return;
-      /* Filtrer au FY s\u00e9lectionn\u00e9 */
       if(fyS&&fyE&&(r.date<fyS||r.date>fyE))return;
       var pkey=useProjet&&r.projet?r.projet.trim().toLowerCase():norm(r.cons);
-      if(!shrDates[pkey])shrDates[pkey]={pcode:useProjet&&r.projet?r.projet.trim():'',cons:r.cons,dates:{}};
+      var ck=norm(r.cons);
+      var key=pkey+'|'+ck;
+      if(!shrPC[key])shrPC[key]={pcode:useProjet&&r.projet?r.projet.trim():'',pkey:pkey,cons:r.cons,dates:{},posAmts:[]};
       var dt=r.date;
-      shrDates[pkey].dates[dt]=(shrDates[pkey].dates[dt]||0)+r.montant;
+      shrPC[key].dates[dt]=(shrPC[key].dates[dt]||0)+r.montant;
+      if(r.montant>0)shrPC[key].posAmts.push(r.montant);  /* TJM direct */
     });
   });
 
-  /* Calculer jours et CA r\u00e9els depuis le nettage */
-  var actByProj={};   /* {pkey: {pcode,cons,jAct,caAct,tjmAct}} */
-  Object.keys(shrDates).forEach(function(pkey){
-    var d=shrDates[pkey];
+  /* Pour chaque projet du plan, trouver les donn\u00e9es SHR du consultant li\u00e9 */
+  var actByProj={};
+  Object.keys(planByProj).forEach(function(pkey){
+    var plan=planByProj[pkey];
+    var ck=norm(plan.cons);
+    var key=pkey+'|'+ck;
+    var d=shrPC[key];
+    if(!d){actByProj[pkey]=null;return;}
     var caAct=0,jAct=0;
     Object.keys(d.dates).forEach(function(dt){
       var net=d.dates[dt];
       if(net>0){caAct+=net;jAct++;}
     });
-    actByProj[pkey]={pcode:d.pcode,cons:d.cons,jAct:jAct,caAct:caAct,tjmAct:jAct>0?caAct/jAct:0};
+    /* TJM r\u00e9el = moyenne des Foreign Amount positifs (valeur directe du fichier) */
+    var tjmAct=d.posAmts.length>0?d.posAmts.reduce(function(s,v){return s+v;},0)/d.posAmts.length:0;
+    actByProj[pkey]={pcode:d.pcode,cons:d.cons,jAct:jAct,caAct:caAct,tjmAct:tjmAct};
   });
 
-  /* ── CST group\u00e9s par consultant ── */
+  /* ── CST : uniquement les consultants mapp\u00e9s via un code projet ── */
+  var mappedCons={};
+  Object.values(planByProj).forEach(function(p){mappedCons[norm(p.cons)]=true;});
+
   var cstByCons={};
   S.impHistory.forEach(function(h){
     h.rows.forEach(function(r){
       if(r.typeAnal!=='CST')return;
       if(fyS&&fyE&&r.date&&(r.date<fyS||r.date>fyE))return;
       var ck=norm(r.cons);
+      if(!mappedCons[ck])return;  /* ignorer les non-mapp\u00e9s */
       if(!cstByCons[ck])cstByCons[ck]={name:r.cons,cost:0,n:0};
       cstByCons[ck].cost+=r.montant;cstByCons[ck].n++;
     });
