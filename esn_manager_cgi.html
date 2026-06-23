@@ -1625,16 +1625,14 @@ function applyImpMap(){
       var el=document.getElementById('im-'+f);
       if(el&&el.value!=='')cm[f]=parseInt(el.value);
     });
-
     if(cm.cons===undefined){alert('Colonne Consultant non s\u00e9lectionn\u00e9e.');return;}
     if(cm.montant===undefined){alert('Colonne Montant non s\u00e9lectionn\u00e9e.');return;}
     imp.map=cm;
 
     function parseName(raw){
       var s=String(raw||'').trim();
-      var parts=s.split(',');
-      if(parts.length>=2)return parts[1].trim()+' '+parts[0].trim();
-      return s;
+      var p=s.split(',');
+      return p.length>=2?p[1].trim()+' '+p[0].trim():s;
     }
     function parseDate(v){
       if(!v)return '';
@@ -1674,61 +1672,50 @@ function applyImpMap(){
     }
 
     /*
-     * buildGroup(rows, yr)
-     * ─────────────────────
-     * Produit DEUX types d\u2019entr\u00e9es :
+     * buildGroup : deux niveaux de cl\u00e9
+     *   projetKey   : {projetCode|consKey}  → netter par (projet,cons,date)
+     *   consKey     : {consKey}              → netter par (cons,date) — fallback si pas de projet
      *
-     * 1. consGrp {consKey} : totaux SHR/CST PAR CONSULTANT (toutes missions confondues)
-     *    Utilis\u00e9 pour le matching consultant → toujours visible.
-     *
-     * 2. projConsGrp {projetCode|consKey} : totaux PAR (PROJET, CONSULTANT)
-     *    Utilis\u00e9 pour le matching mission → visible uniquement si pcode renseign\u00e9.
-     *
-     * R\u00e8gle jours SHR : netter par (grpKey, Trans Date).
-     * Date avec montant net > 0 = 1 jour facturable.
+     * R\u00e8gle jours : date avec montant net > 0 = 1 jour facturable.
      */
-    function buildGroup(rows, yr){
-      /* Accumulation par date */
-      var shrByDate={};   /* {consKey|opt_projet: {dates:{date:net}}} */
-      var cstByCons={};   /* {consKey: {name,cost,n}} */
+    function buildGroup(rows,yr){
+      var byDate={};
+      var byCst={};
 
       rows.forEach(function(r){
         if(yr!=='all'&&(!r.date||r.date.substring(0,4)!==yr))return;
         var ck=norm(r.cons);
+        var dt=r.date||'unknown';
 
         if(r.typeAnal==='SHR'||cm.typeAnal===undefined){
-          /* Cl\u00e9 consultant seul */
-          if(!shrByDate[ck])shrByDate[ck]={name:r.cons,dates:{}};
-          var dt=r.date||'unknown';
-          shrByDate[ck].dates[dt]=(shrByDate[ck].dates[dt]||0)+r.montant;
-
-          /* Cl\u00e9 (projet, consultant) si projet mapp\u00e9 */
+          /* Cl\u00e9 (projet, consultant) */
           if(useProjet&&r.projet){
             var pk=r.projet.toLowerCase()+'|'+ck;
-            if(!shrByDate[pk])shrByDate[pk]={proj:r.projet,name:r.cons,dates:{}};
-            shrByDate[pk].dates[dt]=(shrByDate[pk].dates[dt]||0)+r.montant;
+            if(!byDate[pk])byDate[pk]={proj:r.projet,cons:r.cons,dates:{}};
+            byDate[pk].dates[dt]=(byDate[pk].dates[dt]||0)+r.montant;
           }
+          /* Cl\u00e9 consultant seul (fallback) */
+          if(!byDate[ck])byDate[ck]={proj:'',cons:r.cons,dates:{}};
+          byDate[ck].dates[dt]=(byDate[ck].dates[dt]||0)+r.montant;
         }
-
         if(r.typeAnal==='CST'){
-          if(!cstByCons[ck])cstByCons[ck]={name:r.cons,cost:0,n:0};
-          cstByCons[ck].cost+=r.montant;cstByCons[ck].n++;
+          if(!byCst[ck])byCst[ck]={name:r.cons,cost:0,n:0};
+          byCst[ck].cost+=r.montant;byCst[ck].n++;
         }
       });
 
-      /* Transformer en grp ({key: {proj?,name,shr,cst}}) */
+      /* Convertir en {key:{proj,cons,shr:{ca,jours},cst:{...}}} */
       var grp={};
-      Object.keys(shrByDate).forEach(function(key){
-        var d=shrByDate[key];
-        grp[key]={proj:d.proj||'',name:d.name,shr:{ca:0,jours:0},cst:{cost:0,n:0}};
+      Object.keys(byDate).forEach(function(key){
+        var d=byDate[key];
+        grp[key]={proj:d.proj,cons:d.cons,shr:{ca:0,jours:0},cst:{cost:0,n:0}};
         Object.keys(d.dates).forEach(function(dt){
           var net=d.dates[dt];
           if(net>0){grp[key].shr.ca+=net;grp[key].shr.jours++;}
         });
       });
-      Object.keys(cstByCons).forEach(function(ck){
-        if(!grp[ck])grp[ck]={proj:'',name:cstByCons[ck].name,shr:{ca:0,jours:0},cst:{cost:0,n:0}};
-        grp[ck].cst.cost+=cstByCons[ck].cost;grp[ck].cst.n+=cstByCons[ck].n;
+      Object.keys(byCst).forEach(function(ck){
+        if(grp[ck]){grp[ck].cst.cost+=byCst[ck].cost;grp[ck].cst.n+=byCst[ck].n;}
       });
       return grp;
     }
@@ -1736,67 +1723,92 @@ function applyImpMap(){
     var byYear={all:buildGroup(imp.rows,'all')};
     years.forEach(function(yr){byYear[yr]=buildGroup(imp.rows,yr);});
 
-    /* buildResults : comparaison avec l\u2019app */
+    /*
+     * buildResults : matching par code projet si disponible, sinon par nom.
+     *
+     * Pour chaque consultant :
+     *   1. S\u2019il a des missions avec pcode → sommer les SHR de chaque (pcode|cons)
+     *   2. Sinon → utiliser la cl\u00e9 cons seul
+     *
+     * On n\u2019affiche QUE les consultants identifi\u00e9s dans le fichier (impCA>0 ou impJ>0).
+     */
     function buildResults(grp){
       var fyS=fyStart(S.year),fyE=fyEnd(S.year);
+      var rows=[];
+      var matchedProjs={};
 
-      /* ── TOUJOURS : matching par nom consultant ── */
-      var consMatched={};
-      var consRows=S.cons.filter(function(c){return !isGone(c);}).map(function(c){
-        var cn=norm(c.name);var cp=cn.split(' ');
-        /* Chercher dans grp la cl\u00e9 consul SIMPLE (pas proj|cons) */
-        var best=null,bestScore=0;
-        Object.keys(grp).forEach(function(key){
-          if(key.indexOf('|')>=0)return;  /* Ignorer les cl\u00e9s proj|cons */
-          var kn=norm(grp[key].name||'');var kp=kn.split(' ');
-          var score=0;
-          cp.forEach(function(p){if(p.length>2&&kp.indexOf(p)>=0)score++;});
-          if(score>bestScore){bestScore=score;best=grp[key];}
-        });
-        if(best&&bestScore>=1)consMatched[norm(best.name||'')]=true;
+      S.cons.filter(function(c){return !isGone(c);}).forEach(function(c){
+        var cn=norm(c.name);
+        var impCA=0,impJ=0,impCost=0,impCST_n=0;
+        var matchedByProj=false;
+
+        /* Matching prioritaire : code projet */
+        if(useProjet){
+          var pcMiss=S.miss.filter(function(m){return m.cid===c.id&&m.pcode&&m.pcode.trim();});
+          pcMiss.forEach(function(m){
+            var pkey=m.pcode.trim().toLowerCase()+'|'+cn;
+            var d=grp[pkey];
+            if(d){
+              impCA+=d.shr.ca;impJ+=d.shr.jours;
+              matchedByProj=true;
+              matchedProjs[pkey]=true;
+            }
+          });
+        }
+
+        /* Fallback : nom consultant */
+        if(!matchedByProj){
+          var d=grp[cn];
+          if(d){impCA+=d.shr.ca;impJ+=d.shr.jours;matchedProjs[cn]=true;}
+        }
+
+        /* CST : toujours par nom */
+        var dc=grp[cn];
+        if(dc){impCost+=dc.cst.cost;impCST_n+=dc.cst.n;}
+
+        /* Ne garder QUE les consultants trouv\u00e9s dans le fichier */
+        if(impCA===0&&impJ===0&&impCost===0)return;
+
         var k=kpi(c,S.miss,S.lvs,S.year,H);
-        var impCA=best?best.shr.ca:0;
-        var impJ=best?best.shr.jours:0;
         var impTJM=impJ>0?impCA/impJ:0;
-        var impCost=best?best.cst.cost:0;
-        var impSCR=best&&best.cst.n>0?impCost/best.cst.n:0;
-        return{c:c,k:k,imp:best,
+        var impSCR=impCST_n>0?impCost/impCST_n:0;
+        rows.push({c:c,k:k,
           appJ:k.bill,impJ:impJ,ecartJ:impJ-k.bill,
           appCA:k.rev,impCA:impCA,ecartCA:impCA-k.rev,
           appTJM:k.avgT,impTJM:impTJM,ecartTJM:impTJM-k.avgT,
-          appCost:c.scr*(k.tWD||0),impCost:impCost,appSCR:c.scr,impSCR:impSCR};
+          appCost:c.scr*(k.tWD||0),impCost:impCost,
+          appSCR:c.scr,impSCR:impSCR,
+          matchedByProj:matchedByProj});
       });
 
-      /* ── OPTIONNEL : d\u00e9tail par mission si pcode renseign\u00e9 ── */
+      /* D\u00e9tail par mission avec pcode */
       var missRows=[];
       if(useProjet){
         S.miss.filter(function(m){return m.pcode&&m.pcode.trim();}).forEach(function(m){
           var c=S.cons.find(function(c){return c.id===m.cid;});
           if(!c||isGone(c))return;
           var pkey=m.pcode.trim().toLowerCase()+'|'+norm(c.name);
-          var imp2=grp[pkey];
-          var mS=m.sd<fyS?fyS:m.sd;
-          var mE=(!m.ed||m.ed>fyE)?fyE:m.ed;
+          var d=grp[pkey];
+          if(!d||d.shr.ca===0)return;  /* N\u2019afficher que si donn\u00e9es trouv\u00e9es */
+          var mS=m.sd<fyS?fyS:m.sd,mE=(!m.ed||m.ed>fyE)?fyE:m.ed;
           var appJ=0,appCA=0;
-          if(mS<=mE){
-            var k=kpi(c,S.miss,S.lvs,S.year,H);
-            var mKpi=k.pm.find(function(p){return p.id===m.id;});
-            appJ=mKpi?mKpi.days:0;appCA=mKpi?mKpi.rev:0;
-          }
-          var impCA=imp2?imp2.shr.ca:0;
-          var impJ=imp2?imp2.shr.jours:0;
-          var impTJM=impJ>0?impCA/impJ:0;
-          missRows.push({m:m,c:c,appJ:appJ,impJ:impJ,ecartJ:impJ-appJ,
-            appCA:appCA,impCA:impCA,ecartCA:impCA-appCA,
-            appTJM:m.tjm,impTJM:impTJM,ecartTJM:impTJM-m.tjm,imp:imp2||null});
+          if(mS<=mE){var k=kpi(c,S.miss,S.lvs,S.year,H);var mk=k.pm.find(function(p){return p.id===m.id;});appJ=mk?mk.days:0;appCA=mk?mk.rev:0;}
+          var impTJM=d.shr.jours>0?d.shr.ca/d.shr.jours:0;
+          missRows.push({m:m,c:c,appJ:appJ,impJ:d.shr.jours,ecartJ:d.shr.jours-appJ,
+            appCA:appCA,impCA:d.shr.ca,ecartCA:d.shr.ca-appCA,
+            appTJM:m.tjm,impTJM:impTJM,ecartTJM:impTJM-m.tjm});
         });
       }
 
-      var unmatch=Object.keys(grp).filter(function(k){return k.indexOf('|')<0&&!consMatched[norm(grp[k].name||'')]&&grp[k].shr.ca>0;}).map(function(k){return grp[k];});
-      var tCA=consRows.reduce(function(s,r){return s+r.impCA;},0);
-      var tJ=consRows.reduce(function(s,r){return s+r.impJ;},0);
-      var tCost=consRows.reduce(function(s,r){return s+r.impCost;},0);
-      return{mode:useProjet&&missRows.length>0?'mixed':'consultant',rows:consRows,missRows:missRows,unmatched:unmatch,totalImpCA:tCA,totalImpJ:tJ,totalImpCost:tCost};
+      /* Non-identifi\u00e9s dans le fichier = codes projets sans mission dans l\u2019app */
+      var unmatched=Object.keys(grp).filter(function(k){
+        return k.indexOf('|')>=0&&!matchedProjs[k]&&grp[k].shr.ca>0;
+      }).map(function(k){return grp[k];});
+
+      var tCA=rows.reduce(function(s,r){return s+r.impCA;},0);
+      var tJ=rows.reduce(function(s,r){return s+r.impJ;},0);
+      var tCost=rows.reduce(function(s,r){return s+r.impCost;},0);
+      return{rows:rows,missRows:missRows,unmatched:unmatched,totalImpCA:tCA,totalImpJ:tJ,totalImpCost:tCost};
     }
 
     var computed={all:buildResults(byYear.all)};
@@ -1924,19 +1936,18 @@ function tImpute(){
     +'<th style="'+TH+'">TJM saisi</th><th style="'+TH+'">TJM r\u00e9el</th>'
     +'</tr></thead>';
   var tbody1='<tbody>'+res.rows.map(function(r){
-    var noD=!r.imp;
     var jCol=Math.abs(r.ecartJ)>2?ecC(r.ecartJ):'#374151';
     var cCol=Math.abs(r.ecartCA)>500?ecC(r.ecartCA):'#374151';
     return '<tr>'
-      +'<td style="'+TDL+'">'+esc(r.c.name)+(noD?' <span style="font-size:10px;color:#94a3b8;font-weight:400">non trouv\u00e9</span>':'')+'</td>'
+      +'<td style="'+TDL+'">'+esc(r.c.name)+(r.matchedByProj?' <span style="font-size:10px;background:#dcfce7;color:#16a34a;padding:1px 6px;border-radius:4px;font-weight:600">code projet</span>':'')+'</td>'
       +'<td style="'+TD+'">'+fJ(r.appJ)+'</td>'
-      +'<td style="'+TD+(noD?';color:#94a3b8':'')+'">'+(noD?'\u2014':fJ(r.impJ))+'</td>'
-      +'<td style="'+TD+';color:'+jCol+';font-weight:700">'+(noD?'\u2014':sgn(r.ecartJ,'j'))+'</td>'
+      +'<td style="'+TD+'">'+fJ(r.impJ)+'</td>'
+      +'<td style="'+TD+';color:'+jCol+';font-weight:700">'+sgn(r.ecartJ,'j')+'</td>'
       +'<td style="'+TD+'">'+fEur(Math.round(r.appCA))+'</td>'
-      +'<td style="'+TD+(noD?';color:#94a3b8':'')+'">'+(noD?'\u2014':fEur(Math.round(r.impCA)))+'</td>'
-      +'<td style="'+TD+';color:'+cCol+';font-weight:700">'+(noD?'\u2014':sgnCA(r.ecartCA))+'</td>'
+      +'<td style="'+TD+'">'+fEur(Math.round(r.impCA))+'</td>'
+      +'<td style="'+TD+';color:'+cCol+';font-weight:700">'+sgnCA(r.ecartCA)+'</td>'
       +'<td style="'+TD+'">'+(r.appTJM>0?fEur(Math.round(r.appTJM)):'\u2014')+'</td>'
-      +'<td style="'+TD+'">'+(noD||r.impTJM===0?'\u2014':fEur(Math.round(r.impTJM)))+'</td>'
+      +'<td style="'+TD+'">'+(r.impTJM===0?'\u2014':fEur(Math.round(r.impTJM)))+'</td>'
       +'</tr>';
   }).join('')+'</tbody>';
 
