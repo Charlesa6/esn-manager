@@ -769,7 +769,7 @@ function tMiss(){
         +'Choisir un fichier<input type="file" id="miss-imp-fi" accept=".xlsx,.xls,.csv" style="display:none"></label>'
         +'</div></div>';
     }
-    var MFLDS=[['cons','Consultant *','Doit correspondre \u00e0 un consultant existant'],['name','Nom de la mission *','Libell\u00e9 de la mission'],['pcode','Code projet','Code PSA/SAP'],['cli','Client *','Soci\u00e9t\u00e9 cliente'],['tjm','TJM *','Taux journalier en \u20ac'],['sd','Date d\u00e9but *','AAAA-MM-JJ'],['ed','Date fin','Vide si mission ouverte'],['loc','Lieu','Ex : Paris'],['mgr','Responsable','Manager de mission'],['ccn','Contact client (Nom)','Nom du contact'],['ccr','Contact client (R\u00f4le)','Poste du contact']];
+    var MFLDS=[['cons','Consultant *','Doit correspondre \u00e0 un consultant existant'],['name','Nom de la mission *','Libell\u00e9 de la mission'],['pcode','Code projet','Code PSA/SAP'],['cli','Client *','Soci\u00e9t\u00e9 cliente'],['tjm','TJM','TJM en \u20ac \u2014 vide si Forfait'],['sd','Date d\u00e9but *','AAAA-MM-JJ'],['ed','Date fin','Vide si mission ouverte'],['btype','Type facturation *','Valeur : AT ou Forfait'],['deal','Budget forfait (\u20ac)','Montant total \u2014 vide si AT'],['wdays','Jours/sem. *','5=L-V, 4=L-J, 3=L-Me ou codes L,M,Me,J,V'],['loc','Lieu','Ex : Paris'],['mgr','Responsable','Manager de mission'],['ccn','Contact client (Nom)','Nom du contact'],['ccr','Contact client (R\u00f4le)','Poste du contact']];
     var opts2='<option value="">-- Ignorer --</option>'+mi.headers.map(function(h,i){return '<option value="'+i+'">'+(i+1)+'. '+esc(h)+'</option>';}).join('');
     var form2=MFLDS.map(function(f){var s2='<select class="ic" id="mim-'+f[0]+'">'+opts2.replace(new RegExp('value="'+mi.map[f[0]]+'"'),'value="'+mi.map[f[0]]+'" selected')+'</select>';return '<div class="fd" style="margin-bottom:9px"><label class="fl">'+f[1]+'</label>'+s2+'<p style="font-size:11px;color:#94a3b8;margin-top:3px">'+f[2]+'</p></div>';}).join('');
     var prev2=mi.raw.slice(0,3).map(function(row){return '<tr>'+mi.headers.map(function(h,i){return '<td style="padding:4px 8px;font-size:11px;border-bottom:1px solid #f1f5f9;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(String(row[i]||''))+'</td>';}).join('')+'</tr>';}).join('');
@@ -1727,7 +1727,6 @@ function handleMissImpFile(file){
         var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
         var ws=wb.Sheets[wb.SheetNames[0]];
         var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-        /* Chercher la ligne d\u2019en-t\u00eate (contient "Consultant") */
         var hdrIdx=-1;
         for(var i=0;i<Math.min(rows.length,6);i++){
           if(rows[i].some(function(c){return String(c).toLowerCase().includes('consultant');})){hdrIdx=i;break;}
@@ -1736,21 +1735,23 @@ function handleMissImpFile(file){
         var headers=rows[hdrIdx].map(function(h){return String(h||'').replace(/\s*\*/g,'').trim();});
         var data=rows.slice(hdrIdx+1).filter(function(r){return r.some(function(c){return String(c).trim()!=='';});});
         if(data.length===0){alert('Aucune ligne de donn\u00e9es trouv\u00e9e.');return;}
-        /* Auto-d\u00e9tection */
         var am={};
         headers.forEach(function(h,i){
           var l=h.toLowerCase();
           if(am.cons===undefined&&(l.includes('consultant')||l.includes('collaborateur')))am.cons=i;
           if(am.name===undefined&&(l.includes('nom')&&l.includes('mission')||l.includes('libell')))am.name=i;
-          if(am.pcode===undefined&&(l.includes('code projet')||l.includes('projet')||l.includes('psa')))am.pcode=i;
-          if(am.cli===undefined&&(l.includes('client')))am.cli=i;
-          if(am.tjm===undefined&&(l==='tjm'||l.includes('tjm')||l.includes('tarif')))am.tjm=i;
+          if(am.pcode===undefined&&(l.includes('code projet')||l.includes('psa')||l.includes('projet')))am.pcode=i;
+          if(am.cli===undefined&&l.includes('client'))am.cli=i;
+          if(am.tjm===undefined&&(l==='tjm'||l.includes('tjm')||l.includes('taux journal')))am.tjm=i;
           if(am.sd===undefined&&(l.includes('d\u00e9but')||l.includes('debut')||l.includes('start')))am.sd=i;
-          if(am.ed===undefined&&(l.includes('fin')&&!l.includes('d\u00e9fin')||l.includes('end')))am.ed=i;
-          if(am.loc===undefined&&(l.includes('lieu')||l.includes('location')))am.loc=i;
+          if(am.ed===undefined&&(l.includes('date fin')||l.includes('end date')))am.ed=i;
+          if(am.btype===undefined&&(l.includes('type')&&(l.includes('factu')||l.includes('billing')||l.includes('contract'))))am.btype=i;
+          if(am.deal===undefined&&(l.includes('budget')||l.includes('forfait')&&l.includes('\u20ac')||l.includes('montant')))am.deal=i;
+          if(am.wdays===undefined&&(l.includes('jours/sem')||l.includes('jour/sem')||l.includes('jours sem')||l.includes('working day')))am.wdays=i;
+          if(am.loc===undefined&&(l.includes('lieu')||l==='location'))am.loc=i;
           if(am.mgr===undefined&&(l.includes('responsable')||l.includes('manager')))am.mgr=i;
           if(am.ccn===undefined&&(l.includes('contact')&&l.includes('nom')))am.ccn=i;
-          if(am.ccr===undefined&&(l.includes('contact')&&l.includes('r\u00f4le')||l.includes('contact')&&l.includes('role')))am.ccr=i;
+          if(am.ccr===undefined&&(l.includes('contact')&&(l.includes('r\u00f4le')||l.includes('role')||l.includes('poste'))))am.ccr=i;
         });
         S.missImp={file:file.name,headers:headers,raw:data,map:am,rows:[]};
         render();
@@ -1763,25 +1764,39 @@ function handleMissImpFile(file){
 function applyMissImp(){
   var mi=S.missImp;if(!mi)return;
   var cm={};
-  ['cons','name','pcode','cli','tjm','sd','ed','loc','mgr','ccn','ccr'].forEach(function(f){
+  ['cons','name','pcode','cli','tjm','sd','ed','btype','deal','wdays','loc','mgr','ccn','ccr'].forEach(function(f){
     var el=document.getElementById('mim-'+f);
     if(el&&el.value!=='')cm[f]=parseInt(el.value);
   });
   if(cm.cons===undefined){alert('Colonne Consultant obligatoire.');return;}
   if(cm.name===undefined){alert('Colonne Nom de mission obligatoire.');return;}
-  if(cm.tjm===undefined){alert('Colonne TJM obligatoire.');return;}
   if(cm.sd===undefined){alert('Colonne Date d\u00e9but obligatoire.');return;}
 
   function fmtDate(v){
     if(!v)return null;
     if(v instanceof Date)return v.getFullYear()+'-'+String(v.getMonth()+1).padStart(2,'0')+'-'+String(v.getDate()).padStart(2,'0');
     var s=String(v).trim();
-    /* Accepter DD/MM/YYYY */
     var m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
     if(m)return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
     return s||null;
   }
   function norm(n){return String(n||'').toLowerCase().trim();}
+
+  /* Parser les jours travaill\u00e9s
+   * Entr\u00e9e : 5, 4, 3, 2, 1  ou  "L,M,Me,J,V"  ou  "Lun,Mar,..."
+   * Sortie : tableau d\u2019entiers 1=Lun...5=Ven (0=Dim exclu par d\u00e9faut)
+   */
+  function parseWdays(v){
+    if(!v&&v!==0)return [1,2,3,4,5];
+    var s=String(v).trim().toLowerCase();
+    var n=parseInt(s);
+    if(!isNaN(n)&&n>=1&&n<=7)return [1,2,3,4,5].slice(0,n);
+    var dayMap={l:1,lu:1,lun:1,lundi:1,m:2,ma:2,mar:2,mardi:2,me:3,mer:3,merc:3,mercredi:3,j:4,je:4,jeu:4,jeudi:4,v:5,ve:5,ven:5,vendredi:5,s:6,sa:6,sam:6,samedi:6};
+    var parts=s.split(/[,;\s]+/).map(function(p){return p.trim();}).filter(Boolean);
+    var res=[];
+    parts.forEach(function(p){var d=dayMap[p];if(d&&res.indexOf(d)<0)res.push(d);});
+    return res.length?res.sort():[1,2,3,4,5];
+  }
 
   var created=0,skipped=[];
   mi.raw.forEach(function(row){
@@ -1789,37 +1804,52 @@ function applyMissImp(){
     var missName=String(row[cm.name]||'').trim();
     if(!consName||!missName)return;
 
-    /* Trouver le consultant par nom (correspondance partielle) */
     var consNorm=norm(consName);
     var found=S.cons.find(function(c){
-      var cn=norm(c.name);
-      var cp=cn.split(' ');var kp=consNorm.split(' ');
-      var score=0;
-      cp.forEach(function(p){if(p.length>2&&kp.indexOf(p)>=0)score++;});
+      var cn=norm(c.name);var cp=cn.split(' ');var kp=consNorm.split(' ');
+      var score=0;cp.forEach(function(p){if(p.length>2&&kp.indexOf(p)>=0)score++;});
       return score>=1||cn===consNorm;
     });
-    if(!found){skipped.push(consName+'  (consultant non trouv\u00e9)');return;}
+    if(!found){skipped.push(consName+' (consultant non trouv\u00e9)');return;}
 
-    var tjm=parseFloat(String(row[cm.tjm]||'0').replace(',','.'))||0;
     var sd=fmtDate(cm.sd!==undefined?row[cm.sd]:null);
     if(!sd){skipped.push(missName+' (date d\u00e9but manquante)');return;}
 
-    var m={
-      id:uid(),
-      cid:found.id,
+    /* Type facturation */
+    var btypeRaw=cm.btype!==undefined?String(row[cm.btype]||'').toLowerCase().trim():'';
+    var btype=btypeRaw.includes('forfait')?'forfait':'at';
+
+    /* TJM */
+    var tjm=cm.tjm!==undefined?parseFloat(String(row[cm.tjm]||'0').replace(',','.'))||0:0;
+
+    /* Budget forfait */
+    var deal=cm.deal!==undefined?parseFloat(String(row[cm.deal]||'').replace(',','.'))||null:null;
+
+    /* Jours travaill\u00e9s */
+    var wdaysRaw=cm.wdays!==undefined?row[cm.wdays]:5;
+    var wdays=parseWdays(wdaysRaw);
+
+    if(btype==='forfait'&&!deal){skipped.push(missName+' (forfait sans budget)');return;}
+    if(btype==='at'&&tjm===0){skipped.push(missName+' (AT sans TJM)');return;}
+
+    var m2={
+      id:uid(),cid:found.id,
       name:missName,
       pcode:cm.pcode!==undefined?String(row[cm.pcode]||'').trim():'',
       cli:cm.cli!==undefined?String(row[cm.cli]||'').trim():'',
       tjm:tjm,
       sd:sd,
       ed:fmtDate(cm.ed!==undefined?row[cm.ed]:null),
+      btype:btype,
+      deal:deal,
+      tmar:null,
+      wdays:wdays,
       loc:cm.loc!==undefined?String(row[cm.loc]||'').trim():'',
       mgr:cm.mgr!==undefined?String(row[cm.mgr]||'').trim():'',
       ccn:cm.ccn!==undefined?String(row[cm.ccn]||'').trim():'',
-      ccr:cm.ccr!==undefined?String(row[cm.ccr]||'').trim():'',
-      btype:'at',wdays:[1,2,3,4,5],deal:null,tmar:null
+      ccr:cm.ccr!==undefined?String(row[cm.ccr]||'').trim():''
     };
-    S.miss.push(m);
+    S.miss.push(m2);
     created++;
   });
 
