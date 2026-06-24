@@ -388,7 +388,8 @@ var S={
   imp:null,
   impHistory:[],
   impView:'pl',
-  impSelFY:'all'
+  impSelFY:'all',
+  missImp:null
 };
 var H=fyHols(CFY);
 
@@ -755,8 +756,39 @@ function tMiss(){
       +'<div style="display:flex;gap:10px;flex-shrink:0"><button class="lb" data-act="em" data-id="'+m.id+'">Modifier</button>'
       +'<button class="lr" data-act="dm" data-id="'+m.id+'">Suppr.</button></div></div></div>';
   }).join('');
+  if(S.missImp!==null){
+    var mi=S.missImp;
+    if(!mi.headers){
+      return '<div class="vw"><div class="ph"><div><div class="pt">Import de missions en masse</div>'
+        +'<div class="ps">Utilisez le template Excel fourni — les consultants doivent exister dans l\'app</div></div>'
+        +'<button class="bg" onclick="S.missImp=null;render()">← Retour</button></div>'
+        +'<div class="card" style="padding:60px 32px;text-align:center;border:2px dashed #e2e8f0;background:#fff;border-radius:16px" id="miss-imp-dz">'
+        +'<div style="font-size:15px;font-weight:700;color:#0f172a;margin-bottom:8px">Glissez votre fichier Excel ici</div>'
+        +'<div style="font-size:12px;color:#64748b;margin-bottom:24px">Une ligne = une mission — utilisez le template fourni</div>'
+        +'<label style="display:inline-block;background:#2563eb;color:#fff;padding:11px 28px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer">'
+        +'Choisir un fichier<input type="file" id="miss-imp-fi" accept=".xlsx,.xls,.csv" style="display:none"></label>'
+        +'</div></div>';
+    }
+    var MFLDS=[['cons','Consultant *','Doit correspondre \u00e0 un consultant existant'],['name','Nom de la mission *','Libell\u00e9 de la mission'],['pcode','Code projet','Code PSA/SAP'],['cli','Client *','Soci\u00e9t\u00e9 cliente'],['tjm','TJM *','Taux journalier en \u20ac'],['sd','Date d\u00e9but *','AAAA-MM-JJ'],['ed','Date fin','Vide si mission ouverte'],['loc','Lieu','Ex : Paris'],['mgr','Responsable','Manager de mission'],['ccn','Contact client (Nom)','Nom du contact'],['ccr','Contact client (R\u00f4le)','Poste du contact']];
+    var opts2='<option value="">-- Ignorer --</option>'+mi.headers.map(function(h,i){return '<option value="'+i+'">'+(i+1)+'. '+esc(h)+'</option>';}).join('');
+    var form2=MFLDS.map(function(f){var s2='<select class="ic" id="mim-'+f[0]+'">'+opts2.replace(new RegExp('value="'+mi.map[f[0]]+'"'),'value="'+mi.map[f[0]]+'" selected')+'</select>';return '<div class="fd" style="margin-bottom:9px"><label class="fl">'+f[1]+'</label>'+s2+'<p style="font-size:11px;color:#94a3b8;margin-top:3px">'+f[2]+'</p></div>';}).join('');
+    var prev2=mi.raw.slice(0,3).map(function(row){return '<tr>'+mi.headers.map(function(h,i){return '<td style="padding:4px 8px;font-size:11px;border-bottom:1px solid #f1f5f9;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(String(row[i]||''))+'</td>';}).join('')+'</tr>';}).join('');
+    return '<div class="vw"><div class="ph"><div><div class="pt">Import missions \u2014 Mapping</div>'
+      +'<div class="ps">'+esc(mi.file)+' \u00b7 '+mi.raw.length+' ligne(s)</div></div>'
+      +'<button class="bg" onclick="S.missImp=null;render()">Annuler</button></div>'
+      +'<div style="display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start">'
+      +'<div class="card" style="padding:20px"><div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:14px">Association des colonnes</div>'+form2
+      +'<button class="bp" style="width:100%;margin-top:8px" onclick="applyMissImp()">Importer les missions</button></div>'
+      +'<div class="card" style="padding:20px"><div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:10px">Aper\u00e7u (3 lignes)</div>'
+      +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr>'+mi.headers.map(function(h){return '<th style="padding:4px 8px;font-size:11px;font-weight:700;color:#64748b;background:#f8fafc;border-bottom:1px solid #e2e8f0;text-align:left">'+esc(h)+'</th>';}).join('')+'</tr></thead><tbody>'+prev2+'</tbody></table></div></div>'
+      +'</div></div>';
+  }
+
   return '<div><div class="ph"><div><div class="pt">Missions</div><div class="ps">'+fil.length+' r\u00e9sultat'+(fil.length!==1?'s':'')+'</div></div>'
-    +'<button class="bp" data-act="am">+ Ajouter une mission</button></div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="bp" data-act="am">+ Ajouter une mission</button>'
+    +'<button class="bg" onclick="S.missImp={};render()">↑ Importer en masse</button>'
+    +'</div></div>'
     +'<div style="display:flex;gap:10px;margin-bottom:16px">'
     +'<select class="ic" style="max-width:220px" id="fmc">'+co+'</select>'
     +'<select class="ic" style="max-width:180px" id="fms">'
@@ -1379,8 +1411,16 @@ function bind(){
   var impFile=el('imp-file');
   if(impFile)impFile.onchange=function(){importJSON(this.files[0]);this.value='';};
   /* logout & sync */
-  /* Imputations : file input + drag-and-drop */
-  var impFi=el('imp-fi');
+  /* Imputations + Missions : file inputs */
+  var missImpFi=el('miss-imp-fi');
+  if(missImpFi)missImpFi.onchange=function(){if(this.files[0])handleMissImpFile(this.files[0]);this.value='';};
+  var missImpDz=el('miss-imp-dz');
+  if(missImpDz){
+    missImpDz.addEventListener('dragover',function(e){e.preventDefault();missImpDz.style.borderColor='#2563eb';});
+    missImpDz.addEventListener('dragleave',function(){missImpDz.style.borderColor='#e2e8f0';});
+    missImpDz.addEventListener('drop',function(e){e.preventDefault();var f=e.dataTransfer.files[0];if(f)handleMissImpFile(f);});
+    missImpDz.addEventListener('click',function(e){if(e.target.tagName!=='LABEL'&&e.target.tagName!=='INPUT'){var fi2=el('miss-imp-fi');if(fi2)fi2.click();}});
+  }
   if(impFi)impFi.onchange=function(){if(this.files[0])handleImpFile(this.files[0]);this.value='';};
   var impDz=el('imp-dz');
   if(impDz){
@@ -1672,6 +1712,124 @@ function clearImp(){S.imp=null;S.impView=S.impHistory.length>0?'pl':'import';ren
 function removeImpHistory(id){S.impHistory=S.impHistory.filter(function(h){return h.id!==id;});if(S.impHistory.length===0)S.impView='import';render();}
 function clearAllImports(){if(confirm('Vider tout l\'historique des imports ?')){S.impHistory=[];S.impView='import';render();}}
 
+
+/* ══════════════════════════════════
+   IMPORT MISSIONS EN MASSE
+══════════════════════════════════ */
+function handleMissImpFile(file){
+  if(!file)return;
+  var ext=file.name.split('.').pop().toLowerCase();
+  if(['xlsx','xls','csv'].indexOf(ext)<0){alert('Format non support\u00e9. Utilisez le template .xlsx fourni.');return;}
+  loadXLSX(function(){
+    var r=new FileReader();
+    r.onload=function(e){
+      try{
+        var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
+        var ws=wb.Sheets[wb.SheetNames[0]];
+        var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        /* Chercher la ligne d\u2019en-t\u00eate (contient "Consultant") */
+        var hdrIdx=-1;
+        for(var i=0;i<Math.min(rows.length,6);i++){
+          if(rows[i].some(function(c){return String(c).toLowerCase().includes('consultant');})){hdrIdx=i;break;}
+        }
+        if(hdrIdx<0){alert('En-t\u00eate non trouv\u00e9. Utilisez le template fourni.');return;}
+        var headers=rows[hdrIdx].map(function(h){return String(h||'').replace(/\s*\*/g,'').trim();});
+        var data=rows.slice(hdrIdx+1).filter(function(r){return r.some(function(c){return String(c).trim()!=='';});});
+        if(data.length===0){alert('Aucune ligne de donn\u00e9es trouv\u00e9e.');return;}
+        /* Auto-d\u00e9tection */
+        var am={};
+        headers.forEach(function(h,i){
+          var l=h.toLowerCase();
+          if(am.cons===undefined&&(l.includes('consultant')||l.includes('collaborateur')))am.cons=i;
+          if(am.name===undefined&&(l.includes('nom')&&l.includes('mission')||l.includes('libell')))am.name=i;
+          if(am.pcode===undefined&&(l.includes('code projet')||l.includes('projet')||l.includes('psa')))am.pcode=i;
+          if(am.cli===undefined&&(l.includes('client')))am.cli=i;
+          if(am.tjm===undefined&&(l==='tjm'||l.includes('tjm')||l.includes('tarif')))am.tjm=i;
+          if(am.sd===undefined&&(l.includes('d\u00e9but')||l.includes('debut')||l.includes('start')))am.sd=i;
+          if(am.ed===undefined&&(l.includes('fin')&&!l.includes('d\u00e9fin')||l.includes('end')))am.ed=i;
+          if(am.loc===undefined&&(l.includes('lieu')||l.includes('location')))am.loc=i;
+          if(am.mgr===undefined&&(l.includes('responsable')||l.includes('manager')))am.mgr=i;
+          if(am.ccn===undefined&&(l.includes('contact')&&l.includes('nom')))am.ccn=i;
+          if(am.ccr===undefined&&(l.includes('contact')&&l.includes('r\u00f4le')||l.includes('contact')&&l.includes('role')))am.ccr=i;
+        });
+        S.missImp={file:file.name,headers:headers,raw:data,map:am,rows:[]};
+        render();
+      }catch(err){alert('Erreur de lecture : '+err.message);}
+    };
+    r.readAsArrayBuffer(file);
+  });
+}
+
+function applyMissImp(){
+  var mi=S.missImp;if(!mi)return;
+  var cm={};
+  ['cons','name','pcode','cli','tjm','sd','ed','loc','mgr','ccn','ccr'].forEach(function(f){
+    var el=document.getElementById('mim-'+f);
+    if(el&&el.value!=='')cm[f]=parseInt(el.value);
+  });
+  if(cm.cons===undefined){alert('Colonne Consultant obligatoire.');return;}
+  if(cm.name===undefined){alert('Colonne Nom de mission obligatoire.');return;}
+  if(cm.tjm===undefined){alert('Colonne TJM obligatoire.');return;}
+  if(cm.sd===undefined){alert('Colonne Date d\u00e9but obligatoire.');return;}
+
+  function fmtDate(v){
+    if(!v)return null;
+    if(v instanceof Date)return v.getFullYear()+'-'+String(v.getMonth()+1).padStart(2,'0')+'-'+String(v.getDate()).padStart(2,'0');
+    var s=String(v).trim();
+    /* Accepter DD/MM/YYYY */
+    var m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if(m)return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+    return s||null;
+  }
+  function norm(n){return String(n||'').toLowerCase().trim();}
+
+  var created=0,skipped=[];
+  mi.raw.forEach(function(row){
+    var consName=String(row[cm.cons]||'').trim();
+    var missName=String(row[cm.name]||'').trim();
+    if(!consName||!missName)return;
+
+    /* Trouver le consultant par nom (correspondance partielle) */
+    var consNorm=norm(consName);
+    var found=S.cons.find(function(c){
+      var cn=norm(c.name);
+      var cp=cn.split(' ');var kp=consNorm.split(' ');
+      var score=0;
+      cp.forEach(function(p){if(p.length>2&&kp.indexOf(p)>=0)score++;});
+      return score>=1||cn===consNorm;
+    });
+    if(!found){skipped.push(consName+'  (consultant non trouv\u00e9)');return;}
+
+    var tjm=parseFloat(String(row[cm.tjm]||'0').replace(',','.'))||0;
+    var sd=fmtDate(cm.sd!==undefined?row[cm.sd]:null);
+    if(!sd){skipped.push(missName+' (date d\u00e9but manquante)');return;}
+
+    var m={
+      id:uid(),
+      cid:found.id,
+      name:missName,
+      pcode:cm.pcode!==undefined?String(row[cm.pcode]||'').trim():'',
+      cli:cm.cli!==undefined?String(row[cm.cli]||'').trim():'',
+      tjm:tjm,
+      sd:sd,
+      ed:fmtDate(cm.ed!==undefined?row[cm.ed]:null),
+      loc:cm.loc!==undefined?String(row[cm.loc]||'').trim():'',
+      mgr:cm.mgr!==undefined?String(row[cm.mgr]||'').trim():'',
+      ccn:cm.ccn!==undefined?String(row[cm.ccn]||'').trim():'',
+      ccr:cm.ccr!==undefined?String(row[cm.ccr]||'').trim():'',
+      btype:'at',wdays:[1,2,3,4,5],deal:null,tmar:null
+    };
+    S.miss.push(m);
+    created++;
+  });
+
+  S.missImp=null;
+  var msg=created+' mission(s) ajout\u00e9e(s).';
+  if(skipped.length)msg+='\n\nIgnor\u00e9(s) :\n'+skipped.join('\n');
+  alert(msg+'\n\nPensez \u00e0 synchroniser avec Supabase.');
+  render();
+}
+
 function tImpute(){
 
   /* ══ ETAT 1 : Zone upload ══ */
@@ -1753,15 +1911,16 @@ function tImpute(){
   /* Bornes FY s\u00e9lectionn\u00e9 */
   var fyS=null,fyE=null;
   if(selFY!=='all'){var fyY=fyLabelToYear(selFY);fyS=fyStart(fyY);fyE=fyEnd(fyY);}
-  /* FY de l\u2019app pour le plan */
-  var appFY=S.year;
+  /* FY du plan : utiliser le FY du filtre s\u00e9lectionn\u00e9 (pas toujours S.year) */
+  var planFY = selFY !== 'all' ? fyLabelToYear(selFY) : S.year;
+  var planH  = fyHols(planFY);   /* jours f\u00e9ri\u00e9s correspondants */
 
   /* ── Plan : missions avec pcode ── */
   var planByProj={};  /* {pkey: {pcode,miss,cli,cons,cid,jPlan,caPlan,tjmPlan}} */
   S.miss.filter(function(m){return m.pcode&&m.pcode.trim();}).forEach(function(m){
     var c=S.cons.find(function(c){return c.id===m.cid;});
     if(!c||isGone(c))return;
-    var k=kpi(c,S.miss,S.lvs,appFY,H);
+    var k=kpi(c,S.miss,S.lvs,planFY,planH);
     var mk=k.pm.find(function(p){return p.id===m.id;});
     var jPlan=mk?mk.days:0;
     var caPlan=mk?mk.rev:0;
@@ -1950,7 +2109,7 @@ function tImpute(){
 
   return '<div class="vw">'
     +'<div class="ph"><div><div class="pt">P&amp;L R\u00e9alis\u00e9</div>'
-    +'<div class="ps">Plan (app FY'+String(appFY).substring(2)+') vs R\u00e9el (SHR import\u00e9) \u00b7 par code projet</div></div>'
+    +'<div class="ps">Plan FY'+String(planFY).substring(2)+' vs R\u00e9el (SHR import\u00e9) \u00b7 par code projet</div></div>'
     +'<div style="display:flex;gap:8px">'
     +'<button class="bg" onclick="S.impView=\'import\';S.imp=null;render()">+ Ajouter un import</button>'
     +'<button class="bg" onclick="clearAllImports()" style="color:#ef4444;border-color:#fecdd3">Vider l\'historique</button>'
