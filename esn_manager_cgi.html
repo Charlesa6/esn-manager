@@ -1625,11 +1625,16 @@ async function initApp(){
       /* ── 2. R\u00e9cup\u00e9rer company_id + r\u00f4le ── */
       var uid2=sess.data.session.user.id;
       var pr=await sb.from('profiles').select('*').eq('id',uid2).single();
-      if(pr.data){
+      if(pr.data&&pr.data.company_id){
         SB_CID=pr.data.company_id;
         S.role=(pr.data.role==='directeur')?'directeur':'gestionnaire';
         S.dirName=pr.data.directeur_name||'';
+      }else{
+        /* Fallback : chercher company_id directement dans companies */
+        var cq=await sb.from('companies').select('id').eq('owner_id',uid2).single();
+        if(cq.data)SB_CID=cq.data.id;
       }
+      if(!SB_CID){console.warn('SB_CID non récupéré - sync Supabase désactivée');}
 
       /* ── 3. Charger les donn\u00e9es depuis Supabase ── */
       var ok=await loadSB();
@@ -1938,19 +1943,27 @@ function applyMissImp(){
   });
 
   S.missImp=null;
-  var msg=created+' mission(s) ajout\u00e9e(s).';
-  if(skipped.length)msg+='\n\nIgnor\u00e9(s) :\n'+skipped.join('\n');
-  /* Auto-sync Supabase + localStorage */
-  saveLocal();
+  saveLocal();  /* sauvegarde locale imm\u00e9diate */
+  var msg=created+' mission(s) ajout\u00e9e(s)';
+  if(skipped.length)msg+='. Ignor\u00e9(s) :\n'+skipped.join('\n');
+
+  /* Synchronisation Supabase : on attend le r\u00e9sultat pour confirmer */
   if(sb&&SB_CID){
-    S.miss.slice(-created).forEach(function(m2){
-      sbUpsertMiss(m2).catch(function(e){console.warn('Auto-sync:',e);});
-    });
-    msg+=' Synchronisation Supabase en cours.';
+    /* Promise.all sur toutes les nouvelles missions */
+    var newMissions=S.miss.slice(-created);
+    Promise.all(newMissions.map(function(m2){return sbUpsertMiss(m2);}))
+      .then(function(){
+        alert(msg+'\nSynchronis\u00e9es dans Supabase \u2713');
+      })
+      .catch(function(err){
+        alert(msg+'\n\u26a0 Erreur Supabase : '+err.message+'\nLes missions sont sauvegard\u00e9es localement. Cliquez "Synchroniser" dans la barre lat\u00e9rale.');
+      });
+  }else if(sb&&!SB_CID){
+    /* SB_CID manquant : session OK mais profil pas encore charg\u00e9 */
+    alert(msg+'\n\n\u26a0 Profil Supabase non charg\u00e9. D\u00e9connectez-vous et reconnectez-vous, puis cliquez "Synchroniser".');
   }else{
-    msg+='\n\nSync manuel requis (barre laterale).';
+    alert(msg+'\nSauvegard\u00e9es localement. Configurez Supabase pour persister les donn\u00e9es.');
   }
-  alert(msg);
   render();
 }
 
