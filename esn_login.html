@@ -342,13 +342,23 @@ function renderSavedEmails(emails) {
   if (!wrap) return;
   if (!emails || !emails.length) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'block';
-  wrap.innerHTML = '<div style="font-size:11px;color:#94a3b8;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.06em">Comptes enregistrés</div>'
-    + emails.map(function(em) {
-        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:#f8fafc;border-radius:7px;margin-bottom:4px;cursor:pointer;border:1px solid #e2e8f0" onclick="useEmail('' + em + '')">'
+  var html = '<div style="font-size:11px;color:#94a3b8;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.06em">Comptes enregistrés</div>';
+  emails.forEach(function(em) {
+    html += '<div class="_se-row" style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:#f8fafc;border-radius:7px;margin-bottom:4px;cursor:pointer;border:1px solid #e2e8f0">'
           + '<span style="font-size:13px;color:#0f172a">' + em + '</span>'
-          + '<button onclick="event.stopPropagation();removeEmail('' + em + '')" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:14px;padding:0 2px" title="Oublier">&times;</button>'
+          + '<button class="_se-del" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 4px;line-height:1" title="Oublier">×</button>'
           + '</div>';
-      }).join('');
+  });
+  wrap.innerHTML = html;
+  /* Attacher les évènements via data, pas via onclick inline */
+  var rows = wrap.querySelectorAll('._se-row');
+  rows.forEach(function(row, i) {
+    var em = emails[i];
+    row.querySelector('._se-del').addEventListener('click', function(e) {
+      e.stopPropagation(); removeEmail(em);
+    });
+    row.addEventListener('click', function() { useEmail(em); });
+  });
 }
 
 function useEmail(email) {
