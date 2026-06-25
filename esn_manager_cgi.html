@@ -1044,7 +1044,7 @@ function tLeaves(){
   }).join('');
   var hols=HOLS_N.map(function(h){return '<div style="font-size:11px;color:#374151;display:flex;gap:5px;align-items:center"><span style="color:#16a34a">\u2713</span>'+esc(h)+'</div>';}).join('');
   return '<div><div class="ph"><div><div class="pt">Absences & Cong\u00e9s</div><div class="ps">'+fil.length+' p\u00e9riode'+(fil.length!==1?'s':'')+'</div></div>'
-    +'<div style="display:flex;gap:8px;align-items:center">'+'<button class="bp" data-act="al">+ Ajouter une absence</button>'+'<button class="bg" onclick="document.getElementById(\'lv-xls-inp\').click()">↑ Importer depuis Excel staffing</button>'+'<input type="file" id="lv-xls-inp" accept=".xlsx" style="display:none" onchange="importStaffingXLS(this.files[0]);this.value=\'\'">'+'</div></div>'
+    +'<div style="display:flex;gap:8px;align-items:center">'+'<button class="bp" data-act="al">+ Ajouter une absence</button>'+'<button class="bg" onclick="document.getElementById(\'lv-xls-inp\').click()">↑ Importer un fichier</button>'+'<input type="file" id="lv-xls-inp" accept=".xlsx" style="display:none" onchange="importStaffingXLS(this.files[0]);this.value=\'\'">'+'</div></div>'
     +'<div style="margin-bottom:16px"><select class="ic" style="max-width:240px" id="flc">'+co+'</select></div>'
     +'<div class="card ov" style="margin-bottom:16px"><table><thead><tr><th>Consultant</th><th>Type</th><th>Du</th><th>Au</th><th class="tc">Jours ouvrés</th><th class="tr">Actions</th></tr></thead>'
     +'<tbody>'+rows+(fil.length?'':'<tr><td colspan="6" class="emp">Aucune absence enregistr\u00e9e</td></tr>')+'</tbody></table></div>'
@@ -2567,8 +2567,12 @@ function importStaffingXLS(file){
         var rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:null});
         var res=parseStaffingRows(rows,sheetName);
         var msg=res.added+' absence(s) import\u00e9e(s)';
-        if(res.skipped>0)msg+='\n'+res.skipped+' consultant(s) non trouv\u00e9(s) dans l\'app (v\u00e9rifiez les noms)';
         if(res.dupes>0)msg+='\n'+res.dupes+' doublon(s) ignor\u00e9(s)';
+        if(res.notFound&&res.notFound.length>0){
+          msg+='\n\n'+res.notFound.length+' nom(s) non retrouv\u00e9(s) dans l\'app :\n'
+            +res.notFound.slice(0,8).join('\n')+(res.notFound.length>8?'\n...(+(res.notFound.length-8)+\' autres)':'');
+          msg+='\n\nConsultants dans l\'app : '+S.cons.map(function(c){return c.name;}).join(', ');
+        }
         saveLocal();
         if(sb&&SB_CID){
           res.entries.forEach(function(l){
@@ -2588,47 +2592,54 @@ function importStaffingXLS(file){
 
 function parseStaffingRows(rows,sheetName){
   var isAvail=(sheetName==='Available');
+  var CONS_COL=isAvail?5:4;
+  var FIRST_DATE_COL=isAvail?8:5;
+  var HEADER_ROW=4;
 
-  /* Indices colonnes */
-  var CONS_COL=isAvail?5:4;   /* col Consultants */
-  var FIRST_DATE_COL=isAvail?8:5; /* premi\u00e8re colonne de date */
-  var HEADER_ROW=4;           /* ligne de header (index 0) */
+  /* Normalisation robuste : NFD + suppression diacritiques + nettoyage */
+  function deaccent(s){
+    var str=String(s||'').toLowerCase();
+    /* Utiliser normalize si disponible (tous navigateurs modernes) */
+    if(str.normalize){str=str.normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
+    else{str=str.replace(/[é\u00e9è\u00eaê\u00ebë]/g,'e')
+              .replace(/[à\u00e0â\u00e2ä\u00e4]/g,'a')
+              .replace(/[ù\u00f9û\u00fbü\u00fc]/g,'u')
+              .replace(/[ô\u00f4ö\u00f6]/g,'o')
+              .replace(/[î\u00eeï\u00ef]/g,'i')
+              .replace(/[ç\u00e7]/g,'c');}
+    return str;
+  }
+  function norm(s){
+    return deaccent(s)
+      .replace(/[,;]/g,' ')          /* virgules/points-virgules → espace */
+      .replace(/[-]/g,' ')           /* tirets → espace (BARRIER-FOUQUE → barrier fouque) */
+      .replace(/[^a-z0-9 ]/g,'')    /* tout le reste */
+      .replace(/\s+/g,' ')          /* espaces multiples */
+      .trim();
+  }
 
-  /* Mapping mois FR → num\u00e9ro (sans accents pour la comparaison) */
+  /* Mois FR sans accents → numéro */
   var MOIS={
     'janv':1,'jan':1,'fevr':2,'fev':2,'mars':3,'avr':4,
     'mai':5,'juin':6,'juil':7,'aout':8,'sept':9,'sep':9,
-    'oct':10,'nov':11,'dec':12,'decembre':12
+    'oct':10,'nov':11,'dec':12
   };
-
-  /* Retirer les accents pour la comparaison */
-  function deaccent(s){
-    return String(s||'').toLowerCase()
-      .replace(/[éèêë]/g,'e').replace(/[àâä]/g,'a').replace(/[ùûü]/g,'u')
-      .replace(/[ôö]/g,'o').replace(/[îï]/g,'i').replace(/[ç]/g,'c');
-  }
-  function norm(s){return deaccent(s).replace(/[^a-z0-9 ]/g,'').trim();}
-
-  /* Convertir une valeur de cellule date en ISO YYYY-MM-DD */
   function toISO(v){
     if(!v||v==='#REF!')return null;
     var s=String(v).trim();
-    /* D\u00e9j\u00e0 en format ISO (feuille Bench avec cellDates) */
     if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.substring(0,10);
-    /* Format texte "DD-mois" (feuille Available) */
-    var m=s.match(/^(\d{1,2})-([a-z\u00e0-\u00ff]+)$/i);
+    var m=s.match(/^(\d{1,2})-([a-z\u00c0-\u00ff]+)$/i);
     if(!m)return null;
     var day=parseInt(m[1]);
-    var moisKey=deaccent(m[2]).replace(/[^a-z]/g,'');
-    var month=MOIS[moisKey];
+    var mk=deaccent(m[2]).replace(/[^a-z]/g,'');
+    var month=MOIS[mk];
     if(!month)return null;
-    /* Ann\u00e9e : mois oct-d\u00e9c = ann\u00e9e de d\u00e9but du FY, sinon ann\u00e9e de fin */
     var fy=S.year||2026;
     var year=month>=10?fy-1:fy;
     return year+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
   }
 
-  /* Construire la map des colonnes dates : idx → ISO date */
+  /* Map colonnes dates */
   var SKIP_WORDS=['TOTAL','FTE','AVAILABLE','REF'];
   var header=rows[HEADER_ROW]||[];
   var dateCols={};
@@ -2640,24 +2651,58 @@ function parseStaffingRows(rows,sheetName){
     var iso=toISO(hv);
     if(iso)dateCols[j]=iso;
   }
+  console.log('[import-lv] Colonnes dates d\u00e9tect\u00e9es :',Object.keys(dateCols).length);
+  console.log('[import-lv] Consultants dans l\'app :',S.cons.map(function(c){return c.name;}).join(', '));
 
-  /* Grouper des dates ISO tri\u00e9es en p\u00e9riodes continues */
-  function groupDays(sortedISO){
+  /* Matching consultant : multi-strat\u00e9gie */
+  function matchCons(rawName){
+    var rn=norm(rawName);
+    /* 1. Correspondance exacte normalis\u00e9e */
+    var exact=S.cons.find(function(c){return norm(c.name)===rn;});
+    if(exact)return exact;
+    /* 2. Chevauchement de mots (score ≥ 1 mot commun ≥ 3 car) */
+    var parts=rn.split(' ').filter(function(p){return p.length>=3;});
+    var best=null,bestScore=0;
+    S.cons.forEach(function(c){
+      var cn=norm(c.name);
+      var score=0;
+      parts.forEach(function(p){if(cn.indexOf(p)>=0)score++;});
+      /* aussi v\u00e9rifier dans l'autre sens */
+      norm(c.name).split(' ').filter(function(p){return p.length>=3;}).forEach(function(p){
+        if(rn.indexOf(p)>=0)score++;
+      });
+      if(score>bestScore){bestScore=score;best=c;}
+    });
+    if(bestScore>=1)return best;
+    /* 3. Correspondance partielle : 5 premiers caractères du nom le plus long */
+    var longest=parts.reduce(function(a,b){return b.length>a.length?b:a;},'');
+    if(longest.length>=4){
+      var partial=S.cons.find(function(c){
+        var cn=norm(c.name);
+        return cn.indexOf(longest.substring(0,5))>=0||rn.indexOf(norm(c.name).split(' ').reduce(function(a,b){return b.length>a.length?b:a;}).substring(0,5))>=0;
+      });
+      if(partial)return partial;
+    }
+    return null;
+  }
+
+  /* Grouper jours consécutifs (tol\u00e9rance 3j week-end) */
+  function groupDays(sorted){
     var groups=[];
-    if(!sortedISO.length)return groups;
-    var s=sortedISO[0],e=sortedISO[0];
-    for(var i=1;i<sortedISO.length;i++){
+    if(!sorted.length)return groups;
+    var s=sorted[0],e=sorted[0];
+    for(var i=1;i<sorted.length;i++){
       var prev=new Date(e+'T12:00:00Z');
-      var curr=new Date(sortedISO[i]+'T12:00:00Z');
+      var curr=new Date(sorted[i]+'T12:00:00Z');
       var diff=Math.round((curr-prev)/86400000);
-      if(diff<=3){e=sortedISO[i];}  /* tol\u00e9rance week-end (max 3 jours d\u2019\u00e9cart) */
-      else{groups.push({s:s,e:e});s=sortedISO[i];e=sortedISO[i];}
+      if(diff<=3){e=sorted[i];}
+      else{groups.push({s:s,e:e});s=sorted[i];e=sorted[i];}
     }
     groups.push({s:s,e:e});
     return groups;
   }
 
-  var added=0,skipped=0,dupes=0;
+  var added=0,skipped=0,dupes=0,notFound=[];
   var entries=[];
 
   for(var ri=HEADER_ROW+1;ri<rows.length;ri++){
@@ -2666,20 +2711,16 @@ function parseStaffingRows(rows,sheetName){
     var rawName=row[CONS_COL];
     if(!rawName)continue;
     var consName=String(rawName).trim();
-    if(!consName)continue;
+    if(!consName||consName.indexOf('TOTAL')>=0)continue;
 
-    /* Matcher le consultant dans S.cons */
-    var rn=norm(consName);
-    var rp=rn.split(' ').filter(function(p){return p.length>2;});
-    var cons=S.cons.find(function(c){
-      var cn=norm(c.name);
-      var score=0;
-      rp.forEach(function(p){if(cn.indexOf(p)>=0)score++;});
-      return score>=1||cn===rn;
-    });
-    if(!cons){skipped++;continue;}
+    var cons=matchCons(consName);
+    if(!cons){
+      skipped++;
+      notFound.push(consName);
+      console.warn('[import-lv] Non trouv\u00e9 :',consName,'| norm:',norm(consName));
+      continue;
+    }
 
-    /* Collecter les jours absents */
     var absentDays=[];
     Object.keys(dateCols).forEach(function(j){
       var cell=row[parseInt(j)];
@@ -2690,12 +2731,8 @@ function parseStaffingRows(rows,sheetName){
     if(!absentDays.length)continue;
     absentDays.sort();
 
-    /* Grouper en p\u00e9riodes et cr\u00e9er les entr\u00e9es */
     groupDays(absentDays).forEach(function(g){
-      /* D\u00e9duplication */
-      var exists=S.lvs.find(function(x){
-        return x.cid===cons.id&&x.s===g.s&&x.e===g.e;
-      });
+      var exists=S.lvs.find(function(x){return x.cid===cons.id&&x.s===g.s&&x.e===g.e;});
       if(exists){dupes++;return;}
       var entry={id:uid(),cid:cons.id,type:'Cong\u00e9 pay\u00e9',s:g.s,e:g.e};
       S.lvs.push(entry);
@@ -2703,7 +2740,11 @@ function parseStaffingRows(rows,sheetName){
       added++;
     });
   }
-  return{added:added,skipped:skipped,dupes:dupes,entries:entries};
+
+  if(notFound.length){
+    console.warn('[import-lv] Noms non appari\u00e9s :\n'+notFound.join('\n'));
+  }
+  return{added:added,skipped:skipped,dupes:dupes,entries:entries,notFound:notFound};
 }
 
 
