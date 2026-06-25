@@ -2675,13 +2675,32 @@ function parseStaffingRows(rows,sheetName){
     return bestScore>=1?best:null;
   }
 
-  /* ── Grouper les jours cons\u00e9cutifs ── */
+  /* ── Grouper les jours cons\u00e9cutifs en tenant compte des week-ends et f\u00e9ri\u00e9s ──
+   * Deux jours d'absence appartiennent au m\u00eame cong\u00e9 si tous les jours
+   * qui les s\u00e9parent sont des week-ends ou des jours f\u00e9ri\u00e9s.
+   */
+  var holSet=H||new Set();  /* H = Set global des f\u00e9ri\u00e9s du FY courant */
+  function isNonWorking(iso){
+    var d=new Date(iso+'T12:00:00Z'),dow=d.getUTCDay();
+    return dow===0||dow===6||holSet.has(iso);
+  }
+  function gapIsNonWorking(d1,d2){
+    /* Retourne true si tous les jours STRICTEMENT entre d1 et d2 sont non ouvrables */
+    var cur=new Date(d1+'T12:00:00Z');
+    var end=new Date(d2+'T12:00:00Z');
+    cur.setUTCDate(cur.getUTCDate()+1);
+    while(cur<end){
+      if(!isNonWorking(cur.toISOString().substring(0,10)))return false;
+      cur.setUTCDate(cur.getUTCDate()+1);
+    }
+    return true;
+  }
   function groupDays(sorted){
     var groups=[];if(!sorted.length)return groups;
     var s=sorted[0],e=sorted[0];
     for(var i=1;i<sorted.length;i++){
-      var diff=Math.round((new Date(sorted[i]+'T12:00:00Z')-new Date(e+'T12:00:00Z'))/86400000);
-      if(diff<=3){e=sorted[i];}else{groups.push({s:s,e:e});s=sorted[i];e=sorted[i];}
+      if(gapIsNonWorking(e,sorted[i])){e=sorted[i];}
+      else{groups.push({s:s,e:e});s=sorted[i];e=sorted[i];}
     }
     groups.push({s:s,e:e});
     return groups;
