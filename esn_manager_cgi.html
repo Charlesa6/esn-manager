@@ -1903,6 +1903,19 @@ function applyMissImp(){
     if(btype==='forfait'&&!deal){skipped.push(missName+' (forfait sans budget)');return;}
     if(btype==='at'&&tjm===0){skipped.push(missName+' (AT sans TJM)');return;}
 
+    var pcode2=cm.pcode!==undefined?String(row[cm.pcode]||'').trim():'';
+
+    /* D\u00e9doublon : ignorer si une mission identique existe d\u00e9j\u00e0
+     * Crit\u00e8res :
+     *   1. M\u00eame code projet (pcode) non vide
+     *   2. M\u00eame consultant + m\u00eame nom de mission + m\u00eame date de d\u00e9but
+     */
+    var isDuplicate=S.miss.some(function(m){
+      if(pcode2&&m.pcode&&m.pcode.trim().toLowerCase()===pcode2.toLowerCase())return true;
+      return m.cid===found.id&&norm(m.name)===norm(missName)&&m.sd===sd;
+    });
+    if(isDuplicate){skipped.push(missName+' (d\u00e9j\u00e0 existante)');return;}
+
     var m2={
       id:uid(),cid:found.id,
       name:missName,
