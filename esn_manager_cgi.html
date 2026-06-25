@@ -1607,78 +1607,87 @@ async function syncToSB(){
 
 async function initApp(){
   if(sb){
-    /* 1. Vérifier la session - redirect si non connecté */
-    var sess=await sb.auth.getSession();
-    if(!sess.data||!sess.data.session){
-      window.location.href='/esn_login.html';return;
-    }
-    /* 2. Récupérer le company_id + le rôle (gestionnaire / directeur) */
-    var uid2=sess.data.session.user.id;
-    var pr=await sb.from('profiles').select('*').eq('id',uid2).single();
-    if(pr.data){
-      SB_CID=pr.data.company_id;
-      S.role=(pr.data.role==='directeur')?'directeur':'gestionnaire';
-      S.dirName=pr.data.directeur_name||'';
-    }
-    /* 3. Charger les données depuis Supabase */
-    var ok=await loadSB();
-    if(!ok){
-      /* Supabase vide \u2192 utiliser localStorage et proposer de synchroniser */
-      loadLocal();
-      if(S.cons.length>0){
-        S.sbSync=true;
-        S.sbSt='Donnees locales - cliquez Sync pour envoyer vers Supabase';
+    try{
+      /* ── 1. V\u00e9rifier la session (avec retry si timing issue) ── */
+      var sess=await sb.auth.getSession();
+
+      /* Si pas de session au 1er essai, attendre 1s et r\u00e9essayer
+         (le token peut mettre un instant \u00e0 \u00eatre \u00e9crit dans localStorage apr\u00e8s redirect) */
+      if(!sess.data||!sess.data.session){
+        await new Promise(function(r){setTimeout(r,1000);});
+        sess=await sb.auth.getSession();
       }
-    }else{
-      S.sbSt='Supabase connecté';
-      /* Fusionner le localStorage : récupérer les missions/consultants/absences
-         enregistrés localement mais pas encore dans Supabase (ex : import en masse
-         fait juste avant de remplacer le fichier HTML) */
-      try{
-        var _raw=localStorage.getItem(SKEY);
-        if(_raw){
-          var _d=JSON.parse(_raw);
-          if(_d){
-            /* Missions locales absentes de Supabase */
-            var _sbMids=new Set(S.miss.map(function(m){return m.id;}));
-            var _localMiss=(_d.miss||[]).filter(function(m){return !_sbMids.has(m.id);});
-            if(_localMiss.length){
-              console.log('Merge: '+_localMiss.length+' mission(s) locale(s) non syncée(s) récupérée(s).');
-              S.miss=S.miss.concat(_localMiss);
-              _localMiss.forEach(function(m){sbUpsertMiss(m).catch(function(e){console.warn('merge-sync miss:',e);});});
-            }
-            /* Consultants locaux absents de Supabase */
-            var _sbCids=new Set(S.cons.map(function(c){return c.id;}));
-            var _localCons=(_d.cons||[]).filter(function(c){return !_sbCids.has(c.id);});
-            if(_localCons.length){
-              console.log('Merge: '+_localCons.length+' consultant(s) local(aux) récupéré(s).');
-              S.cons=S.cons.concat(_localCons);
-              _localCons.forEach(function(c){sbUpsertCons(c).catch(function(e){console.warn('merge-sync cons:',e);});});
-            }
-            /* Absences locales absentes de Supabase */
-            var _sbLids=new Set(S.lvs.map(function(l){return l.id;}));
-            var _localLvs=(_d.lvs||[]).filter(function(l){return !_sbLids.has(l.id);});
-            if(_localLvs.length){
-              S.lvs=S.lvs.concat(_localLvs);
-              _localLvs.forEach(function(l){sbUpsertLeave(l).catch(function(e){console.warn('merge-sync lv:',e);});});
+
+      if(!sess.data||!sess.data.session){
+        window.location.href='/esn_login.html';return;
+      }
+
+      /* ── 2. R\u00e9cup\u00e9rer company_id + r\u00f4le ── */
+      var uid2=sess.data.session.user.id;
+      var pr=await sb.from('profiles').select('*').eq('id',uid2).single();
+      if(pr.data){
+        SB_CID=pr.data.company_id;
+        S.role=(pr.data.role==='directeur')?'directeur':'gestionnaire';
+        S.dirName=pr.data.directeur_name||'';
+      }
+
+      /* ── 3. Charger les donn\u00e9es depuis Supabase ── */
+      var ok=await loadSB();
+      if(!ok){
+        loadLocal();
+        if(S.cons.length>0){
+          S.sbSync=true;
+          S.sbSt='Donn\u00e9es locales - cliquez Sync pour envoyer vers Supabase';
+        }
+      }else{
+        S.sbSt='Supabase connect\u00e9';
+        /* Fusionner le localStorage : r\u00e9cup\u00e9rer les entr\u00e9es locales non encore sync\u00e9es */
+        try{
+          var _raw=localStorage.getItem(SKEY);
+          if(_raw){
+            var _d=JSON.parse(_raw);
+            if(_d){
+              var _sbMids=new Set(S.miss.map(function(m){return m.id;}));
+              var _localMiss=(_d.miss||[]).filter(function(m){return !_sbMids.has(m.id);});
+              if(_localMiss.length){
+                S.miss=S.miss.concat(_localMiss);
+                _localMiss.forEach(function(m){sbUpsertMiss(m).catch(function(e){console.warn('merge-sync miss:',e);});});
+              }
+              var _sbCids=new Set(S.cons.map(function(c){return c.id;}));
+              var _localCons=(_d.cons||[]).filter(function(c){return !_sbCids.has(c.id);});
+              if(_localCons.length){
+                S.cons=S.cons.concat(_localCons);
+                _localCons.forEach(function(c){sbUpsertCons(c).catch(function(e){console.warn('merge-sync cons:',e);});});
+              }
+              var _sbLids=new Set(S.lvs.map(function(l){return l.id;}));
+              var _localLvs=(_d.lvs||[]).filter(function(l){return !_sbLids.has(l.id);});
+              if(_localLvs.length){
+                S.lvs=S.lvs.concat(_localLvs);
+                _localLvs.forEach(function(l){sbUpsertLeave(l).catch(function(e){console.warn('merge-sync lv:',e);});});
+              }
             }
           }
-        }
-      }catch(_e){console.warn('localStorage merge:',_e);}
+        }catch(_e){console.warn('localStorage merge:',_e);}
+      }
+
+      await loadInvites();
+
+      /* ── 4. Listener pour d\u00e9connexion / expiration de token ── */
+      sb.auth.onAuthStateChange(function(event){
+        if(event==='SIGNED_OUT'){window.location.href='/esn_login.html';}
+      });
+
+    }catch(err){
+      console.error('initApp error:',err);
+      /* En cas d\u2019erreur inattendue, charger en mode local plut\u00f4t que boucler */
+      loadLocal();
     }
-    await loadInvites();
   }else{
     /* Supabase non configur\u00e9 - mode local */
     loadLocal();
   }
   render();
 }
-
-/* \u2500\u25
-/* ======================================================
-   IMPUTATIONS - Import Excel et consolidation
-   ====================================================== */
-
 /* FY helper : 'FY26' pour toute date Oct2025-Sep2026 */
 function dateToFY(dateStr){
   if(!dateStr||dateStr.length<7)return null;
