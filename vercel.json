@@ -1,8 +1,0 @@
-{
-  "cleanUrls": false,
-  "trailingSlash": false,
-  "routes": [
-    { "src": "/", "dest": "/esn_login.html" },
-    { "src": "/app", "dest": "/esn_manager_cgi.html" }
-  ]
-}
