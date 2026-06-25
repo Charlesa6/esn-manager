@@ -2566,8 +2566,8 @@ function importStaffingXLS(file){
         var ws=wb.Sheets[sheetName];
         var rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:null});
         var res=parseStaffingRows(rows,sheetName);
-        var msg=res.added+' absence(s) import\u00e9e(s)';
-        if(res.dupes>0)msg+='\n'+res.dupes+' doublon(s) ignor\u00e9(s)';
+        var replaced=res.replaced||0;
+        var msg=res.added+' absence(s) import\u00e9e(s)'+(replaced>0?' ('+replaced+' ancienne(s) remplac\u00e9e(s))':'');
         if(res.notFound&&res.notFound.length>0){
           msg+='\n\n'+res.notFound.length+' nom(s) non retrouv\u00e9(s) dans l\'app :\n'
             +res.notFound.slice(0,8).join('\n')+(res.notFound.length>8?'\n...(+(res.notFound.length-8)+\' autres)':'');
@@ -2706,7 +2706,10 @@ function parseStaffingRows(rows,sheetName){
     return groups;
   }
 
-  var added=0,skipped=0,dupes=0,notFound=[];
+  /* ── Collecter les jours d'absence par consultant (toutes ses lignes fusionn\u00e9es) ── */
+  var consDaysMap={};  /* cid \u2192 {cons, Set de dates ISO} */
+
+  var added=0,skipped=0,notFound=[];
   var entries=[];
 
   for(var ri=HEADER_ROW+1;ri<rows.length;ri++){
@@ -2714,33 +2717,57 @@ function parseStaffingRows(rows,sheetName){
     var rawName=row[CONS_COL];if(!rawName)continue;
     var consName=String(rawName).trim();
     if(!consName||consName.toUpperCase().indexOf('TOTAL')>=0)continue;
-    /* Ignorer si la valeur ressemble \u00e0 une date ou un nombre */
     if(/^\d{4}-\d{2}-\d{2}/.test(consName)||/^\d+([.,]\d+)?$/.test(consName))continue;
 
     var cons=matchCons(consName);
-    if(!cons){skipped++;notFound.push(consName);continue;}
+    if(!cons){
+      if(notFound.indexOf(consName)<0)notFound.push(consName);
+      skipped++;continue;
+    }
+    if(!consDaysMap[cons.id])consDaysMap[cons.id]={cons:cons,days:[]};
 
-    var absentDays=[];
     Object.keys(dateCols).forEach(function(j){
       var cell=row[parseInt(j)];
       if(cell===null||cell===undefined||cell==='')return;
       var v=parseFloat(String(cell).replace(',','.'));
-      if(!isNaN(v)&&v>0)absentDays.push(dateCols[j]);
-    });
-    if(!absentDays.length)continue;
-
-    groupDays(absentDays.sort()).forEach(function(g){
-      if(S.lvs.find(function(x){return x.cid===cons.id&&x.s===g.s&&x.e===g.e;})){dupes++;return;}
-      var entry={id:uid(),cid:cons.id,type:'Cong\u00e9 pay\u00e9',s:g.s,e:g.e};
-      S.lvs.push(entry);entries.push(entry);added++;
+      if(!isNaN(v)&&v>0&&consDaysMap[cons.id].days.indexOf(dateCols[j])<0)
+        consDaysMap[cons.id].days.push(dateCols[j]);
     });
   }
+
+  /* ── Pour chaque consultant : remplacer les anciennes absences Cong\u00e9 pay\u00e9
+     puis cr\u00e9er les nouvelles p\u00e9riodes group\u00e9es ── */
+  var replaced=0;
+  Object.keys(consDaysMap).forEach(function(cid){
+    var cd=consDaysMap[cid];
+    if(!cd.days.length)return;
+    var sorted=cd.days.slice().sort();
+    var newGroups=groupDays(sorted);
+    if(!newGroups.length)return;
+
+    /* Supprimer les anciennes absences "Cong\u00e9 pay\u00e9" qui chevauchent la plage import\u00e9e */
+    var rangeS=newGroups[0].s,rangeE=newGroups[newGroups.length-1].e;
+    var before=S.lvs.filter(function(x){
+      if(x.cid!==cid)return true;
+      if(x.type!=='Cong\u00e9 pay\u00e9')return true;
+      /* Garder si compl\u00e8tement hors de la plage import */
+      return x.e<rangeS||x.s>rangeE;
+    });
+    replaced+=S.lvs.length-before.length;
+    S.lvs=before;
+
+    /* Ajouter les nouvelles p\u00e9riodes */
+    newGroups.forEach(function(g){
+      var entry={id:uid(),cid:cid,type:'Cong\u00e9 pay\u00e9',s:g.s,e:g.e};
+      S.lvs.push(entry);entries.push(entry);added++;
+    });
+  });
 
   if(notFound.length)
     console.warn('[import-lv] Non trouv\u00e9s :\n'+notFound.join('\n')
       +'\n\nDans l\'app :\n'+S.cons.map(function(c){return c.name;}).join('\n'));
 
-  return{added:added,skipped:skipped,dupes:dupes,entries:entries,notFound:notFound};
+  return{added:added,replaced:replaced,skipped:skipped,entries:entries,notFound:notFound};
 }
 
 
