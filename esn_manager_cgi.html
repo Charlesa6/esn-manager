@@ -1044,7 +1044,7 @@ function tLeaves(){
   }).join('');
   var hols=HOLS_N.map(function(h){return '<div style="font-size:11px;color:#374151;display:flex;gap:5px;align-items:center"><span style="color:#16a34a">\u2713</span>'+esc(h)+'</div>';}).join('');
   return '<div><div class="ph"><div><div class="pt">Absences & Cong\u00e9s</div><div class="ps">'+fil.length+' p\u00e9riode'+(fil.length!==1?'s':'')+'</div></div>'
-    +'<button class="bp" data-act="al">+ Ajouter une absence</button></div>'
+    +'<div style="display:flex;gap:8px;align-items:center">'+'<button class="bp" data-act="al">+ Ajouter une absence</button>'+'<button class="bg" onclick="document.getElementById(\'lv-xls-inp\').click()">↑ Importer depuis Excel staffing</button>'+'<input type="file" id="lv-xls-inp" accept=".xlsx" style="display:none" onchange="importStaffingXLS(this.files[0]);this.value=\'\'">'+'</div></div>'
     +'<div style="margin-bottom:16px"><select class="ic" style="max-width:240px" id="flc">'+co+'</select></div>'
     +'<div class="card ov" style="margin-bottom:16px"><table><thead><tr><th>Consultant</th><th>Type</th><th>Du</th><th>Au</th><th class="tc">Jours ouvrés</th><th class="tr">Actions</th></tr></thead>'
     +'<tbody>'+rows+(fil.length?'':'<tr><td colspan="6" class="emp">Aucune absence enregistr\u00e9e</td></tr>')+'</tbody></table></div>'
@@ -1095,7 +1095,7 @@ function tParam(){
   return '<div class="vw">'
     +'<div><div class="pt">Param\u00e9trage & Pr\u00e9conisations</div>'
     +'<div class="ps">Analyse intelligente de vos donn\u00e9es '+fyLbl(S.year)+' pour vous aider \u00e0 atteindre vos objectifs</div></div>'
-    +context+sections+'</div>';
+    +context+sections+'</div>'+tTeamsPanel();
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1693,6 +1693,8 @@ async function initApp(){
     loadLocal();
   }
   render();
+  /* Démarrer la sync Teams auto si configurée */
+  loadMSALScript(function(){startTeamsAutoSync();});
 }
 /* FY helper : 'FY26' pour toute date Oct2025-Sep2026 */
 function dateToFY(dateStr){
@@ -2278,6 +2280,433 @@ function toggleSB(){
   document.body.classList.toggle('sb-col');
   localStorage.setItem('sb-col',document.body.classList.contains('sb-col'));
 }
+
+/* ================================================================
+   INT\u00c9GRATION MICROSOFT TEAMS \u2014 Graph API + MSAL
+   ================================================================ */
+
+var TEAMS_KEY='esn_teams_cfg';
+var _teamsTimer=null;
+var _msalApp=null;
+
+function loadTeamsCfg(){
+  try{var r=localStorage.getItem(TEAMS_KEY);return r?JSON.parse(r):{clientId:'',tenantId:'',fileUrl:'',sheetName:'',interval:30,enabled:false,lastSync:''};}
+  catch(e){return{clientId:'',tenantId:'',fileUrl:'',sheetName:'',interval:30,enabled:false,lastSync:''};}
+}
+function saveTeamsCfg(c){
+  try{localStorage.setItem(TEAMS_KEY,JSON.stringify(c));}catch(e){}
+}
+
+function loadMSALScript(cb){
+  if(window.msal){cb();return;}
+  var s=document.createElement('script');
+  s.src='https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js';
+  s.onload=function(){cb();};
+  s.onerror=function(){alert('Impossible de charger MSAL. V\u00e9rifiez votre connexion.');};
+  document.head.appendChild(s);
+}
+
+function getOrCreateMSAL(cfg){
+  if(_msalApp)return _msalApp;
+  _msalApp=new msal.PublicClientApplication({
+    auth:{
+      clientId:cfg.clientId,
+      authority:'https://login.microsoftonline.com/'+(cfg.tenantId||'common'),
+      redirectUri:window.location.origin+'/'
+    },
+    cache:{cacheLocation:'localStorage',storeAuthStateInCookie:false}
+  });
+  return _msalApp;
+}
+
+async function getTeamsToken(){
+  var cfg=loadTeamsCfg();
+  if(!cfg.clientId||!cfg.tenantId)throw new Error('Configurez Client ID et Tenant ID dans Param\u00e8tres \u2192 Onglet Teams.');
+  var app=getOrCreateMSAL(cfg);
+  await app.initialize();
+  var scopes=['Files.Read','Sites.Read.All'];
+  var accounts=app.getAllAccounts();
+  if(accounts.length>0){
+    try{var r=await app.acquireTokenSilent({scopes:scopes,account:accounts[0]});return r.accessToken;}
+    catch(e){/* popup fallback */}
+  }
+  var result=await app.loginPopup({scopes:scopes,prompt:'select_account'});
+  return result.accessToken;
+}
+
+function encodeShareUrl(url){
+  var b64=btoa('u!'+url);
+  return b64.replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+}
+
+async function fetchExcelValues(token,fileUrl,sheetName){
+  /* 1. R\u00e9soudre le fichier via sharing link */
+  var encoded=encodeShareUrl(fileUrl);
+  var res1=await fetch('https://graph.microsoft.com/v1.0/shares/'+encoded+'/driveItem',
+    {headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
+  if(!res1.ok)throw new Error('Fichier non trouv\u00e9 (HTTP '+res1.status+'). V\u00e9rifiez le lien de partage Teams.');
+  var item=await res1.json();
+  var driveId=item.parentReference.driveId;
+  var fileId=item.id;
+
+  /* 2. Lire la plage utilis\u00e9e */
+  var sheet=sheetName?encodeURIComponent(sheetName):'0';
+  var url='https://graph.microsoft.com/v1.0/drives/'+driveId+'/items/'+fileId
+    +'/workbook/worksheets/'+sheet+'/usedRange?$select=values,numberFormat';
+  var res2=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
+  if(!res2.ok)throw new Error('Feuille "'+(sheetName||'1\u00e8re')+'\" illisible (HTTP '+res2.status+').');
+  var data=await res2.json();
+  return data.values||[];
+}
+
+function parseLeaveMatrix(rows){
+  /* Tableau crois\u00e9 :
+   * Ligne 0 (header) : [vide/titre, date1, date2, ...]  \u2190 dates des colonnes
+   * Lignes 1+ : [Pr\u00e9nom NOM, type|vide, type|vide, ...]
+   * Types accept\u00e9s : CP, RTT, Maladie, CM, Maternit\u00e9, Formation, IC, etc.
+   */
+  if(!rows||rows.length<2)throw new Error('Tableau Excel vide ou incomplet.');
+  function norm(n){return String(n||'').toLowerCase().replace(/[^a-z0-9 ]/gi,'').trim();}
+  function toISO(v){
+    if(!v&&v!==0)return null;
+    if(typeof v==='number'){
+      /* S\u00e9rie Excel : jours depuis 1900-01-01 (avec bug Lotus +2) */
+      var d=new Date((v-25569)*86400*1000);
+      if(isNaN(d.getTime()))return null;
+      return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    }
+    var s=String(v).trim();
+    var m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+    if(m){var y=m[3].length===2?'20'+m[3]:m[3];return y+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');}
+    if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+    return null;
+  }
+  var TYPE_MAP={
+    'cp':'Cong\u00e9 pay\u00e9','conge':'Cong\u00e9 pay\u00e9','rtt':'RTT',
+    'maladie':'Maladie','am':'Maladie','arretmaladie':'Maladie',
+    'cm':'Cong\u00e9 maternit\u00e9','maternite':'Cong\u00e9 maternit\u00e9','maternite':'Cong\u00e9 maternit\u00e9',
+    'formation':'Formation','css':'Cong\u00e9 sans solde',
+    'ic':'Inter-contrat','intercontrat':'Inter-contrat',
+    'interne':'Mission interne','autre':'Autre'
+  };
+  function parseType(v){
+    if(!v||String(v).trim()==='')return null;
+    var k=String(v).trim().toLowerCase().replace(/[^a-z]/g,'');
+    return TYPE_MAP[k]||String(v).trim();
+  }
+
+  var headerRow=rows[0];
+  var dates=headerRow.slice(1).map(toISO);
+  var leaves=[];
+
+  for(var ri=1;ri<rows.length;ri++){
+    var row=rows[ri];
+    var rawName=String(row[0]||'').trim();
+    if(!rawName)continue;
+    var rn=norm(rawName);var rp=rn.split(' ');
+    var cons=S.cons.find(function(c){
+      var cn=norm(c.name);var cp=cn.split(' ');var score=0;
+      rp.forEach(function(p){if(p.length>2&&cp.indexOf(p)>=0)score++;});
+      return score>=1||cn===rn;
+    });
+    if(!cons){console.warn('[Teams] Consultant non trouv\u00e9 :',rawName);continue;}
+
+    var curType=null,startD=null,lastD=null;
+    for(var ci=0;ci<dates.length;ci++){
+      var date=dates[ci];
+      if(!date)continue;
+      var cell=ci+1<row.length?row[ci+1]:null;
+      var t=parseType(cell);
+      if(t&&t===curType){lastD=date;}
+      else{
+        if(curType&&startD)leaves.push({cid:cons.id,type:curType,s:startD,e:lastD||startD});
+        curType=t||null;startD=t?date:null;lastD=t?date:null;
+      }
+    }
+    if(curType&&startD)leaves.push({cid:cons.id,type:curType,s:startD,e:lastD||startD});
+  }
+  return leaves;
+}
+
+async function syncTeamsNow(silent){
+  var cfg=loadTeamsCfg();
+  if(!cfg.fileUrl){if(!silent)alert('Configurez le lien du fichier Teams dans Param\u00e8tres.');return;}
+  var statusEl=document.getElementById('teams-sync-status');
+  if(statusEl)statusEl.textContent='Synchronisation en cours...';
+  try{
+    var token=await getTeamsToken();
+    var rows=await fetchExcelValues(token,cfg.fileUrl,cfg.sheetName);
+    var newLeaves=parseLeaveMatrix(rows);
+
+    /* Fusionner : ajouter uniquement les absences absentes */
+    var added=0;
+    newLeaves.forEach(function(lv){
+      var exists=S.lvs.find(function(x){
+        return x.cid===lv.cid&&x.type===lv.type&&x.s===lv.s&&x.e===lv.e;
+      });
+      if(!exists){
+        var entry=Object.assign({id:uid()},lv);
+        S.lvs.push(entry);
+        if(sb&&SB_CID)sbUpsertLeave(entry).catch(function(e){console.warn('[Teams] SB leave:',e);});
+        added++;
+      }
+    });
+    saveLocal();
+    cfg.lastSync=new Date().toISOString();
+    saveTeamsCfg(cfg);
+    var msg='Teams : '+newLeaves.length+' absences lues \u2014 '+added+' ajout\u00e9e(s)';
+    if(statusEl)statusEl.textContent=msg+' (\u00e0 '+new Date().toLocaleTimeString()+')';
+    if(!silent)alert(msg);
+    render();
+  }catch(err){
+    console.error('[Teams] Erreur sync :',err);
+    if(statusEl)statusEl.textContent='\u26a0 '+err.message;
+    if(!silent)alert('Erreur Teams :\n'+err.message);
+  }
+}
+
+function startTeamsAutoSync(){
+  if(_teamsTimer){clearInterval(_teamsTimer);_teamsTimer=null;}
+  var cfg=loadTeamsCfg();
+  if(!cfg.enabled||!cfg.fileUrl||!cfg.clientId)return;
+  var ms=(parseInt(cfg.interval)||30)*60*1000;
+  syncTeamsNow(true);  /* sync imm\u00e9diate au d\u00e9marrage */
+  _teamsTimer=setInterval(function(){syncTeamsNow(true);},ms);
+  console.log('[Teams] Auto-sync activ\u00e9e toutes les',cfg.interval,'min');
+}
+function stopTeamsAutoSync(){
+  if(_teamsTimer){clearInterval(_teamsTimer);_teamsTimer=null;}
+}
+
+function saveTeamsSettings(){
+  var cfg={
+    clientId:(document.getElementById('t-cid')||{}).value||'',
+    tenantId:(document.getElementById('t-tid')||{}).value||'',
+    fileUrl:(document.getElementById('t-url')||{}).value||'',
+    sheetName:(document.getElementById('t-sheet')||{}).value||'',
+    interval:parseInt((document.getElementById('t-int')||{}).value)||30,
+    enabled:(document.getElementById('t-on')||{}).checked||false,
+    lastSync:loadTeamsCfg().lastSync||''
+  };
+  _msalApp=null; /* reset pour recr\u00e9er avec nouveaux params */
+  saveTeamsCfg(cfg);
+  stopTeamsAutoSync();
+  if(cfg.enabled)loadMSALScript(function(){startTeamsAutoSync();});
+  alert('Configuration Teams sauvegard\u00e9e.');
+  render();
+}
+
+function tTeamsPanel(){
+  var cfg=loadTeamsCfg();
+  var TH='padding:8px 12px;font-size:11px;font-weight:700;color:#64748b;text-align:left;';
+  return '<div class="card" style="padding:24px;margin-top:20px">'
+    +'<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:4px">Synchronisation Microsoft Teams</div>'
+    +'<div style="font-size:12px;color:#64748b;margin-bottom:20px">Importe automatiquement les cong\u00e9s depuis un fichier Excel stock\u00e9 dans Teams / SharePoint.</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">'
+    +'<div class="fd"><label class="fl">Application (Client) ID *</label>'
+    +'<input class="ic" id="t-cid" value="'+esc(cfg.clientId)+'" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"></div>'
+    +'<div class="fd"><label class="fl">Directory (Tenant) ID *</label>'
+    +'<input class="ic" id="t-tid" value="'+esc(cfg.tenantId)+'" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"></div>'
+    +'<div class="fd" style="grid-column:1/-1"><label class="fl">Lien de partage du fichier Excel (Teams \u2192 Copier le lien) *</label>'
+    +'<input class="ic" id="t-url" value="'+esc(cfg.fileUrl)+'" placeholder="https://entreprise.sharepoint.com/sites/.../Conges.xlsx?..."></div>'
+    +'<div class="fd"><label class="fl">Nom de la feuille (laisser vide = 1\u00e8re)</label>'
+    +'<input class="ic" id="t-sheet" value="'+esc(cfg.sheetName)+'" placeholder="Cong\u00e9s 2025-2026"></div>'
+    +'<div class="fd"><label class="fl">Fr\u00e9quence de sync</label>'
+    +'<select class="ic" id="t-int">'
+    +'<option value="15"'+(cfg.interval===15?' selected':'')+'>Toutes les 15 minutes</option>'
+    +'<option value="30"'+(cfg.interval===30||!cfg.interval?' selected':'')+'>Toutes les 30 minutes</option>'
+    +'<option value="60"'+(cfg.interval===60?' selected':'')+'>Toutes les heures</option>'
+    +'<option value="240"'+(cfg.interval===240?' selected':'')+'>Toutes les 4 heures</option>'
+    +'</select></div>'
+    +'</div>'
+    +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">'
+    +'<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:#0f172a">'
+    +'<input type="checkbox" id="t-on"'+(cfg.enabled?' checked':'')+' style="width:16px;height:16px;accent-color:#2563eb"> Synchronisation automatique activ\u00e9e</label>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +'<button class="bp" onclick="saveTeamsSettings()">Enregistrer la configuration</button>'
+    +'<button class="bg" onclick="loadMSALScript(function(){syncTeamsNow(false);})">Synchroniser maintenant</button>'
+    +'</div>'
+    +(cfg.lastSync?'<div style="font-size:11px;color:#94a3b8;margin-top:10px">Derni\u00e8re sync : '+new Date(cfg.lastSync).toLocaleString()+'</div>':'')
+    +'<div id="teams-sync-status" style="font-size:12px;color:#2563eb;margin-top:6px"></div>'
+    +'<div style="margin-top:16px;padding:12px 14px;background:#eff6ff;border-radius:8px;font-size:12px;color:#1e40af">'
+    +'<strong>Format Excel attendu :</strong> Ligne 1 = dates (colonnes), Colonne A = Pr\u00e9nom NOM des consultants, cellules = type d\u2019absence (CP, RTT, Maladie, CM, Formation...) ou vide.'
+    +'</div>'
+    +'</div>';
+}
+
+
+
+/* ================================================================
+   IMPORT ABSENCES depuis Excel staffing (feuilles Available / Bench)
+   ================================================================ */
+
+function loadXLSX2(cb){
+  if(window.XLSX){cb();return;}
+  var s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  s.onload=function(){cb();};
+  s.onerror=function(){alert('Impossible de charger la librairie XLSX.');};
+  document.head.appendChild(s);
+}
+
+function importStaffingXLS(file){
+  if(!file)return;
+  loadXLSX2(function(){
+    var reader=new FileReader();
+    reader.onload=function(e){
+      try{
+        var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true,dateNF:'yyyy-mm-dd'});
+        /* Chercher la feuille Available en priorit\u00e9, sinon Bench */
+        var sheetName='Available';
+        if(wb.SheetNames.indexOf('Available')<0){
+          if(wb.SheetNames.indexOf('Bench')>=0){sheetName='Bench';}
+          else{alert('Feuille "Available" ou "Bench" non trouv\u00e9e dans ce fichier.');return;}
+        }
+        var ws=wb.Sheets[sheetName];
+        var rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:null});
+        var res=parseStaffingRows(rows,sheetName);
+        var msg=res.added+' absence(s) import\u00e9e(s)';
+        if(res.skipped>0)msg+='\n'+res.skipped+' consultant(s) non trouv\u00e9(s) dans l\'app (v\u00e9rifiez les noms)';
+        if(res.dupes>0)msg+='\n'+res.dupes+' doublon(s) ignor\u00e9(s)';
+        saveLocal();
+        if(sb&&SB_CID){
+          res.entries.forEach(function(l){
+            sbUpsertLeave(l).catch(function(err){console.warn('[import-lv]',err);});
+          });
+        }
+        alert(msg);
+        render();
+      }catch(err){
+        console.error('[importStaffingXLS]',err);
+        alert('Erreur : '+err.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function parseStaffingRows(rows,sheetName){
+  var isAvail=(sheetName==='Available');
+
+  /* Indices colonnes */
+  var CONS_COL=isAvail?5:4;   /* col Consultants */
+  var FIRST_DATE_COL=isAvail?8:5; /* premi\u00e8re colonne de date */
+  var HEADER_ROW=4;           /* ligne de header (index 0) */
+
+  /* Mapping mois FR → num\u00e9ro (sans accents pour la comparaison) */
+  var MOIS={
+    'janv':1,'jan':1,'fevr':2,'fev':2,'mars':3,'avr':4,
+    'mai':5,'juin':6,'juil':7,'aout':8,'sept':9,'sep':9,
+    'oct':10,'nov':11,'dec':12,'decembre':12
+  };
+
+  /* Retirer les accents pour la comparaison */
+  function deaccent(s){
+    return String(s||'').toLowerCase()
+      .replace(/[éèêë]/g,'e').replace(/[àâä]/g,'a').replace(/[ùûü]/g,'u')
+      .replace(/[ôö]/g,'o').replace(/[îï]/g,'i').replace(/[ç]/g,'c');
+  }
+  function norm(s){return deaccent(s).replace(/[^a-z0-9 ]/g,'').trim();}
+
+  /* Convertir une valeur de cellule date en ISO YYYY-MM-DD */
+  function toISO(v){
+    if(!v||v==='#REF!')return null;
+    var s=String(v).trim();
+    /* D\u00e9j\u00e0 en format ISO (feuille Bench avec cellDates) */
+    if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.substring(0,10);
+    /* Format texte "DD-mois" (feuille Available) */
+    var m=s.match(/^(\d{1,2})-([a-z\u00e0-\u00ff]+)$/i);
+    if(!m)return null;
+    var day=parseInt(m[1]);
+    var moisKey=deaccent(m[2]).replace(/[^a-z]/g,'');
+    var month=MOIS[moisKey];
+    if(!month)return null;
+    /* Ann\u00e9e : mois oct-d\u00e9c = ann\u00e9e de d\u00e9but du FY, sinon ann\u00e9e de fin */
+    var fy=S.year||2026;
+    var year=month>=10?fy-1:fy;
+    return year+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+  }
+
+  /* Construire la map des colonnes dates : idx → ISO date */
+  var SKIP_WORDS=['TOTAL','FTE','AVAILABLE','REF'];
+  var header=rows[HEADER_ROW]||[];
+  var dateCols={};
+  for(var j=FIRST_DATE_COL;j<header.length;j++){
+    var hv=header[j];
+    if(!hv)continue;
+    var hs=String(hv).toUpperCase();
+    if(SKIP_WORDS.some(function(w){return hs.indexOf(w)>=0;}))continue;
+    var iso=toISO(hv);
+    if(iso)dateCols[j]=iso;
+  }
+
+  /* Grouper des dates ISO tri\u00e9es en p\u00e9riodes continues */
+  function groupDays(sortedISO){
+    var groups=[];
+    if(!sortedISO.length)return groups;
+    var s=sortedISO[0],e=sortedISO[0];
+    for(var i=1;i<sortedISO.length;i++){
+      var prev=new Date(e+'T12:00:00Z');
+      var curr=new Date(sortedISO[i]+'T12:00:00Z');
+      var diff=Math.round((curr-prev)/86400000);
+      if(diff<=3){e=sortedISO[i];}  /* tol\u00e9rance week-end (max 3 jours d\u2019\u00e9cart) */
+      else{groups.push({s:s,e:e});s=sortedISO[i];e=sortedISO[i];}
+    }
+    groups.push({s:s,e:e});
+    return groups;
+  }
+
+  var added=0,skipped=0,dupes=0;
+  var entries=[];
+
+  for(var ri=HEADER_ROW+1;ri<rows.length;ri++){
+    var row=rows[ri];
+    if(!row)continue;
+    var rawName=row[CONS_COL];
+    if(!rawName)continue;
+    var consName=String(rawName).trim();
+    if(!consName)continue;
+
+    /* Matcher le consultant dans S.cons */
+    var rn=norm(consName);
+    var rp=rn.split(' ').filter(function(p){return p.length>2;});
+    var cons=S.cons.find(function(c){
+      var cn=norm(c.name);
+      var score=0;
+      rp.forEach(function(p){if(cn.indexOf(p)>=0)score++;});
+      return score>=1||cn===rn;
+    });
+    if(!cons){skipped++;continue;}
+
+    /* Collecter les jours absents */
+    var absentDays=[];
+    Object.keys(dateCols).forEach(function(j){
+      var cell=row[parseInt(j)];
+      if(cell===null||cell===undefined||cell==='')return;
+      var v=parseFloat(String(cell).replace(',','.'));
+      if(!isNaN(v)&&v>0)absentDays.push(dateCols[j]);
+    });
+    if(!absentDays.length)continue;
+    absentDays.sort();
+
+    /* Grouper en p\u00e9riodes et cr\u00e9er les entr\u00e9es */
+    groupDays(absentDays).forEach(function(g){
+      /* D\u00e9duplication */
+      var exists=S.lvs.find(function(x){
+        return x.cid===cons.id&&x.s===g.s&&x.e===g.e;
+      });
+      if(exists){dupes++;return;}
+      var entry={id:uid(),cid:cons.id,type:'Cong\u00e9 pay\u00e9',s:g.s,e:g.e};
+      S.lvs.push(entry);
+      entries.push(entry);
+      added++;
+    });
+  }
+  return{added:added,skipped:skipped,dupes:dupes,entries:entries};
+}
+
+
 initApp();
 </script>
 </body>
