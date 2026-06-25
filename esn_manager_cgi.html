@@ -864,26 +864,63 @@ function tPlan(){
     }).join('');
 
     var lvBars=cl.map(function(l){
-      var s=Math.max(pD(l.s).getTime(),ysT);
-      var e=Math.min(pD(l.e).getTime(),yeT);
-      if(s>yeT||e<ysT)return '';
-      var left=Math.max(0,(s-ysT)/dur*100);
-      var wid=Math.max(0.4,Math.min(100-left,(e-s)/dur*100));
+      /* Ne pas afficher visuellement les absences de moins de 3 jours ouvrés */
+      if(wDays(l.s,l.e,H)<3)return '';
+      var ls=Math.max(pD(l.s).getTime(),ysT);
+      var le=Math.min(pD(l.e).getTime(),yeT);
+      if(ls>yeT||le<ysT)return '';
+      var left=Math.max(0,(ls-ysT)/dur*100);
+      var wid=Math.max(0.4,Math.min(100-left,(le-ls)/dur*100));
       var col=LVC[l.type]||'#d1d5db';
       var tip=esc(l.type+' : du '+fDt(l.s)+' au '+fDt(l.e));
       return '<div class="gbar" style="left:'+left+'%;width:'+wid+'%;background:'+col+';opacity:.88;z-index:5;" title="'+tip+'"><span>'+esc(l.type)+'</span></div>';
+    }).join('');
+
+    /* ── Périodes inter-contrat : ni mission ni absence ── */
+    function tsToISO(ts){var d=new Date(ts);return fD(d);}
+    var covered=[];
+    cm.forEach(function(m){
+      var ms=Math.max(pD(m.sd).getTime(),ysT);
+      var me=Math.min(m.ed?pD(m.ed).getTime():yeT,yeT);
+      if(ms<=me)covered.push([ms,me]);
+    });
+    cl.forEach(function(l){
+      var ls2=Math.max(pD(l.s).getTime(),ysT);
+      var le2=Math.min(pD(l.e).getTime(),yeT);
+      if(ls2<=le2)covered.push([ls2,le2]);
+    });
+    covered.sort(function(a,b){return a[0]-b[0];});
+    var merged=[];
+    covered.forEach(function(iv){
+      if(!merged.length||iv[0]>merged[merged.length-1][1]+86400001)
+        merged.push([iv[0],iv[1]]);
+      else merged[merged.length-1][1]=Math.max(merged[merged.length-1][1],iv[1]);
+    });
+    var icGaps=[],cur=ysT;
+    merged.forEach(function(iv){
+      if(iv[0]>cur+86400001)icGaps.push([cur,iv[0]-86400000]);
+      if(iv[1]+86400000>cur)cur=iv[1]+86400000;
+    });
+    if(cur<yeT)icGaps.push([cur,yeT]);
+    var icBars=icGaps.map(function(g){
+      var wd=wDays(tsToISO(g[0]),tsToISO(g[1]),H);
+      if(wd<=0)return '';
+      var left=Math.max(0,(g[0]-ysT)/dur*100);
+      var wid=Math.max(0.4,Math.min(100-left,(g[1]-g[0])/dur*100));
+      return '<div class="gbar" style="left:'+left+'%;width:'+wid+'%;background:#fca5a5;opacity:.6;z-index:1;" title="Inter-contrat : '+wd+' j">'+
+        (wid>3?'<span style="color:#7f1d1d;font-weight:700;font-size:10px">IC '+wd+'j</span>':'')+'</div>';
     }).join('');
 
     return '<div class="grw" style="background:'+(ci%2===0?'#fff':'#f8fafc')+'">'
       +'<div class="glb">'+av(c.name,28)+'<div style="min-width:0">'
       +'<div style="font-size:12px;font-weight:600;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.name.split(' ')[0])+'</div>'
       +'<div style="font-size:10px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.title.split(' ')[0])+'</div>'
-      +'</div></div><div class="gtr">'+grid+todayLine+bars+lvBars+'</div></div>';
+      +'</div></div><div class="gtr">'+grid+todayLine+icBars+bars+lvBars+'</div></div>';
   }).join('');
 
   var mths=fyMonths.map(function(m){return '<div class="gm">'+m+'</div>';}).join('');
   var lgd=[
-    ['#22c55e','En mission'],['#ef4444','Fin &lt;14j'],['#f59e0b','Fin &lt;30j'],['#d1d5db','Termin\u00e9e'],['#fbbf24','Cong\u00e9s pay\u00e9s'],['#1d4ed8','Arr\u00eat / Maternit\u00e9'],['#a78bfa','RTT'],['#34d399','Formation'],['#60a5fa','Mission interne']].map(function(x){return '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#64748b"><div style="width:12px;height:12px;border-radius:3px;background:'+x[0]+'"></div>'+x[1]+'</div>';}).join('');
+    ['#22c55e','En mission'],['#ef4444','Fin &lt;14j'],['#f59e0b','Fin &lt;30j'],['#d1d5db','Termin\u00e9e'],['#fbbf24','Cong\u00e9s pay\u00e9s'],['#1d4ed8','Arr\u00eat / Maternit\u00e9'],['#a78bfa','RTT'],['#34d399','Formation'],['#60a5fa','Mission interne'],['#fca5a5','Inter-contrat']].map(function(x){return '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#64748b"><div style="width:12px;height:12px;border-radius:3px;background:'+x[0]+'"></div>'+x[1]+'</div>';}).join('');
 
   return '<div><div class="ph"><div><div class="pt">Planning '+fyLbl(S.year)+'</div>'
     +'<div class="ps">'+fyRange(S.year)+' \u00b7 ligne bleue = aujourd\'hui</div></div>'
@@ -1028,26 +1065,101 @@ function tKPIs(){
    TEMPLATE - LEAVES
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function tLeaves(){
-  var fil=S.lvs.filter(function(l){return S.flc==='all'||l.cid===S.flc;}).sort(function(a,b){return a.s.localeCompare(b.s);});
-  var co='<option value="all">Tous les consultants</option>'+S.cons.map(function(c){return '<option value="'+c.id+'"'+(c.id===S.flc?' selected':'')+'>'+esc(c.name)+'</option>';}).join('');
-  var TCC={'Congé payé':'#dbeafe|#1e40af','RTT':'#ede9fe|#5b21b6','Formation':'#dcfce7|#15803d','Inter-contrat':'#ffedd5|#c2410c','Maladie':'#fee2e2|#b91c1c','Congé maternité':'#fce7f3|#9d174d','Congé sans solde':'#f1f5f9|#475569','Mission interne':'#ccfbf1|#0f766e','Autre':'#f1f5f9|#475569'};
-  var rows=fil.map(function(l){
-    var c=S.cons.find(function(c){return c.id===l.cid;});
-    var wd=wDays(l.s,l.e,H);
-    var tc=(TCC[l.type]||'#f1f5f9|#475569').split('|');
-    return '<tr><td style="font-weight:600">'+(c?esc(c.name):'\u2014')+'</td>'
-      +'<td><span style="display:inline-flex;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;background:'+tc[0]+';color:'+tc[1]+'">'+esc(l.type)+'</span></td>'
-      +'<td>'+fDt(l.s)+'</td><td>'+fDt(l.e)+'</td>'
-      +'<td class="tc" style="font-weight:700">'+wd+'j</td>'
-      +'<td class="tr"><button class="lb" style="margin-right:10px" data-act="el" data-id="'+l.id+'">Modifier</button>'
-      +'<button class="lr" data-act="dl" data-id="'+l.id+'">Suppr.</button></td></tr>';
+  var fyS=fyStart(S.year),fyE=fyEnd(S.year);
+
+  var fil=S.lvs.filter(function(l){
+    if(S.flc!=='all'&&l.cid!==S.flc)return false;
+    return l.e>=fyS&&l.s<=fyE;
+  }).sort(function(a,b){return a.s.localeCompare(b.s);});
+
+  var co='<option value="all">Tous les consultants</option>'+S.cons.map(function(c){
+    return '<option value="'+c.id+'"'+(c.id===S.flc?' selected':'')+'>'+esc(c.name)+'</option>';
   }).join('');
-  var hols=HOLS_N.map(function(h){return '<div style="font-size:11px;color:#374151;display:flex;gap:5px;align-items:center"><span style="color:#16a34a">\u2713</span>'+esc(h)+'</div>';}).join('');
-  return '<div><div class="ph"><div><div class="pt">Absences & Cong\u00e9s</div><div class="ps">'+fil.length+' p\u00e9riode'+(fil.length!==1?'s':'')+'</div></div>'
-    +'<div style="display:flex;gap:8px;align-items:center">'+'<button class="bp" data-act="al">+ Ajouter une absence</button>'+'<button class="bg" onclick="document.getElementById(\'lv-xls-inp\').click()">↑ Importer un fichier</button>'+'<input type="file" id="lv-xls-inp" accept=".xlsx" style="display:none" onchange="importStaffingXLS(this.files[0]);this.value=\'\'">'+'</div></div>'
+
+  var TCC={
+    'Cong\u00e9 pay\u00e9':'#dbeafe|#1e40af','RTT':'#ede9fe|#5b21b6',
+    'Formation':'#dcfce7|#15803d','Inter-contrat':'#ffedd5|#c2410c',
+    'Maladie':'#fee2e2|#b91c1c','Cong\u00e9 maternit\u00e9':'#fce7f3|#9d174d',
+    'Cong\u00e9 sans solde':'#f1f5f9|#475569','Mission interne':'#ccfbf1|#0f766e','Autre':'#f1f5f9|#475569'
+  };
+  function isArret(t){return t==='Maladie'||t==='Cong\u00e9 maternit\u00e9'||t==='Cong\u00e9 sans solde';}
+
+  var bodyHtml='';
+
+  if(S.flc==='all'){
+    /* ── Vue synth\u00e8se : indicateur par consultant ── */
+    var sumRows=S.cons.map(function(c){
+      var clvs=S.lvs.filter(function(l){return l.cid===c.id&&l.e>=fyS&&l.s<=fyE;});
+      if(!clvs.length)return '';
+      var cpJ=0,arJ=0;
+      clvs.forEach(function(l){
+        var wd=wDays(l.s,l.e,H);
+        if(isArret(l.type))arJ+=wd;
+        else if(l.type!=='Inter-contrat')cpJ+=wd;
+      });
+      if(!cpJ&&!arJ)return '';
+      var tot=cpJ+arJ;
+      return '<tr>'
+        +'<td style="font-weight:600;color:#0f172a">'+esc(c.name)+'</td>'
+        +'<td class="tc"><span style="background:#dbeafe;color:#1e40af;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:700">'+cpJ+'j</span></td>'
+        +'<td class="tc"><span style="background:#fee2e2;color:#b91c1c;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:700">'+arJ+'j</span></td>'
+        +'<td class="tc" style="font-weight:800;color:#0f172a;font-size:14px">'+tot+'j</td>'
+        +'<td class="tr"><button class="lb" data-act="lvc" data-id="'+c.id+'">\u2192 D\u00e9tail</button></td>'
+        +'</tr>';
+    }).filter(Boolean).join('');
+    bodyHtml='<table><thead><tr><th>Consultant</th><th class="tc">Cong\u00e9s &amp; RTT</th>'
+      +'<th class="tc">Arr\u00eats / Mat.</th><th class="tc">Total '+fyLbl(S.year)+'</th><th></th></tr></thead>'
+      +'<tbody>'+sumRows+(sumRows?'':'<tr><td colspan="5" class="emp">Aucune absence enregistr\u00e9e sur le '+fyLbl(S.year)+'</td></tr>')
+      +'</tbody></table>';
+  } else {
+    /* ── Vue d\u00e9tail consultant ── */
+    var detRows=fil.map(function(l){
+      var wd=wDays(l.s,l.e,H);
+      var tc=(TCC[l.type]||'#f1f5f9|#475569').split('|');
+      return '<tr>'
+        +'<td><span style="display:inline-flex;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;background:'+tc[0]+';color:'+tc[1]+'">'+esc(l.type)+'</span></td>'
+        +'<td>'+fDt(l.s)+'</td><td>'+fDt(l.e)+'</td>'
+        +'<td class="tc" style="font-weight:700">'+wd+'j</td>'
+        +'<td class="tr"><button class="lb" style="margin-right:10px" data-act="el" data-id="'+l.id+'">Modifier</button>'
+        +'<button class="lr" data-act="dl" data-id="'+l.id+'">Suppr.</button></td>'
+        +'</tr>';
+    }).join('');
+    var totCP=0,totAr=0;
+    fil.forEach(function(l){
+      var wd=wDays(l.s,l.e,H);
+      if(isArret(l.type))totAr+=wd;
+      else if(l.type!=='Inter-contrat')totCP+=wd;
+    });
+    var tot=totCP+totAr;
+    var totRow=fil.length
+      ?'<tr style="background:#f8fafc;border-top:2px solid #e2e8f0">'
+        +'<td colspan="3" style="font-weight:700;color:#0f172a">TOTAL '+fyLbl(S.year)+'</td>'
+        +'<td class="tc" style="font-weight:800;color:#0f172a;font-size:15px">'+tot+'j</td><td></td></tr>'
+      :'';
+    bodyHtml='<div style="display:flex;gap:8px;margin-bottom:12px">'
+      +'<span style="background:#dbeafe;color:#1e40af;padding:3px 12px;border-radius:99px;font-size:12px;font-weight:700">Cong\u00e9s &amp; RTT : '+totCP+'j</span>'
+      +'<span style="background:#fee2e2;color:#b91c1c;padding:3px 12px;border-radius:99px;font-size:12px;font-weight:700">Arr\u00eats : '+totAr+'j</span>'
+      +'</div>'
+      +'<table><thead><tr><th>Type</th><th>Du</th><th>Au</th>'
+      +'<th class="tc">Jours ouvrés</th><th class="tr">Actions</th></tr></thead>'
+      +'<tbody>'+detRows+totRow+(fil.length?'':'<tr><td colspan="5" class="emp">Aucune absence sur le '+fyLbl(S.year)+'</td></tr>')
+      +'</tbody></table>';
+  }
+
+  var hols=HOLS_N.map(function(h){
+    return '<div style="font-size:11px;color:#374151;display:flex;gap:5px;align-items:center"><span style="color:#16a34a">\u2713</span>'+esc(h)+'</div>';
+  }).join('');
+  var sub=S.flc==='all'
+    ?fil.length+' p\u00e9riode'+(fil.length!==1?'s':'')+' \u00b7 '+fyLbl(S.year)
+    :esc((S.cons.find(function(c){return c.id===S.flc;})||{name:''}).name)+' \u00b7 '+fyLbl(S.year);
+
+  return '<div><div class="ph"><div><div class="pt">Absences &amp; Cong\u00e9s</div><div class="ps">'+sub+'</div></div>'
+    +'<div style="display:flex;gap:8px;align-items:center">'
+    +'<button class="bp" data-act="al">+ Ajouter une absence</button>'
+    +'<button class="bg" onclick="document.getElementById(\'lv-xls-inp\').click()">\u2191 Importer un fichier</button>'
+    +'<input type="file" id="lv-xls-inp" accept=".xlsx" style="display:none" onchange="importStaffingXLS(this.files[0]);this.value=\'\'"></div></div>'
     +'<div style="margin-bottom:16px"><select class="ic" style="max-width:240px" id="flc">'+co+'</select></div>'
-    +'<div class="card ov" style="margin-bottom:16px"><table><thead><tr><th>Consultant</th><th>Type</th><th>Du</th><th>Au</th><th class="tc">Jours ouvrés</th><th class="tr">Actions</th></tr></thead>'
-    +'<tbody>'+rows+(fil.length?'':'<tr><td colspan="6" class="emp">Aucune absence enregistr\u00e9e</td></tr>')+'</tbody></table></div>'
+    +'<div class="card ov" style="margin-bottom:16px">'+bodyHtml+'</div>'
     +'<details><summary>\uD83D\uDCC5 Jours f\u00e9ri\u00e9s fran\u00e7ais int\u00e9gr\u00e9s dans les calculs</summary>'
     +'<div style="margin-top:8px;padding:14px 16px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px 16px">'+hols+'</div></details></div>';
 }
@@ -1341,6 +1453,7 @@ function bind(){
     b.onclick=function(e){
       e.stopPropagation();
       if(a==='export'){exportJSON();return;}
+      else if(a==='lvc'){S.flc=id;render();return;}
       else if(a==='gen-ca'){genRecs('ca');}
       else if(a==='gen-util'){genRecs('util');}
       else if(a==='gen-tjm'){genRecs('tjm');}
