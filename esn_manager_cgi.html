@@ -694,20 +694,47 @@ function tDash(){
    TEMPLATE - TEAMS
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function tTeams(){
-  var rows=S.cons.map(function(c){
+  var fyS=fyStart(S.year),fyE=fyEnd(S.year);
+
+  /* Filtrer sur le FY : arrive <= fyE ET (depart >= fyS OU pas de depart) */
+  var inFY=S.cons.filter(function(c){
+    if(c.arrive&&c.arrive>fyE)return false;
+    if(c.depart&&c.depart<fyS)return false;
+    return true;
+  });
+
+  var actifs=inFY.filter(function(c){return !isGone(c);});
+  var partis=inFY.filter(function(c){return isGone(c);});
+
+  function makeRow(c,gone){
     var am=getAct(c.id);var st=am?mSt(am):'none';
-    return '<tr><td><div style="display:flex;align-items:center;gap:10px">'+av(c.name,32)
-      +'<div><div style="font-weight:600;font-size:13px">'+esc(c.name)+'</div><div style="font-size:11px;color:#94a3b8">'+esc(c.email)+'</div></div></div></td>'
-      +'<td>'+esc(c.title)+'</td><td style="font-weight:700">'+fEur(c.scr)+'</td>'
+    var rs=gone?'opacity:.4;background:#f8fafc;':'';
+    var ns=gone?'text-decoration:line-through;':'';
+    var tag=gone?'<span style="font-size:10px;background:#f1f5f9;color:#94a3b8;padding:2px 6px;border-radius:4px;margin-left:6px">Parti'+(c.depart?' '+fDt(c.depart):'')+'</span>':'';
+    return '<tr style="'+rs+'"><td><div style="display:flex;align-items:center;gap:10px">'+av(c.name,32)
+      +'<div><div style="font-weight:600;font-size:13px;'+ns+'">'+esc(c.name)+tag+'</div>'
+      +'<div style="font-size:11px;color:#94a3b8">'+esc(c.email)+'</div></div></div></td>'
+      +'<td>'+esc(c.title)+'</td>'
+      +'<td style="font-weight:700;'+(gone?'color:#cbd5e1':'')+'">'+fEur(c.scr)+'</td>'
       +'<td>'+(am?'<div style="font-weight:600;font-size:13px">'+esc(am.cli)+'</div><div style="font-size:11px;color:#94a3b8">'+esc(am.name)+'</div>':'<span style="color:#cbd5e1">\u2014</span>')+'</td>'
-      +'<td>'+badge(st,am&&am.ed?dL(am.ed):null)+'</td>'
+      +'<td>'+(gone?'<span style="font-size:11px;color:#94a3b8">Inactif</span>':badge(st,am&&am.ed?dL(am.ed):null))+'</td>'
       +'<td class="tr"><button class="lb" style="margin-right:10px" data-act="ec" data-id="'+c.id+'">Modifier</button>'
       +'<button class="lr" data-act="dc" data-id="'+c.id+'">Suppr.</button></td></tr>';
-  }).join('');
-  return '<div><div class="ph"><div><div class="pt">\u00c9quipe</div><div class="ps">'+S.cons.length+' consultant'+(S.cons.length!==1?'s':'')+'</div></div>'
+  }
+
+  var sep=partis.length&&actifs.length?'<tr><td colspan="6" style="padding:4px 12px;background:#f8fafc;border-top:1px solid #e2e8f0"><span style="font-size:11px;color:#94a3b8;font-weight:600">Partis ce FY ('+partis.length+')</span></td></tr>':'';
+  var rows=actifs.map(function(c){return makeRow(c,false);}).join('')
+    +sep+partis.map(function(c){return makeRow(c,true);}).join('');
+
+  var sub=actifs.length+' actif'+(actifs.length!==1?'s':'')+' \u00b7 '+fyLbl(S.year)
+    +(partis.length?' \u00b7 '+partis.length+' parti'+(partis.length!==1?'s':'')+' ce FY':'');
+
+  return '<div><div class="ph"><div><div class="pt">\u00c9quipe</div><div class="ps">'+sub+'</div></div>'
     +'<button class="bp" data-act="ac">+ Ajouter un consultant</button></div>'
-    +'<div class="card ov"><table style="min-width:640px"><thead><tr><th>Consultant</th><th>Poste</th><th>SCR/j</th><th>Mission actuelle</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
-    +'<tbody>'+rows+(S.cons.length?'':'<tr><td colspan="6" class="emp">Aucun consultant.</td></tr>')+'</tbody></table></div></div>';
+    +'<div class="card ov"><table style="min-width:640px">'
+    +'<thead><tr><th>Consultant</th><th>Poste</th><th>SCR/j</th><th>Mission actuelle</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
+    +'<tbody>'+rows+(inFY.length?'':'<tr><td colspan="6" class="emp">Aucun consultant sur ce FY.</td></tr>')
+    +'</tbody></table></div></div>';
 }
 
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
