@@ -1630,7 +1630,41 @@ async function initApp(){
         S.sbSt='Donnees locales - cliquez Sync pour envoyer vers Supabase';
       }
     }else{
-      S.sbSt='Supabase connecte';
+      S.sbSt='Supabase connecté';
+      /* Fusionner le localStorage : récupérer les missions/consultants/absences
+         enregistrés localement mais pas encore dans Supabase (ex : import en masse
+         fait juste avant de remplacer le fichier HTML) */
+      try{
+        var _raw=localStorage.getItem(SKEY);
+        if(_raw){
+          var _d=JSON.parse(_raw);
+          if(_d){
+            /* Missions locales absentes de Supabase */
+            var _sbMids=new Set(S.miss.map(function(m){return m.id;}));
+            var _localMiss=(_d.miss||[]).filter(function(m){return !_sbMids.has(m.id);});
+            if(_localMiss.length){
+              console.log('Merge: '+_localMiss.length+' mission(s) locale(s) non syncée(s) récupérée(s).');
+              S.miss=S.miss.concat(_localMiss);
+              _localMiss.forEach(function(m){sbUpsertMiss(m).catch(function(e){console.warn('merge-sync miss:',e);});});
+            }
+            /* Consultants locaux absents de Supabase */
+            var _sbCids=new Set(S.cons.map(function(c){return c.id;}));
+            var _localCons=(_d.cons||[]).filter(function(c){return !_sbCids.has(c.id);});
+            if(_localCons.length){
+              console.log('Merge: '+_localCons.length+' consultant(s) local(aux) récupéré(s).');
+              S.cons=S.cons.concat(_localCons);
+              _localCons.forEach(function(c){sbUpsertCons(c).catch(function(e){console.warn('merge-sync cons:',e);});});
+            }
+            /* Absences locales absentes de Supabase */
+            var _sbLids=new Set(S.lvs.map(function(l){return l.id;}));
+            var _localLvs=(_d.lvs||[]).filter(function(l){return !_sbLids.has(l.id);});
+            if(_localLvs.length){
+              S.lvs=S.lvs.concat(_localLvs);
+              _localLvs.forEach(function(l){sbUpsertLeave(l).catch(function(e){console.warn('merge-sync lv:',e);});});
+            }
+          }
+        }
+      }catch(_e){console.warn('localStorage merge:',_e);}
     }
     await loadInvites();
   }else{
@@ -1884,7 +1918,17 @@ function applyMissImp(){
   S.missImp=null;
   var msg=created+' mission(s) ajout\u00e9e(s).';
   if(skipped.length)msg+='\n\nIgnor\u00e9(s) :\n'+skipped.join('\n');
-  alert(msg+'\n\nPensez \u00e0 synchroniser avec Supabase.');
+  /* Auto-sync Supabase + localStorage */
+  saveLocal();
+  if(sb&&SB_CID){
+    S.miss.slice(-created).forEach(function(m2){
+      sbUpsertMiss(m2).catch(function(e){console.warn('Auto-sync:',e);});
+    });
+    msg+=' Synchronisation Supabase en cours.';
+  }else{
+    msg+='\n\nSync manuel requis (barre laterale).';
+  }
+  alert(msg);
   render();
 }
 

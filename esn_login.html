@@ -192,6 +192,7 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
       <div class="fd">
         <label for="l-email">Email</label>
         <input class="inp" type="email" id="l-email" placeholder="vous@votreesn.com" autocomplete="email">
+        <div id="saved-emails" style="display:none;margin-top:8px"></div>
         <p class="err-msg" id="e-l-email">Email invalide</p>
       </div>
       <div class="fd">
@@ -291,10 +292,69 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
 <script>
 'use strict';
 
-var SUPABASE_URL = 'https://rwmstlesxnglpblrurqj.supabase.co';
-var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3bXN0bGVzeG5nbHBibHJ1cnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MjcyNTMsImV4cCI6MjA5NzEwMzI1M30.9SrsA1sYjdsqdPCnZ_sc2iTl01NKXsl7gAu2Y_VYgSQ';
+var SUPABASE_URL = 'https://VOTRE_ID.supabase.co';
+var SUPABASE_KEY = 'VOTRE_ANON_KEY';
 var sb = (SUPABASE_URL !== 'https://VOTRE_ID.supabase.co')
   ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+/* Pré-remplir l'email sauvegardé */
+document.addEventListener('DOMContentLoaded', function() {
+  var saved = localStorage.getItem('esn_saved_emails');
+  if (saved) {
+    try {
+      var emails = JSON.parse(saved);
+      if (emails && emails.length) {
+        /* Pré-remplir le dernier email utilisé */
+        document.getElementById('l-email').value = emails[0];
+        /* Afficher la liste des comptes sauvegardés */
+        renderSavedEmails(emails);
+      }
+    } catch(e) {}
+  }
+});
+
+function saveEmail(email) {
+  try {
+    var saved = localStorage.getItem('esn_saved_emails');
+    var emails = saved ? JSON.parse(saved) : [];
+    /* Mettre en premier (retirer si déjà présent) */
+    emails = emails.filter(function(e) { return e !== email; });
+    emails.unshift(email);
+    /* Garder max 5 emails */
+    emails = emails.slice(0, 5);
+    localStorage.setItem('esn_saved_emails', JSON.stringify(emails));
+    renderSavedEmails(emails);
+  } catch(e) {}
+}
+
+function removeEmail(email) {
+  try {
+    var saved = localStorage.getItem('esn_saved_emails');
+    var emails = saved ? JSON.parse(saved) : [];
+    emails = emails.filter(function(e) { return e !== email; });
+    localStorage.setItem('esn_saved_emails', JSON.stringify(emails));
+    renderSavedEmails(emails);
+  } catch(e) {}
+}
+
+function renderSavedEmails(emails) {
+  var wrap = document.getElementById('saved-emails');
+  if (!wrap) return;
+  if (!emails || !emails.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  wrap.innerHTML = '<div style="font-size:11px;color:#94a3b8;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.06em">Comptes enregistrés</div>'
+    + emails.map(function(em) {
+        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:#f8fafc;border-radius:7px;margin-bottom:4px;cursor:pointer;border:1px solid #e2e8f0" onclick="useEmail('' + em + '')">'
+          + '<span style="font-size:13px;color:#0f172a">' + em + '</span>'
+          + '<button onclick="event.stopPropagation();removeEmail('' + em + '')" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:14px;padding:0 2px" title="Oublier">&times;</button>'
+          + '</div>';
+      }).join('');
+}
+
+function useEmail(email) {
+  document.getElementById('l-email').value = email;
+  document.getElementById('l-pwd').focus();
+}
 
 if (sb) {
   document.addEventListener('DOMContentLoaded', async function() {
@@ -402,6 +462,7 @@ async function doLogin() {
     showBanner('err', 'Identifiants incorrects. V\u00e9rifiez votre email et mot de passe.');
     return;
   }
+  saveEmail(em);
   showSuccess('Connexion r\u00e9ussie', 'Redirection en cours...');
   setTimeout(function(){ window.location.href = '/esn_manager_cgi.html'; }, 700);
 }
