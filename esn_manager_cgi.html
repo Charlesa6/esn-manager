@@ -258,10 +258,9 @@ function kpi(c,miss,lvs,y,H){
   var lds=lvSet(c.id,lvs,H,cs,ce);
   var lvD=lds.size,avD=tWD-lvD,bill=0,rev=0;
 
-  /* Absences qui comptent dans le staffing : arrêts + congés légitimes */
-  var COUNTED=['Maladie','Congé maternité','Congé payé','RTT'];
+  /* Toutes les absences comptent dans le staffing (sauf Inter-contrat) */
   var sickSet=new Set();
-  lvs.filter(function(l){return l.cid===c.id&&COUNTED.indexOf(l.type)>=0;}).forEach(function(l){
+  lvs.filter(function(l){return l.cid===c.id&&l.type!=='Inter-contrat';}).forEach(function(l){
     var a=l.s<cs?cs:l.s,b=l.e>ce?ce:l.e;
     while(a<=b){if(isWD(a,H))sickSet.add(a);a=nxt(a);}
   });
@@ -1228,7 +1227,7 @@ function tParam(){
   return '<div class="vw">'
     +'<div><div class="pt">Param\u00e9trage & Pr\u00e9conisations</div>'
     +'<div class="ps">Analyse intelligente de vos donn\u00e9es '+fyLbl(S.year)+' pour vous aider \u00e0 atteindre vos objectifs</div></div>'
-    +context+sections+'</div>'+tTeamsPanel();
+    +context+sections+'</div>';
 }
 
 /* ═══════════════════════════════════════════════════════════════
