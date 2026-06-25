@@ -2592,111 +2592,96 @@ function importStaffingXLS(file){
 
 function parseStaffingRows(rows,sheetName){
   var isAvail=(sheetName==='Available');
-  var CONS_COL=isAvail?5:4;
-  var FIRST_DATE_COL=isAvail?8:5;
-  var HEADER_ROW=4;
 
-  /* Normalisation robuste : NFD + suppression diacritiques + nettoyage */
+  /* ── Normalisation robuste ── */
   function deaccent(s){
     var str=String(s||'').toLowerCase();
-    /* Utiliser normalize si disponible (tous navigateurs modernes) */
-    if(str.normalize){str=str.normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
-    else{str=str.replace(/[é\u00e9è\u00eaê\u00ebë]/g,'e')
-              .replace(/[à\u00e0â\u00e2ä\u00e4]/g,'a')
-              .replace(/[ù\u00f9û\u00fbü\u00fc]/g,'u')
-              .replace(/[ô\u00f4ö\u00f6]/g,'o')
-              .replace(/[î\u00eeï\u00ef]/g,'i')
-              .replace(/[ç\u00e7]/g,'c');}
+    if(str.normalize)str=str.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
     return str;
   }
   function norm(s){
-    return deaccent(s)
-      .replace(/[,;]/g,' ')          /* virgules/points-virgules → espace */
-      .replace(/[-]/g,' ')           /* tirets → espace (BARRIER-FOUQUE → barrier fouque) */
-      .replace(/[^a-z0-9 ]/g,'')    /* tout le reste */
-      .replace(/\s+/g,' ')          /* espaces multiples */
-      .trim();
+    return deaccent(s).replace(/[,;]/g,' ').replace(/-/g,' ')
+      .replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
   }
 
-  /* Mois FR sans accents → numéro */
-  var MOIS={
-    'janv':1,'jan':1,'fevr':2,'fev':2,'mars':3,'avr':4,
-    'mai':5,'juin':6,'juil':7,'aout':8,'sept':9,'sep':9,
-    'oct':10,'nov':11,'dec':12
-  };
+  /* ── D\u00e9tecter dynamiquement la ligne header et la colonne Consultants ── */
+  var HEADER_ROW=-1,CONS_COL=-1;
+  for(var i=0;i<Math.min(20,rows.length);i++){
+    var r=rows[i];if(!r)continue;
+    for(var j=0;j<r.length;j++){
+      if(String(r[j]||'').trim().toLowerCase()==='consultants'){
+        HEADER_ROW=i;CONS_COL=j;break;
+      }
+    }
+    if(HEADER_ROW>=0)break;
+  }
+  if(HEADER_ROW<0||CONS_COL<0)
+    throw new Error('Colonne "Consultants" introuvable dans les 20 premi\u00e8res lignes.\nFeuille : '+sheetName+'\nPremier contenu : '+String(rows[0]&&rows[0][0]));
+
+  /* Colonnes : Arri\u00e9e (+1), D\u00e9part (+2 pour Available), dates apr\u00e8s */
+  var DATE_START=isAvail?CONS_COL+3:CONS_COL+1;
+  console.log('[import-lv] Feuille:',sheetName,'| Header ligne:',HEADER_ROW,'| Consultants col:',CONS_COL,'| Dates depuis col:',DATE_START);
+
+  /* ── Parser les dates ── */
+  var MOIS={'janv':1,'jan':1,'fevr':2,'fev':2,'mars':3,'avr':4,
+    'mai':5,'juin':6,'juil':7,'aout':8,'sept':9,'sep':9,'oct':10,'nov':11,'dec':12};
   function toISO(v){
     if(!v||v==='#REF!')return null;
     var s=String(v).trim();
+    /* D\u00e9j\u00e0 ISO : feuille Bench */
     if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.substring(0,10);
-    var m=s.match(/^(\d{1,2})-([a-z\u00c0-\u00ff]+)$/i);
-    if(!m)return null;
-    var day=parseInt(m[1]);
-    var mk=deaccent(m[2]).replace(/[^a-z]/g,'');
-    var month=MOIS[mk];
-    if(!month)return null;
-    var fy=S.year||2026;
-    var year=month>=10?fy-1:fy;
-    return year+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    /* Format DD-mois : feuille Available */
+    var m=s.match(/^(\d{1,2})[-\/]([a-z\u00c0-\u00ff]+)$/i);
+    if(m){
+      var day=parseInt(m[1]);
+      var mk=deaccent(m[2]).replace(/[^a-z]/g,'');
+      var month=MOIS[mk];
+      if(!month)return null;
+      var fy=S.year||2026;
+      return (month>=10?fy-1:fy)+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    }
+    return null;
   }
 
-  /* Map colonnes dates */
-  var SKIP_WORDS=['TOTAL','FTE','AVAILABLE','REF'];
+  /* ── Map des colonnes dates (ignorer TOTAL, FTE, #REF!) ── */
+  var SKIP=['TOTAL','FTE','AVAILABLE','REF'];
   var header=rows[HEADER_ROW]||[];
   var dateCols={};
-  for(var j=FIRST_DATE_COL;j<header.length;j++){
+  for(var j=DATE_START;j<header.length;j++){
     var hv=header[j];
     if(!hv)continue;
     var hs=String(hv).toUpperCase();
-    if(SKIP_WORDS.some(function(w){return hs.indexOf(w)>=0;}))continue;
+    if(SKIP.some(function(w){return hs.indexOf(w)>=0;}))continue;
     var iso=toISO(hv);
     if(iso)dateCols[j]=iso;
   }
-  console.log('[import-lv] Colonnes dates d\u00e9tect\u00e9es :',Object.keys(dateCols).length);
-  console.log('[import-lv] Consultants dans l\'app :',S.cons.map(function(c){return c.name;}).join(', '));
+  console.log('[import-lv] Dates d\u00e9tect\u00e9es :',Object.keys(dateCols).length,
+    '| Ex:',Object.values(dateCols).slice(0,3).join(', '));
 
-  /* Matching consultant : multi-strat\u00e9gie */
+  /* ── Matching consultant multi-strat\u00e9gie ── */
   function matchCons(rawName){
     var rn=norm(rawName);
-    /* 1. Correspondance exacte normalis\u00e9e */
     var exact=S.cons.find(function(c){return norm(c.name)===rn;});
     if(exact)return exact;
-    /* 2. Chevauchement de mots (score ≥ 1 mot commun ≥ 3 car) */
     var parts=rn.split(' ').filter(function(p){return p.length>=3;});
     var best=null,bestScore=0;
     S.cons.forEach(function(c){
       var cn=norm(c.name);
       var score=0;
       parts.forEach(function(p){if(cn.indexOf(p)>=0)score++;});
-      /* aussi v\u00e9rifier dans l'autre sens */
-      norm(c.name).split(' ').filter(function(p){return p.length>=3;}).forEach(function(p){
-        if(rn.indexOf(p)>=0)score++;
-      });
+      cn.split(' ').filter(function(p){return p.length>=3;}).forEach(function(p){if(rn.indexOf(p)>=0)score++;});
       if(score>bestScore){bestScore=score;best=c;}
     });
-    if(bestScore>=1)return best;
-    /* 3. Correspondance partielle : 5 premiers caractères du nom le plus long */
-    var longest=parts.reduce(function(a,b){return b.length>a.length?b:a;},'');
-    if(longest.length>=4){
-      var partial=S.cons.find(function(c){
-        var cn=norm(c.name);
-        return cn.indexOf(longest.substring(0,5))>=0||rn.indexOf(norm(c.name).split(' ').reduce(function(a,b){return b.length>a.length?b:a;}).substring(0,5))>=0;
-      });
-      if(partial)return partial;
-    }
-    return null;
+    return bestScore>=1?best:null;
   }
 
-  /* Grouper jours consécutifs (tol\u00e9rance 3j week-end) */
+  /* ── Grouper les jours cons\u00e9cutifs ── */
   function groupDays(sorted){
-    var groups=[];
-    if(!sorted.length)return groups;
+    var groups=[];if(!sorted.length)return groups;
     var s=sorted[0],e=sorted[0];
     for(var i=1;i<sorted.length;i++){
-      var prev=new Date(e+'T12:00:00Z');
-      var curr=new Date(sorted[i]+'T12:00:00Z');
-      var diff=Math.round((curr-prev)/86400000);
-      if(diff<=3){e=sorted[i];}
-      else{groups.push({s:s,e:e});s=sorted[i];e=sorted[i];}
+      var diff=Math.round((new Date(sorted[i]+'T12:00:00Z')-new Date(e+'T12:00:00Z'))/86400000);
+      if(diff<=3){e=sorted[i];}else{groups.push({s:s,e:e});s=sorted[i];e=sorted[i];}
     }
     groups.push({s:s,e:e});
     return groups;
@@ -2706,20 +2691,15 @@ function parseStaffingRows(rows,sheetName){
   var entries=[];
 
   for(var ri=HEADER_ROW+1;ri<rows.length;ri++){
-    var row=rows[ri];
-    if(!row)continue;
-    var rawName=row[CONS_COL];
-    if(!rawName)continue;
+    var row=rows[ri];if(!row)continue;
+    var rawName=row[CONS_COL];if(!rawName)continue;
     var consName=String(rawName).trim();
-    if(!consName||consName.indexOf('TOTAL')>=0)continue;
+    if(!consName||consName.toUpperCase().indexOf('TOTAL')>=0)continue;
+    /* Ignorer si la valeur ressemble \u00e0 une date ou un nombre */
+    if(/^\d{4}-\d{2}-\d{2}/.test(consName)||/^\d+([.,]\d+)?$/.test(consName))continue;
 
     var cons=matchCons(consName);
-    if(!cons){
-      skipped++;
-      notFound.push(consName);
-      console.warn('[import-lv] Non trouv\u00e9 :',consName,'| norm:',norm(consName));
-      continue;
-    }
+    if(!cons){skipped++;notFound.push(consName);continue;}
 
     var absentDays=[];
     Object.keys(dateCols).forEach(function(j){
@@ -2729,21 +2709,18 @@ function parseStaffingRows(rows,sheetName){
       if(!isNaN(v)&&v>0)absentDays.push(dateCols[j]);
     });
     if(!absentDays.length)continue;
-    absentDays.sort();
 
-    groupDays(absentDays).forEach(function(g){
-      var exists=S.lvs.find(function(x){return x.cid===cons.id&&x.s===g.s&&x.e===g.e;});
-      if(exists){dupes++;return;}
+    groupDays(absentDays.sort()).forEach(function(g){
+      if(S.lvs.find(function(x){return x.cid===cons.id&&x.s===g.s&&x.e===g.e;})){dupes++;return;}
       var entry={id:uid(),cid:cons.id,type:'Cong\u00e9 pay\u00e9',s:g.s,e:g.e};
-      S.lvs.push(entry);
-      entries.push(entry);
-      added++;
+      S.lvs.push(entry);entries.push(entry);added++;
     });
   }
 
-  if(notFound.length){
-    console.warn('[import-lv] Noms non appari\u00e9s :\n'+notFound.join('\n'));
-  }
+  if(notFound.length)
+    console.warn('[import-lv] Non trouv\u00e9s :\n'+notFound.join('\n')
+      +'\n\nDans l\'app :\n'+S.cons.map(function(c){return c.name;}).join('\n'));
+
   return{added:added,skipped:skipped,dupes:dupes,entries:entries,notFound:notFound};
 }
 
