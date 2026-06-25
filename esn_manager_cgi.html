@@ -392,6 +392,7 @@ var S={
   missImp:null
 };
 var H=fyHols(CFY);
+var SCR_FACTOR=113.35;  /* SCR x ce coefficient = salaire annuel sur le FY */
 
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    SVG BAR CHART
@@ -902,7 +903,7 @@ function tKPIs(){
   var mArr=ks.filter(function(x){return x.k.om!=null;});
   var avgM=mArr.length?mArr.reduce(function(s,x){return s+x.k.om;},0)/mArr.length:null;
   var avgTJMv=totBill>0?totR/totBill:0;
-  var totSalary=ks.reduce(function(s,x){return s+x.c.scr*x.k.tWD;},0);
+  var totSalary=ks.reduce(function(s,x){return s+x.c.scr*SCR_FACTOR;},0);
   var netC=totR-totSalary;
   var top3=clientRev(ks).slice(0,3);
   var totRevP=Math.max(totR,1);
@@ -1011,7 +1012,7 @@ function tKPIs(){
 
   return '<div class="vw">'
     +'<div style="margin-bottom:24px"><div class="pt">KPIs &mdash; '+fyLbl(S.year)+'</div>'
-    +'<div class="ps">Marge = (TJM &minus; SCR) / TJM &times; 100 &middot; Staffing = (Facturables + Congés + Maladie/Maternité) / Jours ouvrés FY × 100</div></div>'
+    +'<div class="ps">Marge = (TJM &minus; SCR) / TJM &times; 100 &middot; Staffing = (Facturables + Congés + Maladie/Maternité) / Jours ouvrés FY &times; 100 &middot; Salaire annuel = SCR &times; 113,35</div></div>'
     +hero
     +'<div style="display:grid;grid-template-columns:1fr 300px;gap:16px;margin-bottom:24px">'
     +'<div class="card" style="padding:20px"><div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:16px">Staffing par consultant (%)</div>'+srBars+'</div>'
@@ -1060,7 +1061,7 @@ function tParam(){
   var totBill=ks.reduce(function(s,x){return s+x.k.bill;},0);
   var avgSr=ks.reduce(function(s,x){return s+x.k.sr;},0)/(ks.length||1);
   var avgTJMv=totBill>0?totR/totBill:0;
-  var netC=totR-ks.reduce(function(s,x){return s+x.c.scr*x.k.tWD;},0);
+  var netC=totR-ks.reduce(function(s,x){return s+x.c.scr*SCR_FACTOR;},0);
 
   var context='<div class="card" style="padding:20px;margin-bottom:20px">'
     +'<div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:14px">\uD83D\uDCCC Situation actuelle - '+fyLbl(S.year)+'</div>'
