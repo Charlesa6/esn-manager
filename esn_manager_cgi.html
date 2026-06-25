@@ -1556,7 +1556,8 @@ async function sbUpsertCons(c){
   if(res.error)throw new Error(c.name+': '+res.error.message);
 }
 async function sbUpsertMiss(m){
-  if(!sb||!SB_CID)return;
+  if(!sb)return;
+  if(!SB_CID)throw new Error('SB_CID null — reconnectez-vous');
   var res=await sb.from('missions').upsert({id:m.id,company_id:SB_CID,consultant_id:m.cid,name:m.name,client_name:m.cli,tjm:m.tjm,start_date:m.sd,end_date:m.ed||null,location:m.loc,manager_name:m.mgr,client_contact_name:m.ccn,client_contact_role:m.ccr,billing_type:m.btype||'at',work_days:(m.wdays&&m.wdays.length?m.wdays:[1,2,3,4,5]),deal_amount:(m.deal||null),target_margin:((m.tmar!=null&&m.tmar!=='')?m.tmar:null),code_projet:m.pcode||null});
   if(res.error)throw new Error(m.name+': '+res.error.message);
 }
@@ -1947,23 +1948,28 @@ function applyMissImp(){
   var msg=created+' mission(s) ajout\u00e9e(s)';
   if(skipped.length)msg+='. Ignor\u00e9(s) :\n'+skipped.join('\n');
 
-  /* Synchronisation Supabase : on attend le r\u00e9sultat pour confirmer */
-  if(sb&&SB_CID){
-    /* Promise.all sur toutes les nouvelles missions */
-    var newMissions=S.miss.slice(-created);
-    Promise.all(newMissions.map(function(m2){return sbUpsertMiss(m2);}))
-      .then(function(){
-        alert(msg+'\nSynchronis\u00e9es dans Supabase \u2713');
-      })
-      .catch(function(err){
-        alert(msg+'\n\u26a0 Erreur Supabase : '+err.message+'\nLes missions sont sauvegard\u00e9es localement. Cliquez "Synchroniser" dans la barre lat\u00e9rale.');
-      });
-  }else if(sb&&!SB_CID){
-    /* SB_CID manquant : session OK mais profil pas encore charg\u00e9 */
-    alert(msg+'\n\n\u26a0 Profil Supabase non charg\u00e9. D\u00e9connectez-vous et reconnectez-vous, puis cliquez "Synchroniser".');
-  }else{
-    alert(msg+'\nSauvegard\u00e9es localement. Configurez Supabase pour persister les donn\u00e9es.');
+  /* Diagnostic */
+  console.log('[import] sb:', !!sb, '| SB_CID:', SB_CID, '| créées:', created);
+
+  if(!sb){alert(msg+'\nLocalStorage uniquement (Supabase non configuré).');render();return;}
+  if(!SB_CID){
+    alert(msg+'\n\n⚠ SB_CID manquant (profil Supabase non chargé).\nLes missions sont sauvegardées localement.\nDéconnectez-vous et reconnectez-vous, puis cliquez "Synchroniser".');
+    render();return;
   }
+
+  var newMissions=S.miss.slice(-created);
+  console.log('[import] Upsert vers Supabase :', newMissions.map(function(m){return m.name;}).join(', '));
+  Promise.all(newMissions.map(function(m2){
+    return sbUpsertMiss(m2);
+  }))
+  .then(function(){
+    console.log('[import] Sync OK');
+    alert(msg+' - synchronisées dans Supabase ✓');
+  })
+  .catch(function(err){
+    console.error('[import] Sync KO:', err);
+    alert(msg+'\n\n⚠ Erreur Supabase : '+err.message+'\nCliquez "Synchroniser" dans la barre latérale pour réessayer.');
+  });
   render();
 }
 
