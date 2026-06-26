@@ -1484,11 +1484,22 @@ function bind(){
       else if(a==='gen-util'){genRecs('util');}
       else if(a==='gen-tjm'){genRecs('tjm');}
       else if(a==='ac'){S.modal={type:'consultant',item:null};render();}
-      else if(a==='am'){S.modal={type:'mission',item:null};render();}
+      else if(a==='am'){
+      var _now=new Date();
+      S.modal={type:'mission',item:null,wmode:'rec',manualDays:[],
+        calYear:_now.getFullYear(),calMonth:_now.getMonth()};
+      render();}
       else if(a==='al'){S.modal={type:'leave',item:null};render();}
       else if(a==='mc'){S.modal=null;render();}
       else if(a==='ec'){S.modal={type:'consultant',item:S.cons.find(function(c){return c.id===id;})};render();}
-      else if(a==='em'){S.modal={type:'mission',item:S.miss.find(function(m){return m.id===id;})};render();}
+      else if(a==='em'){
+      var _it=S.miss.find(function(m){return m.id===id;});
+      var _now2=new Date();
+      S.modal={type:'mission',item:_it,
+        wmode:(_it&&_it.wmode)||'rec',
+        manualDays:(_it&&_it.manualDays)?_it.manualDays.slice():[],
+        calYear:_now2.getFullYear(),calMonth:_now2.getMonth()};
+      render();}
       else if(a==='el'){S.modal={type:'leave',item:S.lvs.find(function(l){return l.id===id;})};render();}
       else if(a==='dc'){var c=S.cons.find(function(c){return c.id===id;});if(c&&confirm('Supprimer '+c.name+' ?')){S.cons=S.cons.filter(function(c){return c.id!==id;});sbDel('consultants',id);render();}}
       else if(a==='dm'){if(confirm('Supprimer cette mission ?')){S.miss=S.miss.filter(function(m){return m.id!==id;});sbDel('missions',id);render();}}
@@ -1511,7 +1522,10 @@ function bind(){
         var lo=gv('mlo'),mg=gv('mmg'),cc=gv('mcc'),cr=gv('mcr');
         var btEl=document.querySelector('input[name="mbt"]:checked');
         var bt=btEl?btEl.value:'at';
-        var wdays=[];var wdEls=document.querySelectorAll('.mwd:checked');for(var wi=0;wi<wdEls.length;wi++)wdays.push(+wdEls[wi].value);
+        var wdays=[];var wdEls=document.querySelectorAll('.mwd:checked');
+        for(var wi=0;wi<wdEls.length;wi++)wdays.push(+wdEls[wi].value);
+        var wmode2=(S.modal&&S.modal.wmode==='man')?'man':'rec';
+        var manualDays2=(wmode2==='man'&&S.modal&&S.modal.manualDays)?S.modal.manualDays.slice():[];
         var deal=+gv('mdeal')||0,tmar=(gv('mtmar')===''?null:+gv('mtmar'));
         if(!cid||!mn||!cl||!sd){alert('Veuillez remplir les champs obligatoires (*).');return;}
         if(bt==='forfait'){
@@ -1520,7 +1534,7 @@ function bind(){
         if(!wdays.length&&wmode2!=='man'){alert('S\u00e9lectionnez au moins un jour travaill\u00e9.');return;}
         if(wmode2==='man'&&!manualDays2.length){alert('S\u00e9lectionnez au moins un jour dans le calendrier.');return;}
         var pcode=gv('mpcd')||'';
-        var d={cid:cid,name:mn,cli:cl,tjm:tj,sd:sd,ed:ed,loc:lo,mgr:mg,ccn:cc,ccr:cr,btype:bt,wdays:wdays,deal:deal,tmar:tmar,pcode:pcode};
+        var d={cid:cid,name:mn,cli:cl,tjm:tj,sd:sd,ed:ed,loc:lo,mgr:mg,ccn:cc,ccr:cr,btype:bt,wdays:wdays,deal:deal,tmar:tmar,pcode:pcode,wmode:wmode2,manualDays:manualDays2};
         var it=S.modal.item;
         var nm;
         if(it){S.miss=S.miss.map(function(m){if(m.id===it.id){nm=Object.assign({},m,d);return nm;}return m;});}
@@ -2679,344 +2693,6 @@ function tTeamsPanel(){
 
 
 /* ═══════════════════════════════════════════════════════════
-   CALENDRIER MANUEL DE MISSION (forfait)
-═══════════════════════════════════════════════════════════ */
-var MO=['Janvier','F\u00e9vrier','Mars','Avril','Mai','Juin','Juillet','Ao\u00fbt','Septembre','Octobre','Novembre','D\u00e9cembre'];
-var DOW=['Di','Lu','Ma','Me','Je','Ve','Sa'];
-
-function mCalToggle(iso){
-  if(!S.modal)return;
-  var md=S.modal.manualDays=S.modal.manualDays||[];
-  var i=md.indexOf(iso);
-  if(i>=0)md.splice(i,1);else md.push(iso);
-  mCalRefresh();
-}
-function mCalNav(dir){
-  if(!S.modal)return;
-  var m=(S.modal.calMonth||0)+dir;
-  var y=S.modal.calYear||new Date().getFullYear();
-  if(m<0){m=11;y--;}else if(m>11){m=0;y++;}
-  S.modal.calMonth=m;S.modal.calYear=y;
-  mCalRefresh();
-}
-function mWmodeSet(v){if(!S.modal)return;S.modal.wmode=v;mCalRefresh();}
-
-function mCalRefresh(){
-  /* Mise \u00e0 jour partielle du conteneur calendrier sans re-render complet */
-  var el=document.getElementById('mcal-wrap');
-  if(el)el.innerHTML=mCalHTML();
-}
-
-function mCalHTML(){
-  if(!S.modal)return '';
-  var wmode=S.modal.wmode||'rec';
-  var selDays=S.modal.manualDays||[];
-  var startISO=(document.getElementById('msd')||{}).value||S.modal._sd||'';
-  var endISO=(document.getElementById('med')||{}).value||S.modal._ed||'';
-  var today=fD(new Date());
-
-  /* En-t\u00eate mode */
-  var modeBar='<div style="display:flex;gap:0;margin-bottom:12px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">'
-    +'<button type="button" onclick="mWmodeSet(\'rec\')" style="flex:1;padding:8px;font-size:12px;font-weight:700;border:none;cursor:pointer;'+(wmode==='rec'?'background:#2563eb;color:#fff':'background:#fff;color:#64748b')+'">R\u00e9current (jours/sem.)</button>'
-    +'<button type="button" onclick="mWmodeSet(\'man\')" style="flex:1;padding:8px;font-size:12px;font-weight:700;border:none;cursor:pointer;'+(wmode==='man'?'background:#2563eb;color:#fff':'background:#fff;color:#64748b')+'">Choix manuel</button>'
-    +'</div>';
-
-  if(wmode==='rec'){
-    /* Checkboxes jours de la semaine */
-    var wdsel=S.modal._wdsel||[1,2,3,4,5];
-    var WLBL=[[1,'Lun'],[2,'Mar'],[3,'Mer'],[4,'Jeu'],[5,'Ven']];
-    return modeBar
-      +'<div style="display:flex;gap:12px;flex-wrap:wrap;padding:4px 0">'
-      +WLBL.map(function(w){return '<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" class="mwd" value="'+w[0]+'"'+(wdsel.indexOf(+w[0])>=0?' checked':'')+' style="accent-color:#2563eb">'+w[1]+'</label>';}).join('')
-      +'</div><p class="fh">D\u00e9cochez les jours non travaill\u00e9s</p>';
-  }
-
-  /* Mode manuel : calendrier mensuel */
-  var yr=S.modal.calYear||new Date().getFullYear();
-  var mo=S.modal.calMonth!=null?S.modal.calMonth:new Date().getMonth();
-  var selSet=new Set(selDays);
-  var nSel=selDays.length;
-  var firstDow=new Date(yr,mo,1).getDay();
-  var lastDay=new Date(yr,mo+1,0).getDate();
-
-  var calHdr='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
-    +'<button type="button" onclick="mCalNav(-1)" style="background:none;border:1px solid #e2e8f0;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:16px">\u2039</button>'
-    +'<span style="font-weight:700;font-size:13px;color:#0f172a">'+MO[mo]+' '+yr+'</span>'
-    +'<button type="button" onclick="mCalNav(1)" style="background:none;border:1px solid #e2e8f0;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:16px">\u203a</button>'
-    +'</div>';
-
-  var calTable='<table style="width:100%;border-collapse:collapse;font-size:12px">'
-    +'<tr>'+DOW.map(function(d){return '<th style="padding:3px;text-align:center;font-size:10px;color:#94a3b8;font-weight:700">'+d+'</th>';}).join('')+'</tr>';
-
-  var d=1,row='';
-  for(var cell=0;cell<firstDow;cell++)row+='<td></td>';
-  for(;d<=lastDay;){
-    var dow=(firstDow+d-1)%7;
-    if(dow===0&&d>1){calTable+='<tr>'+row+'</tr>';row='';}
-    var iso=yr+'-'+String(mo+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-    var isSel=selSet.has(iso);
-    var isWD=dow>=1&&dow<=5;
-    var inRange=(!startISO||iso>=startISO)&&(!endISO||iso<=endISO);
-    var isPast=iso<today;
-    var bg='',cl='',cur='default',onclick2='';
-    if(isSel){bg='#2563eb';cl='#fff';}
-    else if(!isWD){bg='#f8fafc';cl='#cbd5e1';}
-    else if(!inRange){bg='#fff';cl='#e2e8f0';}
-    else{bg=isPast?'#eff6ff':'#f0fdf4';cl=isPast?'#1e40af':'#15803d';cur='pointer';onclick2='mCalToggle("'+iso+'")';}
-    row+='<td onclick="'+onclick2+'" style="text-align:center;padding:4px 2px;border-radius:4px;cursor:'+cur+';background:'+bg+';color:'+cl+';font-weight:'+(isSel?'800':'500')+'">'+d+'</td>';
-    d++;
-    if(dow===6){calTable+='<tr>'+row+'</tr>';row='';}
-  }
-  while((firstDow+d-1)%7!==0){row+='<td></td>';d++;}
-  if(row)calTable+='<tr>'+row+'</tr>';
-  calTable+='</table>';
-
-  var legend='<div style="display:flex;gap:12px;margin-top:8px;font-size:10px;flex-wrap:wrap">'
-    +'<span><span style="display:inline-block;width:10px;height:10px;background:#2563eb;border-radius:2px;margin-right:3px"></span>S\u00e9lectionn\u00e9</span>'
-    +'<span><span style="display:inline-block;width:10px;height:10px;background:#eff6ff;border-radius:2px;margin-right:3px"></span>Pass\u00e9</span>'
-    +'<span><span style="display:inline-block;width:10px;height:10px;background:#f0fdf4;border-radius:2px;margin-right:3px"></span>Futur</span>'
-    +'</div>';
-
-  return modeBar
-    +'<p class="fh" style="margin-bottom:8px">'+nSel+' jour(s) s\u00e9lectionn\u00e9(s). Cliquez sur les jours ouvrables pour les cocher/d\u00e9cocher.</p>'
-    +calHdr+calTable+legend;
-}
-
-/* ================================================================
-   IMPORT ABSENCES depuis Excel staffing (feuilles Available / Bench)
-   ================================================================ */
-
-function loadXLSX2(cb){
-  if(window.XLSX){cb();return;}
-  var s=document.createElement('script');
-  s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-  s.onload=function(){cb();};
-  s.onerror=function(){alert('Impossible de charger la librairie XLSX.');};
-  document.head.appendChild(s);
-}
-
-function importStaffingXLS(file){
-  if(!file)return;
-  loadXLSX2(function(){
-    var reader=new FileReader();
-    reader.onload=function(e){
-      try{
-        var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true,dateNF:'yyyy-mm-dd'});
-        /* Chercher la feuille Available en priorit\u00e9, sinon Bench */
-        var sheetName='Available';
-        if(wb.SheetNames.indexOf('Available')<0){
-          if(wb.SheetNames.indexOf('Bench')>=0){sheetName='Bench';}
-          else{alert('Feuille "Available" ou "Bench" non trouv\u00e9e dans ce fichier.');return;}
-        }
-        var ws=wb.Sheets[sheetName];
-        var rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:null});
-        var res=parseStaffingRows(rows,sheetName);
-        var replaced=res.replaced||0;
-        var msg=res.added+' absence(s) import\u00e9e(s)'+(replaced>0?' ('+replaced+' ancienne(s) remplac\u00e9e(s))':'');
-        if(res.notFound&&res.notFound.length>0){
-          msg+='\n\n'+res.notFound.length+' nom(s) non retrouv\u00e9(s) dans l\'app :\n'
-            +res.notFound.slice(0,8).join('\n')+(res.notFound.length>8?'\n...(+(res.notFound.length-8)+\' autres)':'');
-          msg+='\n\nConsultants dans l\'app : '+S.cons.map(function(c){return c.name;}).join(', ');
-        }
-        saveLocal();
-        if(sb&&SB_CID){
-          res.entries.forEach(function(l){
-            sbUpsertLeave(l).catch(function(err){console.warn('[import-lv]',err);});
-          });
-        }
-        alert(msg);
-        render();
-      }catch(err){
-        console.error('[importStaffingXLS]',err);
-        alert('Erreur : '+err.message);
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  });
-}
-
-function parseStaffingRows(rows,sheetName){
-  var isAvail=(sheetName==='Available');
-
-  /* ── Normalisation robuste ── */
-  function deaccent(s){
-    var str=String(s||'').toLowerCase();
-    if(str.normalize)str=str.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-    return str;
-  }
-  function norm(s){
-    return deaccent(s).replace(/[,;]/g,' ').replace(/-/g,' ')
-      .replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
-  }
-
-  /* ── D\u00e9tecter dynamiquement la ligne header et la colonne Consultants ── */
-  var HEADER_ROW=-1,CONS_COL=-1;
-  for(var i=0;i<Math.min(20,rows.length);i++){
-    var r=rows[i];if(!r)continue;
-    for(var j=0;j<r.length;j++){
-      if(String(r[j]||'').trim().toLowerCase()==='consultants'){
-        HEADER_ROW=i;CONS_COL=j;break;
-      }
-    }
-    if(HEADER_ROW>=0)break;
-  }
-  if(HEADER_ROW<0||CONS_COL<0)
-    throw new Error('Colonne "Consultants" introuvable dans les 20 premi\u00e8res lignes.\nFeuille : '+sheetName+'\nPremier contenu : '+String(rows[0]&&rows[0][0]));
-
-  /* Colonnes : Arri\u00e9e (+1), D\u00e9part (+2 pour Available), dates apr\u00e8s */
-  var DATE_START=isAvail?CONS_COL+3:CONS_COL+1;
-  console.log('[import-lv] Feuille:',sheetName,'| Header ligne:',HEADER_ROW,'| Consultants col:',CONS_COL,'| Dates depuis col:',DATE_START);
-
-  /* ── Parser les dates ── */
-  var MOIS={'janv':1,'jan':1,'fevr':2,'fev':2,'mars':3,'avr':4,
-    'mai':5,'juin':6,'juil':7,'aout':8,'sept':9,'sep':9,'oct':10,'nov':11,'dec':12};
-  function toISO(v){
-    if(!v||v==='#REF!')return null;
-    var s=String(v).trim();
-    /* D\u00e9j\u00e0 ISO : feuille Bench */
-    if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.substring(0,10);
-    /* Format DD-mois : feuille Available */
-    var m=s.match(/^(\d{1,2})[-\/]([a-z\u00c0-\u00ff]+)$/i);
-    if(m){
-      var day=parseInt(m[1]);
-      var mk=deaccent(m[2]).replace(/[^a-z]/g,'');
-      var month=MOIS[mk];
-      if(!month)return null;
-      var fy=S.year||2026;
-      return (month>=10?fy-1:fy)+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
-    }
-    return null;
-  }
-
-  /* ── Map des colonnes dates (ignorer TOTAL, FTE, #REF!) ── */
-  var SKIP=['TOTAL','FTE','AVAILABLE','REF'];
-  var header=rows[HEADER_ROW]||[];
-  var dateCols={};
-  for(var j=DATE_START;j<header.length;j++){
-    var hv=header[j];
-    if(!hv)continue;
-    var hs=String(hv).toUpperCase();
-    if(SKIP.some(function(w){return hs.indexOf(w)>=0;}))continue;
-    var iso=toISO(hv);
-    if(iso)dateCols[j]=iso;
-  }
-  console.log('[import-lv] Dates d\u00e9tect\u00e9es :',Object.keys(dateCols).length,
-    '| Ex:',Object.values(dateCols).slice(0,3).join(', '));
-
-  /* ── Matching consultant multi-strat\u00e9gie ── */
-  function matchCons(rawName){
-    var rn=norm(rawName);
-    var exact=S.cons.find(function(c){return norm(c.name)===rn;});
-    if(exact)return exact;
-    var parts=rn.split(' ').filter(function(p){return p.length>=3;});
-    var best=null,bestScore=0;
-    S.cons.forEach(function(c){
-      var cn=norm(c.name);
-      var score=0;
-      parts.forEach(function(p){if(cn.indexOf(p)>=0)score++;});
-      cn.split(' ').filter(function(p){return p.length>=3;}).forEach(function(p){if(rn.indexOf(p)>=0)score++;});
-      if(score>bestScore){bestScore=score;best=c;}
-    });
-    return bestScore>=1?best:null;
-  }
-
-  /* ── Grouper les jours cons\u00e9cutifs en tenant compte des week-ends et f\u00e9ri\u00e9s ──
-   * Deux jours d'absence appartiennent au m\u00eame cong\u00e9 si tous les jours
-   * qui les s\u00e9parent sont des week-ends ou des jours f\u00e9ri\u00e9s.
-   */
-  var holSet=H||new Set();  /* H = Set global des f\u00e9ri\u00e9s du FY courant */
-  function isNonWorking(iso){
-    var d=new Date(iso+'T12:00:00Z'),dow=d.getUTCDay();
-    return dow===0||dow===6||holSet.has(iso);
-  }
-  function gapIsNonWorking(d1,d2){
-    /* Retourne true si tous les jours STRICTEMENT entre d1 et d2 sont non ouvrables */
-    var cur=new Date(d1+'T12:00:00Z');
-    var end=new Date(d2+'T12:00:00Z');
-    cur.setUTCDate(cur.getUTCDate()+1);
-    while(cur<end){
-      if(!isNonWorking(cur.toISOString().substring(0,10)))return false;
-      cur.setUTCDate(cur.getUTCDate()+1);
-    }
-    return true;
-  }
-  function groupDays(sorted){
-    var groups=[];if(!sorted.length)return groups;
-    var s=sorted[0],e=sorted[0];
-    for(var i=1;i<sorted.length;i++){
-      if(gapIsNonWorking(e,sorted[i])){e=sorted[i];}
-      else{groups.push({s:s,e:e});s=sorted[i];e=sorted[i];}
-    }
-    groups.push({s:s,e:e});
-    return groups;
-  }
-
-  /* ── Collecter les jours d'absence par consultant (toutes ses lignes fusionn\u00e9es) ── */
-  var consDaysMap={};  /* cid \u2192 {cons, Set de dates ISO} */
-
-  var added=0,skipped=0,notFound=[];
-  var entries=[];
-
-  for(var ri=HEADER_ROW+1;ri<rows.length;ri++){
-    var row=rows[ri];if(!row)continue;
-    var rawName=row[CONS_COL];if(!rawName)continue;
-    var consName=String(rawName).trim();
-    if(!consName||consName.toUpperCase().indexOf('TOTAL')>=0)continue;
-    if(/^\d{4}-\d{2}-\d{2}/.test(consName)||/^\d+([.,]\d+)?$/.test(consName))continue;
-
-    var cons=matchCons(consName);
-    if(!cons){
-      if(notFound.indexOf(consName)<0)notFound.push(consName);
-      skipped++;continue;
-    }
-    if(!consDaysMap[cons.id])consDaysMap[cons.id]={cons:cons,days:[]};
-
-    Object.keys(dateCols).forEach(function(j){
-      var cell=row[parseInt(j)];
-      if(cell===null||cell===undefined||cell==='')return;
-      var v=parseFloat(String(cell).replace(',','.'));
-      if(!isNaN(v)&&v>0&&consDaysMap[cons.id].days.indexOf(dateCols[j])<0)
-        consDaysMap[cons.id].days.push(dateCols[j]);
-    });
-  }
-
-  /* ── Pour chaque consultant : remplacer les anciennes absences Cong\u00e9 pay\u00e9
-     puis cr\u00e9er les nouvelles p\u00e9riodes group\u00e9es ── */
-  var replaced=0;
-  Object.keys(consDaysMap).forEach(function(cid){
-    var cd=consDaysMap[cid];
-    if(!cd.days.length)return;
-    var sorted=cd.days.slice().sort();
-    var newGroups=groupDays(sorted);
-    if(!newGroups.length)return;
-
-    /* Supprimer les anciennes absences "Cong\u00e9 pay\u00e9" qui chevauchent la plage import\u00e9e */
-    var rangeS=newGroups[0].s,rangeE=newGroups[newGroups.length-1].e;
-    var before=S.lvs.filter(function(x){
-      if(x.cid!==cid)return true;
-      if(x.type!=='Cong\u00e9 pay\u00e9')return true;
-      /* Garder si compl\u00e8tement hors de la plage import */
-      return x.e<rangeS||x.s>rangeE;
-    });
-    replaced+=S.lvs.length-before.length;
-    S.lvs=before;
-
-    /* Ajouter les nouvelles p\u00e9riodes */
-    newGroups.forEach(function(g){
-      var entry={id:uid(),cid:cid,type:'Cong\u00e9 pay\u00e9',s:g.s,e:g.e};
-      S.lvs.push(entry);entries.push(entry);added++;
-    });
-  });
-
-  if(notFound.length)
-    console.warn('[import-lv] Non trouv\u00e9s :\n'+notFound.join('\n')
-      +'\n\nDans l\'app :\n'+S.cons.map(function(c){return c.name;}).join('\n'));
-
-  return{added:added,replaced:replaced,skipped:skipped,entries:entries,notFound:notFound};
-}
-
-
-/* ═══════════════════════════════════════════════════════════
    CALENDRIER MANUEL DE MISSION (forfait \u2014 choix manuel des jours)
 ═══════════════════════════════════════════════════════════ */
 var MO=['Janvier','F\u00e9vrier','Mars','Avril','Mai','Juin','Juillet','Ao\u00fbt','Septembre','Octobre','Novembre','D\u00e9cembre'];
@@ -3030,7 +2706,7 @@ function mCalToggle(iso){
 }
 function mCalNav(dir){
   if(!S.modal)return;
-  var m=(S.modal.calMonth||0)+dir,y=S.modal.calYear||new Date().getFullYear();
+  var m=(S.modal.calMonth!=null?S.modal.calMonth:new Date().getMonth())+dir,y=(S.modal.calYear!=null?S.modal.calYear:new Date().getFullYear());
   if(m<0){m=11;y--;}else if(m>11){m=0;y++;}
   S.modal.calMonth=m;S.modal.calYear=y;mCalRefresh();
 }
