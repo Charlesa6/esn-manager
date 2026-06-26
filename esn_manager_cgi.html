@@ -560,6 +560,8 @@ function tSB(){
     {id:'leaves',   ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
     {id:'imputations',ic:'\uD83D\uDCCA',lb:'Imputations'},
     {id:'param',    ic:'\u2699\uFE0F',lb:'Paramétrage'}
+  ,
+    {id:'profile',  ic:'\uD83D\uDC64',lb:'Profil'}
   ];
   if(S.role==='gestionnaire')NAV.push({id:'directeurs',ic:'🛡️',lb:'Directeurs'});
   NAV.splice(4,0,{id:'activite',ic:'🗓️',lb:'Activité'});
@@ -606,7 +608,7 @@ function tSB(){
     +'<button data-act="sync" style="width:100%;background:#0f2942;color:#60a5fa;border:1px solid #1e3a5f;border-radius:6px;padding:5px 4px;font-size:10px;cursor:pointer;font-weight:700;text-align:center">\u2601\uFE0F Synchroniser vers Supabase</button>'
     +'</div>'
     +'<div id="sb-status" style="font-size:9px;color:#1e3a5f;background:#0f2942;border-radius:4px;padding:3px 6px;text-align:center">'+S.sbSt+'</div>'
-    +'<button data-act="logout" style="margin-top:8px;width:100%;background:transparent;color:#ef4444;border:1px solid rgba(239,68,68,.25);border-radius:6px;padding:5px 4px;font-size:10px;cursor:pointer;font-weight:600;text-align:center">\u2192 Se d\u00e9connecter</button>'
+    +'<button onclick="doLogout()" style="margin-top:8px;width:100%;background:transparent;color:#ef4444;border:1px solid rgba(239,68,68,.25);border-radius:6px;padding:5px 4px;font-size:10px;cursor:pointer;font-weight:600;text-align:center">\u2192 Se d\u00e9connecter</button>'
     +'</div>';
 }
 
@@ -1417,7 +1419,7 @@ function render(){
   S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
   var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;
   document.getElementById('sb').innerHTML=tSB();
-  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='imputations'?tImpute():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():tParam();
+  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='imputations'?tImpute():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='profile'?tProfile():tParam();
   document.getElementById('mc').innerHTML='<div class="inn">'+v+'</div>';
   document.getElementById('md').innerHTML=tModal();
   /* on restaure les données maîtres (les handlers de bind() mutent l'ensemble complet) */
@@ -1758,6 +1760,7 @@ async function initApp(){
 
       /* ── 2. R\u00e9cup\u00e9rer company_id + r\u00f4le ── */
       var uid2=sess.data.session.user.id;
+      S._userEmail=sess.data.session.user.email||'';
       var pr=await sb.from('profiles').select('*').eq('id',uid2).single();
       if(pr.data&&pr.data.company_id){
         SB_CID=pr.data.company_id;
@@ -2750,6 +2753,73 @@ function mCalHTML(){
   return modeBar
     +'<p class="fh" style="margin-bottom:6px">'+selDays.length+' jour(s) s\u00e9lectionn\u00e9(s). <span style="color:#1e40af">\u25a0 pass\u00e9</span> <span style="color:#15803d">\u25a0 futur</span> <span style="color:#2563eb">\u25a0 s\u00e9lectionn\u00e9</span></p>'
     +calHdr+tbl;
+}
+
+function tProfile(){
+  var sess=sb?null:null; /* \u00e9tat charg\u00e9 via S */
+  var userEmail=S._userEmail||'';
+  var userRole=S.role==='directeur'?'Directeur':'Gestionnaire';
+  return '<div>'
+    +'<div class="ph"><div><div class="pt">Mon Profil</div>'
+    +'<div class="ps">Informations de compte et s\u00e9curit\u00e9</div></div></div>'
+
+    /* ── Infos compte ── */
+    +'<div class="card" style="padding:24px;margin-bottom:16px">'
+    +'<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:16px">Informations du compte</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
+    +'<div class="fd"><label class="fl">Adresse e-mail</label>'
+    +'<div style="padding:8px 12px;background:#f8fafc;border-radius:8px;font-size:13px;color:#0f172a;border:1px solid #e2e8f0">'+esc(userEmail||'—')+'</div></div>'
+    +'<div class="fd"><label class="fl">R\u00f4le</label>'
+    +'<div style="padding:8px 12px;background:#f8fafc;border-radius:8px;font-size:13px;color:#0f172a;border:1px solid #e2e8f0">'+esc(userRole)+'</div></div>'
+    +'</div></div>'
+
+    /* ── Changer le mot de passe ── */
+    +'<div class="card" style="padding:24px;margin-bottom:16px">'
+    +'<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:16px">Changer le mot de passe</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
+    +'<div class="fd"><label class="fl">Nouveau mot de passe *</label>'
+    +'<input class="ic" type="password" id="prof-pw1" placeholder="Minimum 8 caract\u00e8res" autocomplete="new-password"></div>'
+    +'<div class="fd"><label class="fl">Confirmer le mot de passe *</label>'
+    +'<input class="ic" type="password" id="prof-pw2" placeholder="Retapez le mot de passe" autocomplete="new-password"></div>'
+    +'</div>'
+    +'<div id="prof-pw-msg" style="font-size:12px;margin-top:10px;display:none"></div>'
+    +'<button class="bp" style="margin-top:14px" onclick="changePassword()">Mettre \u00e0 jour le mot de passe</button>'
+    +'</div>'
+
+    /* ── D\u00e9connexion ── */
+    +'<div class="card" style="padding:24px">'
+    +'<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:8px">Session</div>'
+    +'<p style="font-size:12px;color:#64748b;margin:0 0 14px">Vous serez redirig\u00e9 vers la page de connexion.</p>'
+    +'<button onclick="doLogout()" style="background:#fff;color:#ef4444;border:1px solid #fca5a5;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer">\u2192 Se d\u00e9connecter</button>'
+    +'</div>'
+    +'</div>';
+}
+
+async function changePassword(){
+  var pw1=(document.getElementById('prof-pw1')||{}).value||'';
+  var pw2=(document.getElementById('prof-pw2')||{}).value||'';
+  var msg=document.getElementById('prof-pw-msg');
+  if(!msg)return;
+  msg.style.display='block';
+  if(!pw1||pw1.length<8){msg.style.color='#ef4444';msg.textContent='Le mot de passe doit contenir au moins 8 caract\u00e8res.';return;}
+  if(pw1!==pw2){msg.style.color='#ef4444';msg.textContent='Les mots de passe ne correspondent pas.';return;}
+  msg.style.color='#64748b';msg.textContent='Mise \u00e0 jour en cours...';
+  try{
+    var res=await sb.auth.updateUser({password:pw1});
+    if(res.error)throw res.error;
+    msg.style.color='#16a34a';
+    msg.textContent='\u2713 Mot de passe mis \u00e0 jour avec succ\u00e8s.';
+    document.getElementById('prof-pw1').value='';
+    document.getElementById('prof-pw2').value='';
+  }catch(e){
+    msg.style.color='#ef4444';
+    msg.textContent='\u26a0 Erreur : '+(e.message||'impossible de mettre \u00e0 jour le mot de passe.');
+  }
+}
+
+async function doLogout(){
+  if(sb)await sb.auth.signOut().catch(function(){});
+  window.location.href='/esn_login.html';
 }
 
 initApp();
