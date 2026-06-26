@@ -3081,10 +3081,14 @@ function mCalHTML(){
     var inRange=(!startISO||iso>=startISO)&&(!endISO||iso<=endISO);
     var isPast=iso<today;
     var bg='',cl='',cur='default',oc='';
-    if(isSel){bg='#2563eb';cl='#fff';}
-    else if(!isWD){bg='#f8fafc';cl='#e2e8f0';}
-    else if(!inRange){bg='#fff';cl='#e2e8f0';}
-    else{bg=isPast?'#dbeafe':'#dcfce7';cl=isPast?'#1e40af':'#15803d';cur='pointer';oc='mCalToggle("'+iso+'")';}
+    if(!isWD){bg='#f8fafc';cl='#e2e8f0';}          /* week-end */
+    else if(!inRange){bg='#fff';cl='#e2e8f0';}       /* hors plage mission */
+    else{
+      /* jour ouvrable dans la plage : toujours cliquable */
+      cur='pointer';oc="mCalToggle('"+iso+"')";
+      if(isSel){bg='#2563eb';cl='#fff';}             /* sélectionné */
+      else{bg=isPast?'#dbeafe':'#dcfce7';cl=isPast?'#1e40af':'#15803d';}
+    }
     row+='<td onclick="'+oc+'" title="'+iso+'" style="text-align:center;padding:3px 1px;border-radius:3px;cursor:'+cur+';background:'+bg+';color:'+cl+';font-weight:'+(isSel?'800':'500')+'">'+d+'</td>';
     d++;if(dow===6){tbl+='<tr>'+row+'</tr>';row='';}
   }
