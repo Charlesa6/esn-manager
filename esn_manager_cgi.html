@@ -1517,7 +1517,8 @@ function bind(){
         if(bt==='forfait'){
           if(!deal||tmar==null){alert('Pour un forfait : indiquez le montant du deal (CA) et la marge recherchée.');return;}
         }else if(!tj){alert('Pour une mission en Assistance technique : indiquez le TJM.');return;}
-        if(!wdays.length){alert('Sélectionnez au moins un jour travaillé.');return;}
+        if(!wdays.length&&wmode2!=='man'){alert('S\u00e9lectionnez au moins un jour travaill\u00e9.');return;}
+        if(wmode2==='man'&&!manualDays2.length){alert('S\u00e9lectionnez au moins un jour dans le calendrier.');return;}
         var pcode=gv('mpcd')||'';
         var d={cid:cid,name:mn,cli:cl,tjm:tj,sd:sd,ed:ed,loc:lo,mgr:mg,ccn:cc,ccr:cr,btype:bt,wdays:wdays,deal:deal,tmar:tmar,pcode:pcode};
         var it=S.modal.item;
