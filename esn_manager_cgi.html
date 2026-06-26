@@ -146,6 +146,7 @@ details summary::-webkit-details-marker{display:none}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+
 'use strict';
 
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
@@ -560,8 +561,7 @@ function tSB(){
     {id:'leaves',   ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
     {id:'imputations',ic:'\uD83D\uDCCA',lb:'Imputations'},
     {id:'param',    ic:'\u2699\uFE0F',lb:'Paramétrage'}
-  ,
-    {id:'profile',  ic:'\uD83D\uDC64',lb:'Profil'}
+  
   ];
   if(S.role==='gestionnaire')NAV.push({id:'directeurs',ic:'🛡️',lb:'Directeurs'});
   NAV.splice(4,0,{id:'activite',ic:'🗓️',lb:'Activité'});
@@ -600,13 +600,6 @@ function tSB(){
     +'<nav class="snv">'+nav+'</nav>'
     +'<div class="sft">'
     +'<div style="font-size:11px;color:#475569;margin-bottom:8px">'+S.cons.length+' consultants \u00b7 '+S.miss.length+' missions</div>'
-    +'<div style="display:flex;gap:6px;margin-bottom:7px">'
-    +'<button data-act="export" title="T\u00e9l\u00e9charger une sauvegarde JSON" style="flex:1;background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;padding:5px 4px;font-size:10px;cursor:pointer;font-weight:600;text-align:center">\uD83D\uDCBE Export</button>'
-    +'<label title="Restaurer depuis un fichier JSON" style="flex:1;background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;padding:5px 4px;font-size:10px;cursor:pointer;font-weight:600;text-align:center;margin:0">\uD83D\uDCC2 Import<input type="file" id="imp-file" accept=".json" style="display:none"></label>'
-    +'</div>'
-    +'<div id="sb-sync-row" style="display:'+(S.sbSync?'block':'none')+';margin-bottom:6px">'
-    +'<button data-act="sync" style="width:100%;background:#0f2942;color:#60a5fa;border:1px solid #1e3a5f;border-radius:6px;padding:5px 4px;font-size:10px;cursor:pointer;font-weight:700;text-align:center">\u2601\uFE0F Synchroniser vers Supabase</button>'
-    +'</div>'
     +'</div>';
 }
 
@@ -1417,7 +1410,7 @@ function render(){
   S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
   var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;
   document.getElementById('sb').innerHTML=tSB();
-  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='imputations'?tImpute():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():tParam();
+  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='imputations'?tImpute():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='profile'?tProfile():tParam();
   var _ini=function(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();};
   var _av=S._userEmail?_ini(S._userEmail.split('@')[0].replace(/[._]/g,' ')):'?';
   var _pfBtn='<div id="prof-btn" style="position:absolute;top:12px;right:14px;z-index:50">' 
@@ -2827,6 +2820,7 @@ async function doLogout(){
 }
 
 initApp();
+
 </script>
 </body>
 </html>
