@@ -607,8 +607,6 @@ function tSB(){
     +'<div id="sb-sync-row" style="display:'+(S.sbSync?'block':'none')+';margin-bottom:6px">'
     +'<button data-act="sync" style="width:100%;background:#0f2942;color:#60a5fa;border:1px solid #1e3a5f;border-radius:6px;padding:5px 4px;font-size:10px;cursor:pointer;font-weight:700;text-align:center">\u2601\uFE0F Synchroniser vers Supabase</button>'
     +'</div>'
-    +'<div id="sb-status" style="font-size:9px;color:#1e3a5f;background:#0f2942;border-radius:4px;padding:3px 6px;text-align:center">'+S.sbSt+'</div>'
-    +'<button onclick="doLogout()" style="margin-top:8px;width:100%;background:transparent;color:#ef4444;border:1px solid rgba(239,68,68,.25);border-radius:6px;padding:5px 4px;font-size:10px;cursor:pointer;font-weight:600;text-align:center">\u2192 Se d\u00e9connecter</button>'
     +'</div>';
 }
 
@@ -1419,8 +1417,14 @@ function render(){
   S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
   var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;
   document.getElementById('sb').innerHTML=tSB();
-  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='imputations'?tImpute():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='profile'?tProfile():tParam();
-  document.getElementById('mc').innerHTML='<div class="inn">'+v+'</div>';
+  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='imputations'?tImpute():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():tParam();
+  var _ini=function(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();};
+  var _av=S._userEmail?_ini(S._userEmail.split('@')[0].replace(/[._]/g,' ')):'?';
+  var _pfBtn='<div id="prof-btn" style="position:absolute;top:12px;right:14px;z-index:50">' 
+    +'<button onclick="S.tab=\'profile\';render()" title="Profil - '+esc(S._userEmail||'')+'"'
+    +' style="width:34px;height:34px;border-radius:50%;background:#1e3a5f;color:#93c5fd;border:2px solid #2563eb;'
+    +'font-size:11px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center">'+_av+'</button></div>';
+  document.getElementById('mc').innerHTML='<div class="inn" style="position:relative">'+_pfBtn+v+'</div>';
   document.getElementById('md').innerHTML=tModal();
   /* on restaure les données maîtres (les handlers de bind() mutent l'ensemble complet) */
   S.cons=S._all.cons;S.miss=S._all.miss;S.lvs=S._all.lvs;

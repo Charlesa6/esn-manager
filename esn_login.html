@@ -192,7 +192,6 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
       <div class="fd">
         <label for="l-email">Email</label>
         <input class="inp" type="email" id="l-email" placeholder="vous@votreesn.com" autocomplete="email">
-        <div id="saved-emails" style="display:none;margin-top:8px"></div>
         <p class="err-msg" id="e-l-email">Email invalide</p>
       </div>
       <div class="fd">
@@ -337,29 +336,7 @@ function removeEmail(email) {
   } catch(e) {}
 }
 
-function renderSavedEmails(emails) {
-  var wrap = document.getElementById('saved-emails');
-  if (!wrap) return;
-  if (!emails || !emails.length) { wrap.style.display = 'none'; return; }
-  wrap.style.display = 'block';
-  var html = '<div style="font-size:11px;color:#94a3b8;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.06em">Comptes enregistrés</div>';
-  emails.forEach(function(em) {
-    html += '<div class="_se-row" style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:#f8fafc;border-radius:7px;margin-bottom:4px;cursor:pointer;border:1px solid #e2e8f0">'
-          + '<span style="font-size:13px;color:#0f172a">' + em + '</span>'
-          + '<button class="_se-del" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 4px;line-height:1" title="Oublier">×</button>'
-          + '</div>';
-  });
-  wrap.innerHTML = html;
-  /* Attacher les évènements via data, pas via onclick inline */
-  var rows = wrap.querySelectorAll('._se-row');
-  rows.forEach(function(row, i) {
-    var em = emails[i];
-    row.querySelector('._se-del').addEventListener('click', function(e) {
-      e.stopPropagation(); removeEmail(em);
-    });
-    row.addEventListener('click', function() { useEmail(em); });
-  });
-}
+function renderSavedEmails(emails) {}
 
 function useEmail(email) {
   document.getElementById('l-email').value = email;
