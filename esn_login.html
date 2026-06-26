@@ -439,8 +439,7 @@ async function doLogin() {
   if (!sb) {
     await wait(900);
     loading('b-login','sp-login','lb-login', false);
-    showSuccess('Connexion r\u00e9ussie', 'Redirection vers votre tableau de bord...');
-    setTimeout(function(){ window.location.href = '/esn_manager_cgi.html'; }, 800);
+    window.location.href = '/esn_manager_cgi.html';
     return;
   }
   var res = await sb.auth.signInWithPassword({ email: em, password: pw });
@@ -450,8 +449,7 @@ async function doLogin() {
     return;
   }
   saveEmail(em);
-  showSuccess('Connexion r\u00e9ussie', 'Redirection en cours...');
-  setTimeout(function(){ window.location.href = '/esn_manager_cgi.html'; }, 700);
+  window.location.href = '/esn_manager_cgi.html';
 }
 
 async function doSignup() {
@@ -496,8 +494,7 @@ async function doSignup() {
   if (res.data.user && !res.data.session) {
     showSuccess('V\u00e9rifiez votre email', 'Un lien de confirmation a \u00e9t\u00e9 envoy\u00e9 \u00e0 ' + em + '.', true);
   } else {
-    showSuccess('Bienvenue\u00a0!', 'Votre espace ' + co + ' est pr\u00eat.');
-    setTimeout(function(){ window.location.href = '/esn_manager_cgi.html'; }, 900);
+    window.location.href = '/esn_manager_cgi.html';
   }
 }
 
