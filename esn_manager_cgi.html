@@ -268,9 +268,17 @@ function kpi(c,miss,lvs,y,H){
   var pm=miss.filter(function(m){return m.cid===c.id;}).map(function(m){
     var mS=m.sd<cs?cs:m.sd,mE=(!m.ed||m.ed>ce)?ce:m.ed;
     if(mS>mE)return Object.assign({},m,{days:0,rev:0,mar:0});
-    var wd=(m.wdays&&m.wdays.length)?m.wdays:[1,2,3,4,5];
-    var d=0,cur=mS;
-    while(cur<=mE){if(isWD(cur,H)&&!lds.has(cur)&&wd.indexOf(pD(cur).getDay())>=0)d++;cur=nxt(cur);}
+    var d=0;
+    if(m.wmode==='man'&&m.manualDays&&m.manualDays.length){
+      /* Mode manuel : compter uniquement les jours explicitement sélectionnés */
+      m.manualDays.forEach(function(day){
+        if(day>=mS&&day<=mE&&!lds.has(day))d++;
+      });
+    }else{
+      var wd=(m.wdays&&m.wdays.length)?m.wdays:[1,2,3,4,5];
+      var cur=mS;
+      while(cur<=mE){if(isWD(cur,H)&&!lds.has(cur)&&wd.indexOf(pD(cur).getDay())>=0)d++;cur=nxt(cur);}
+    }
     var r,mar;
     if(m.btype==='forfait'){
       var deal=+m.deal||0;
@@ -1379,10 +1387,8 @@ function tModal(){
       +'<div class="fd"><label class="fl">Montant du deal \u2014 CA (\u20ac) *</label><input class="ic" id="mdeal" type="number" min="0" value="'+esc(it&&it.deal?String(it.deal):'')+'" placeholder="120000"></div>'
       +'<div class="fd"><label class="fl">Marge recherch\u00e9e (%) *</label><input class="ic" id="mtmar" type="number" min="0" max="100" value="'+((it&&it.tmar!=null&&it.tmar!=='')?esc(String(it.tmar)):'')+'" placeholder="30"><p class="fh">Sert \u00e0 calculer les jours restants \u00e0 travailler</p></div>'
       +'</div></div>'
-      +'<div class="cs2"><div class="fd"><label class="fl">Jours travaill\u00e9s / semaine</label>'
-      +'<div style="display:flex;gap:12px;flex-wrap:wrap;padding:4px 0">'
-      +WLBL.map(function(w){return '<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" class="mwd" value="'+w[0]+'"'+(wdsel.indexOf(+w[0])>=0?' checked':'')+' style="accent-color:#2563eb">'+w[1]+'</label>';}).join('')
-      +'</div><p class="fh">D\u00e9cochez les jours non travaill\u00e9s (ex : mission 3 j/semaine)</p></div></div>'
+      +'<div class="cs2"><div class="fd"><label class="fl">Jours travaillés</label>'
+      +'<div id="mcal-wrap">'+mCalHTML()+'</div></div></div>'
       +'<div class="fd"><label class="fl">Localisation</label><input class="ic" id="mlo" value="'+esc(it?it.loc:'')+'" placeholder="Paris (75009)"></div>'
       +'<div class="fd"><label class="fl">Date de d\u00e9marrage *</label><input class="ic" id="msd" type="date" value="'+esc(it?it.sd:'')+'"></div>'
       +'<div class="fd"><label class="fl">Date de fin</label><input class="ic" id="med" type="date" value="'+esc(it&&it.ed?it.ed:'')+'"><p class="fh">Laisser vide si inconnue</p></div>'
@@ -2670,6 +2676,111 @@ function tTeamsPanel(){
 
 
 
+
+/* ═══════════════════════════════════════════════════════════
+   CALENDRIER MANUEL DE MISSION (forfait)
+═══════════════════════════════════════════════════════════ */
+var MO=['Janvier','F\u00e9vrier','Mars','Avril','Mai','Juin','Juillet','Ao\u00fbt','Septembre','Octobre','Novembre','D\u00e9cembre'];
+var DOW=['Di','Lu','Ma','Me','Je','Ve','Sa'];
+
+function mCalToggle(iso){
+  if(!S.modal)return;
+  var md=S.modal.manualDays=S.modal.manualDays||[];
+  var i=md.indexOf(iso);
+  if(i>=0)md.splice(i,1);else md.push(iso);
+  mCalRefresh();
+}
+function mCalNav(dir){
+  if(!S.modal)return;
+  var m=(S.modal.calMonth||0)+dir;
+  var y=S.modal.calYear||new Date().getFullYear();
+  if(m<0){m=11;y--;}else if(m>11){m=0;y++;}
+  S.modal.calMonth=m;S.modal.calYear=y;
+  mCalRefresh();
+}
+function mWmodeSet(v){if(!S.modal)return;S.modal.wmode=v;mCalRefresh();}
+
+function mCalRefresh(){
+  /* Mise \u00e0 jour partielle du conteneur calendrier sans re-render complet */
+  var el=document.getElementById('mcal-wrap');
+  if(el)el.innerHTML=mCalHTML();
+}
+
+function mCalHTML(){
+  if(!S.modal)return '';
+  var wmode=S.modal.wmode||'rec';
+  var selDays=S.modal.manualDays||[];
+  var startISO=(document.getElementById('msd')||{}).value||S.modal._sd||'';
+  var endISO=(document.getElementById('med')||{}).value||S.modal._ed||'';
+  var today=fD(new Date());
+
+  /* En-t\u00eate mode */
+  var modeBar='<div style="display:flex;gap:0;margin-bottom:12px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">'
+    +'<button type="button" onclick="mWmodeSet(\'rec\')" style="flex:1;padding:8px;font-size:12px;font-weight:700;border:none;cursor:pointer;'+(wmode==='rec'?'background:#2563eb;color:#fff':'background:#fff;color:#64748b')+'">R\u00e9current (jours/sem.)</button>'
+    +'<button type="button" onclick="mWmodeSet(\'man\')" style="flex:1;padding:8px;font-size:12px;font-weight:700;border:none;cursor:pointer;'+(wmode==='man'?'background:#2563eb;color:#fff':'background:#fff;color:#64748b')+'">Choix manuel</button>'
+    +'</div>';
+
+  if(wmode==='rec'){
+    /* Checkboxes jours de la semaine */
+    var wdsel=S.modal._wdsel||[1,2,3,4,5];
+    var WLBL=[[1,'Lun'],[2,'Mar'],[3,'Mer'],[4,'Jeu'],[5,'Ven']];
+    return modeBar
+      +'<div style="display:flex;gap:12px;flex-wrap:wrap;padding:4px 0">'
+      +WLBL.map(function(w){return '<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" class="mwd" value="'+w[0]+'"'+(wdsel.indexOf(+w[0])>=0?' checked':'')+' style="accent-color:#2563eb">'+w[1]+'</label>';}).join('')
+      +'</div><p class="fh">D\u00e9cochez les jours non travaill\u00e9s</p>';
+  }
+
+  /* Mode manuel : calendrier mensuel */
+  var yr=S.modal.calYear||new Date().getFullYear();
+  var mo=S.modal.calMonth!=null?S.modal.calMonth:new Date().getMonth();
+  var selSet=new Set(selDays);
+  var nSel=selDays.length;
+  var firstDow=new Date(yr,mo,1).getDay();
+  var lastDay=new Date(yr,mo+1,0).getDate();
+
+  var calHdr='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+    +'<button type="button" onclick="mCalNav(-1)" style="background:none;border:1px solid #e2e8f0;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:16px">\u2039</button>'
+    +'<span style="font-weight:700;font-size:13px;color:#0f172a">'+MO[mo]+' '+yr+'</span>'
+    +'<button type="button" onclick="mCalNav(1)" style="background:none;border:1px solid #e2e8f0;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:16px">\u203a</button>'
+    +'</div>';
+
+  var calTable='<table style="width:100%;border-collapse:collapse;font-size:12px">'
+    +'<tr>'+DOW.map(function(d){return '<th style="padding:3px;text-align:center;font-size:10px;color:#94a3b8;font-weight:700">'+d+'</th>';}).join('')+'</tr>';
+
+  var d=1,row='';
+  for(var cell=0;cell<firstDow;cell++)row+='<td></td>';
+  for(;d<=lastDay;){
+    var dow=(firstDow+d-1)%7;
+    if(dow===0&&d>1){calTable+='<tr>'+row+'</tr>';row='';}
+    var iso=yr+'-'+String(mo+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    var isSel=selSet.has(iso);
+    var isWD=dow>=1&&dow<=5;
+    var inRange=(!startISO||iso>=startISO)&&(!endISO||iso<=endISO);
+    var isPast=iso<today;
+    var bg='',cl='',cur='default',onclick2='';
+    if(isSel){bg='#2563eb';cl='#fff';}
+    else if(!isWD){bg='#f8fafc';cl='#cbd5e1';}
+    else if(!inRange){bg='#fff';cl='#e2e8f0';}
+    else{bg=isPast?'#eff6ff':'#f0fdf4';cl=isPast?'#1e40af':'#15803d';cur='pointer';onclick2='mCalToggle("'+iso+'")';}
+    row+='<td onclick="'+onclick2+'" style="text-align:center;padding:4px 2px;border-radius:4px;cursor:'+cur+';background:'+bg+';color:'+cl+';font-weight:'+(isSel?'800':'500')+'">'+d+'</td>';
+    d++;
+    if(dow===6){calTable+='<tr>'+row+'</tr>';row='';}
+  }
+  while((firstDow+d-1)%7!==0){row+='<td></td>';d++;}
+  if(row)calTable+='<tr>'+row+'</tr>';
+  calTable+='</table>';
+
+  var legend='<div style="display:flex;gap:12px;margin-top:8px;font-size:10px;flex-wrap:wrap">'
+    +'<span><span style="display:inline-block;width:10px;height:10px;background:#2563eb;border-radius:2px;margin-right:3px"></span>S\u00e9lectionn\u00e9</span>'
+    +'<span><span style="display:inline-block;width:10px;height:10px;background:#eff6ff;border-radius:2px;margin-right:3px"></span>Pass\u00e9</span>'
+    +'<span><span style="display:inline-block;width:10px;height:10px;background:#f0fdf4;border-radius:2px;margin-right:3px"></span>Futur</span>'
+    +'</div>';
+
+  return modeBar
+    +'<p class="fh" style="margin-bottom:8px">'+nSel+' jour(s) s\u00e9lectionn\u00e9(s). Cliquez sur les jours ouvrables pour les cocher/d\u00e9cocher.</p>'
+    +calHdr+calTable+legend;
+}
+
 /* ================================================================
    IMPORT ABSENCES depuis Excel staffing (feuilles Available / Bench)
    ================================================================ */
@@ -2903,6 +3014,87 @@ function parseStaffingRows(rows,sheetName){
   return{added:added,replaced:replaced,skipped:skipped,entries:entries,notFound:notFound};
 }
 
+
+/* ═══════════════════════════════════════════════════════════
+   CALENDRIER MANUEL DE MISSION (forfait \u2014 choix manuel des jours)
+═══════════════════════════════════════════════════════════ */
+var MO=['Janvier','F\u00e9vrier','Mars','Avril','Mai','Juin','Juillet','Ao\u00fbt','Septembre','Octobre','Novembre','D\u00e9cembre'];
+var DOW=['Di','Lu','Ma','Me','Je','Ve','Sa'];
+
+function mCalToggle(iso){
+  if(!S.modal)return;
+  var md=S.modal.manualDays=S.modal.manualDays||[];
+  var i=md.indexOf(iso);if(i>=0)md.splice(i,1);else md.push(iso);
+  mCalRefresh();
+}
+function mCalNav(dir){
+  if(!S.modal)return;
+  var m=(S.modal.calMonth||0)+dir,y=S.modal.calYear||new Date().getFullYear();
+  if(m<0){m=11;y--;}else if(m>11){m=0;y++;}
+  S.modal.calMonth=m;S.modal.calYear=y;mCalRefresh();
+}
+function mWmodeSet(v){if(!S.modal)return;S.modal.wmode=v;mCalRefresh();}
+function mCalRefresh(){
+  var el=document.getElementById('mcal-wrap');
+  if(el){el.innerHTML=mCalHTML();}
+}
+function mCalHTML(){
+  if(!S.modal)return '';
+  var wmode=S.modal.wmode||'rec';
+  var selDays=S.modal.manualDays||[];
+  var sdEl=document.getElementById('msd'),edEl=document.getElementById('med');
+  var startISO=sdEl?sdEl.value:S.modal._sd||'';
+  var endISO=edEl?edEl.value:S.modal._ed||'';
+  var today=fD(new Date());
+  var modeBar='<div style="display:flex;margin-bottom:10px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">'
+    +'<button type="button" onclick="mWmodeSet(\'rec\')" style="flex:1;padding:7px 4px;font-size:11px;font-weight:700;border:none;cursor:pointer;'+(wmode==='rec'?'background:#2563eb;color:#fff':'background:#fff;color:#64748b')+'">R\u00e9current (jours/sem.)</button>'
+    +'<button type="button" onclick="mWmodeSet(\'man\')" style="flex:1;padding:7px 4px;font-size:11px;font-weight:700;border:none;cursor:pointer;'+(wmode==='man'?'background:#2563eb;color:#fff':'background:#fff;color:#64748b')+'">Choix manuel</button>'
+    +'</div>';
+  if(wmode==='rec'){
+    var wdsel=S.modal._wdsel||[1,2,3,4,5];
+    var WLBL2=[[1,'Lun'],[2,'Mar'],[3,'Mer'],[4,'Jeu'],[5,'Ven']];
+    return modeBar
+      +'<div style="display:flex;gap:12px;flex-wrap:wrap;padding:4px 0">'
+      +WLBL2.map(function(w){return '<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" class="mwd" value="'+w[0]+'"'+(wdsel.indexOf(+w[0])>=0?' checked':'')+' style="accent-color:#2563eb">'+w[1]+'</label>';}).join('')
+      +'</div><p class="fh">D\u00e9cochez les jours non travaill\u00e9s</p>';
+  }
+  /* ── Mode manuel : calendrier mensuel ── */
+  var yr=S.modal.calYear!=null?S.modal.calYear:new Date().getFullYear();
+  var mo=S.modal.calMonth!=null?S.modal.calMonth:new Date().getMonth();
+  var selSet=new Set(selDays);
+  var firstDow=new Date(yr,mo,1).getDay();
+  var lastDayN=new Date(yr,mo+1,0).getDate();
+  var calHdr='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+    +'<button type="button" onclick="mCalNav(-1)" style="background:none;border:1px solid #e2e8f0;border-radius:5px;padding:3px 9px;cursor:pointer">\u2039</button>'
+    +'<span style="font-weight:700;font-size:12px;color:#0f172a">'+MO[mo]+' '+yr+'</span>'
+    +'<button type="button" onclick="mCalNav(1)" style="background:none;border:1px solid #e2e8f0;border-radius:5px;padding:3px 9px;cursor:pointer">\u203a</button>'
+    +'</div>';
+  var tbl='<table style="width:100%;border-collapse:collapse;font-size:11px">'
+    +'<tr>'+DOW.map(function(d){return '<th style="padding:2px;text-align:center;color:#94a3b8;font-size:9px;font-weight:700">'+d+'</th>';}).join('')+'</tr>';
+  var d=1,row='';
+  for(var c0=0;c0<firstDow;c0++)row+='<td></td>';
+  for(;d<=lastDayN;){
+    var dow=(firstDow+d-1)%7;
+    if(dow===0&&d>1){tbl+='<tr>'+row+'</tr>';row='';}
+    var iso=yr+'-'+String(mo+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    var isSel=selSet.has(iso),isWD=dow>=1&&dow<=5;
+    var inRange=(!startISO||iso>=startISO)&&(!endISO||iso<=endISO);
+    var isPast=iso<today;
+    var bg='',cl='',cur='default',oc='';
+    if(isSel){bg='#2563eb';cl='#fff';}
+    else if(!isWD){bg='#f8fafc';cl='#e2e8f0';}
+    else if(!inRange){bg='#fff';cl='#e2e8f0';}
+    else{bg=isPast?'#dbeafe':'#dcfce7';cl=isPast?'#1e40af':'#15803d';cur='pointer';oc='mCalToggle("'+iso+'")';}
+    row+='<td onclick="'+oc+'" title="'+iso+'" style="text-align:center;padding:3px 1px;border-radius:3px;cursor:'+cur+';background:'+bg+';color:'+cl+';font-weight:'+(isSel?'800':'500')+'">'+d+'</td>';
+    d++;if(dow===6){tbl+='<tr>'+row+'</tr>';row='';}
+  }
+  while((firstDow+d-1)%7!==0){row+='<td></td>';d++;}
+  if(row)tbl+='<tr>'+row+'</tr>';
+  tbl+='</table>';
+  return modeBar
+    +'<p class="fh" style="margin-bottom:6px">'+selDays.length+' jour(s) s\u00e9lectionn\u00e9(s). <span style="color:#1e40af">\u25a0 pass\u00e9</span> <span style="color:#15803d">\u25a0 futur</span> <span style="color:#2563eb">\u25a0 s\u00e9lectionn\u00e9</span></p>'
+    +calHdr+tbl;
+}
 
 initApp();
 </script>
