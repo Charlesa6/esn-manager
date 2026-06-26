@@ -355,38 +355,8 @@ function shiftMonth(ym,delta){
    SAMPLE DATA
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 /* \u2500\u2500 Données réelles CGI Business Conseil \u2500\u2500 */
-var IC=[
-  {id:'c01',name:'Zian Ducastel',             title:'Consultant Confirm\u00e9',    scr:362, email:'z.ducastel@cgi.com', dir:'David Soriano'},
-  {id:'c02',name:'Prudencio Johnson',          title:'Consultant Junior',          scr:337, email:'p.johnson@cgi.com', dir:'David Soriano'},
-  {id:'c03',name:'Sixte Chobert',              title:'Consultant Confirm\u00e9',    scr:356, email:'s.chobert@cgi.com', dir:'Rémi Montalbano'},
-  {id:'c04',name:'Romain Favre',               title:'Consultant Confirm\u00e9',    scr:370, email:'r.favre@cgi.com', dir:'Rémi Montalbano'},
-  {id:'c05',name:'Doha Feddoul',               title:'Consultant Junior',          scr:384, email:'d.feddoul@cgi.com', dir:'David Soriano'},
-  {id:'c06',name:'Louis Gignoux',              title:'Consultant Confirm\u00e9',    scr:381, email:'l.gignoux@cgi.com', dir:'David Soriano'},
-  {id:'c07',name:'L\u00e9o Guichard',          title:'Consultant Confirm\u00e9',    scr:388, email:'l.guichard@cgi.com', dir:'David Soriano'},
-  {id:'c08',name:'Pierre Lassaulx',            title:'Consultant Junior',          scr:331, email:'p.lassaulx@cgi.com', dir:'Rémi Montalbano'},
-  {id:'c09',name:'Charl\u00e8ne Le Roch',      title:'Consultante Confirm\u00e9e', scr:388, email:'c.leroch@cgi.com', dir:'David Soriano'},
-  {id:'c10',name:'Cidji Lemarchand',           title:'Consultante Confirm\u00e9e', scr:431, email:'c.lemarchand@cgi.com', dir:'Rémi Montalbano'},
-  {id:'c11',name:'Marie Louaisil',             title:'Consultante Junior',         scr:345, email:'m.louaisil@cgi.com', dir:'Rémi Montalbano'},
-  {id:'c12',name:'C\u00e9lia Marchal',         title:'Consultante Confirm\u00e9e', scr:328, email:'c.marchal@cgi.com', dir:'Rémi Montalbano'},
-  {id:'c13',name:'Lisa Merazi',                title:'Consultante S\u00e9nior',    scr:453, email:'l.merazi@cgi.com', dir:'David Soriano'},
-  {id:'c14',name:'Maiwenn Nouel De Kerangue',  title:'Consultante Confirm\u00e9e', scr:440, email:'m.nouel@cgi.com', dir:'Rémi Montalbano'},
-  {id:'c15',name:'Ichraq Taymouli',            title:'Consultante Confirm\u00e9e', scr:352, email:'i.taymouli@cgi.com', dir:'David Soriano'}
-];
-var IM=[
-  {id:'m01',cid:'c02',name:'Cadrage GED',       cli:'CEGID',     tjm:500, sd:'2026-05-29',ed:'2026-06-19', loc:'Lyon',     mgr:'Binta Bah',        ccn:'',ccr:''},
-  {id:'m02',cid:'c01',name:'Change Salesforce',  cli:'CEGID',     tjm:700, sd:'2026-05-08',ed:'2026-07-03', loc:'Lyon',     mgr:'Bah Binta',        ccn:'',ccr:''},
-  {id:'m03',cid:'c08',name:'Ba KPI',             cli:'CEGID',     tjm:500, sd:'2026-03-02',ed:'2026-12-21', loc:'',         mgr:'Eloi Laugier',     ccn:'',ccr:''},
-  {id:'m04',cid:'c03',name:'PMO',                cli:'EDF',       tjm:505, sd:'2025-11-03',ed:null,          loc:'',         mgr:'R\u00e9mi Montalbano',ccn:'',ccr:''},
-  {id:'m05',cid:'c05',name:'Process',            cli:'Sanofi',    tjm:650, sd:'2026-05-04',ed:'2026-12-31', loc:'Lyon',     mgr:'David Soriano',    ccn:'',ccr:''},
-  {id:'m06',cid:'c06',name:'Data',               cli:'Sanofi',    tjm:550, sd:'2025-09-01',ed:'2026-12-31', loc:'Lyon',     mgr:'St\u00e9phanie Gois',ccn:'',ccr:''},
-  {id:'m07',cid:'c09',name:'PMO',                cli:'SANOFI',    tjm:646, sd:'2026-04-06',ed:'2026-12-31', loc:'',         mgr:'David Soriano',    ccn:'',ccr:''},
-  {id:'m08',cid:'c10',name:'PMO',                cli:'EDF',       tjm:553, sd:'2025-09-01',ed:'2027-12-31', loc:'',         mgr:'Sava Boznoski',    ccn:'',ccr:''},
-  {id:'m09',cid:'c13',name:'Communication',      cli:'Sanofi',    tjm:755, sd:'2026-05-04',ed:'2026-12-31', loc:'',         mgr:'David Soriano',    ccn:'',ccr:''},
-  {id:'m10',cid:'c14',name:'E-Reporting',        cli:'Schneider', tjm:700, sd:'2026-01-01',ed:'2026-12-31', loc:'Grenoble', mgr:'Gregory Woubers',  ccn:'',ccr:''},
-  {id:'m11',cid:'c15',name:'Process',            cli:'Sanofi',    tjm:586, sd:'2026-05-04',ed:'2026-12-31', loc:'Lyon',     mgr:'David Soriano',    ccn:'',ccr:''},
-  {id:'m12',cid:'c07',name:'PO',                 cli:'Sanofi',    tjm:600, sd:'2026-04-08',ed:'2026-12-31', loc:'Lyon',     mgr:'David Soriano',    ccn:'',ccr:''},
-  {id:'m13',cid:'c04',name:'Chef de projet',     cli:'Framatome', tjm:540, sd:'2026-01-05',ed:'2026-12-31', loc:'',         mgr:'R\u00e9mi Montalbano',ccn:'',ccr:''}
-];
+var IC=[];
+var IM=[];
 var IL=[];
 
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
@@ -1798,7 +1768,7 @@ async function initApp(){
         var cq=await sb.from('companies').select('id').eq('owner_id',uid2).single();
         if(cq.data)SB_CID=cq.data.id;
       }
-      if(!SB_CID){console.warn('SB_CID non récupéré - sync Supabase désactivée');}
+      if(!SB_CID){}
 
       /* ── 3. Charger les donn\u00e9es depuis Supabase ── */
       var ok=await loadSB();
@@ -2114,7 +2084,6 @@ function applyMissImp(){
   if(skipped.length)msg+='. Ignor\u00e9(s) :\n'+skipped.join('\n');
 
   /* Diagnostic */
-  console.log('[import] sb:', !!sb, '| SB_CID:', SB_CID, '| créées:', created);
 
   if(!sb){alert(msg+'\nLocalStorage uniquement (Supabase non configuré).');render();return;}
   if(!SB_CID){
@@ -2123,12 +2092,10 @@ function applyMissImp(){
   }
 
   var newMissions=S.miss.slice(-created);
-  console.log('[import] Upsert vers Supabase :', newMissions.map(function(m){return m.name;}).join(', '));
   Promise.all(newMissions.map(function(m2){
     return sbUpsertMiss(m2);
   }))
   .then(function(){
-    console.log('[import] Sync OK');
     alert(msg+' - synchronisées dans Supabase ✓');
   })
   .catch(function(err){
@@ -2635,7 +2602,6 @@ function startTeamsAutoSync(){
   var ms=(parseInt(cfg.interval)||30)*60*1000;
   syncTeamsNow(true);  /* sync imm\u00e9diate au d\u00e9marrage */
   _teamsTimer=setInterval(function(){syncTeamsNow(true);},ms);
-  console.log('[Teams] Auto-sync activ\u00e9e toutes les',cfg.interval,'min');
 }
 function stopTeamsAutoSync(){
   if(_teamsTimer){clearInterval(_teamsTimer);_teamsTimer=null;}
