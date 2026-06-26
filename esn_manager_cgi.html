@@ -305,6 +305,13 @@ function holRange(a,b){
 }
 function missWD(m,a,b,lvs){
   if(!a||!b||a>b)return 0;
+  /* Mode manuel : compter uniquement les jours s\u00e9lectionn\u00e9s dans la plage a\u2192b */
+  if(m.wmode==='man'&&m.manualDays&&m.manualDays.length){
+    var HHm=holRange(a,b);
+    var ldsm=lvSet(m.cid,lvs,HHm,a,b);
+    return m.manualDays.filter(function(d){return d>=a&&d<=b&&!ldsm.has(d);}).length;
+  }
+  /* Mode r\u00e9current (d\u00e9faut) */
   var wd=(m.wdays&&m.wdays.length)?m.wdays:[1,2,3,4,5];
   var HH=holRange(a,b);
   var lds=lvSet(m.cid,lvs,HH,a,b);
@@ -330,6 +337,8 @@ function forfaitInfo(m,scr,lvs){
 function missOnDay(cid,day){
   return S.miss.find(function(m){
     if(m.cid!==cid||m.sd>day||(m.ed&&day>m.ed))return false;
+    if(m.wmode==='man'&&m.manualDays&&m.manualDays.length)
+      return m.manualDays.indexOf(day)>=0;
     var wd=(m.wdays&&m.wdays.length)?m.wdays:[1,2,3,4,5];
     return wd.indexOf(pD(day).getDay())>=0;
   });
