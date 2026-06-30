@@ -399,6 +399,26 @@ function recStCol(id){var s=REC_STATUS.find(function(x){return x.id===id;});retu
 function recScr(sal){return sal>0?sal/SCR_FACTOR:0;}
 function recTjm(sal,mar){var scr=recScr(sal);return scr>0?scr/(1-(mar||25)/100):0;}
 
+/* \u2550\u2550\u2550 RECRUTEMENT : listes pr\u00e9d\u00e9finies (Expertises + Secteurs), tri\u00e9es alphab\u00e9tiquement (FR) \u2550\u2550\u2550 */
+var EXPERTISE_LIST=[
+  '.NET','Agile / Scrum','AI / Machine Learning','Angular','Architecture logicielle','AWS',
+  'Azure','Big Data','Blockchain','Business Analyst','C#','C++','Change Management',
+  'Cloud Computing','COBOL','Cybers\u00e9curit\u00e9','Data Engineering','Data Science','DevOps',
+  'Docker','Finance','GCP (Google Cloud)','Gestion de portefeuille','Gestion de projet',
+  'Gestion des risques','Go','ITIL','Java','JavaScript','Kotlin','Kubernetes','Linux',
+  'Marketing digital','Microservices','MuleSoft','Node.js','Oracle','PHP','Power BI','PMP',
+  'Product Management','Python','QA / Tests logiciels','React','Ressources Humaines','Ruby',
+  'Salesforce','SAP','Scrum Master','SEO / SEA','SQL','Strat\u00e9gie d\u2019entreprise','Supply Chain',
+  'Swift','Terraform','Transformation digitale','TypeScript','UX / UI Design','VBA','Vue.js'
+].sort(function(a,b){return a.localeCompare(b,'fr');});
+
+var SECTOR_LIST=[
+  'A\u00e9ronautique & D\u00e9fense','Agroalimentaire','Assurance','Automobile','Banque & Finance',
+  'BTP & Construction','Distribution & Retail','\u00c9nergie','Industrie / Manufacturing','Luxe',
+  'M\u00e9dias & T\u00e9l\u00e9communications','Pharma & Sant\u00e9','Public / Administration','Services',
+  'Tourisme & H\u00f4tellerie','Transport & Logistique'
+].sort(function(a,b){return a.localeCompare(b,'fr');});
+
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    SVG BAR CHART
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
@@ -1416,6 +1436,7 @@ function tCandDetail(c){
 
   function tag(t){return '<span style="display:inline-block;padding:3px 10px;border-radius:7px;font-size:12px;font-weight:600;background:#f1f5f9;color:#475569;margin:0 5px 5px 0">'+esc(t)+'</span>';}
   var expHtml=(c.expertise&&c.expertise.length)?c.expertise.map(tag).join(''):'<span style="color:#94a3b8;font-size:12px">Aucune expertise renseignée</span>';
+  var secHtml=(c.sectors&&c.sectors.length)?c.sectors.map(tag).join(''):'<span style="color:#94a3b8;font-size:12px">Aucun secteur renseigné</span>';
 
   function info(label,val){
     return '<div><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">'+label+'</div><div style="font-size:13px;color:#0f172a;font-weight:600">'+val+'</div></div>';
@@ -1466,7 +1487,8 @@ function tCandDetail(c){
     +'<button class="bg" style="color:#dc2626;border-color:#fca5a5" data-act="drec" data-id="'+c.id+'">Supprimer</button></div></div>'
 
     +'<div class="card" style="padding:24px;margin-bottom:18px">'+infoGrid
-    +'<div style="margin-top:18px"><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Expertise</div>'+expHtml+'</div>'
+    +'<div style="margin-top:18px"><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Expertises</div>'+expHtml+'</div>'
+    +'<div style="margin-top:14px"><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Connaissance secteur</div>'+secHtml+'</div>'
     +compCard+'</div>'
 
     +'<div class="card" style="padding:24px">'
@@ -1478,6 +1500,105 @@ function tCandDetail(c){
     +(fbHtml||'<div class="emp">Aucun retour client enregistré pour le moment.</div>')
     +'</div>'
     +'</div>';
+}
+
+/* ════════════════════════════════════════════════════════════
+   WIDGET : sélection multiple (Expertises / Secteurs) + ajout libre
+   Utilise la délégation d'événements (pas d'onclick inline avec
+   valeurs dynamiques) pour éviter tout souci d'échappement de guillemets.
+   ════════════════════════════════════════════════════════════ */
+function expPickerHTML(){
+  var sel=(S.modal&&S.modal.expSel)||[];
+  var selSet=new Set(sel);
+  var chips=sel.map(function(v){
+    return '<span class="_tagchip" data-rm="'+esc(v)+'" style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px 3px 10px;border-radius:99px;font-size:11px;font-weight:700;background:#dbeafe;color:#1e40af;margin:0 5px 5px 0;cursor:pointer">'+esc(v)+' <span style="font-weight:900;opacity:.65">\u00d7</span></span>';
+  }).join('')||'<span style="font-size:12px;color:#94a3b8">Aucune expertise sélectionnée</span>';
+  var checks=EXPERTISE_LIST.map(function(opt){
+    var checked=selSet.has(opt);
+    return '<label style="display:flex;align-items:center;gap:7px;padding:4px 6px;font-size:12px;color:#334155;cursor:pointer;border-radius:5px">'
+      +'<input type="checkbox" class="_expck" data-v="'+esc(opt)+'"'+(checked?' checked':'')+' style="accent-color:#2563eb">'+esc(opt)+'</label>';
+  }).join('');
+  return '<div style="margin-bottom:8px">'+chips+'</div>'
+    +'<div style="max-height:140px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;padding:6px;background:#fff">'+checks+'</div>'
+    +'<div style="display:flex;gap:6px;margin-top:8px">'
+    +'<input class="ic" id="exp-custom" placeholder="Ajouter une expertise non listée..." style="flex:1">'
+    +'<button type="button" class="bg" id="exp-addbtn">+ Ajouter</button></div>';
+}
+function expRefresh(){var w=document.getElementById('exp-wrap');if(w){w.innerHTML=expPickerHTML();bindExpWidget();}}
+function bindExpWidget(){
+  var wrap=document.getElementById('exp-wrap');
+  if(!wrap)return;
+  wrap.onclick=function(e){
+    var chip=e.target.closest('._tagchip');
+    if(chip){
+      var v=chip.getAttribute('data-rm');
+      S.modal.expSel=(S.modal.expSel||[]).filter(function(x){return x!==v;});
+      expRefresh();
+    }
+  };
+  wrap.onchange=function(e){
+    if(e.target.classList.contains('_expck')){
+      var v=e.target.getAttribute('data-v');
+      var a=S.modal.expSel=S.modal.expSel||[];
+      var i=a.indexOf(v);
+      if(e.target.checked){if(i<0)a.push(v);}else if(i>=0)a.splice(i,1);
+    }
+  };
+  var btn=document.getElementById('exp-addbtn');
+  if(btn)btn.onclick=function(){
+    var inp=document.getElementById('exp-custom');if(!inp)return;
+    var v=inp.value.trim();if(!v)return;
+    var a=S.modal.expSel=S.modal.expSel||[];
+    if(a.indexOf(v)<0)a.push(v);
+    inp.value='';expRefresh();
+  };
+}
+
+function secPickerHTML(){
+  var sel=(S.modal&&S.modal.secSel)||[];
+  var selSet=new Set(sel);
+  var chips=sel.map(function(v){
+    return '<span class="_tagchip2" data-rm="'+esc(v)+'" style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px 3px 10px;border-radius:99px;font-size:11px;font-weight:700;background:#ede9fe;color:#5b21b6;margin:0 5px 5px 0;cursor:pointer">'+esc(v)+' <span style="font-weight:900;opacity:.65">\u00d7</span></span>';
+  }).join('')||'<span style="font-size:12px;color:#94a3b8">Aucun secteur sélectionné</span>';
+  var checks=SECTOR_LIST.map(function(opt){
+    var checked=selSet.has(opt);
+    return '<label style="display:flex;align-items:center;gap:7px;padding:4px 6px;font-size:12px;color:#334155;cursor:pointer;border-radius:5px">'
+      +'<input type="checkbox" class="_secck" data-v="'+esc(opt)+'"'+(checked?' checked':'')+' style="accent-color:#7c3aed">'+esc(opt)+'</label>';
+  }).join('');
+  return '<div style="margin-bottom:8px">'+chips+'</div>'
+    +'<div style="max-height:140px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;padding:6px;background:#fff">'+checks+'</div>'
+    +'<div style="display:flex;gap:6px;margin-top:8px">'
+    +'<input class="ic" id="sec-custom" placeholder="Ajouter un secteur non listé..." style="flex:1">'
+    +'<button type="button" class="bg" id="sec-addbtn">+ Ajouter</button></div>';
+}
+function secRefresh(){var w=document.getElementById('sec-wrap');if(w){w.innerHTML=secPickerHTML();bindSecWidget();}}
+function bindSecWidget(){
+  var wrap=document.getElementById('sec-wrap');
+  if(!wrap)return;
+  wrap.onclick=function(e){
+    var chip=e.target.closest('._tagchip2');
+    if(chip){
+      var v=chip.getAttribute('data-rm');
+      S.modal.secSel=(S.modal.secSel||[]).filter(function(x){return x!==v;});
+      secRefresh();
+    }
+  };
+  wrap.onchange=function(e){
+    if(e.target.classList.contains('_secck')){
+      var v=e.target.getAttribute('data-v');
+      var a=S.modal.secSel=S.modal.secSel||[];
+      var i=a.indexOf(v);
+      if(e.target.checked){if(i<0)a.push(v);}else if(i>=0)a.splice(i,1);
+    }
+  };
+  var btn=document.getElementById('sec-addbtn');
+  if(btn)btn.onclick=function(){
+    var inp=document.getElementById('sec-custom');if(!inp)return;
+    var v=inp.value.trim();if(!v)return;
+    var a=S.modal.secSel=S.modal.secSel||[];
+    if(a.indexOf(v)<0)a.push(v);
+    inp.value='';secRefresh();
+  };
 }
 
 function tModal(){
@@ -1504,7 +1625,8 @@ function tModal(){
       +'<div class="fd"><label class="fl">Opérationnel rencontré</label><input class="ic" id="rccon" value="'+esc(it?it.clientMeetContact||'':'')+'" placeholder="Prénom Nom"></div>'
       +'<div class="fd"><label class="fl">Date de la rencontre</label><input class="ic" id="rccmd" type="date" value="'+(it?esc(it.clientMeetDate||''):'')+'"></div>'
       +'<div class="fd"><label class="fl">Date de rencontre CGI</label><input class="ic" id="rcgmd" type="date" value="'+(it?esc(it.cgiMeetDate||''):'')+'"></div>'
-      +'<div class="fd cs2"><label class="fl">Expertise IT et conseil (séparées par des virgules)</label><input class="ic" id="rcexp" value="'+esc(it&&it.expertise?it.expertise.join(', '):'')+'" placeholder="Java, AWS, Kubernetes, Gestion de projet, Finance..."></div>'
+      +'<div class="fd cs2"><label class="fl">Expertises</label><div id="exp-wrap">'+expPickerHTML()+'</div></div>'
+      +'<div class="fd cs2"><label class="fl">Connaissance secteur</label><div id="sec-wrap">'+secPickerHTML()+'</div></div>'
       +'<div class="fd"><label class="fl">Rémunération annuelle demandée (€)</label><input class="ic" id="rcsal" type="number" min="0" step="500" value="'+(sal0||'')+'" oninput="recCalcRefresh()" placeholder="45000"></div>'
       +'<div class="fd"><label class="fl">Marge cible TJM revente : <span id="rcMarVal" style="color:#2563eb;font-weight:800">'+mar0+'%</span></label>'
       +'<input type="range" id="rcmar" min="15" max="50" step="1" value="'+mar0+'" oninput="recCalcRefresh()" style="width:100%;accent-color:#2563eb;margin-top:8px"></div>'
@@ -1651,6 +1773,8 @@ function bind(){
       else if(ra==='recopen'){S.recSel=rid;S.recAddFb=false;render();}
     };
   }
+  /* widgets multi-sélection Expertises / Secteurs (uniquement si le modal candidat est ouvert) */
+  if(S.modal&&S.modal.type==='candidate'){bindExpWidget();bindSecWidget();}
   /* filtre directeur (gestionnaire) */
   var rcb=document.querySelectorAll('[data-dir]');
   for(var rk=0;rk<rcb.length;rk++){(function(cb){cb.onchange=function(){
@@ -1663,7 +1787,7 @@ function bind(){
   var rclr=document.querySelector('[data-dir-clear]');
   if(rclr)rclr.onclick=function(){S.fdir=[];render();};
   /* all data-act */
-  var bs=document.querySelectorAll('[data-act]');
+  var bs=document.querySelectorAll('[data-act]:not([data-act="recopen"]):not([data-act="recf-st"])');
   for(var j=0;j<bs.length;j++){(function(b){
     var a=b.getAttribute('data-act'),id=b.getAttribute('data-id'),fb=b.getAttribute('data-fb');
     b.onclick=async function(e){
@@ -1744,8 +1868,14 @@ function bind(){
         S.modal=null;render();
       }
       /* ════════════════════ RECRUTEMENT ════════════════════ */
-      else if(a==='arec'){S.modal={type:'candidate',item:null};render();}
-      else if(a==='erec'){S.modal={type:'candidate',item:S.cands.find(function(c){return c.id===id;})};render();}
+      else if(a==='arec'){S.modal={type:'candidate',item:null,expSel:[],secSel:[]};render();}
+      else if(a==='erec'){
+        var itEd=S.cands.find(function(c){return c.id===id;});
+        S.modal={type:'candidate',item:itEd,
+          expSel:(itEd&&itEd.expertise)?itEd.expertise.slice():[],
+          secSel:(itEd&&itEd.sectors)?itEd.sectors.slice():[]};
+        render();
+      }
       else if(a==='drec'){
         var cdDel=S.cands.find(function(c){return c.id===id;});
         if(cdDel&&confirm('Supprimer le candidat '+cdDel.name+' ?\nCette action supprime aussi tous ses retours clients. Irr\u00e9versible.')){
@@ -1758,13 +1888,13 @@ function bind(){
       else if(a==='screc'){
         var rn=gv('rcn');
         if(!rn){alert('Le nom du candidat est obligatoire.');return;}
-        var expRaw=gv('rcexp');
-        var expArr=expRaw?expRaw.split(',').map(function(x){return x.trim();}).filter(Boolean):[];
+        var expArr=(S.modal.expSel||[]).slice();
+        var secArr=(S.modal.secSel||[]).slice();
         var marEl=document.getElementById('rcmar');
         var cfields={
           name:rn,email:gv('rce'),phone:gv('rcph'),
           availDate:gv('rcav')||'',reqSalary:+gv('rcsal')||0,
-          yearsExp:+gv('rcyrs')||0,expertise:expArr,
+          yearsExp:+gv('rcyrs')||0,expertise:expArr,sectors:secArr,
           clientMeetCompany:gv('rccli'),clientMeetContact:gv('rccon'),
           clientMeetDate:gv('rccmd')||'',cgiMeetDate:gv('rcgmd')||'',
           marginPct:marEl?+marEl.value:25,status:gv('rcst')||'nouveau'
@@ -1951,6 +2081,7 @@ function mapCand(r){return{
   id:r.id,name:r.name,email:r.email||'',phone:r.phone||'',
   availDate:r.avail_date||'',reqSalary:r.req_salary||0,
   yearsExp:r.years_exp||0,expertise:Array.isArray(r.expertise)?r.expertise:[],
+  sectors:Array.isArray(r.sectors)?r.sectors:[],
   clientMeetCompany:r.client_meet_company||'',clientMeetContact:r.client_meet_contact||'',
   clientMeetDate:r.client_meet_date||'',cgiMeetDate:r.cgi_meet_date||'',
   marginPct:(r.margin_pct!=null?r.margin_pct:25),status:r.status||'nouveau',
@@ -2006,7 +2137,7 @@ async function sbUpsertCand(c){
   var res=await sb.from('candidates').upsert({
     id:c.id,company_id:SB_CID,name:c.name,email:c.email||null,phone:c.phone||null,
     avail_date:c.availDate||null,req_salary:c.reqSalary||0,years_exp:c.yearsExp||0,
-    expertise:c.expertise||[],
+    expertise:c.expertise||[],sectors:c.sectors||[],
     client_meet_company:c.clientMeetCompany||null,client_meet_contact:c.clientMeetContact||null,
     client_meet_date:c.clientMeetDate||null,cgi_meet_date:c.cgiMeetDate||null,
     margin_pct:(c.marginPct!=null?c.marginPct:25),status:c.status||'nouveau',
