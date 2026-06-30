@@ -378,7 +378,7 @@ var S={
   impView:'pl',
   impSelFY:'all',
   missImp:null,
-  recSel:null,recF:{status:'all',q:''},recAddFb:false
+  recSel:null,recF:{status:'all',q:''},recAddFb:false,recEditMeet:false
 };
 var H=fyHols(CFY);
 var SCR_FACTOR=113.35;  /* SCR x ce coefficient = salaire annuel sur le FY */
@@ -1446,9 +1446,6 @@ function tCandDetail(c){
     +info('Téléphone',esc(c.phone||'—'))
     +info('Expérience',c.yearsExp?c.yearsExp+' an'+(c.yearsExp>1?'s':''):'—')
     +info('Disponibilité',c.availDate?fDt(c.availDate):'—')
-    +info('Client rencontré',esc(c.clientMeetCompany||'—'))
-    +info('Opérationnel rencontré',esc(c.clientMeetContact||'—'))
-    +info('Date rencontre client',c.clientMeetDate?fDt(c.clientMeetDate):'—')
     +info('Rencontre CGI',c.cgiMeetDate?fDt(c.cgiMeetDate):'—')
     +'</div>';
 
@@ -1457,6 +1454,20 @@ function tCandDetail(c){
     +'<div><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase">SCR journalier</div><div style="font-size:18px;font-weight:800;color:#0f172a">'+(scr?scr.toFixed(0)+' €':'—')+'</div></div>'
     +'<div><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase">TJM de revente (marge '+(c.marginPct!=null?c.marginPct:25)+'%)</div><div style="font-size:18px;font-weight:800;color:#2563eb">'+(tjm?tjm.toFixed(0)+' €':'—')+'</div></div>'
     +'</div>';
+
+  /* ── Rencontre client : section dédiée, éditable directement sur la fiche ── */
+  var meetBlock=S.recEditMeet
+    ? '<div class="g2">'
+      +'<div class="fd"><label class="fl">Client rencontré</label><input class="ic" id="rmcli" value="'+esc(c.clientMeetCompany||'')+'" placeholder="Nom du client"></div>'
+      +'<div class="fd"><label class="fl">Opérationnel rencontré</label><input class="ic" id="rmcon" value="'+esc(c.clientMeetContact||'')+'" placeholder="Prénom Nom"></div>'
+      +'<div class="fd cs2"><label class="fl">Date de la rencontre</label><input class="ic" id="rmdate" type="date" value="'+esc(c.clientMeetDate||'')+'" style="max-width:220px"></div>'
+      +'</div>'
+      +'<div class="br"><button class="bg" data-act="recmeetcancel">Annuler</button><button class="bp" data-act="recmeetsave" data-id="'+c.id+'">Enregistrer</button></div>'
+    : '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px 24px">'
+      +info('Client rencontré',esc(c.clientMeetCompany||'—'))
+      +info('Opérationnel rencontré',esc(c.clientMeetContact||'—'))
+      +info('Date de la rencontre',c.clientMeetDate?fDt(c.clientMeetDate):'—')
+      +'</div>';
 
   var fbs=(c.feedbacks||[]).slice().reverse();
   var fbHtml=fbs.map(function(fb){
@@ -1490,6 +1501,14 @@ function tCandDetail(c){
     +'<div style="margin-top:18px"><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Expertises</div>'+expHtml+'</div>'
     +'<div style="margin-top:14px"><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Connaissance secteur</div>'+secHtml+'</div>'
     +compCard+'</div>'
+
+    +'<div class="card" style="padding:24px;margin-bottom:18px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+    +'<div style="font-size:13px;font-weight:800;color:#0f172a">Rencontre client</div>'
+    +(!S.recEditMeet?'<button class="lb" data-act="recmeettoggle">Modifier</button>':'')
+    +'</div>'
+    +meetBlock
+    +'</div>'
 
     +'<div class="card" style="padding:24px">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
@@ -1770,7 +1789,7 @@ function bind(){
       if(!t)return;
       var ra=t.getAttribute('data-act'),rid=t.getAttribute('data-id');
       if(ra==='recf-st'){S.recF.status=rid;recListRefresh();}
-      else if(ra==='recopen'){S.recSel=rid;S.recAddFb=false;render();}
+      else if(ra==='recopen'){S.recSel=rid;S.recAddFb=false;S.recEditMeet=false;render();}
     };
   }
   /* widgets multi-sélection Expertises / Secteurs (uniquement si le modal candidat est ouvert) */
@@ -1911,9 +1930,22 @@ function bind(){
         sbUpsertCand(ncand).catch(function(err){console.warn('sbUpsertCand:',err);alert('\u26a0 Erreur de synchronisation : '+err.message);});
         S.modal=null;render();
       }
-      else if(a==='recback'){S.recSel=null;render();}
+      else if(a==='recback'){S.recSel=null;S.recEditMeet=false;render();}
       else if(a==='recfbtoggle'){S.recAddFb=true;render();}
       else if(a==='recfbcancel'){S.recAddFb=false;render();}
+      else if(a==='recmeettoggle'){S.recEditMeet=true;render();}
+      else if(a==='recmeetcancel'){S.recEditMeet=false;render();}
+      else if(a==='recmeetsave'){
+        var cdMeet=S.cands.find(function(c){return c.id===id;});
+        if(!cdMeet)return;
+        cdMeet.clientMeetCompany=gv('rmcli');
+        cdMeet.clientMeetContact=gv('rmcon');
+        cdMeet.clientMeetDate=gv('rmdate')||'';
+        S.cands=S.cands.map(function(c){return c.id===id?cdMeet:c;});
+        S.recEditMeet=false;
+        sbUpsertCand(cdMeet).catch(function(err){console.warn('sbUpsertCand meet:',err);alert('\u26a0 Erreur de synchronisation : '+err.message);});
+        render();
+      }
       else if(a==='recfbadd'){
         var fbTxt=gv('fbtext');
         var fbFileEl=document.getElementById('fbfile');
