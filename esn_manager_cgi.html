@@ -378,7 +378,7 @@ var S={
   impView:'pl',
   impSelFY:'all',
   missImp:null,
-  recSel:null,recF:{status:'all',q:'',loc:'all'},recAddMeet:false,recAddCgi:false,recAddCv:false,
+  recSel:null,recF:{status:'all',q:'',loc:[]},recAddMeet:false,recAddCgi:false,recAddCv:false,
   recEditMeetId:null,recEditCgiId:null
 };
 var H=fyHols(CFY);
@@ -1373,10 +1373,10 @@ function tRecrut(){
 function recListBody(){
   var q=(S.recF.q||'').toLowerCase().trim();
   var stF=S.recF.status||'all';
-  var locF=S.recF.loc||'all';
+  var locF=S.recF.loc||[];
   var list=S.cands.filter(function(c){
     if(stF!=='all'&&c.status!==stF)return false;
-    if(locF!=='all'&&(c.location||'')!==locF)return false;
+    if(locF.length&&locF.indexOf(c.location||'')<0)return false;
     if(q){
       var hay=(c.name+' '+(c.expertise||[]).join(' ')+' '+(c.email||'')).toLowerCase();
       if(hay.indexOf(q)<0)return false;
@@ -1392,6 +1392,15 @@ function recListBody(){
     return '<button data-act="recf-st" data-id="'+id+'" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid '+(active?'#2563eb':'#e2e8f0')+';background:'+(active?'#2563eb':'#fff')+';color:'+(active?'#fff':'#475569')+';cursor:pointer;margin:0 6px 6px 0">'+esc(label)+' <span style="opacity:.65">'+count+'</span></button>';
   }
   var pills=pill('all','Tous',S.cands.length)+REC_STATUS.map(function(s){return pill(s.id,s.lb,counts[s.id]);}).join('');
+
+  var locCounts={};REC_LOCATIONS.forEach(function(l){locCounts[l]=0;});
+  S.cands.forEach(function(c){if(c.location&&locCounts[c.location]!=null)locCounts[c.location]++;});
+  function locPill(loc){
+    var active=locF.indexOf(loc)>=0;
+    return '<button data-act="recf-loc" data-id="'+esc(loc)+'" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid '+(active?'#7c3aed':'#e2e8f0')+';background:'+(active?'#7c3aed':'#fff')+';color:'+(active?'#fff':'#475569')+';cursor:pointer;margin:0 6px 6px 0">'+esc(loc)+' <span style="opacity:.65">'+locCounts[loc]+'</span></button>';
+  }
+  var locPills='<div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:10px 0 4px">Localisation'+(locF.length?' ('+locF.length+' sélectionnée'+(locF.length>1?'s':'')+')':'')+'</div>'
+    +REC_LOCATIONS.map(locPill).join('');
 
   function tag(t){return '<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;background:#f1f5f9;color:#475569;margin:0 4px 2px 0">'+esc(t)+'</span>';}
 
@@ -1417,10 +1426,10 @@ function recListBody(){
       +'</tr>';
   }).join('');
 
-  return '<div>'+pills+'</div>'
+  return '<div>'+pills+locPills+'</div>'
     +'<div class="card ov" style="margin-top:14px">'
     +'<table><thead><tr><th>Nom</th><th>Expertise</th><th>Secteurs</th><th>Localisation</th><th>Disponibilité</th><th class="tr">Rém. demandée</th><th class="tr">SCR/j</th><th class="tr">TJM revente</th><th>Statut</th><th>Ajouté par</th></tr></thead>'
-    +'<tbody>'+rows+(rows?'':'<tr><td colspan="10" class="emp">Aucun candidat'+(q||stF!=='all'||locF!=='all'?' ne correspond aux filtres.':' pour le moment. Cliquez « + Nouveau candidat » pour commencer.')+'</td></tr>')
+    +'<tbody>'+rows+(rows?'':'<tr><td colspan="10" class="emp">Aucun candidat'+(q||stF!=='all'||locF.length?' ne correspond aux filtres.':' pour le moment. Cliquez « + Nouveau candidat » pour commencer.')+'</td></tr>')
     +'</tbody></table></div>';
 }
 /* Rafraîchit uniquement les pills + le tableau, sans toucher au champ de recherche
@@ -1431,15 +1440,10 @@ function recListRefresh(){
 }
 
 function tRecList(){
-  var locOpts='<option value="all">Toutes localisations</option>'
-    +REC_LOCATIONS.map(function(l){return '<option value="'+esc(l)+'"'+(S.recF.loc===l?' selected':'')+'>'+esc(l)+'</option>';}).join('');
   return '<div><div class="ph"><div><div class="pt">Recrutement</div>'
     +'<div class="ps">'+S.cands.length+' candidat'+(S.cands.length!==1?'s':'')+' · pipeline partagé entreprise, visible par tous les directeurs</div></div>'
     +'<button class="bp" data-act="arec">+ Nouveau candidat</button></div>'
-    +'<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">'
-    +'<input class="ic" id="recq" placeholder="Rechercher un candidat, une expertise, un email..." value="'+esc(S.recF.q||'')+'" style="max-width:360px;flex:1">'
-    +'<select class="ic" id="recloc-filter" style="max-width:200px">'+locOpts+'</select>'
-    +'</div>'
+    +'<div style="margin-bottom:10px"><input class="ic" id="recq" placeholder="Rechercher un candidat, une expertise, un email..." value="'+esc(S.recF.q||'')+'" style="max-width:360px"></div>'
     +'<div id="rec-list-wrap">'+recListBody()+'</div></div>';
 }
 
@@ -1870,14 +1874,7 @@ function bind(){
       recListRefresh(); /* met à jour uniquement la liste — l'input n'est jamais recréé, le focus reste intact */
     };
   }
-  var rlf=el('recloc-filter');
-  if(rlf){
-    rlf.onchange=function(){
-      S.recF.loc=this.value;
-      recListRefresh();
-    };
-  }
-  /* délégation : les clics sur les pastilles de statut (recréées à chaque recListRefresh)
+  /* délégation : les clics sur les pastilles de statut/localisation (recréées à chaque recListRefresh)
      sont capturés sur le conteneur stable, qui lui n'est jamais détruit pendant la frappe */
   var rlw=el('rec-list-wrap');
   if(rlw){
@@ -1886,6 +1883,13 @@ function bind(){
       if(!t)return;
       var ra=t.getAttribute('data-act'),rid=t.getAttribute('data-id');
       if(ra==='recf-st'){S.recF.status=rid;recListRefresh();}
+      else if(ra==='recf-loc'){
+        var la=S.recF.loc||[];
+        var li=la.indexOf(rid);
+        if(li>=0)la.splice(li,1);else la.push(rid);
+        S.recF.loc=la;
+        recListRefresh();
+      }
       else if(ra==='recopen'){S.recSel=rid;S.recAddMeet=false;S.recAddCgi=false;S.recAddCv=false;S.recEditMeetId=null;S.recEditCgiId=null;render();}
     };
   }
