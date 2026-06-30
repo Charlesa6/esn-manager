@@ -378,7 +378,7 @@ var S={
   impView:'pl',
   impSelFY:'all',
   missImp:null,
-  recSel:null,recF:{status:'all',q:''},recAddFb:false,recEditMeet:false
+  recSel:null,recF:{status:'all',q:''},recAddMeet:false
 };
 var H=fyHols(CFY);
 var SCR_FACTOR=113.35;  /* SCR x ce coefficient = salaire annuel sur le FY */
@@ -1396,9 +1396,12 @@ function recListBody(){
     var tjm=recTjm(c.reqSalary,c.marginPct);
     var exp=(c.expertise||[]);
     var expHtml=exp.slice(0,3).map(tag).join('')+(exp.length>3?'<span style="font-size:11px;color:#94a3b8">+'+(exp.length-3)+'</span>':'');
+    var sec=(c.sectors||[]);
+    var secHtml=sec.slice(0,2).map(tag).join('')+(sec.length>2?'<span style="font-size:11px;color:#94a3b8">+'+(sec.length-2)+'</span>':'');
     return '<tr data-act="recopen" data-id="'+c.id+'" style="cursor:pointer">'
       +'<td style="font-weight:700;color:#0f172a">'+esc(c.name)+'</td>'
       +'<td>'+(expHtml||'<span style="color:#cbd5e1">—</span>')+'</td>'
+      +'<td>'+(secHtml||'<span style="color:#cbd5e1">—</span>')+'</td>'
       +'<td>'+(c.availDate?fDt(c.availDate):'—')+'</td>'
       +'<td class="tr">'+(c.reqSalary?c.reqSalary.toLocaleString('fr-FR')+' €':'—')+'</td>'
       +'<td class="tr">'+(scr?scr.toFixed(0)+' €/j':'—')+'</td>'
@@ -1410,8 +1413,8 @@ function recListBody(){
 
   return '<div>'+pills+'</div>'
     +'<div class="card ov" style="margin-top:14px">'
-    +'<table><thead><tr><th>Nom</th><th>Expertise</th><th>Disponibilité</th><th class="tr">Rém. demandée</th><th class="tr">SCR/j</th><th class="tr">TJM revente</th><th>Statut</th><th>Ajouté par</th></tr></thead>'
-    +'<tbody>'+rows+(rows?'':'<tr><td colspan="8" class="emp">Aucun candidat'+(q||stF!=='all'?' ne correspond aux filtres.':' pour le moment. Cliquez « + Nouveau candidat » pour commencer.')+'</td></tr>')
+    +'<table><thead><tr><th>Nom</th><th>Expertise</th><th>Secteurs</th><th>Disponibilité</th><th class="tr">Rém. demandée</th><th class="tr">SCR/j</th><th class="tr">TJM revente</th><th>Statut</th><th>Ajouté par</th></tr></thead>'
+    +'<tbody>'+rows+(rows?'':'<tr><td colspan="9" class="emp">Aucun candidat'+(q||stF!=='all'?' ne correspond aux filtres.':' pour le moment. Cliquez « + Nouveau candidat » pour commencer.')+'</td></tr>')
     +'</tbody></table></div>';
 }
 /* Rafraîchit uniquement les pills + le tableau, sans toucher au champ de recherche
@@ -1455,37 +1458,39 @@ function tCandDetail(c){
     +'<div><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase">TJM de revente (marge '+(c.marginPct!=null?c.marginPct:25)+'%)</div><div style="font-size:18px;font-weight:800;color:#2563eb">'+(tjm?tjm.toFixed(0)+' €':'—')+'</div></div>'
     +'</div>';
 
-  /* ── Rencontre client : section dédiée, éditable directement sur la fiche ── */
-  var meetBlock=S.recEditMeet
-    ? '<div class="g2">'
-      +'<div class="fd"><label class="fl">Client rencontré</label><input class="ic" id="rmcli" value="'+esc(c.clientMeetCompany||'')+'" placeholder="Nom du client"></div>'
-      +'<div class="fd"><label class="fl">Opérationnel rencontré</label><input class="ic" id="rmcon" value="'+esc(c.clientMeetContact||'')+'" placeholder="Prénom Nom"></div>'
-      +'<div class="fd cs2"><label class="fl">Date de la rencontre</label><input class="ic" id="rmdate" type="date" value="'+esc(c.clientMeetDate||'')+'" style="max-width:220px"></div>'
-      +'</div>'
-      +'<div class="br"><button class="bg" data-act="recmeetcancel">Annuler</button><button class="bp" data-act="recmeetsave" data-id="'+c.id+'">Enregistrer</button></div>'
-    : '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px 24px">'
-      +info('Client rencontré',esc(c.clientMeetCompany||'—'))
-      +info('Opérationnel rencontré',esc(c.clientMeetContact||'—'))
-      +info('Date de la rencontre',c.clientMeetDate?fDt(c.clientMeetDate):'—')
-      +'</div>';
+  /* Compte rendu général (saisi à la création/édition du candidat) */
+  var crHtml=(c.compteRendu||c.compteRenduFilePath)
+    ? (c.compteRendu?'<div style="font-size:13px;color:#334155;white-space:pre-wrap;line-height:1.5;'+(c.compteRenduFilePath?'margin-bottom:8px':'')+'">'+esc(c.compteRendu)+'</div>':'')
+      +(c.compteRenduFilePath?'<button class="lb" data-act="recmdl" data-id="'+c.id+'" data-fb="__cr">\uD83D\uDCCE '+esc(c.compteRenduFileName||'Fichier joint')+'</button>':'')
+    : '<span style="color:#94a3b8;font-size:12px">Aucun compte rendu</span>';
 
-  var fbs=(c.feedbacks||[]).slice().reverse();
-  var fbHtml=fbs.map(function(fb){
+  /* ── Rencontre client : liste fusionnée (info de rencontre + compte-rendu + fichier), entrées multiples ── */
+  var meets=(c.feedbacks||[]).slice().reverse();
+  var meetsHtml=meets.map(function(mt){
+    var hdr=[];
+    if(mt.date)hdr.push(fDt(mt.date));
+    if(mt.client)hdr.push(esc(mt.client));
+    if(mt.contact)hdr.push(esc(mt.contact));
     return '<div style="padding:14px 16px;background:#f8fafc;border-radius:10px;margin-bottom:10px;border:1px solid #e2e8f0">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:10px">'
-      +'<div style="font-size:11px;color:#64748b;font-weight:600">'+(fb.date?fDt(fb.date):'')+(fb.author?' · '+esc(fb.author.split('@')[0]):'')+'</div>'
-      +'<button class="lr" data-act="recfbdel" data-id="'+c.id+'" data-fb="'+fb.id+'">Suppr.</button>'
+      +'<div style="font-size:12px;color:#0f172a;font-weight:700">'+(hdr.join(' · ')||'Rencontre')+'</div>'
+      +'<button class="lr" data-act="recmdel" data-id="'+c.id+'" data-fb="'+mt.id+'">Suppr.</button>'
       +'</div>'
-      +(fb.text?'<div style="font-size:13px;color:#334155;white-space:pre-wrap;line-height:1.5">'+esc(fb.text)+'</div>':'')
-      +(fb.filePath?'<div style="margin-top:8px"><button class="lb" data-act="recfbdl" data-id="'+c.id+'" data-fb="'+fb.id+'">\uD83D\uDCCE '+esc(fb.fileName||'Fichier joint')+'</button></div>':'')
+      +(mt.text?'<div style="font-size:13px;color:#334155;white-space:pre-wrap;line-height:1.5">'+esc(mt.text)+'</div>':'')
+      +(mt.filePath?'<div style="margin-top:8px"><button class="lb" data-act="recmdl" data-id="'+c.id+'" data-fb="'+mt.id+'">\uD83D\uDCCE '+esc(mt.fileName||'Fichier joint')+'</button></div>':'')
       +'</div>';
   }).join('');
 
-  var addForm=S.recAddFb
+  var addMeetForm=S.recAddMeet
     ? '<div style="padding:16px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:14px">'
-      +'<div class="fd"><label class="fl">Retour client</label><textarea class="ic" id="fbtext" rows="4" placeholder="Compte-rendu de l\u2019entretien, retour du client..."></textarea></div>'
-      +'<div class="fd"><label class="fl">Joindre un fichier (Word, PDF...) — optionnel</label><input class="ic" type="file" id="fbfile" accept=".doc,.docx,.pdf,.txt,.odt"></div>'
-      +'<div class="br"><button class="bg" data-act="recfbcancel">Annuler</button><button class="bp" data-act="recfbadd" data-id="'+c.id+'">Enregistrer le retour</button></div>'
+      +'<div class="g2">'
+      +'<div class="fd"><label class="fl">Client rencontré</label><input class="ic" id="mtcli" placeholder="Nom du client"></div>'
+      +'<div class="fd"><label class="fl">Opérationnel rencontré</label><input class="ic" id="mtcon" placeholder="Prénom Nom"></div>'
+      +'<div class="fd cs2"><label class="fl">Date de la rencontre</label><input class="ic" id="mtdate" type="date" value="'+fD(new Date())+'" style="max-width:220px"></div>'
+      +'</div>'
+      +'<div class="fd"><label class="fl">Compte rendu</label><textarea class="ic" id="mttext" rows="4" placeholder="Notes, retour de l\u2019entretien..."></textarea></div>'
+      +'<div class="fd"><label class="fl">Joindre un fichier (Word, PDF...) — optionnel</label><input class="ic" type="file" id="mtfile" accept=".doc,.docx,.pdf,.txt,.odt"></div>'
+      +'<div class="br"><button class="bg" data-act="recmcancel">Annuler</button><button class="bp" data-act="recmadd" data-id="'+c.id+'">Enregistrer la rencontre</button></div>'
       +'</div>'
     : '';
 
@@ -1500,23 +1505,16 @@ function tCandDetail(c){
     +'<div class="card" style="padding:24px;margin-bottom:18px">'+infoGrid
     +'<div style="margin-top:18px"><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Expertises</div>'+expHtml+'</div>'
     +'<div style="margin-top:14px"><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Connaissance secteur</div>'+secHtml+'</div>'
+    +'<div style="margin-top:14px"><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Compte rendu</div>'+crHtml+'</div>'
     +compCard+'</div>'
-
-    +'<div class="card" style="padding:24px;margin-bottom:18px">'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
-    +'<div style="font-size:13px;font-weight:800;color:#0f172a">Rencontre client</div>'
-    +(!S.recEditMeet?'<button class="lb" data-act="recmeettoggle">Modifier</button>':'')
-    +'</div>'
-    +meetBlock
-    +'</div>'
 
     +'<div class="card" style="padding:24px">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
-    +'<div style="font-size:13px;font-weight:800;color:#0f172a">Retours clients ('+(c.feedbacks||[]).length+')</div>'
-    +(!S.recAddFb?'<button class="bp" data-act="recfbtoggle">+ Ajouter un retour</button>':'')
+    +'<div style="font-size:13px;font-weight:800;color:#0f172a">Rencontre client ('+(c.feedbacks||[]).length+')</div>'
+    +(!S.recAddMeet?'<button class="bp" data-act="recmtoggle">+ Ajouter une rencontre</button>':'')
     +'</div>'
-    +addForm
-    +(fbHtml||'<div class="emp">Aucun retour client enregistré pour le moment.</div>')
+    +addMeetForm
+    +(meetsHtml||'<div class="emp">Aucune rencontre client enregistrée pour le moment.</div>')
     +'</div>'
     +'</div>';
 }
@@ -1639,13 +1637,12 @@ function tModal(){
       +'<div class="fd"><label class="fl">Téléphone</label><input class="ic" id="rcph" value="'+esc(it?it.phone:'')+'" placeholder="06 12 34 56 78"></div>'
       +'<div class="fd"><label class="fl">Date de disponibilité</label><input class="ic" id="rcav" type="date" value="'+(it?esc(it.availDate||''):'')+'"></div>'
       +'<div class="fd"><label class="fl">Années d\u2019expérience</label><input class="ic" id="rcyrs" type="number" min="0" step="0.5" value="'+(it&&it.yearsExp?esc(String(it.yearsExp)):'')+'" placeholder="5"></div>'
-      +'<div class="fd cs2" style="margin-top:6px;margin-bottom:-4px;padding-top:10px;border-top:1px solid #e2e8f0"><label class="fl" style="color:#0f172a">Rencontre client</label></div>'
-      +'<div class="fd"><label class="fl">Client rencontré</label><input class="ic" id="rccli" value="'+esc(it?it.clientMeetCompany||'':'')+'" placeholder="Nom du client"></div>'
-      +'<div class="fd"><label class="fl">Opérationnel rencontré</label><input class="ic" id="rccon" value="'+esc(it?it.clientMeetContact||'':'')+'" placeholder="Prénom Nom"></div>'
-      +'<div class="fd"><label class="fl">Date de la rencontre</label><input class="ic" id="rccmd" type="date" value="'+(it?esc(it.clientMeetDate||''):'')+'"></div>'
       +'<div class="fd"><label class="fl">Date de rencontre CGI</label><input class="ic" id="rcgmd" type="date" value="'+(it?esc(it.cgiMeetDate||''):'')+'"></div>'
       +'<div class="fd cs2"><label class="fl">Expertises</label><div id="exp-wrap">'+expPickerHTML()+'</div></div>'
       +'<div class="fd cs2"><label class="fl">Connaissance secteur</label><div id="sec-wrap">'+secPickerHTML()+'</div></div>'
+      +'<div class="fd cs2"><label class="fl">Compte rendu</label><textarea class="ic" id="rccr" rows="4" placeholder="Notes générales sur le candidat (CV, premier échange...)">'+esc(it?it.compteRendu||'':'')+'</textarea></div>'
+      +'<div class="fd cs2"><label class="fl">Joindre un fichier (Word, PDF...) — optionnel</label><input class="ic" type="file" id="rccrfile" accept=".doc,.docx,.pdf,.txt,.odt">'
+      +(it&&it.compteRenduFileName?'<p class="fh">Fichier actuel : '+esc(it.compteRenduFileName)+' — sélectionnez un nouveau fichier pour le remplacer.</p>':'')+'</div>'
       +'<div class="fd"><label class="fl">Rémunération annuelle demandée (€)</label><input class="ic" id="rcsal" type="number" min="0" step="500" value="'+(sal0||'')+'" oninput="recCalcRefresh()" placeholder="45000"></div>'
       +'<div class="fd"><label class="fl">Marge cible TJM revente : <span id="rcMarVal" style="color:#2563eb;font-weight:800">'+mar0+'%</span></label>'
       +'<input type="range" id="rcmar" min="15" max="50" step="1" value="'+mar0+'" oninput="recCalcRefresh()" style="width:100%;accent-color:#2563eb;margin-top:8px"></div>'
@@ -1766,7 +1763,11 @@ function bind(){
   var yr=el('yrs');if(yr)yr.onchange=function(){S.year=+this.value;H=fyHols(S.year);S.precs={};render();};
   /* nav */
   var nbs=document.querySelectorAll('[data-nav]');
-  for(var i=0;i<nbs.length;i++){(function(b){b.onclick=function(){S.tab=b.getAttribute('data-nav');render();};})(nbs[i]);}
+  for(var i=0;i<nbs.length;i++){(function(b){b.onclick=function(){
+    var nv=b.getAttribute('data-nav');
+    if(nv==='recrutement'){S.recSel=null;S.recAddMeet=false;}
+    S.tab=nv;render();
+  };})(nbs[i]);}
   /* filters */
   var fc=el('fmc');if(fc)fc.onchange=function(){S.fmc=this.value;render();};
   var fs=el('fms');if(fs)fs.onchange=function(){S.fms=this.value;render();};
@@ -1789,7 +1790,7 @@ function bind(){
       if(!t)return;
       var ra=t.getAttribute('data-act'),rid=t.getAttribute('data-id');
       if(ra==='recf-st'){S.recF.status=rid;recListRefresh();}
-      else if(ra==='recopen'){S.recSel=rid;S.recAddFb=false;S.recEditMeet=false;render();}
+      else if(ra==='recopen'){S.recSel=rid;S.recAddMeet=false;render();}
     };
   }
   /* widgets multi-sélection Expertises / Secteurs (uniquement si le modal candidat est ouvert) */
@@ -1910,77 +1911,81 @@ function bind(){
         var expArr=(S.modal.expSel||[]).slice();
         var secArr=(S.modal.secSel||[]).slice();
         var marEl=document.getElementById('rcmar');
+        var itC=S.modal.item;
+        var candId=itC?itC.id:uid();
+
+        var crFilePath=itC?(itC.compteRenduFilePath||null):null;
+        var crFileName=itC?(itC.compteRenduFileName||null):null;
+        var crFileEl=document.getElementById('rccrfile');
+        var crFile=(crFileEl&&crFileEl.files&&crFileEl.files[0])?crFileEl.files[0]:null;
+        if(crFile){
+          try{
+            crFilePath=await uploadCandFile(crFile,candId,'cr');
+            crFileName=crFile.name;
+          }catch(upErr){alert('\u26a0 '+upErr.message);return;}
+        }
+
         var cfields={
           name:rn,email:gv('rce'),phone:gv('rcph'),
           availDate:gv('rcav')||'',reqSalary:+gv('rcsal')||0,
           yearsExp:+gv('rcyrs')||0,expertise:expArr,sectors:secArr,
-          clientMeetCompany:gv('rccli'),clientMeetContact:gv('rccon'),
-          clientMeetDate:gv('rccmd')||'',cgiMeetDate:gv('rcgmd')||'',
+          compteRendu:gv('rccr'),compteRenduFilePath:crFilePath,compteRenduFileName:crFileName,
+          cgiMeetDate:gv('rcgmd')||'',
           marginPct:marEl?+marEl.value:25,status:gv('rcst')||'nouveau'
         };
-        var itC=S.modal.item;
         var ncand;
         if(itC){
           ncand=Object.assign({},itC,cfields);
           S.cands=S.cands.map(function(c){return c.id===itC.id?ncand:c;});
         }else{
-          ncand=Object.assign({id:uid(),createdBy:S._userEmail||'',feedbacks:[]},cfields);
+          ncand=Object.assign({id:candId,createdBy:S._userEmail||'',feedbacks:[]},cfields);
           S.cands=S.cands.concat([ncand]);
         }
         sbUpsertCand(ncand).catch(function(err){console.warn('sbUpsertCand:',err);alert('\u26a0 Erreur de synchronisation : '+err.message);});
         S.modal=null;render();
       }
-      else if(a==='recback'){S.recSel=null;S.recEditMeet=false;render();}
-      else if(a==='recfbtoggle'){S.recAddFb=true;render();}
-      else if(a==='recfbcancel'){S.recAddFb=false;render();}
-      else if(a==='recmeettoggle'){S.recEditMeet=true;render();}
-      else if(a==='recmeetcancel'){S.recEditMeet=false;render();}
-      else if(a==='recmeetsave'){
-        var cdMeet=S.cands.find(function(c){return c.id===id;});
-        if(!cdMeet)return;
-        cdMeet.clientMeetCompany=gv('rmcli');
-        cdMeet.clientMeetContact=gv('rmcon');
-        cdMeet.clientMeetDate=gv('rmdate')||'';
-        S.cands=S.cands.map(function(c){return c.id===id?cdMeet:c;});
-        S.recEditMeet=false;
-        sbUpsertCand(cdMeet).catch(function(err){console.warn('sbUpsertCand meet:',err);alert('\u26a0 Erreur de synchronisation : '+err.message);});
-        render();
-      }
-      else if(a==='recfbadd'){
-        var fbTxt=gv('fbtext');
-        var fbFileEl=document.getElementById('fbfile');
-        var fbFile=(fbFileEl&&fbFileEl.files&&fbFileEl.files[0])?fbFileEl.files[0]:null;
-        if(!fbTxt&&!fbFile){alert('\u00c9crivez un retour ou joignez un fichier.');return;}
-        var cdFb=S.cands.find(function(c){return c.id===id;});
-        if(!cdFb)return;
-        var fbId=uid();
-        var entry={id:fbId,date:fD(new Date()),author:S._userEmail||'',text:fbTxt||''};
-        if(fbFile){
+      else if(a==='recback'){S.recSel=null;S.recAddMeet=false;render();}
+      else if(a==='recmtoggle'){S.recAddMeet=true;render();}
+      else if(a==='recmcancel'){S.recAddMeet=false;render();}
+      else if(a==='recmadd'){
+        var mtCli=gv('mtcli'),mtCon=gv('mtcon'),mtDate=gv('mtdate')||fD(new Date()),mtTxt=gv('mttext');
+        var mtFileEl=document.getElementById('mtfile');
+        var mtFile=(mtFileEl&&mtFileEl.files&&mtFileEl.files[0])?mtFileEl.files[0]:null;
+        if(!mtCli&&!mtCon&&!mtTxt&&!mtFile){alert('Renseignez au moins le client, l\u2019opérationnel, un compte rendu ou un fichier.');return;}
+        var cdM=S.cands.find(function(c){return c.id===id;});
+        if(!cdM)return;
+        var mtId=uid();
+        var entry={id:mtId,date:mtDate,client:mtCli,contact:mtCon,author:S._userEmail||'',text:mtTxt||''};
+        if(mtFile){
           try{
-            var fpath=await uploadCandFile(fbFile,id,fbId);
-            entry.filePath=fpath;entry.fileName=fbFile.name;
+            var mpath=await uploadCandFile(mtFile,id,mtId);
+            entry.filePath=mpath;entry.fileName=mtFile.name;
           }catch(upErr){alert('\u26a0 '+upErr.message);return;}
         }
-        cdFb.feedbacks=(cdFb.feedbacks||[]).concat([entry]);
-        S.cands=S.cands.map(function(c){return c.id===id?cdFb:c;});
-        S.recAddFb=false;
-        sbUpsertCand(cdFb).catch(function(err){console.warn('sbUpsertCand fb:',err);});
+        cdM.feedbacks=(cdM.feedbacks||[]).concat([entry]);
+        S.cands=S.cands.map(function(c){return c.id===id?cdM:c;});
+        S.recAddMeet=false;
+        sbUpsertCand(cdM).catch(function(err){console.warn('sbUpsertCand meet:',err);alert('\u26a0 Erreur de synchronisation : '+err.message);});
         render();
       }
-      else if(a==='recfbdel'){
-        if(!confirm('Supprimer ce retour client ?'))return;
-        var cdFbD=S.cands.find(function(c){return c.id===id;});
-        if(!cdFbD)return;
-        cdFbD.feedbacks=(cdFbD.feedbacks||[]).filter(function(f){return f.id!==fb;});
-        S.cands=S.cands.map(function(c){return c.id===id?cdFbD:c;});
-        sbUpsertCand(cdFbD).catch(function(err){console.warn('sbUpsertCand fbdel:',err);});
+      else if(a==='recmdel'){
+        if(!confirm('Supprimer cette rencontre client ?'))return;
+        var cdMd=S.cands.find(function(c){return c.id===id;});
+        if(!cdMd)return;
+        cdMd.feedbacks=(cdMd.feedbacks||[]).filter(function(f){return f.id!==fb;});
+        S.cands=S.cands.map(function(c){return c.id===id?cdMd:c;});
+        sbUpsertCand(cdMd).catch(function(err){console.warn('sbUpsertCand meetdel:',err);});
         render();
       }
-      else if(a==='recfbdl'){
-        var cdFbV=S.cands.find(function(c){return c.id===id;});
-        if(!cdFbV)return;
-        var fbEntry=(cdFbV.feedbacks||[]).find(function(f){return f.id===fb;});
-        if(fbEntry&&fbEntry.filePath)downloadCandFile(fbEntry.filePath,fbEntry.fileName);
+      else if(a==='recmdl'){
+        var cdMv=S.cands.find(function(c){return c.id===id;});
+        if(!cdMv)return;
+        if(fb==='__cr'){
+          if(cdMv.compteRenduFilePath)downloadCandFile(cdMv.compteRenduFilePath,cdMv.compteRenduFileName);
+          return;
+        }
+        var mtEntry=(cdMv.feedbacks||[]).find(function(f){return f.id===fb;});
+        if(mtEntry&&mtEntry.filePath)downloadCandFile(mtEntry.filePath,mtEntry.fileName);
       }
       /* inviter / supprimer un directeur */
       else if(a==='inv-add'){
@@ -2114,8 +2119,8 @@ function mapCand(r){return{
   availDate:r.avail_date||'',reqSalary:r.req_salary||0,
   yearsExp:r.years_exp||0,expertise:Array.isArray(r.expertise)?r.expertise:[],
   sectors:Array.isArray(r.sectors)?r.sectors:[],
-  clientMeetCompany:r.client_meet_company||'',clientMeetContact:r.client_meet_contact||'',
-  clientMeetDate:r.client_meet_date||'',cgiMeetDate:r.cgi_meet_date||'',
+  compteRendu:r.compte_rendu||'',compteRenduFilePath:r.compte_rendu_file_path||'',compteRenduFileName:r.compte_rendu_file_name||'',
+  cgiMeetDate:r.cgi_meet_date||'',
   marginPct:(r.margin_pct!=null?r.margin_pct:25),status:r.status||'nouveau',
   createdBy:r.created_by||'',feedbacks:Array.isArray(r.feedbacks)?r.feedbacks:[]
 };}
@@ -2170,8 +2175,8 @@ async function sbUpsertCand(c){
     id:c.id,company_id:SB_CID,name:c.name,email:c.email||null,phone:c.phone||null,
     avail_date:c.availDate||null,req_salary:c.reqSalary||0,years_exp:c.yearsExp||0,
     expertise:c.expertise||[],sectors:c.sectors||[],
-    client_meet_company:c.clientMeetCompany||null,client_meet_contact:c.clientMeetContact||null,
-    client_meet_date:c.clientMeetDate||null,cgi_meet_date:c.cgiMeetDate||null,
+    compte_rendu:c.compteRendu||null,compte_rendu_file_path:c.compteRenduFilePath||null,compte_rendu_file_name:c.compteRenduFileName||null,
+    cgi_meet_date:c.cgiMeetDate||null,
     margin_pct:(c.marginPct!=null?c.marginPct:25),status:c.status||'nouveau',
     created_by:c.createdBy||null,feedbacks:c.feedbacks||[]
   });
