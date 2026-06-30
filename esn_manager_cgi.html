@@ -1347,7 +1347,7 @@ function tRecrut(){
   return tRecList();
 }
 
-function tRecList(){
+function recListBody(){
   var q=(S.recF.q||'').toLowerCase().trim();
   var stF=S.recF.status||'all';
   var list=S.cands.filter(function(c){
@@ -1364,7 +1364,6 @@ function tRecList(){
 
   function pill(id,label,count){
     var active=stF===id;
-    var col=id==='all'?['#2563eb','#fff']:recStCol(id);
     return '<button data-act="recf-st" data-id="'+id+'" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid '+(active?'#2563eb':'#e2e8f0')+';background:'+(active?'#2563eb':'#fff')+';color:'+(active?'#fff':'#475569')+';cursor:pointer;margin:0 6px 6px 0">'+esc(label)+' <span style="opacity:.65">'+count+'</span></button>';
   }
   var pills=pill('all','Tous',S.cands.length)+REC_STATUS.map(function(s){return pill(s.id,s.lb,counts[s.id]);}).join('');
@@ -1389,15 +1388,25 @@ function tRecList(){
       +'</tr>';
   }).join('');
 
+  return '<div>'+pills+'</div>'
+    +'<div class="card ov" style="margin-top:14px">'
+    +'<table><thead><tr><th>Nom</th><th>Expertise</th><th>Disponibilité</th><th class="tr">Rém. demandée</th><th class="tr">SCR/j</th><th class="tr">TJM revente</th><th>Statut</th><th>Ajouté par</th></tr></thead>'
+    +'<tbody>'+rows+(rows?'':'<tr><td colspan="8" class="emp">Aucun candidat'+(q||stF!=='all'?' ne correspond aux filtres.':' pour le moment. Cliquez « + Nouveau candidat » pour commencer.')+'</td></tr>')
+    +'</tbody></table></div>';
+}
+/* Rafraîchit uniquement les pills + le tableau, sans toucher au champ de recherche
+   (évite de recréer l'input et donc de lui faire perdre le focus à chaque frappe) */
+function recListRefresh(){
+  var wrap=document.getElementById('rec-list-wrap');
+  if(wrap)wrap.innerHTML=recListBody();
+}
+
+function tRecList(){
   return '<div><div class="ph"><div><div class="pt">Recrutement</div>'
     +'<div class="ps">'+S.cands.length+' candidat'+(S.cands.length!==1?'s':'')+' · pipeline partagé entreprise, visible par tous les directeurs</div></div>'
     +'<button class="bp" data-act="arec">+ Nouveau candidat</button></div>'
     +'<div style="margin-bottom:14px"><input class="ic" id="recq" placeholder="Rechercher un candidat, une expertise, un email..." value="'+esc(S.recF.q||'')+'" style="max-width:360px"></div>'
-    +'<div>'+pills+'</div>'
-    +'<div class="card ov" style="margin-top:14px">'
-    +'<table><thead><tr><th>Nom</th><th>Expertise</th><th>Disponibilité</th><th class="tr">Rém. demandée</th><th class="tr">SCR/j</th><th class="tr">TJM revente</th><th>Statut</th><th>Ajouté par</th></tr></thead>'
-    +'<tbody>'+rows+(rows?'':'<tr><td colspan="8" class="emp">Aucun candidat'+(q||stF!=='all'?' ne correspond aux filtres.':' pour le moment. Cliquez « + Nouveau candidat » pour commencer.')+'</td></tr>')
-    +'</tbody></table></div></div>';
+    +'<div id="rec-list-wrap">'+recListBody()+'</div></div>';
 }
 
 function tCandDetail(c){
@@ -1416,7 +1425,9 @@ function tCandDetail(c){
     +info('Téléphone',esc(c.phone||'—'))
     +info('Expérience',c.yearsExp?c.yearsExp+' an'+(c.yearsExp>1?'s':''):'—')
     +info('Disponibilité',c.availDate?fDt(c.availDate):'—')
-    +info('Rencontre client',c.clientMeetDate?fDt(c.clientMeetDate):'—')
+    +info('Client rencontré',esc(c.clientMeetCompany||'—'))
+    +info('Opérationnel rencontré',esc(c.clientMeetContact||'—'))
+    +info('Date rencontre client',c.clientMeetDate?fDt(c.clientMeetDate):'—')
     +info('Rencontre CGI',c.cgiMeetDate?fDt(c.cgiMeetDate):'—')
     +'</div>';
 
@@ -1488,7 +1499,10 @@ function tModal(){
       +'<div class="fd"><label class="fl">Téléphone</label><input class="ic" id="rcph" value="'+esc(it?it.phone:'')+'" placeholder="06 12 34 56 78"></div>'
       +'<div class="fd"><label class="fl">Date de disponibilité</label><input class="ic" id="rcav" type="date" value="'+(it?esc(it.availDate||''):'')+'"></div>'
       +'<div class="fd"><label class="fl">Années d\u2019expérience</label><input class="ic" id="rcyrs" type="number" min="0" step="0.5" value="'+(it&&it.yearsExp?esc(String(it.yearsExp)):'')+'" placeholder="5"></div>'
-      +'<div class="fd"><label class="fl">Date de rencontre client</label><input class="ic" id="rccmd" type="date" value="'+(it?esc(it.clientMeetDate||''):'')+'"></div>'
+      +'<div class="fd cs2" style="margin-top:6px;margin-bottom:-4px;padding-top:10px;border-top:1px solid #e2e8f0"><label class="fl" style="color:#0f172a">Rencontre client</label></div>'
+      +'<div class="fd"><label class="fl">Client rencontré</label><input class="ic" id="rccli" value="'+esc(it?it.clientMeetCompany||'':'')+'" placeholder="Nom du client"></div>'
+      +'<div class="fd"><label class="fl">Opérationnel rencontré</label><input class="ic" id="rccon" value="'+esc(it?it.clientMeetContact||'':'')+'" placeholder="Prénom Nom"></div>'
+      +'<div class="fd"><label class="fl">Date de la rencontre</label><input class="ic" id="rccmd" type="date" value="'+(it?esc(it.clientMeetDate||''):'')+'"></div>'
       +'<div class="fd"><label class="fl">Date de rencontre CGI</label><input class="ic" id="rcgmd" type="date" value="'+(it?esc(it.cgiMeetDate||''):'')+'"></div>'
       +'<div class="fd cs2"><label class="fl">Expertise IT et conseil (séparées par des virgules)</label><input class="ic" id="rcexp" value="'+esc(it&&it.expertise?it.expertise.join(', '):'')+'" placeholder="Java, AWS, Kubernetes, Gestion de projet, Finance..."></div>'
       +'<div class="fd"><label class="fl">Rémunération annuelle demandée (€)</label><input class="ic" id="rcsal" type="number" min="0" step="500" value="'+(sal0||'')+'" oninput="recCalcRefresh()" placeholder="45000"></div>'
@@ -1622,10 +1636,19 @@ function bind(){
   if(rq){
     rq.oninput=function(){
       S.recF.q=this.value;
-      var pos=this.selectionStart;
-      render();
-      var rq2=document.getElementById('recq');
-      if(rq2){rq2.focus();try{rq2.setSelectionRange(pos,pos);}catch(_e){}}
+      recListRefresh(); /* met à jour uniquement la liste — l'input n'est jamais recréé, le focus reste intact */
+    };
+  }
+  /* délégation : les clics sur les pastilles de statut (recréées à chaque recListRefresh)
+     sont capturés sur le conteneur stable, qui lui n'est jamais détruit pendant la frappe */
+  var rlw=el('rec-list-wrap');
+  if(rlw){
+    rlw.onclick=function(e){
+      var t=e.target.closest('[data-act]');
+      if(!t)return;
+      var ra=t.getAttribute('data-act'),rid=t.getAttribute('data-id');
+      if(ra==='recf-st'){S.recF.status=rid;recListRefresh();}
+      else if(ra==='recopen'){S.recSel=rid;S.recAddFb=false;render();}
     };
   }
   /* filtre directeur (gestionnaire) */
@@ -1742,6 +1765,7 @@ function bind(){
           name:rn,email:gv('rce'),phone:gv('rcph'),
           availDate:gv('rcav')||'',reqSalary:+gv('rcsal')||0,
           yearsExp:+gv('rcyrs')||0,expertise:expArr,
+          clientMeetCompany:gv('rccli'),clientMeetContact:gv('rccon'),
           clientMeetDate:gv('rccmd')||'',cgiMeetDate:gv('rcgmd')||'',
           marginPct:marEl?+marEl.value:25,status:gv('rcst')||'nouveau'
         };
@@ -1757,9 +1781,7 @@ function bind(){
         sbUpsertCand(ncand).catch(function(err){console.warn('sbUpsertCand:',err);alert('\u26a0 Erreur de synchronisation : '+err.message);});
         S.modal=null;render();
       }
-      else if(a==='recopen'){S.recSel=id;S.recAddFb=false;render();}
       else if(a==='recback'){S.recSel=null;render();}
-      else if(a==='recf-st'){S.recF.status=id;render();}
       else if(a==='recfbtoggle'){S.recAddFb=true;render();}
       else if(a==='recfbcancel'){S.recAddFb=false;render();}
       else if(a==='recfbadd'){
@@ -1929,6 +1951,7 @@ function mapCand(r){return{
   id:r.id,name:r.name,email:r.email||'',phone:r.phone||'',
   availDate:r.avail_date||'',reqSalary:r.req_salary||0,
   yearsExp:r.years_exp||0,expertise:Array.isArray(r.expertise)?r.expertise:[],
+  clientMeetCompany:r.client_meet_company||'',clientMeetContact:r.client_meet_contact||'',
   clientMeetDate:r.client_meet_date||'',cgiMeetDate:r.cgi_meet_date||'',
   marginPct:(r.margin_pct!=null?r.margin_pct:25),status:r.status||'nouveau',
   createdBy:r.created_by||'',feedbacks:Array.isArray(r.feedbacks)?r.feedbacks:[]
@@ -1983,7 +2006,9 @@ async function sbUpsertCand(c){
   var res=await sb.from('candidates').upsert({
     id:c.id,company_id:SB_CID,name:c.name,email:c.email||null,phone:c.phone||null,
     avail_date:c.availDate||null,req_salary:c.reqSalary||0,years_exp:c.yearsExp||0,
-    expertise:c.expertise||[],client_meet_date:c.clientMeetDate||null,cgi_meet_date:c.cgiMeetDate||null,
+    expertise:c.expertise||[],
+    client_meet_company:c.clientMeetCompany||null,client_meet_contact:c.clientMeetContact||null,
+    client_meet_date:c.clientMeetDate||null,cgi_meet_date:c.cgiMeetDate||null,
     margin_pct:(c.marginPct!=null?c.marginPct:25),status:c.status||'nouveau',
     created_by:c.createdBy||null,feedbacks:c.feedbacks||[]
   });
