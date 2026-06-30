@@ -368,6 +368,7 @@ var S={
   cons:IC.map(function(c){return Object.assign({},c);}),
   miss:IM.map(function(m){return Object.assign({},m);}),
   lvs:IL.map(function(l){return Object.assign({},l);}),
+  cands:[],
   year:CFY,modal:null,fmc:'all',fms:'all',fmt:'all',flc:'all',precs:{},
   role:'gestionnaire',dirName:'',fdir:[],invites:[],actCid:'',actMonth:'',_all:null,
   sbSt:'\uD83D\uDFE2 Sauvegarde locale active',
@@ -376,10 +377,27 @@ var S={
   impHistory:[],
   impView:'pl',
   impSelFY:'all',
-  missImp:null
+  missImp:null,
+  recSel:null,recF:{status:'all',q:''},recAddFb:false
 };
 var H=fyHols(CFY);
 var SCR_FACTOR=113.35;  /* SCR x ce coefficient = salaire annuel sur le FY */
+
+/* \u2550\u2550\u2550 RECRUTEMENT : statuts du pipeline \u2550\u2550\u2550 */
+var REC_STATUS=[
+  {id:'nouveau',  lb:'Nouveau',           bg:'#f1f5f9',fg:'#475569'},
+  {id:'qualifie', lb:'Qualifi\u00e9 CGI',      bg:'#dbeafe',fg:'#1e40af'},
+  {id:'presente', lb:'Pr\u00e9sent\u00e9 client',    bg:'#ede9fe',fg:'#5b21b6'},
+  {id:'entretien',lb:'Entretien client',  bg:'#fef3c7',fg:'#92400e'},
+  {id:'offre',    lb:'Offre en cours',    bg:'#ccfbf1',fg:'#0f766e'},
+  {id:'place',    lb:'Plac\u00e9',              bg:'#dcfce7',fg:'#15803d'},
+  {id:'standby',  lb:'Standby',           bg:'#f1f5f9',fg:'#64748b'},
+  {id:'refuse',   lb:'Refus\u00e9',             bg:'#fee2e2',fg:'#b91c1c'}
+];
+function recStLb(id){var s=REC_STATUS.find(function(x){return x.id===id;});return s?s.lb:id;}
+function recStCol(id){var s=REC_STATUS.find(function(x){return x.id===id;});return s?[s.bg,s.fg]:['#f1f5f9','#475569'];}
+function recScr(sal){return sal>0?sal/SCR_FACTOR:0;}
+function recTjm(sal,mar){var scr=recScr(sal);return scr>0?scr/(1-(mar||25)/100):0;}
 
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    SVG BAR CHART
@@ -555,6 +573,7 @@ function tSB(){
   var NAV=[
     {id:'dashboard',ic:'\uD83D\uDCCA',lb:'Dashboard'},
     {id:'teams',    ic:'\uD83D\uDC65',lb:'Équipe'},
+    {id:'recrutement',ic:'\uD83C\uDFAF',lb:'Recrutement'},
     {id:'missions', ic:'\uD83D\uDCCB',lb:'Missions'},
     {id:'planning', ic:'\uD83D\uDCC5',lb:'Planning'},
     {id:'kpis',     ic:'\uD83D\uDCC8',lb:'KPIs'},
@@ -1316,11 +1335,171 @@ function tActivite(){
     +'</div></div></div>';
 }
 
+/* ════════════════════════════════════════════════════════════
+   RECRUTEMENT — pipeline partagé, visible par toute l'entreprise
+   ════════════════════════════════════════════════════════════ */
+function tRecrut(){
+  if(S.recSel){
+    var cand=S.cands.find(function(c){return c.id===S.recSel;});
+    if(cand)return tCandDetail(cand);
+    S.recSel=null;
+  }
+  return tRecList();
+}
+
+function tRecList(){
+  var q=(S.recF.q||'').toLowerCase().trim();
+  var stF=S.recF.status||'all';
+  var list=S.cands.filter(function(c){
+    if(stF!=='all'&&c.status!==stF)return false;
+    if(q){
+      var hay=(c.name+' '+(c.expertise||[]).join(' ')+' '+(c.email||'')).toLowerCase();
+      if(hay.indexOf(q)<0)return false;
+    }
+    return true;
+  });
+
+  var counts={};REC_STATUS.forEach(function(s){counts[s.id]=0;});
+  S.cands.forEach(function(c){if(counts[c.status]!=null)counts[c.status]++;});
+
+  function pill(id,label,count){
+    var active=stF===id;
+    var col=id==='all'?['#2563eb','#fff']:recStCol(id);
+    return '<button data-act="recf-st" data-id="'+id+'" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid '+(active?'#2563eb':'#e2e8f0')+';background:'+(active?'#2563eb':'#fff')+';color:'+(active?'#fff':'#475569')+';cursor:pointer;margin:0 6px 6px 0">'+esc(label)+' <span style="opacity:.65">'+count+'</span></button>';
+  }
+  var pills=pill('all','Tous',S.cands.length)+REC_STATUS.map(function(s){return pill(s.id,s.lb,counts[s.id]);}).join('');
+
+  function tag(t){return '<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;background:#f1f5f9;color:#475569;margin:0 4px 2px 0">'+esc(t)+'</span>';}
+
+  var rows=list.map(function(c){
+    var col=recStCol(c.status);
+    var scr=recScr(c.reqSalary);
+    var tjm=recTjm(c.reqSalary,c.marginPct);
+    var exp=(c.expertise||[]);
+    var expHtml=exp.slice(0,3).map(tag).join('')+(exp.length>3?'<span style="font-size:11px;color:#94a3b8">+'+(exp.length-3)+'</span>':'');
+    return '<tr data-act="recopen" data-id="'+c.id+'" style="cursor:pointer">'
+      +'<td style="font-weight:700;color:#0f172a">'+esc(c.name)+'</td>'
+      +'<td>'+(expHtml||'<span style="color:#cbd5e1">—</span>')+'</td>'
+      +'<td>'+(c.availDate?fDt(c.availDate):'—')+'</td>'
+      +'<td class="tr">'+(c.reqSalary?c.reqSalary.toLocaleString('fr-FR')+' €':'—')+'</td>'
+      +'<td class="tr">'+(scr?scr.toFixed(0)+' €/j':'—')+'</td>'
+      +'<td class="tr" style="font-weight:700;color:#2563eb">'+(tjm?tjm.toFixed(0)+' €/j':'—')+'</td>'
+      +'<td><span style="padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;background:'+col[0]+';color:'+col[1]+'">'+esc(recStLb(c.status))+'</span></td>'
+      +'<td style="font-size:11px;color:#94a3b8">'+esc(c.createdBy?c.createdBy.split('@')[0]:'—')+'</td>'
+      +'</tr>';
+  }).join('');
+
+  return '<div><div class="ph"><div><div class="pt">Recrutement</div>'
+    +'<div class="ps">'+S.cands.length+' candidat'+(S.cands.length!==1?'s':'')+' · pipeline partagé entreprise, visible par tous les directeurs</div></div>'
+    +'<button class="bp" data-act="arec">+ Nouveau candidat</button></div>'
+    +'<div style="margin-bottom:14px"><input class="ic" id="recq" placeholder="Rechercher un candidat, une expertise, un email..." value="'+esc(S.recF.q||'')+'" style="max-width:360px"></div>'
+    +'<div>'+pills+'</div>'
+    +'<div class="card ov" style="margin-top:14px">'
+    +'<table><thead><tr><th>Nom</th><th>Expertise</th><th>Disponibilité</th><th class="tr">Rém. demandée</th><th class="tr">SCR/j</th><th class="tr">TJM revente</th><th>Statut</th><th>Ajouté par</th></tr></thead>'
+    +'<tbody>'+rows+(rows?'':'<tr><td colspan="8" class="emp">Aucun candidat'+(q||stF!=='all'?' ne correspond aux filtres.':' pour le moment. Cliquez « + Nouveau candidat » pour commencer.')+'</td></tr>')
+    +'</tbody></table></div></div>';
+}
+
+function tCandDetail(c){
+  var col=recStCol(c.status);
+  var scr=recScr(c.reqSalary);
+  var tjm=recTjm(c.reqSalary,c.marginPct);
+
+  function tag(t){return '<span style="display:inline-block;padding:3px 10px;border-radius:7px;font-size:12px;font-weight:600;background:#f1f5f9;color:#475569;margin:0 5px 5px 0">'+esc(t)+'</span>';}
+  var expHtml=(c.expertise&&c.expertise.length)?c.expertise.map(tag).join(''):'<span style="color:#94a3b8;font-size:12px">Aucune expertise renseignée</span>';
+
+  function info(label,val){
+    return '<div><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">'+label+'</div><div style="font-size:13px;color:#0f172a;font-weight:600">'+val+'</div></div>';
+  }
+  var infoGrid='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px 24px">'
+    +info('Email',esc(c.email||'—'))
+    +info('Téléphone',esc(c.phone||'—'))
+    +info('Expérience',c.yearsExp?c.yearsExp+' an'+(c.yearsExp>1?'s':''):'—')
+    +info('Disponibilité',c.availDate?fDt(c.availDate):'—')
+    +info('Rencontre client',c.clientMeetDate?fDt(c.clientMeetDate):'—')
+    +info('Rencontre CGI',c.cgiMeetDate?fDt(c.cgiMeetDate):'—')
+    +'</div>';
+
+  var compCard='<div style="display:flex;gap:32px;flex-wrap:wrap;margin-top:18px;padding-top:18px;border-top:1px solid #e2e8f0">'
+    +'<div><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase">Rémunération demandée</div><div style="font-size:18px;font-weight:800;color:#0f172a">'+(c.reqSalary?c.reqSalary.toLocaleString('fr-FR')+' € /an':'—')+'</div></div>'
+    +'<div><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase">SCR journalier</div><div style="font-size:18px;font-weight:800;color:#0f172a">'+(scr?scr.toFixed(0)+' €':'—')+'</div></div>'
+    +'<div><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase">TJM de revente (marge '+(c.marginPct!=null?c.marginPct:25)+'%)</div><div style="font-size:18px;font-weight:800;color:#2563eb">'+(tjm?tjm.toFixed(0)+' €':'—')+'</div></div>'
+    +'</div>';
+
+  var fbs=(c.feedbacks||[]).slice().reverse();
+  var fbHtml=fbs.map(function(fb){
+    return '<div style="padding:14px 16px;background:#f8fafc;border-radius:10px;margin-bottom:10px;border:1px solid #e2e8f0">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:10px">'
+      +'<div style="font-size:11px;color:#64748b;font-weight:600">'+(fb.date?fDt(fb.date):'')+(fb.author?' · '+esc(fb.author.split('@')[0]):'')+'</div>'
+      +'<button class="lr" data-act="recfbdel" data-id="'+c.id+'" data-fb="'+fb.id+'">Suppr.</button>'
+      +'</div>'
+      +(fb.text?'<div style="font-size:13px;color:#334155;white-space:pre-wrap;line-height:1.5">'+esc(fb.text)+'</div>':'')
+      +(fb.filePath?'<div style="margin-top:8px"><button class="lb" data-act="recfbdl" data-id="'+c.id+'" data-fb="'+fb.id+'">\uD83D\uDCCE '+esc(fb.fileName||'Fichier joint')+'</button></div>':'')
+      +'</div>';
+  }).join('');
+
+  var addForm=S.recAddFb
+    ? '<div style="padding:16px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:14px">'
+      +'<div class="fd"><label class="fl">Retour client</label><textarea class="ic" id="fbtext" rows="4" placeholder="Compte-rendu de l\u2019entretien, retour du client..."></textarea></div>'
+      +'<div class="fd"><label class="fl">Joindre un fichier (Word, PDF...) — optionnel</label><input class="ic" type="file" id="fbfile" accept=".doc,.docx,.pdf,.txt,.odt"></div>'
+      +'<div class="br"><button class="bg" data-act="recfbcancel">Annuler</button><button class="bp" data-act="recfbadd" data-id="'+c.id+'">Enregistrer le retour</button></div>'
+      +'</div>'
+    : '';
+
+  return '<div>'
+    +'<button class="lb" data-act="recback" style="margin-bottom:14px">\u2190 Retour au pipeline</button>'
+    +'<div class="ph"><div><div class="pt">'+esc(c.name)+'</div>'
+    +'<div class="ps"><span style="padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;background:'+col[0]+';color:'+col[1]+'">'+esc(recStLb(c.status))+'</span>'
+    +(c.createdBy?' · Ajouté par '+esc(c.createdBy.split('@')[0]):'')+'</div></div>'
+    +'<div style="display:flex;gap:8px"><button class="bg" data-act="erec" data-id="'+c.id+'">Modifier</button>'
+    +'<button class="bg" style="color:#dc2626;border-color:#fca5a5" data-act="drec" data-id="'+c.id+'">Supprimer</button></div></div>'
+
+    +'<div class="card" style="padding:24px;margin-bottom:18px">'+infoGrid
+    +'<div style="margin-top:18px"><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Expertise</div>'+expHtml+'</div>'
+    +compCard+'</div>'
+
+    +'<div class="card" style="padding:24px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+    +'<div style="font-size:13px;font-weight:800;color:#0f172a">Retours clients ('+(c.feedbacks||[]).length+')</div>'
+    +(!S.recAddFb?'<button class="bp" data-act="recfbtoggle">+ Ajouter un retour</button>':'')
+    +'</div>'
+    +addForm
+    +(fbHtml||'<div class="emp">Aucun retour client enregistré pour le moment.</div>')
+    +'</div>'
+    +'</div>';
+}
+
 function tModal(){
   var m=S.modal;if(!m)return '';
   var tp=m.type,it=m.item,title='',body='',wide=false;
   var defCid=(it&&it.cid)||(S.cons[0]&&S.cons[0].id)||'';
   var co=S.cons.map(function(c){return '<option value="'+c.id+'"'+(c.id===defCid?' selected':'')+'>'+esc(c.name)+'</option>';}).join('');
+
+  if(tp==='candidate'){
+    title=it?'Modifier le candidat':'Nouveau candidat';wide=true;
+    var stOpts=REC_STATUS.map(function(s){return '<option value="'+s.id+'"'+(it&&it.status===s.id?' selected':'')+'>'+esc(s.lb)+'</option>';}).join('');
+    var mar0=(it&&it.marginPct!=null)?it.marginPct:25;
+    var sal0=it?(it.reqSalary||0):0;
+    var scr0=recScr(sal0),tjm0=recTjm(sal0,mar0);
+    body='<div class="g2">'
+      +'<div class="fd"><label class="fl">Nom complet *</label><input class="ic" id="rcn" value="'+esc(it?it.name:'')+'" placeholder="Prénom Nom"></div>'
+      +'<div class="fd"><label class="fl">Statut</label><select class="ic" id="rcst">'+stOpts+'</select></div>'
+      +'<div class="fd"><label class="fl">Email</label><input class="ic" id="rce" type="email" value="'+esc(it?it.email:'')+'" placeholder="candidat@email.com"></div>'
+      +'<div class="fd"><label class="fl">Téléphone</label><input class="ic" id="rcph" value="'+esc(it?it.phone:'')+'" placeholder="06 12 34 56 78"></div>'
+      +'<div class="fd"><label class="fl">Date de disponibilité</label><input class="ic" id="rcav" type="date" value="'+(it?esc(it.availDate||''):'')+'"></div>'
+      +'<div class="fd"><label class="fl">Années d\u2019expérience</label><input class="ic" id="rcyrs" type="number" min="0" step="0.5" value="'+(it&&it.yearsExp?esc(String(it.yearsExp)):'')+'" placeholder="5"></div>'
+      +'<div class="fd"><label class="fl">Date de rencontre client</label><input class="ic" id="rccmd" type="date" value="'+(it?esc(it.clientMeetDate||''):'')+'"></div>'
+      +'<div class="fd"><label class="fl">Date de rencontre CGI</label><input class="ic" id="rcgmd" type="date" value="'+(it?esc(it.cgiMeetDate||''):'')+'"></div>'
+      +'<div class="fd cs2"><label class="fl">Expertise IT et conseil (séparées par des virgules)</label><input class="ic" id="rcexp" value="'+esc(it&&it.expertise?it.expertise.join(', '):'')+'" placeholder="Java, AWS, Kubernetes, Gestion de projet, Finance..."></div>'
+      +'<div class="fd"><label class="fl">Rémunération annuelle demandée (€)</label><input class="ic" id="rcsal" type="number" min="0" step="500" value="'+(sal0||'')+'" oninput="recCalcRefresh()" placeholder="45000"></div>'
+      +'<div class="fd"><label class="fl">Marge cible TJM revente : <span id="rcMarVal" style="color:#2563eb;font-weight:800">'+mar0+'%</span></label>'
+      +'<input type="range" id="rcmar" min="15" max="50" step="1" value="'+mar0+'" oninput="recCalcRefresh()" style="width:100%;accent-color:#2563eb;margin-top:8px"></div>'
+      +'<div class="fd cs2" id="rcCalcOut" style="background:#eff6ff;border-radius:8px;padding:10px 14px;font-size:13px;color:#1e40af">'
+      +'SCR journalier : <strong>'+scr0.toFixed(0)+' €</strong> &nbsp;·&nbsp; TJM de revente (marge '+mar0+'%) : <strong>'+tjm0.toFixed(0)+' €</strong>'
+      +'</div>'
+      +'</div>'
+      +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="screc">'+(it?'Enregistrer':'Créer le candidat')+'</button></div>';
+  }
 
   if(tp==='consultant'){
     title=it?'Modifier le consultant':'Nouveau consultant';
@@ -1410,7 +1589,7 @@ function render(){
   S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
   var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;
   document.getElementById('sb').innerHTML=tSB();
-  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='imputations'?tImpute():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='profile'?tProfile():tParam();
+  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='imputations'?tImpute():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='profile'?tProfile():tParam();
   var _ini=function(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();};
   var _av=S._userEmail?_ini(S._userEmail.split('@')[0].replace(/[._]/g,' ')):'?';
   var _pfBtn='<div id="prof-btn" style="position:absolute;top:12px;right:14px;z-index:50">' 
@@ -1439,6 +1618,16 @@ function bind(){
   var ftf=el('fmt');if(ftf)ftf.onchange=function(){S.fmt=this.value;render();};
   var acc=el('act-cid');if(acc)acc.onchange=function(){S.actCid=this.value;render();};
   var lc=el('flc');if(lc)lc.onchange=function(){S.flc=this.value;render();};
+  var rq=el('recq');
+  if(rq){
+    rq.oninput=function(){
+      S.recF.q=this.value;
+      var pos=this.selectionStart;
+      render();
+      var rq2=document.getElementById('recq');
+      if(rq2){rq2.focus();try{rq2.setSelectionRange(pos,pos);}catch(_e){}}
+    };
+  }
   /* filtre directeur (gestionnaire) */
   var rcb=document.querySelectorAll('[data-dir]');
   for(var rk=0;rk<rcb.length;rk++){(function(cb){cb.onchange=function(){
@@ -1453,8 +1642,8 @@ function bind(){
   /* all data-act */
   var bs=document.querySelectorAll('[data-act]');
   for(var j=0;j<bs.length;j++){(function(b){
-    var a=b.getAttribute('data-act'),id=b.getAttribute('data-id');
-    b.onclick=function(e){
+    var a=b.getAttribute('data-act'),id=b.getAttribute('data-id'),fb=b.getAttribute('data-fb');
+    b.onclick=async function(e){
       e.stopPropagation();
       if(a==='export'){exportJSON();return;}
       else if(a==='lvc'){S.flc=id;render();return;}
@@ -1530,6 +1719,84 @@ function bind(){
         else{nl={id:uid(),cid:lci,type:lt,s:ls,e:le};S.lvs=S.lvs.concat([nl]);}
         sbUpsertLeave(nl);
         S.modal=null;render();
+      }
+      /* ════════════════════ RECRUTEMENT ════════════════════ */
+      else if(a==='arec'){S.modal={type:'candidate',item:null};render();}
+      else if(a==='erec'){S.modal={type:'candidate',item:S.cands.find(function(c){return c.id===id;})};render();}
+      else if(a==='drec'){
+        var cdDel=S.cands.find(function(c){return c.id===id;});
+        if(cdDel&&confirm('Supprimer le candidat '+cdDel.name+' ?\nCette action supprime aussi tous ses retours clients. Irr\u00e9versible.')){
+          S.cands=S.cands.filter(function(c){return c.id!==id;});
+          if(S.recSel===id)S.recSel=null;
+          sbDel('candidates',id);
+          render();
+        }
+      }
+      else if(a==='screc'){
+        var rn=gv('rcn');
+        if(!rn){alert('Le nom du candidat est obligatoire.');return;}
+        var expRaw=gv('rcexp');
+        var expArr=expRaw?expRaw.split(',').map(function(x){return x.trim();}).filter(Boolean):[];
+        var marEl=document.getElementById('rcmar');
+        var cfields={
+          name:rn,email:gv('rce'),phone:gv('rcph'),
+          availDate:gv('rcav')||'',reqSalary:+gv('rcsal')||0,
+          yearsExp:+gv('rcyrs')||0,expertise:expArr,
+          clientMeetDate:gv('rccmd')||'',cgiMeetDate:gv('rcgmd')||'',
+          marginPct:marEl?+marEl.value:25,status:gv('rcst')||'nouveau'
+        };
+        var itC=S.modal.item;
+        var ncand;
+        if(itC){
+          ncand=Object.assign({},itC,cfields);
+          S.cands=S.cands.map(function(c){return c.id===itC.id?ncand:c;});
+        }else{
+          ncand=Object.assign({id:uid(),createdBy:S._userEmail||'',feedbacks:[]},cfields);
+          S.cands=S.cands.concat([ncand]);
+        }
+        sbUpsertCand(ncand).catch(function(err){console.warn('sbUpsertCand:',err);alert('\u26a0 Erreur de synchronisation : '+err.message);});
+        S.modal=null;render();
+      }
+      else if(a==='recopen'){S.recSel=id;S.recAddFb=false;render();}
+      else if(a==='recback'){S.recSel=null;render();}
+      else if(a==='recf-st'){S.recF.status=id;render();}
+      else if(a==='recfbtoggle'){S.recAddFb=true;render();}
+      else if(a==='recfbcancel'){S.recAddFb=false;render();}
+      else if(a==='recfbadd'){
+        var fbTxt=gv('fbtext');
+        var fbFileEl=document.getElementById('fbfile');
+        var fbFile=(fbFileEl&&fbFileEl.files&&fbFileEl.files[0])?fbFileEl.files[0]:null;
+        if(!fbTxt&&!fbFile){alert('\u00c9crivez un retour ou joignez un fichier.');return;}
+        var cdFb=S.cands.find(function(c){return c.id===id;});
+        if(!cdFb)return;
+        var fbId=uid();
+        var entry={id:fbId,date:fD(new Date()),author:S._userEmail||'',text:fbTxt||''};
+        if(fbFile){
+          try{
+            var fpath=await uploadCandFile(fbFile,id,fbId);
+            entry.filePath=fpath;entry.fileName=fbFile.name;
+          }catch(upErr){alert('\u26a0 '+upErr.message);return;}
+        }
+        cdFb.feedbacks=(cdFb.feedbacks||[]).concat([entry]);
+        S.cands=S.cands.map(function(c){return c.id===id?cdFb:c;});
+        S.recAddFb=false;
+        sbUpsertCand(cdFb).catch(function(err){console.warn('sbUpsertCand fb:',err);});
+        render();
+      }
+      else if(a==='recfbdel'){
+        if(!confirm('Supprimer ce retour client ?'))return;
+        var cdFbD=S.cands.find(function(c){return c.id===id;});
+        if(!cdFbD)return;
+        cdFbD.feedbacks=(cdFbD.feedbacks||[]).filter(function(f){return f.id!==fb;});
+        S.cands=S.cands.map(function(c){return c.id===id?cdFbD:c;});
+        sbUpsertCand(cdFbD).catch(function(err){console.warn('sbUpsertCand fbdel:',err);});
+        render();
+      }
+      else if(a==='recfbdl'){
+        var cdFbV=S.cands.find(function(c){return c.id===id;});
+        if(!cdFbV)return;
+        var fbEntry=(cdFbV.feedbacks||[]).find(function(f){return f.id===fb;});
+        if(fbEntry&&fbEntry.filePath)downloadCandFile(fbEntry.filePath,fbEntry.fileName);
       }
       /* inviter / supprimer un directeur */
       else if(a==='inv-add'){
@@ -1611,7 +1878,7 @@ function bind(){
 var SKEY='esn_cgi_v1';
 
 function saveLocal(){
-  try{localStorage.setItem(SKEY,JSON.stringify({cons:S.cons,miss:S.miss,lvs:S.lvs}));}
+  try{localStorage.setItem(SKEY,JSON.stringify({cons:S.cons,miss:S.miss,lvs:S.lvs,cands:S.cands}));}
   catch(e){console.warn('localStorage indisponible',e);}
 }
 
@@ -1620,7 +1887,7 @@ function loadLocal(){
     var raw=localStorage.getItem(SKEY);
     if(!raw)return false;
     var d=JSON.parse(raw);
-    if(d&&d.cons&&d.cons.length){S.cons=d.cons;S.miss=d.miss||[];S.lvs=d.lvs||[];return true;}
+    if(d&&d.cons&&d.cons.length){S.cons=d.cons;S.miss=d.miss||[];S.lvs=d.lvs||[];S.cands=d.cands||[];return true;}
   }catch(e){}
   return false;
 }
@@ -1658,6 +1925,14 @@ function importJSON(file){
 function mapC(r){return{id:r.id,name:r.name,title:r.title||'',scr:r.scr||0,email:r.email||'',dir:r.directeur||'',arrive:r.arrive||null,depart:r.depart||null};}
 function mapM(r){return{id:r.id,cid:r.consultant_id,name:r.name,cli:r.client_name||'',tjm:r.tjm||0,sd:r.start_date,ed:r.end_date||null,loc:r.location||'',mgr:r.manager_name||'',ccn:r.client_contact_name||'',ccr:r.client_contact_role||'',pcode:r.code_projet||'',btype:r.billing_type||'at',wdays:(Array.isArray(r.work_days)?r.work_days:(r.work_days?String(r.work_days).split(',').map(Number):[1,2,3,4,5])),deal:r.deal_amount||0,tmar:(r.target_margin!=null?r.target_margin:null)};}
 function mapL(r){return{id:r.id,cid:r.consultant_id,type:r.type||'Congé payé',s:r.start_date,e:r.end_date};}
+function mapCand(r){return{
+  id:r.id,name:r.name,email:r.email||'',phone:r.phone||'',
+  availDate:r.avail_date||'',reqSalary:r.req_salary||0,
+  yearsExp:r.years_exp||0,expertise:Array.isArray(r.expertise)?r.expertise:[],
+  clientMeetDate:r.client_meet_date||'',cgiMeetDate:r.cgi_meet_date||'',
+  marginPct:(r.margin_pct!=null?r.margin_pct:25),status:r.status||'nouveau',
+  createdBy:r.created_by||'',feedbacks:Array.isArray(r.feedbacks)?r.feedbacks:[]
+};}
 
 async function loadSB(){
   if(!sb||!SB_CID)return false;
@@ -1669,15 +1944,19 @@ async function loadSB(){
     var cons=(cr.data||[]).map(mapC);
     var mq=sb.from('missions').select('*').eq('company_id',SB_CID);
     var lq=sb.from('leaves').select('*').eq('company_id',SB_CID);
+    /* Recrutement : TOUJOURS visible pour toute l'entreprise, quel que soit le rôle
+       ou le directeur connecté \u2014 jamais filtré par équipe */
+    var rq=sb.from('candidates').select('*').eq('company_id',SB_CID).order('created_at',{ascending:false});
     if(S.role==='directeur'){
       var ids=cons.map(function(c){return c.id;});
       if(!ids.length){S.cons=[];S.miss=[];S.lvs=[];return false;}
       mq=mq.in('consultant_id',ids);lq=lq.in('consultant_id',ids);
     }
-    var res=await Promise.all([mq,lq]);
+    var res=await Promise.all([mq,lq,rq]);
     S.cons=cons;
     if(res[0].data)S.miss=res[0].data.map(mapM);
     if(res[1].data)S.lvs=res[1].data.map(mapL);
+    if(res[2].data)S.cands=res[2].data.map(mapCand);
     return S.cons.length>0;
   }catch(e){console.warn('Supabase load error:',e);return false;}
 }
@@ -1697,6 +1976,45 @@ async function sbUpsertLeave(l){
   if(!sb||!SB_CID)return;
   var res=await sb.from('leaves').upsert({id:l.id,company_id:SB_CID,consultant_id:l.cid,type:l.type,start_date:l.s,end_date:l.e});
   if(res.error)throw new Error('Absence: '+res.error.message);
+}
+async function sbUpsertCand(c){
+  if(!sb)return;
+  if(!SB_CID)throw new Error('SB_CID null — reconnectez-vous');
+  var res=await sb.from('candidates').upsert({
+    id:c.id,company_id:SB_CID,name:c.name,email:c.email||null,phone:c.phone||null,
+    avail_date:c.availDate||null,req_salary:c.reqSalary||0,years_exp:c.yearsExp||0,
+    expertise:c.expertise||[],client_meet_date:c.clientMeetDate||null,cgi_meet_date:c.cgiMeetDate||null,
+    margin_pct:(c.marginPct!=null?c.marginPct:25),status:c.status||'nouveau',
+    created_by:c.createdBy||null,feedbacks:c.feedbacks||[]
+  });
+  if(res.error)throw new Error(c.name+': '+res.error.message);
+}
+/* ── Fichiers joints aux retours clients (Supabase Storage, bucket privé "candidate-files") ── */
+async function uploadCandFile(file,candId,fbId){
+  if(!sb||!SB_CID)throw new Error('Supabase non connect\u00e9.');
+  var safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  var path=SB_CID+'/'+candId+'/'+fbId+'_'+safeName;
+  var res=await sb.storage.from('candidate-files').upload(path,file,{upsert:true});
+  if(res.error)throw new Error('Upload fichier : '+res.error.message);
+  return path;
+}
+async function downloadCandFile(path,fileName){
+  if(!sb)return;
+  try{
+    var res=await sb.storage.from('candidate-files').createSignedUrl(path,3600);
+    if(res.error||!res.data){alert('Impossible de g\u00e9n\u00e9rer le lien de t\u00e9l\u00e9chargement : '+(res.error?res.error.message:''));return;}
+    window.open(res.data.signedUrl,'_blank');
+  }catch(e){alert('Erreur t\u00e9l\u00e9chargement : '+e.message);}
+}
+/* Recalcule SCR / TJM en direct dans le modal candidat (slider marge + r\u00e9mun\u00e9ration) */
+function recCalcRefresh(){
+  var sal=+gv('rcsal')||0;
+  var marEl=document.getElementById('rcmar');
+  var mar=marEl?+marEl.value:25;
+  var scr=recScr(sal),tjm=recTjm(sal,mar);
+  var mv=document.getElementById('rcMarVal');if(mv)mv.textContent=mar+'%';
+  var out=document.getElementById('rcCalcOut');
+  if(out)out.innerHTML='SCR journalier : <strong>'+scr.toFixed(0)+' \u20ac</strong> &nbsp;\u00b7&nbsp; TJM de revente (marge '+mar+'%) : <strong>'+tjm.toFixed(0)+' \u20ac</strong>';
 }
 async function sbDel(tbl,id){
   if(!sb)return;
@@ -1803,6 +2121,12 @@ async function initApp(){
               if(_localLvs.length){
                 S.lvs=S.lvs.concat(_localLvs);
                 _localLvs.forEach(function(l){sbUpsertLeave(l).catch(function(e){console.warn('merge-sync lv:',e);});});
+              }
+              var _sbCandIds=new Set(S.cands.map(function(c){return c.id;}));
+              var _localCands=(_d.cands||[]).filter(function(c){return !_sbCandIds.has(c.id);});
+              if(_localCands.length){
+                S.cands=S.cands.concat(_localCands);
+                _localCands.forEach(function(c){sbUpsertCand(c).catch(function(e){console.warn('merge-sync cand:',e);});});
               }
             }
           }
