@@ -378,7 +378,7 @@ var S={
   impView:'pl',
   impSelFY:'all',
   missImp:null,
-  recSel:null,recF:{status:'all',q:''},recAddMeet:false
+  recSel:null,recF:{status:'all',q:''},recAddMeet:false,recAddCgi:false
 };
 var H=fyHols(CFY);
 var SCR_FACTOR=113.35;  /* SCR x ce coefficient = salaire annuel sur le FY */
@@ -1449,7 +1449,6 @@ function tCandDetail(c){
     +info('Téléphone',esc(c.phone||'—'))
     +info('Expérience',c.yearsExp?c.yearsExp+' an'+(c.yearsExp>1?'s':''):'—')
     +info('Disponibilité',c.availDate?fDt(c.availDate):'—')
-    +info('Rencontre CGI',c.cgiMeetDate?fDt(c.cgiMeetDate):'—')
     +'</div>';
 
   var compCard='<div style="display:flex;gap:32px;flex-wrap:wrap;margin-top:18px;padding-top:18px;border-top:1px solid #e2e8f0">'
@@ -1463,6 +1462,34 @@ function tCandDetail(c){
     ? (c.compteRendu?'<div style="font-size:13px;color:#334155;white-space:pre-wrap;line-height:1.5;'+(c.compteRenduFilePath?'margin-bottom:8px':'')+'">'+esc(c.compteRendu)+'</div>':'')
       +(c.compteRenduFilePath?'<button class="lb" data-act="recmdl" data-id="'+c.id+'" data-fb="__cr">\uD83D\uDCCE '+esc(c.compteRenduFileName||'Fichier joint')+'</button>':'')
     : '<span style="color:#94a3b8;font-size:12px">Aucun compte rendu</span>';
+
+  /* ── Rencontre CGI : entrées multiples (personne CGI + date + compte rendu + fichier) ── */
+  var cgiMeets=(c.cgiMeetings||[]).slice().reverse();
+  var cgiMeetsHtml=cgiMeets.map(function(mt){
+    var hdr=[];
+    if(mt.date)hdr.push(fDt(mt.date));
+    if(mt.person)hdr.push(esc(mt.person));
+    return '<div style="padding:14px 16px;background:#f8fafc;border-radius:10px;margin-bottom:10px;border:1px solid #e2e8f0">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:10px">'
+      +'<div style="font-size:12px;color:#0f172a;font-weight:700">'+(hdr.join(' · ')||'Rencontre CGI')+'</div>'
+      +'<button class="lr" data-act="recgdel" data-id="'+c.id+'" data-fb="'+mt.id+'">Suppr.</button>'
+      +'</div>'
+      +(mt.text?'<div style="font-size:13px;color:#334155;white-space:pre-wrap;line-height:1.5">'+esc(mt.text)+'</div>':'')
+      +(mt.filePath?'<div style="margin-top:8px"><button class="lb" data-act="recgdl" data-id="'+c.id+'" data-fb="'+mt.id+'">\uD83D\uDCCE '+esc(mt.fileName||'Fichier joint')+'</button></div>':'')
+      +'</div>';
+  }).join('');
+
+  var addCgiForm=S.recAddCgi
+    ? '<div style="padding:16px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:14px">'
+      +'<div class="g2">'
+      +'<div class="fd"><label class="fl">Personne CGI rencontrée</label><input class="ic" id="cgperson" placeholder="Prénom Nom"></div>'
+      +'<div class="fd cs2"><label class="fl">Date de la rencontre</label><input class="ic" id="cgdate" type="date" value="'+fD(new Date())+'" style="max-width:220px"></div>'
+      +'</div>'
+      +'<div class="fd"><label class="fl">Compte rendu rencontre CGI</label><textarea class="ic" id="cgtext" rows="4" placeholder="Notes, retour de l\u2019échange..."></textarea></div>'
+      +'<div class="fd"><label class="fl">Joindre un fichier (Word, e-mail, PDF...) — optionnel</label><input class="ic" type="file" id="cgfile" accept=".doc,.docx,.pdf,.txt,.odt,.eml,.msg"></div>'
+      +'<div class="br"><button class="bg" data-act="recgcancel">Annuler</button><button class="bp" data-act="recgadd" data-id="'+c.id+'">Enregistrer la rencontre</button></div>'
+      +'</div>'
+    : '';
 
   /* ── Rencontre client : liste fusionnée (info de rencontre + compte-rendu + fichier), entrées multiples ── */
   var meets=(c.feedbacks||[]).slice().reverse();
@@ -1507,6 +1534,15 @@ function tCandDetail(c){
     +'<div style="margin-top:14px"><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Connaissance secteur</div>'+secHtml+'</div>'
     +'<div style="margin-top:14px"><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Compte rendu</div>'+crHtml+'</div>'
     +compCard+'</div>'
+
+    +'<div class="card" style="padding:24px;margin-bottom:18px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+    +'<div style="font-size:13px;font-weight:800;color:#0f172a">Rencontre CGI ('+(c.cgiMeetings||[]).length+')</div>'
+    +(!S.recAddCgi?'<button class="bp" data-act="recgtoggle">+ Ajouter une rencontre</button>':'')
+    +'</div>'
+    +addCgiForm
+    +(cgiMeetsHtml||'<div class="emp">Aucune rencontre CGI enregistrée pour le moment.</div>')
+    +'</div>'
 
     +'<div class="card" style="padding:24px">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
@@ -1637,7 +1673,6 @@ function tModal(){
       +'<div class="fd"><label class="fl">Téléphone</label><input class="ic" id="rcph" value="'+esc(it?it.phone:'')+'" placeholder="06 12 34 56 78"></div>'
       +'<div class="fd"><label class="fl">Date de disponibilité</label><input class="ic" id="rcav" type="date" value="'+(it?esc(it.availDate||''):'')+'"></div>'
       +'<div class="fd"><label class="fl">Années d\u2019expérience</label><input class="ic" id="rcyrs" type="number" min="0" step="0.5" value="'+(it&&it.yearsExp?esc(String(it.yearsExp)):'')+'" placeholder="5"></div>'
-      +'<div class="fd"><label class="fl">Date de rencontre CGI</label><input class="ic" id="rcgmd" type="date" value="'+(it?esc(it.cgiMeetDate||''):'')+'"></div>'
       +'<div class="fd cs2"><label class="fl">Expertises</label><div id="exp-wrap">'+expPickerHTML()+'</div></div>'
       +'<div class="fd cs2"><label class="fl">Connaissance secteur</label><div id="sec-wrap">'+secPickerHTML()+'</div></div>'
       +'<div class="fd cs2"><label class="fl">Compte rendu</label><textarea class="ic" id="rccr" rows="4" placeholder="Notes générales sur le candidat (CV, premier échange...)">'+esc(it?it.compteRendu||'':'')+'</textarea></div>'
@@ -1765,7 +1800,7 @@ function bind(){
   var nbs=document.querySelectorAll('[data-nav]');
   for(var i=0;i<nbs.length;i++){(function(b){b.onclick=function(){
     var nv=b.getAttribute('data-nav');
-    if(nv==='recrutement'){S.recSel=null;S.recAddMeet=false;}
+    if(nv==='recrutement'){S.recSel=null;S.recAddMeet=false;S.recAddCgi=false;}
     S.tab=nv;render();
   };})(nbs[i]);}
   /* filters */
@@ -1790,7 +1825,7 @@ function bind(){
       if(!t)return;
       var ra=t.getAttribute('data-act'),rid=t.getAttribute('data-id');
       if(ra==='recf-st'){S.recF.status=rid;recListRefresh();}
-      else if(ra==='recopen'){S.recSel=rid;S.recAddMeet=false;render();}
+      else if(ra==='recopen'){S.recSel=rid;S.recAddMeet=false;S.recAddCgi=false;render();}
     };
   }
   /* widgets multi-sélection Expertises / Secteurs (uniquement si le modal candidat est ouvert) */
@@ -1930,7 +1965,6 @@ function bind(){
           availDate:gv('rcav')||'',reqSalary:+gv('rcsal')||0,
           yearsExp:+gv('rcyrs')||0,expertise:expArr,sectors:secArr,
           compteRendu:gv('rccr'),compteRenduFilePath:crFilePath,compteRenduFileName:crFileName,
-          cgiMeetDate:gv('rcgmd')||'',
           marginPct:marEl?+marEl.value:25,status:gv('rcst')||'nouveau'
         };
         var ncand;
@@ -1938,13 +1972,13 @@ function bind(){
           ncand=Object.assign({},itC,cfields);
           S.cands=S.cands.map(function(c){return c.id===itC.id?ncand:c;});
         }else{
-          ncand=Object.assign({id:candId,createdBy:S._userEmail||'',feedbacks:[]},cfields);
+          ncand=Object.assign({id:candId,createdBy:S._userEmail||'',feedbacks:[],cgiMeetings:[]},cfields);
           S.cands=S.cands.concat([ncand]);
         }
         sbUpsertCand(ncand).catch(function(err){console.warn('sbUpsertCand:',err);alert('\u26a0 Erreur de synchronisation : '+err.message);});
         S.modal=null;render();
       }
-      else if(a==='recback'){S.recSel=null;S.recAddMeet=false;render();}
+      else if(a==='recback'){S.recSel=null;S.recAddMeet=false;S.recAddCgi=false;render();}
       else if(a==='recmtoggle'){S.recAddMeet=true;render();}
       else if(a==='recmcancel'){S.recAddMeet=false;render();}
       else if(a==='recmadd'){
@@ -1986,6 +2020,44 @@ function bind(){
         }
         var mtEntry=(cdMv.feedbacks||[]).find(function(f){return f.id===fb;});
         if(mtEntry&&mtEntry.filePath)downloadCandFile(mtEntry.filePath,mtEntry.fileName);
+      }
+      else if(a==='recgtoggle'){S.recAddCgi=true;render();}
+      else if(a==='recgcancel'){S.recAddCgi=false;render();}
+      else if(a==='recgadd'){
+        var cgPerson=gv('cgperson'),cgDate=gv('cgdate')||fD(new Date()),cgTxt=gv('cgtext');
+        var cgFileEl=document.getElementById('cgfile');
+        var cgFile=(cgFileEl&&cgFileEl.files&&cgFileEl.files[0])?cgFileEl.files[0]:null;
+        if(!cgPerson&&!cgTxt&&!cgFile){alert('Renseignez au moins la personne rencontrée, un compte rendu ou un fichier.');return;}
+        var cdG=S.cands.find(function(c){return c.id===id;});
+        if(!cdG)return;
+        var cgId=uid();
+        var gentry={id:cgId,date:cgDate,person:cgPerson,author:S._userEmail||'',text:cgTxt||''};
+        if(cgFile){
+          try{
+            var gpath=await uploadCandFile(cgFile,id,cgId);
+            gentry.filePath=gpath;gentry.fileName=cgFile.name;
+          }catch(upErr){alert('\u26a0 '+upErr.message);return;}
+        }
+        cdG.cgiMeetings=(cdG.cgiMeetings||[]).concat([gentry]);
+        S.cands=S.cands.map(function(c){return c.id===id?cdG:c;});
+        S.recAddCgi=false;
+        sbUpsertCand(cdG).catch(function(err){console.warn('sbUpsertCand cgi:',err);alert('\u26a0 Erreur de synchronisation : '+err.message);});
+        render();
+      }
+      else if(a==='recgdel'){
+        if(!confirm('Supprimer cette rencontre CGI ?'))return;
+        var cdGd=S.cands.find(function(c){return c.id===id;});
+        if(!cdGd)return;
+        cdGd.cgiMeetings=(cdGd.cgiMeetings||[]).filter(function(f){return f.id!==fb;});
+        S.cands=S.cands.map(function(c){return c.id===id?cdGd:c;});
+        sbUpsertCand(cdGd).catch(function(err){console.warn('sbUpsertCand cgidel:',err);});
+        render();
+      }
+      else if(a==='recgdl'){
+        var cdGv=S.cands.find(function(c){return c.id===id;});
+        if(!cdGv)return;
+        var gEntry=(cdGv.cgiMeetings||[]).find(function(f){return f.id===fb;});
+        if(gEntry&&gEntry.filePath)downloadCandFile(gEntry.filePath,gEntry.fileName);
       }
       /* inviter / supprimer un directeur */
       else if(a==='inv-add'){
@@ -2120,7 +2192,7 @@ function mapCand(r){return{
   yearsExp:r.years_exp||0,expertise:Array.isArray(r.expertise)?r.expertise:[],
   sectors:Array.isArray(r.sectors)?r.sectors:[],
   compteRendu:r.compte_rendu||'',compteRenduFilePath:r.compte_rendu_file_path||'',compteRenduFileName:r.compte_rendu_file_name||'',
-  cgiMeetDate:r.cgi_meet_date||'',
+  cgiMeetings:Array.isArray(r.cgi_meetings)?r.cgi_meetings:[],
   marginPct:(r.margin_pct!=null?r.margin_pct:25),status:r.status||'nouveau',
   createdBy:r.created_by||'',feedbacks:Array.isArray(r.feedbacks)?r.feedbacks:[]
 };}
@@ -2176,7 +2248,7 @@ async function sbUpsertCand(c){
     avail_date:c.availDate||null,req_salary:c.reqSalary||0,years_exp:c.yearsExp||0,
     expertise:c.expertise||[],sectors:c.sectors||[],
     compte_rendu:c.compteRendu||null,compte_rendu_file_path:c.compteRenduFilePath||null,compte_rendu_file_name:c.compteRenduFileName||null,
-    cgi_meet_date:c.cgiMeetDate||null,
+    cgi_meetings:c.cgiMeetings||[],
     margin_pct:(c.marginPct!=null?c.marginPct:25),status:c.status||'nouveau',
     created_by:c.createdBy||null,feedbacks:c.feedbacks||[]
   });
