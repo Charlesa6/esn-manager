@@ -378,7 +378,8 @@ var S={
   impView:'pl',
   impSelFY:'all',
   missImp:null,
-  recSel:null,recF:{status:'all',q:''},recAddMeet:false,recAddCgi:false
+  recSel:null,recF:{status:'all',q:'',loc:'all'},recAddMeet:false,recAddCgi:false,recAddCv:false,
+  recEditMeetId:null,recEditCgiId:null
 };
 var H=fyHols(CFY);
 var SCR_FACTOR=113.35;  /* SCR x ce coefficient = salaire annuel sur le FY */
@@ -418,6 +419,8 @@ var SECTOR_LIST=[
   'M\u00e9dias & T\u00e9l\u00e9communications','Pharma & Sant\u00e9','Public / Administration','Services',
   'Tourisme & H\u00f4tellerie','Transport & Logistique'
 ].sort(function(a,b){return a.localeCompare(b,'fr');});
+
+var REC_LOCATIONS=['Lyon','Grenoble','Clermont-Ferrand','Dijon'];
 
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    SVG BAR CHART
@@ -1370,8 +1373,10 @@ function tRecrut(){
 function recListBody(){
   var q=(S.recF.q||'').toLowerCase().trim();
   var stF=S.recF.status||'all';
+  var locF=S.recF.loc||'all';
   var list=S.cands.filter(function(c){
     if(stF!=='all'&&c.status!==stF)return false;
+    if(locF!=='all'&&(c.location||'')!==locF)return false;
     if(q){
       var hay=(c.name+' '+(c.expertise||[]).join(' ')+' '+(c.email||'')).toLowerCase();
       if(hay.indexOf(q)<0)return false;
@@ -1402,6 +1407,7 @@ function recListBody(){
       +'<td style="font-weight:700;color:#0f172a">'+esc(c.name)+'</td>'
       +'<td>'+(expHtml||'<span style="color:#cbd5e1">—</span>')+'</td>'
       +'<td>'+(secHtml||'<span style="color:#cbd5e1">—</span>')+'</td>'
+      +'<td>'+esc(c.location||'—')+'</td>'
       +'<td>'+(c.availDate?fDt(c.availDate):'—')+'</td>'
       +'<td class="tr">'+(c.reqSalary?c.reqSalary.toLocaleString('fr-FR')+' €':'—')+'</td>'
       +'<td class="tr">'+(scr?scr.toFixed(0)+' €/j':'—')+'</td>'
@@ -1413,8 +1419,8 @@ function recListBody(){
 
   return '<div>'+pills+'</div>'
     +'<div class="card ov" style="margin-top:14px">'
-    +'<table><thead><tr><th>Nom</th><th>Expertise</th><th>Secteurs</th><th>Disponibilité</th><th class="tr">Rém. demandée</th><th class="tr">SCR/j</th><th class="tr">TJM revente</th><th>Statut</th><th>Ajouté par</th></tr></thead>'
-    +'<tbody>'+rows+(rows?'':'<tr><td colspan="9" class="emp">Aucun candidat'+(q||stF!=='all'?' ne correspond aux filtres.':' pour le moment. Cliquez « + Nouveau candidat » pour commencer.')+'</td></tr>')
+    +'<table><thead><tr><th>Nom</th><th>Expertise</th><th>Secteurs</th><th>Localisation</th><th>Disponibilité</th><th class="tr">Rém. demandée</th><th class="tr">SCR/j</th><th class="tr">TJM revente</th><th>Statut</th><th>Ajouté par</th></tr></thead>'
+    +'<tbody>'+rows+(rows?'':'<tr><td colspan="10" class="emp">Aucun candidat'+(q||stF!=='all'||locF!=='all'?' ne correspond aux filtres.':' pour le moment. Cliquez « + Nouveau candidat » pour commencer.')+'</td></tr>')
     +'</tbody></table></div>';
 }
 /* Rafraîchit uniquement les pills + le tableau, sans toucher au champ de recherche
@@ -1425,10 +1431,15 @@ function recListRefresh(){
 }
 
 function tRecList(){
+  var locOpts='<option value="all">Toutes localisations</option>'
+    +REC_LOCATIONS.map(function(l){return '<option value="'+esc(l)+'"'+(S.recF.loc===l?' selected':'')+'>'+esc(l)+'</option>';}).join('');
   return '<div><div class="ph"><div><div class="pt">Recrutement</div>'
     +'<div class="ps">'+S.cands.length+' candidat'+(S.cands.length!==1?'s':'')+' · pipeline partagé entreprise, visible par tous les directeurs</div></div>'
     +'<button class="bp" data-act="arec">+ Nouveau candidat</button></div>'
-    +'<div style="margin-bottom:14px"><input class="ic" id="recq" placeholder="Rechercher un candidat, une expertise, un email..." value="'+esc(S.recF.q||'')+'" style="max-width:360px"></div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">'
+    +'<input class="ic" id="recq" placeholder="Rechercher un candidat, une expertise, un email..." value="'+esc(S.recF.q||'')+'" style="max-width:360px;flex:1">'
+    +'<select class="ic" id="recloc-filter" style="max-width:200px">'+locOpts+'</select>'
+    +'</div>'
     +'<div id="rec-list-wrap">'+recListBody()+'</div></div>';
 }
 
@@ -1447,6 +1458,8 @@ function tCandDetail(c){
   var infoGrid='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px 24px">'
     +info('Email',esc(c.email||'—'))
     +info('Téléphone',esc(c.phone||'—'))
+    +info('Localisation',esc(c.location||'—'))
+    +info('Nationalité',esc(c.nationality||'—'))
     +info('Expérience',c.yearsExp?c.yearsExp+' an'+(c.yearsExp>1?'s':''):'—')
     +info('Disponibilité',c.availDate?fDt(c.availDate):'—')
     +'</div>';
@@ -1463,7 +1476,7 @@ function tCandDetail(c){
       +(c.compteRenduFilePath?'<button class="lb" data-act="recmdl" data-id="'+c.id+'" data-fb="__cr">\uD83D\uDCCE '+esc(c.compteRenduFileName||'Fichier joint')+'</button>':'')
     : '<span style="color:#94a3b8;font-size:12px">Aucun compte rendu</span>';
 
-  /* ── Rencontre CGI : entrées multiples (personne CGI + date + compte rendu + fichier) ── */
+  /* ── Rencontre CGI : entrées multiples (personne CGI + date + compte rendu + fichier), éditables ── */
   var cgiMeets=(c.cgiMeetings||[]).slice().reverse();
   var cgiMeetsHtml=cgiMeets.map(function(mt){
     var hdr=[];
@@ -1472,26 +1485,32 @@ function tCandDetail(c){
     return '<div style="padding:14px 16px;background:#f8fafc;border-radius:10px;margin-bottom:10px;border:1px solid #e2e8f0">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:10px">'
       +'<div style="font-size:12px;color:#0f172a;font-weight:700">'+(hdr.join(' · ')||'Rencontre CGI')+'</div>'
+      +'<div style="display:flex;gap:10px;flex-shrink:0">'
+      +'<button class="lb" data-act="recgedit" data-id="'+c.id+'" data-fb="'+mt.id+'">Modifier</button>'
       +'<button class="lr" data-act="recgdel" data-id="'+c.id+'" data-fb="'+mt.id+'">Suppr.</button>'
-      +'</div>'
+      +'</div></div>'
       +(mt.text?'<div style="font-size:13px;color:#334155;white-space:pre-wrap;line-height:1.5">'+esc(mt.text)+'</div>':'')
       +(mt.filePath?'<div style="margin-top:8px"><button class="lb" data-act="recgdl" data-id="'+c.id+'" data-fb="'+mt.id+'">\uD83D\uDCCE '+esc(mt.fileName||'Fichier joint')+'</button></div>':'')
       +'</div>';
   }).join('');
 
-  var addCgiForm=S.recAddCgi
+  var editingCgi=S.recEditCgiId?(c.cgiMeetings||[]).find(function(f){return f.id===S.recEditCgiId;}):null;
+  var cgiFormOpen=S.recAddCgi||!!editingCgi;
+  var addCgiForm=cgiFormOpen
     ? '<div style="padding:16px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:14px">'
+      +(editingCgi?'<div style="font-size:11px;color:#2563eb;font-weight:700;margin-bottom:10px">\u2710 Modification d\u2019une rencontre existante</div>':'')
       +'<div class="g2">'
-      +'<div class="fd"><label class="fl">Personne CGI rencontrée</label><input class="ic" id="cgperson" placeholder="Prénom Nom"></div>'
-      +'<div class="fd cs2"><label class="fl">Date de la rencontre</label><input class="ic" id="cgdate" type="date" value="'+fD(new Date())+'" style="max-width:220px"></div>'
+      +'<div class="fd"><label class="fl">Personne CGI rencontrée</label><input class="ic" id="cgperson" value="'+esc(editingCgi?editingCgi.person||'':'')+'" placeholder="Prénom Nom"></div>'
+      +'<div class="fd cs2"><label class="fl">Date de la rencontre</label><input class="ic" id="cgdate" type="date" value="'+esc(editingCgi?editingCgi.date||'':fD(new Date()))+'" style="max-width:220px"></div>'
       +'</div>'
-      +'<div class="fd"><label class="fl">Compte rendu rencontre CGI</label><textarea class="ic" id="cgtext" rows="4" placeholder="Notes, retour de l\u2019échange..."></textarea></div>'
-      +'<div class="fd"><label class="fl">Joindre un fichier (Word, e-mail, PDF...) — optionnel</label><input class="ic" type="file" id="cgfile" accept=".doc,.docx,.pdf,.txt,.odt,.eml,.msg"></div>'
-      +'<div class="br"><button class="bg" data-act="recgcancel">Annuler</button><button class="bp" data-act="recgadd" data-id="'+c.id+'">Enregistrer la rencontre</button></div>'
+      +'<div class="fd"><label class="fl">Compte rendu rencontre CGI</label><textarea class="ic" id="cgtext" rows="4" placeholder="Notes, retour de l\u2019échange...">'+esc(editingCgi?editingCgi.text||'':'')+'</textarea></div>'
+      +'<div class="fd"><label class="fl">Joindre un fichier (Word, e-mail, PDF...) — optionnel</label><input class="ic" type="file" id="cgfile" accept=".doc,.docx,.pdf,.txt,.odt,.eml,.msg">'
+      +(editingCgi&&editingCgi.fileName?'<p class="fh">Fichier actuel : '+esc(editingCgi.fileName)+' — sélectionnez un nouveau fichier pour le remplacer.</p>':'')+'</div>'
+      +'<div class="br"><button class="bg" data-act="recgcancel">Annuler</button><button class="bp" data-act="recgsave" data-id="'+c.id+'"'+(editingCgi?' data-fb="'+editingCgi.id+'"':'')+'>'+(editingCgi?'Enregistrer les modifications':'Enregistrer la rencontre')+'</button></div>'
       +'</div>'
     : '';
 
-  /* ── Rencontre client : liste fusionnée (info de rencontre + compte-rendu + fichier), entrées multiples ── */
+  /* ── Rencontre client : liste fusionnée (info de rencontre + compte-rendu + fichier), entrées multiples, éditables ── */
   var meets=(c.feedbacks||[]).slice().reverse();
   var meetsHtml=meets.map(function(mt){
     var hdr=[];
@@ -1501,23 +1520,43 @@ function tCandDetail(c){
     return '<div style="padding:14px 16px;background:#f8fafc;border-radius:10px;margin-bottom:10px;border:1px solid #e2e8f0">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:10px">'
       +'<div style="font-size:12px;color:#0f172a;font-weight:700">'+(hdr.join(' · ')||'Rencontre')+'</div>'
+      +'<div style="display:flex;gap:10px;flex-shrink:0">'
+      +'<button class="lb" data-act="recmedit" data-id="'+c.id+'" data-fb="'+mt.id+'">Modifier</button>'
       +'<button class="lr" data-act="recmdel" data-id="'+c.id+'" data-fb="'+mt.id+'">Suppr.</button>'
-      +'</div>'
+      +'</div></div>'
       +(mt.text?'<div style="font-size:13px;color:#334155;white-space:pre-wrap;line-height:1.5">'+esc(mt.text)+'</div>':'')
       +(mt.filePath?'<div style="margin-top:8px"><button class="lb" data-act="recmdl" data-id="'+c.id+'" data-fb="'+mt.id+'">\uD83D\uDCCE '+esc(mt.fileName||'Fichier joint')+'</button></div>':'')
       +'</div>';
   }).join('');
 
-  var addMeetForm=S.recAddMeet
+  var editingMeet=S.recEditMeetId?(c.feedbacks||[]).find(function(f){return f.id===S.recEditMeetId;}):null;
+  var meetFormOpen=S.recAddMeet||!!editingMeet;
+  var addMeetForm=meetFormOpen
     ? '<div style="padding:16px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:14px">'
+      +(editingMeet?'<div style="font-size:11px;color:#2563eb;font-weight:700;margin-bottom:10px">\u2710 Modification d\u2019une rencontre existante</div>':'')
       +'<div class="g2">'
-      +'<div class="fd"><label class="fl">Client rencontré</label><input class="ic" id="mtcli" placeholder="Nom du client"></div>'
-      +'<div class="fd"><label class="fl">Opérationnel rencontré</label><input class="ic" id="mtcon" placeholder="Prénom Nom"></div>'
-      +'<div class="fd cs2"><label class="fl">Date de la rencontre</label><input class="ic" id="mtdate" type="date" value="'+fD(new Date())+'" style="max-width:220px"></div>'
+      +'<div class="fd"><label class="fl">Client rencontré</label><input class="ic" id="mtcli" value="'+esc(editingMeet?editingMeet.client||'':'')+'" placeholder="Nom du client"></div>'
+      +'<div class="fd"><label class="fl">Opérationnel rencontré</label><input class="ic" id="mtcon" value="'+esc(editingMeet?editingMeet.contact||'':'')+'" placeholder="Prénom Nom"></div>'
+      +'<div class="fd cs2"><label class="fl">Date de la rencontre</label><input class="ic" id="mtdate" type="date" value="'+esc(editingMeet?editingMeet.date||'':fD(new Date()))+'" style="max-width:220px"></div>'
       +'</div>'
-      +'<div class="fd"><label class="fl">Compte rendu</label><textarea class="ic" id="mttext" rows="4" placeholder="Notes, retour de l\u2019entretien..."></textarea></div>'
-      +'<div class="fd"><label class="fl">Joindre un fichier (Word, PDF...) — optionnel</label><input class="ic" type="file" id="mtfile" accept=".doc,.docx,.pdf,.txt,.odt"></div>'
-      +'<div class="br"><button class="bg" data-act="recmcancel">Annuler</button><button class="bp" data-act="recmadd" data-id="'+c.id+'">Enregistrer la rencontre</button></div>'
+      +'<div class="fd"><label class="fl">Compte rendu</label><textarea class="ic" id="mttext" rows="4" placeholder="Notes, retour de l\u2019entretien...">'+esc(editingMeet?editingMeet.text||'':'')+'</textarea></div>'
+      +'<div class="fd"><label class="fl">Joindre un fichier (Word, PDF...) — optionnel</label><input class="ic" type="file" id="mtfile" accept=".doc,.docx,.pdf,.txt,.odt">'
+      +(editingMeet&&editingMeet.fileName?'<p class="fh">Fichier actuel : '+esc(editingMeet.fileName)+' — sélectionnez un nouveau fichier pour le remplacer.</p>':'')+'</div>'
+      +'<div class="br"><button class="bg" data-act="recmcancel">Annuler</button><button class="bp" data-act="recmsave" data-id="'+c.id+'"'+(editingMeet?' data-fb="'+editingMeet.id+'"':'')+'>'+(editingMeet?'Enregistrer les modifications':'Enregistrer la rencontre')+'</button></div>'
+      +'</div>'
+    : '';
+
+  /* ── CV : un ou plusieurs fichiers, importables depuis la fiche également ── */
+  var cvHtml=(c.cvFiles||[]).map(function(cv){
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#f8fafc;border-radius:8px;margin-bottom:6px;border:1px solid #e2e8f0">'
+      +'<button class="lb" data-act="reccvdl" data-id="'+c.id+'" data-fb="'+cv.id+'">\uD83D\uDCCE '+esc(cv.fileName)+'</button>'
+      +'<button class="lr" data-act="reccvdel" data-id="'+c.id+'" data-fb="'+cv.id+'">Suppr.</button>'
+      +'</div>';
+  }).join('');
+  var addCvForm=S.recAddCv
+    ? '<div style="padding:16px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:14px">'
+      +'<div class="fd"><label class="fl">Ajouter un ou plusieurs CV</label><input class="ic" type="file" id="cvfile" accept=".pdf,.doc,.docx,.odt" multiple></div>'
+      +'<div class="br"><button class="bg" data-act="reccvcancel">Annuler</button><button class="bp" data-act="reccvadd" data-id="'+c.id+'">Importer</button></div>'
       +'</div>'
     : '';
 
@@ -1537,8 +1576,17 @@ function tCandDetail(c){
 
     +'<div class="card" style="padding:24px;margin-bottom:18px">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+    +'<div style="font-size:13px;font-weight:800;color:#0f172a">CV ('+(c.cvFiles||[]).length+')</div>'
+    +(!S.recAddCv?'<button class="bp" data-act="reccvtoggle">+ Ajouter un CV</button>':'')
+    +'</div>'
+    +addCvForm
+    +(cvHtml||'<div class="emp">Aucun CV importé pour le moment.</div>')
+    +'</div>'
+
+    +'<div class="card" style="padding:24px;margin-bottom:18px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
     +'<div style="font-size:13px;font-weight:800;color:#0f172a">Rencontre CGI ('+(c.cgiMeetings||[]).length+')</div>'
-    +(!S.recAddCgi?'<button class="bp" data-act="recgtoggle">+ Ajouter une rencontre</button>':'')
+    +(!cgiFormOpen?'<button class="bp" data-act="recgtoggle">+ Ajouter une rencontre</button>':'')
     +'</div>'
     +addCgiForm
     +(cgiMeetsHtml||'<div class="emp">Aucune rencontre CGI enregistrée pour le moment.</div>')
@@ -1547,7 +1595,7 @@ function tCandDetail(c){
     +'<div class="card" style="padding:24px">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
     +'<div style="font-size:13px;font-weight:800;color:#0f172a">Rencontre client ('+(c.feedbacks||[]).length+')</div>'
-    +(!S.recAddMeet?'<button class="bp" data-act="recmtoggle">+ Ajouter une rencontre</button>':'')
+    +(!meetFormOpen?'<button class="bp" data-act="recmtoggle">+ Ajouter une rencontre</button>':'')
     +'</div>'
     +addMeetForm
     +(meetsHtml||'<div class="emp">Aucune rencontre client enregistrée pour le moment.</div>')
@@ -1671,10 +1719,16 @@ function tModal(){
       +'<div class="fd"><label class="fl">Statut</label><select class="ic" id="rcst">'+stOpts+'</select></div>'
       +'<div class="fd"><label class="fl">Email</label><input class="ic" id="rce" type="email" value="'+esc(it?it.email:'')+'" placeholder="candidat@email.com"></div>'
       +'<div class="fd"><label class="fl">Téléphone</label><input class="ic" id="rcph" value="'+esc(it?it.phone:'')+'" placeholder="06 12 34 56 78"></div>'
+      +'<div class="fd"><label class="fl">Localisation</label><select class="ic" id="rcloc"><option value="">— Non renseignée —</option>'
+      +REC_LOCATIONS.map(function(l){return '<option value="'+esc(l)+'"'+(it&&it.location===l?' selected':'')+'>'+esc(l)+'</option>';}).join('')
+      +'</select></div>'
+      +'<div class="fd"><label class="fl">Nationalité</label><input class="ic" id="rcnat" value="'+esc(it?it.nationality||'':'')+'" placeholder="Française"></div>'
       +'<div class="fd"><label class="fl">Date de disponibilité</label><input class="ic" id="rcav" type="date" value="'+(it?esc(it.availDate||''):'')+'"></div>'
       +'<div class="fd"><label class="fl">Années d\u2019expérience</label><input class="ic" id="rcyrs" type="number" min="0" step="0.5" value="'+(it&&it.yearsExp?esc(String(it.yearsExp)):'')+'" placeholder="5"></div>'
       +'<div class="fd cs2"><label class="fl">Expertises</label><div id="exp-wrap">'+expPickerHTML()+'</div></div>'
       +'<div class="fd cs2"><label class="fl">Connaissance secteur</label><div id="sec-wrap">'+secPickerHTML()+'</div></div>'
+      +'<div class="fd cs2"><label class="fl">CV — un ou plusieurs fichiers</label><input class="ic" type="file" id="rccv" accept=".pdf,.doc,.docx,.odt" multiple>'
+      +(it&&it.cvFiles&&it.cvFiles.length?'<p class="fh">'+it.cvFiles.length+' CV déjà joint(s) — les nouveaux fichiers s\u2019ajouteront aux existants (gérable depuis la fiche).</p>':'<p class="fh">Plusieurs fichiers peuvent être sélectionnés en même temps.</p>')+'</div>'
       +'<div class="fd cs2"><label class="fl">Compte rendu</label><textarea class="ic" id="rccr" rows="4" placeholder="Notes générales sur le candidat (CV, premier échange...)">'+esc(it?it.compteRendu||'':'')+'</textarea></div>'
       +'<div class="fd cs2"><label class="fl">Joindre un fichier (Word, PDF...) — optionnel</label><input class="ic" type="file" id="rccrfile" accept=".doc,.docx,.pdf,.txt,.odt">'
       +(it&&it.compteRenduFileName?'<p class="fh">Fichier actuel : '+esc(it.compteRenduFileName)+' — sélectionnez un nouveau fichier pour le remplacer.</p>':'')+'</div>'
@@ -1800,7 +1854,7 @@ function bind(){
   var nbs=document.querySelectorAll('[data-nav]');
   for(var i=0;i<nbs.length;i++){(function(b){b.onclick=function(){
     var nv=b.getAttribute('data-nav');
-    if(nv==='recrutement'){S.recSel=null;S.recAddMeet=false;S.recAddCgi=false;}
+    if(nv==='recrutement'){S.recSel=null;S.recAddMeet=false;S.recAddCgi=false;S.recAddCv=false;S.recEditMeetId=null;S.recEditCgiId=null;}
     S.tab=nv;render();
   };})(nbs[i]);}
   /* filters */
@@ -1816,6 +1870,13 @@ function bind(){
       recListRefresh(); /* met à jour uniquement la liste — l'input n'est jamais recréé, le focus reste intact */
     };
   }
+  var rlf=el('recloc-filter');
+  if(rlf){
+    rlf.onchange=function(){
+      S.recF.loc=this.value;
+      recListRefresh();
+    };
+  }
   /* délégation : les clics sur les pastilles de statut (recréées à chaque recListRefresh)
      sont capturés sur le conteneur stable, qui lui n'est jamais détruit pendant la frappe */
   var rlw=el('rec-list-wrap');
@@ -1825,7 +1886,7 @@ function bind(){
       if(!t)return;
       var ra=t.getAttribute('data-act'),rid=t.getAttribute('data-id');
       if(ra==='recf-st'){S.recF.status=rid;recListRefresh();}
-      else if(ra==='recopen'){S.recSel=rid;S.recAddMeet=false;S.recAddCgi=false;render();}
+      else if(ra==='recopen'){S.recSel=rid;S.recAddMeet=false;S.recAddCgi=false;S.recAddCv=false;S.recEditMeetId=null;S.recEditCgiId=null;render();}
     };
   }
   /* widgets multi-sélection Expertises / Secteurs (uniquement si le modal candidat est ouvert) */
@@ -1960,10 +2021,23 @@ function bind(){
           }catch(upErr){alert('\u26a0 '+upErr.message);return;}
         }
 
+        /* CV : un ou plusieurs fichiers, s'ajoutent aux CV déjà présents */
+        var cvArr=(itC&&itC.cvFiles)?itC.cvFiles.slice():[];
+        var cvFileEl=document.getElementById('rccv');
+        var cvFiles=(cvFileEl&&cvFileEl.files)?Array.from(cvFileEl.files):[];
+        for(var cvi=0;cvi<cvFiles.length;cvi++){
+          try{
+            var cvId=uid();
+            var cvPath=await uploadCandFile(cvFiles[cvi],candId,'cv_'+cvId);
+            cvArr.push({id:cvId,fileName:cvFiles[cvi].name,filePath:cvPath});
+          }catch(upErr){alert('\u26a0 Erreur upload CV ('+cvFiles[cvi].name+') : '+upErr.message);return;}
+        }
+
         var cfields={
           name:rn,email:gv('rce'),phone:gv('rcph'),
+          location:gv('rcloc')||'',nationality:gv('rcnat')||'',
           availDate:gv('rcav')||'',reqSalary:+gv('rcsal')||0,
-          yearsExp:+gv('rcyrs')||0,expertise:expArr,sectors:secArr,
+          yearsExp:+gv('rcyrs')||0,expertise:expArr,sectors:secArr,cvFiles:cvArr,
           compteRendu:gv('rccr'),compteRenduFilePath:crFilePath,compteRenduFileName:crFileName,
           marginPct:marEl?+marEl.value:25,status:gv('rcst')||'nouveau'
         };
@@ -1978,27 +2052,44 @@ function bind(){
         sbUpsertCand(ncand).catch(function(err){console.warn('sbUpsertCand:',err);alert('\u26a0 Erreur de synchronisation : '+err.message);});
         S.modal=null;render();
       }
-      else if(a==='recback'){S.recSel=null;S.recAddMeet=false;S.recAddCgi=false;render();}
-      else if(a==='recmtoggle'){S.recAddMeet=true;render();}
-      else if(a==='recmcancel'){S.recAddMeet=false;render();}
-      else if(a==='recmadd'){
+      else if(a==='recback'){S.recSel=null;S.recAddMeet=false;S.recAddCgi=false;S.recAddCv=false;S.recEditMeetId=null;S.recEditCgiId=null;render();}
+      else if(a==='recmtoggle'){S.recAddMeet=true;S.recEditMeetId=null;render();}
+      else if(a==='recmcancel'){S.recAddMeet=false;S.recEditMeetId=null;render();}
+      else if(a==='recmedit'){S.recEditMeetId=fb;S.recAddMeet=false;render();}
+      else if(a==='recmsave'){
         var mtCli=gv('mtcli'),mtCon=gv('mtcon'),mtDate=gv('mtdate')||fD(new Date()),mtTxt=gv('mttext');
         var mtFileEl=document.getElementById('mtfile');
         var mtFile=(mtFileEl&&mtFileEl.files&&mtFileEl.files[0])?mtFileEl.files[0]:null;
         if(!mtCli&&!mtCon&&!mtTxt&&!mtFile){alert('Renseignez au moins le client, l\u2019opérationnel, un compte rendu ou un fichier.');return;}
         var cdM=S.cands.find(function(c){return c.id===id;});
         if(!cdM)return;
-        var mtId=uid();
-        var entry={id:mtId,date:mtDate,client:mtCli,contact:mtCon,author:S._userEmail||'',text:mtTxt||''};
-        if(mtFile){
-          try{
-            var mpath=await uploadCandFile(mtFile,id,mtId);
-            entry.filePath=mpath;entry.fileName=mtFile.name;
-          }catch(upErr){alert('\u26a0 '+upErr.message);return;}
+        if(fb){
+          /* édition d'une rencontre existante */
+          var existing=(cdM.feedbacks||[]).find(function(f){return f.id===fb;});
+          if(!existing)return;
+          existing.client=mtCli;existing.contact=mtCon;existing.date=mtDate;existing.text=mtTxt||'';
+          if(mtFile){
+            try{
+              var epath=await uploadCandFile(mtFile,id,fb);
+              existing.filePath=epath;existing.fileName=mtFile.name;
+            }catch(upErr){alert('\u26a0 '+upErr.message);return;}
+          }
+          cdM.feedbacks=(cdM.feedbacks||[]).map(function(f){return f.id===fb?existing:f;});
+          S.recEditMeetId=null;
+        }else{
+          /* nouvelle rencontre */
+          var mtId=uid();
+          var entry={id:mtId,date:mtDate,client:mtCli,contact:mtCon,author:S._userEmail||'',text:mtTxt||''};
+          if(mtFile){
+            try{
+              var mpath=await uploadCandFile(mtFile,id,mtId);
+              entry.filePath=mpath;entry.fileName=mtFile.name;
+            }catch(upErr){alert('\u26a0 '+upErr.message);return;}
+          }
+          cdM.feedbacks=(cdM.feedbacks||[]).concat([entry]);
+          S.recAddMeet=false;
         }
-        cdM.feedbacks=(cdM.feedbacks||[]).concat([entry]);
         S.cands=S.cands.map(function(c){return c.id===id?cdM:c;});
-        S.recAddMeet=false;
         sbUpsertCand(cdM).catch(function(err){console.warn('sbUpsertCand meet:',err);alert('\u26a0 Erreur de synchronisation : '+err.message);});
         render();
       }
@@ -2008,6 +2099,7 @@ function bind(){
         if(!cdMd)return;
         cdMd.feedbacks=(cdMd.feedbacks||[]).filter(function(f){return f.id!==fb;});
         S.cands=S.cands.map(function(c){return c.id===id?cdMd:c;});
+        if(S.recEditMeetId===fb)S.recEditMeetId=null;
         sbUpsertCand(cdMd).catch(function(err){console.warn('sbUpsertCand meetdel:',err);});
         render();
       }
@@ -2021,26 +2113,42 @@ function bind(){
         var mtEntry=(cdMv.feedbacks||[]).find(function(f){return f.id===fb;});
         if(mtEntry&&mtEntry.filePath)downloadCandFile(mtEntry.filePath,mtEntry.fileName);
       }
-      else if(a==='recgtoggle'){S.recAddCgi=true;render();}
-      else if(a==='recgcancel'){S.recAddCgi=false;render();}
-      else if(a==='recgadd'){
+      else if(a==='recgtoggle'){S.recAddCgi=true;S.recEditCgiId=null;render();}
+      else if(a==='recgcancel'){S.recAddCgi=false;S.recEditCgiId=null;render();}
+      else if(a==='recgedit'){S.recEditCgiId=fb;S.recAddCgi=false;render();}
+      else if(a==='recgsave'){
         var cgPerson=gv('cgperson'),cgDate=gv('cgdate')||fD(new Date()),cgTxt=gv('cgtext');
         var cgFileEl=document.getElementById('cgfile');
         var cgFile=(cgFileEl&&cgFileEl.files&&cgFileEl.files[0])?cgFileEl.files[0]:null;
         if(!cgPerson&&!cgTxt&&!cgFile){alert('Renseignez au moins la personne rencontrée, un compte rendu ou un fichier.');return;}
         var cdG=S.cands.find(function(c){return c.id===id;});
         if(!cdG)return;
-        var cgId=uid();
-        var gentry={id:cgId,date:cgDate,person:cgPerson,author:S._userEmail||'',text:cgTxt||''};
-        if(cgFile){
-          try{
-            var gpath=await uploadCandFile(cgFile,id,cgId);
-            gentry.filePath=gpath;gentry.fileName=cgFile.name;
-          }catch(upErr){alert('\u26a0 '+upErr.message);return;}
+        if(fb){
+          /* édition d'une rencontre CGI existante */
+          var existingG=(cdG.cgiMeetings||[]).find(function(f){return f.id===fb;});
+          if(!existingG)return;
+          existingG.person=cgPerson;existingG.date=cgDate;existingG.text=cgTxt||'';
+          if(cgFile){
+            try{
+              var gepath=await uploadCandFile(cgFile,id,fb);
+              existingG.filePath=gepath;existingG.fileName=cgFile.name;
+            }catch(upErr){alert('\u26a0 '+upErr.message);return;}
+          }
+          cdG.cgiMeetings=(cdG.cgiMeetings||[]).map(function(f){return f.id===fb?existingG:f;});
+          S.recEditCgiId=null;
+        }else{
+          var cgId=uid();
+          var gentry={id:cgId,date:cgDate,person:cgPerson,author:S._userEmail||'',text:cgTxt||''};
+          if(cgFile){
+            try{
+              var gpath=await uploadCandFile(cgFile,id,cgId);
+              gentry.filePath=gpath;gentry.fileName=cgFile.name;
+            }catch(upErr){alert('\u26a0 '+upErr.message);return;}
+          }
+          cdG.cgiMeetings=(cdG.cgiMeetings||[]).concat([gentry]);
+          S.recAddCgi=false;
         }
-        cdG.cgiMeetings=(cdG.cgiMeetings||[]).concat([gentry]);
         S.cands=S.cands.map(function(c){return c.id===id?cdG:c;});
-        S.recAddCgi=false;
         sbUpsertCand(cdG).catch(function(err){console.warn('sbUpsertCand cgi:',err);alert('\u26a0 Erreur de synchronisation : '+err.message);});
         render();
       }
@@ -2050,6 +2158,7 @@ function bind(){
         if(!cdGd)return;
         cdGd.cgiMeetings=(cdGd.cgiMeetings||[]).filter(function(f){return f.id!==fb;});
         S.cands=S.cands.map(function(c){return c.id===id?cdGd:c;});
+        if(S.recEditCgiId===fb)S.recEditCgiId=null;
         sbUpsertCand(cdGd).catch(function(err){console.warn('sbUpsertCand cgidel:',err);});
         render();
       }
@@ -2058,6 +2167,43 @@ function bind(){
         if(!cdGv)return;
         var gEntry=(cdGv.cgiMeetings||[]).find(function(f){return f.id===fb;});
         if(gEntry&&gEntry.filePath)downloadCandFile(gEntry.filePath,gEntry.fileName);
+      }
+      else if(a==='reccvtoggle'){S.recAddCv=true;render();}
+      else if(a==='reccvcancel'){S.recAddCv=false;render();}
+      else if(a==='reccvadd'){
+        var cvFileEl2=document.getElementById('cvfile');
+        var cvFiles2=(cvFileEl2&&cvFileEl2.files)?Array.from(cvFileEl2.files):[];
+        if(!cvFiles2.length){alert('S\u00e9lectionnez au moins un fichier.');return;}
+        var cdCv=S.cands.find(function(c){return c.id===id;});
+        if(!cdCv)return;
+        var newCvs=(cdCv.cvFiles||[]).slice();
+        for(var cvj=0;cvj<cvFiles2.length;cvj++){
+          try{
+            var cvId2=uid();
+            var cvPath2=await uploadCandFile(cvFiles2[cvj],id,'cv_'+cvId2);
+            newCvs.push({id:cvId2,fileName:cvFiles2[cvj].name,filePath:cvPath2});
+          }catch(upErr){alert('\u26a0 Erreur upload CV ('+cvFiles2[cvj].name+') : '+upErr.message);return;}
+        }
+        cdCv.cvFiles=newCvs;
+        S.cands=S.cands.map(function(c){return c.id===id?cdCv:c;});
+        S.recAddCv=false;
+        sbUpsertCand(cdCv).catch(function(err){console.warn('sbUpsertCand cv:',err);alert('\u26a0 Erreur de synchronisation : '+err.message);});
+        render();
+      }
+      else if(a==='reccvdel'){
+        if(!confirm('Supprimer ce CV ?'))return;
+        var cdCvD=S.cands.find(function(c){return c.id===id;});
+        if(!cdCvD)return;
+        cdCvD.cvFiles=(cdCvD.cvFiles||[]).filter(function(f){return f.id!==fb;});
+        S.cands=S.cands.map(function(c){return c.id===id?cdCvD:c;});
+        sbUpsertCand(cdCvD).catch(function(err){console.warn('sbUpsertCand cvdel:',err);});
+        render();
+      }
+      else if(a==='reccvdl'){
+        var cdCvV=S.cands.find(function(c){return c.id===id;});
+        if(!cdCvV)return;
+        var cvEntry=(cdCvV.cvFiles||[]).find(function(f){return f.id===fb;});
+        if(cvEntry&&cvEntry.filePath)downloadCandFile(cvEntry.filePath,cvEntry.fileName);
       }
       /* inviter / supprimer un directeur */
       else if(a==='inv-add'){
@@ -2188,9 +2334,11 @@ function mapM(r){return{id:r.id,cid:r.consultant_id,name:r.name,cli:r.client_nam
 function mapL(r){return{id:r.id,cid:r.consultant_id,type:r.type||'Congé payé',s:r.start_date,e:r.end_date};}
 function mapCand(r){return{
   id:r.id,name:r.name,email:r.email||'',phone:r.phone||'',
+  location:r.location||'',nationality:r.nationality||'',
   availDate:r.avail_date||'',reqSalary:r.req_salary||0,
   yearsExp:r.years_exp||0,expertise:Array.isArray(r.expertise)?r.expertise:[],
   sectors:Array.isArray(r.sectors)?r.sectors:[],
+  cvFiles:Array.isArray(r.cv_files)?r.cv_files:[],
   compteRendu:r.compte_rendu||'',compteRenduFilePath:r.compte_rendu_file_path||'',compteRenduFileName:r.compte_rendu_file_name||'',
   cgiMeetings:Array.isArray(r.cgi_meetings)?r.cgi_meetings:[],
   marginPct:(r.margin_pct!=null?r.margin_pct:25),status:r.status||'nouveau',
@@ -2245,8 +2393,9 @@ async function sbUpsertCand(c){
   if(!SB_CID)throw new Error('SB_CID null — reconnectez-vous');
   var res=await sb.from('candidates').upsert({
     id:c.id,company_id:SB_CID,name:c.name,email:c.email||null,phone:c.phone||null,
+    location:c.location||null,nationality:c.nationality||null,
     avail_date:c.availDate||null,req_salary:c.reqSalary||0,years_exp:c.yearsExp||0,
-    expertise:c.expertise||[],sectors:c.sectors||[],
+    expertise:c.expertise||[],sectors:c.sectors||[],cv_files:c.cvFiles||[],
     compte_rendu:c.compteRendu||null,compte_rendu_file_path:c.compteRenduFilePath||null,compte_rendu_file_name:c.compteRenduFileName||null,
     cgi_meetings:c.cgiMeetings||[],
     margin_pct:(c.marginPct!=null?c.marginPct:25),status:c.status||'nouveau',
