@@ -1376,7 +1376,7 @@ function recListBody(){
   var locF=S.recF.loc||[];
   var list=S.cands.filter(function(c){
     if(stF!=='all'&&c.status!==stF)return false;
-    if(locF.length&&locF.indexOf(c.location||'')<0)return false;
+    if(locF.length&&!(c.locations||[]).some(function(l){return locF.indexOf(l)>=0;}))return false;
     if(q){
       var hay=(c.name+' '+(c.expertise||[]).join(' ')+' '+(c.email||'')).toLowerCase();
       if(hay.indexOf(q)<0)return false;
@@ -1394,7 +1394,7 @@ function recListBody(){
   var pills=pill('all','Tous',S.cands.length)+REC_STATUS.map(function(s){return pill(s.id,s.lb,counts[s.id]);}).join('');
 
   var locCounts={};REC_LOCATIONS.forEach(function(l){locCounts[l]=0;});
-  S.cands.forEach(function(c){if(c.location&&locCounts[c.location]!=null)locCounts[c.location]++;});
+  S.cands.forEach(function(c){(c.locations||[]).forEach(function(l){if(locCounts[l]!=null)locCounts[l]++;});});
   function locPill(loc){
     var active=locF.indexOf(loc)>=0;
     return '<button data-act="recf-loc" data-id="'+esc(loc)+'" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid '+(active?'#7c3aed':'#e2e8f0')+';background:'+(active?'#7c3aed':'#fff')+';color:'+(active?'#fff':'#475569')+';cursor:pointer;margin:0 6px 6px 0">'+esc(loc)+' <span style="opacity:.65">'+locCounts[loc]+'</span></button>';
@@ -1416,7 +1416,7 @@ function recListBody(){
       +'<td style="font-weight:700;color:#0f172a">'+esc(c.name)+'</td>'
       +'<td>'+(expHtml||'<span style="color:#cbd5e1">—</span>')+'</td>'
       +'<td>'+(secHtml||'<span style="color:#cbd5e1">—</span>')+'</td>'
-      +'<td>'+esc(c.location||'—')+'</td>'
+      +'<td>'+esc((c.locations&&c.locations.length)?c.locations.join(', '):'—')+'</td>'
       +'<td>'+(c.availDate?fDt(c.availDate):'—')+'</td>'
       +'<td class="tr">'+(c.reqSalary?c.reqSalary.toLocaleString('fr-FR')+' €':'—')+'</td>'
       +'<td class="tr">'+(scr?scr.toFixed(0)+' €/j':'—')+'</td>'
@@ -1462,7 +1462,7 @@ function tCandDetail(c){
   var infoGrid='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px 24px">'
     +info('Email',esc(c.email||'—'))
     +info('Téléphone',esc(c.phone||'—'))
-    +info('Localisation',esc(c.location||'—'))
+    +info('Localisation',esc((c.locations&&c.locations.length)?c.locations.join(', '):'—'))
     +info('Nationalité',esc(c.nationality||'—'))
     +info('Expérience',c.yearsExp?c.yearsExp+' an'+(c.yearsExp>1?'s':''):'—')
     +info('Disponibilité',c.availDate?fDt(c.availDate):'—')
@@ -1706,6 +1706,29 @@ function bindSecWidget(){
   };
 }
 
+/* ── Localisation(s) : pastilles à bascule, multi-sélection (liste fixe, pas d'ajout libre) ── */
+function locPickerHTML(){
+  var sel=(S.modal&&S.modal.locSel)||[];
+  return REC_LOCATIONS.map(function(loc){
+    var active=sel.indexOf(loc)>=0;
+    return '<button type="button" class="_locbtn" data-v="'+esc(loc)+'" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid '+(active?'#7c3aed':'#e2e8f0')+';background:'+(active?'#7c3aed':'#fff')+';color:'+(active?'#fff':'#475569')+';cursor:pointer;margin:0 6px 6px 0">'+esc(loc)+'</button>';
+  }).join('');
+}
+function locRefresh(){var w=document.getElementById('loc-wrap');if(w){w.innerHTML=locPickerHTML();bindLocWidget();}}
+function bindLocWidget(){
+  var wrap=document.getElementById('loc-wrap');
+  if(!wrap)return;
+  wrap.onclick=function(e){
+    var btn=e.target.closest('._locbtn');
+    if(!btn)return;
+    var v=btn.getAttribute('data-v');
+    var a=S.modal.locSel=S.modal.locSel||[];
+    var i=a.indexOf(v);
+    if(i>=0)a.splice(i,1);else a.push(v);
+    locRefresh();
+  };
+}
+
 function tModal(){
   var m=S.modal;if(!m)return '';
   var tp=m.type,it=m.item,title='',body='',wide=false;
@@ -1723,9 +1746,7 @@ function tModal(){
       +'<div class="fd"><label class="fl">Statut</label><select class="ic" id="rcst">'+stOpts+'</select></div>'
       +'<div class="fd"><label class="fl">Email</label><input class="ic" id="rce" type="email" value="'+esc(it?it.email:'')+'" placeholder="candidat@email.com"></div>'
       +'<div class="fd"><label class="fl">Téléphone</label><input class="ic" id="rcph" value="'+esc(it?it.phone:'')+'" placeholder="06 12 34 56 78"></div>'
-      +'<div class="fd"><label class="fl">Localisation</label><select class="ic" id="rcloc"><option value="">— Non renseignée —</option>'
-      +REC_LOCATIONS.map(function(l){return '<option value="'+esc(l)+'"'+(it&&it.location===l?' selected':'')+'>'+esc(l)+'</option>';}).join('')
-      +'</select></div>'
+      +'<div class="fd cs2"><label class="fl">Localisation(s)</label><div id="loc-wrap">'+locPickerHTML()+'</div></div>'
       +'<div class="fd"><label class="fl">Nationalité</label><input class="ic" id="rcnat" value="'+esc(it?it.nationality||'':'')+'" placeholder="Française"></div>'
       +'<div class="fd"><label class="fl">Date de disponibilité</label><input class="ic" id="rcav" type="date" value="'+(it?esc(it.availDate||''):'')+'"></div>'
       +'<div class="fd"><label class="fl">Années d\u2019expérience</label><input class="ic" id="rcyrs" type="number" min="0" step="0.5" value="'+(it&&it.yearsExp?esc(String(it.yearsExp)):'')+'" placeholder="5"></div>'
@@ -1894,7 +1915,7 @@ function bind(){
     };
   }
   /* widgets multi-sélection Expertises / Secteurs (uniquement si le modal candidat est ouvert) */
-  if(S.modal&&S.modal.type==='candidate'){bindExpWidget();bindSecWidget();}
+  if(S.modal&&S.modal.type==='candidate'){bindExpWidget();bindSecWidget();bindLocWidget();}
   /* filtre directeur (gestionnaire) */
   var rcb=document.querySelectorAll('[data-dir]');
   for(var rk=0;rk<rcb.length;rk++){(function(cb){cb.onchange=function(){
@@ -1988,12 +2009,13 @@ function bind(){
         S.modal=null;render();
       }
       /* ════════════════════ RECRUTEMENT ════════════════════ */
-      else if(a==='arec'){S.modal={type:'candidate',item:null,expSel:[],secSel:[]};render();}
+      else if(a==='arec'){S.modal={type:'candidate',item:null,expSel:[],secSel:[],locSel:[]};render();}
       else if(a==='erec'){
         var itEd=S.cands.find(function(c){return c.id===id;});
         S.modal={type:'candidate',item:itEd,
           expSel:(itEd&&itEd.expertise)?itEd.expertise.slice():[],
-          secSel:(itEd&&itEd.sectors)?itEd.sectors.slice():[]};
+          secSel:(itEd&&itEd.sectors)?itEd.sectors.slice():[],
+          locSel:(itEd&&itEd.locations)?itEd.locations.slice():[]};
         render();
       }
       else if(a==='drec'){
@@ -2037,9 +2059,11 @@ function bind(){
           }catch(upErr){alert('\u26a0 Erreur upload CV ('+cvFiles[cvi].name+') : '+upErr.message);return;}
         }
 
+        var locArr=(S.modal.locSel||[]).slice();
+
         var cfields={
           name:rn,email:gv('rce'),phone:gv('rcph'),
-          location:gv('rcloc')||'',nationality:gv('rcnat')||'',
+          locations:locArr,nationality:gv('rcnat')||'',
           availDate:gv('rcav')||'',reqSalary:+gv('rcsal')||0,
           yearsExp:+gv('rcyrs')||0,expertise:expArr,sectors:secArr,cvFiles:cvArr,
           compteRendu:gv('rccr'),compteRenduFilePath:crFilePath,compteRenduFileName:crFileName,
@@ -2338,7 +2362,7 @@ function mapM(r){return{id:r.id,cid:r.consultant_id,name:r.name,cli:r.client_nam
 function mapL(r){return{id:r.id,cid:r.consultant_id,type:r.type||'Congé payé',s:r.start_date,e:r.end_date};}
 function mapCand(r){return{
   id:r.id,name:r.name,email:r.email||'',phone:r.phone||'',
-  location:r.location||'',nationality:r.nationality||'',
+  locations:Array.isArray(r.locations)?r.locations:[],nationality:r.nationality||'',
   availDate:r.avail_date||'',reqSalary:r.req_salary||0,
   yearsExp:r.years_exp||0,expertise:Array.isArray(r.expertise)?r.expertise:[],
   sectors:Array.isArray(r.sectors)?r.sectors:[],
@@ -2397,7 +2421,7 @@ async function sbUpsertCand(c){
   if(!SB_CID)throw new Error('SB_CID null — reconnectez-vous');
   var res=await sb.from('candidates').upsert({
     id:c.id,company_id:SB_CID,name:c.name,email:c.email||null,phone:c.phone||null,
-    location:c.location||null,nationality:c.nationality||null,
+    locations:c.locations||[],nationality:c.nationality||null,
     avail_date:c.availDate||null,req_salary:c.reqSalary||0,years_exp:c.yearsExp||0,
     expertise:c.expertise||[],sectors:c.sectors||[],cv_files:c.cvFiles||[],
     compte_rendu:c.compteRendu||null,compte_rendu_file_path:c.compteRenduFilePath||null,compte_rendu_file_name:c.compteRenduFileName||null,
