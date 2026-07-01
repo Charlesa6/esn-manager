@@ -1993,10 +1993,8 @@ function bind(){
   if(S.modal&&S.modal.type==='candidate'){bindExpWidget();bindSecWidget();bindLocWidget();}
 
   /* ── Pilotage financier : import P&L ─────────────────────────────────────── */
-  var pnlBtn=document.getElementById('pnl-open-btn');
   var pnlInput=document.getElementById('pnl-file-input');
-  if(pnlBtn&&pnlInput){
-    pnlBtn.onclick=function(e){e.preventDefault();e.stopPropagation();pnlInput.click();};
+  if(pnlInput){
     pnlInput.onchange=function(){
       if(this.files&&this.files[0])importPnlXLS(this.files[0]);
       this.value='';
@@ -3248,9 +3246,11 @@ function tPnlBudget(){
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
     +'<button class="bg" onclick="S.impView=\'pl\';render()">\u2190 Plan vs R\u00e9el par projet</button>'
     +'<button class="bg" onclick="downloadPnlTemplate()">\uD83D\uDCC4 Mod\u00e8le simple</button>'
-    +'<button class="bp" id="pnl-open-btn">\u2191 Importer mon P&amp;L (.xlsx)</button>'
-    +'<input type="file" id="pnl-file-input" accept=".xlsx,.xlsm,.xls" tabindex="-1" '
-    +'style="opacity:0;width:0;height:0;position:absolute;overflow:hidden">'
+    +'<div style="position:relative;display:inline-block">'
+    +'<button class="bp" style="pointer-events:none">\u2191 Importer mon P&amp;L (.xlsx)</button>'
+    +'<input id="pnl-file-input" type="file" accept=".xlsx,.xlsm,.xls" '
+    +'style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0">'
+    +'</div>'
     +'</div></div>'
     +banner+heroCards
     +'<div class="card ov">'
