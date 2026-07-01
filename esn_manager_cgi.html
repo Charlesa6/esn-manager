@@ -1992,14 +1992,7 @@ function bind(){
   /* widgets multi-sélection Expertises / Secteurs (uniquement si le modal candidat est ouvert) */
   if(S.modal&&S.modal.type==='candidate'){bindExpWidget();bindSecWidget();bindLocWidget();}
 
-  /* ── Pilotage financier : import P&L ─────────────────────────────────────── */
-  var pnlImpFi=el('pnl-imp-fi');
-  if(pnlImpFi){
-    pnlImpFi.addEventListener('change',function(){
-      if(this.files&&this.files[0])importPnlXLS(this.files[0]);
-      this.value='';
-    });
-  }
+
   /* filtre directeur (gestionnaire) */
   var rcb=document.querySelectorAll('[data-dir]');
   for(var rk=0;rk<rcb.length;rk++){(function(cb){cb.onchange=function(){
@@ -2361,6 +2354,8 @@ function bind(){
   /* Imputations + Missions : file inputs */
   var missImpFi=el('miss-imp-fi');
   if(missImpFi)missImpFi.onchange=function(){if(this.files[0])handleMissImpFile(this.files[0]);this.value='';};
+  var pnlBudgetFi=el('pnl-budget-fi');
+  if(pnlBudgetFi)pnlBudgetFi.onchange=function(){if(this.files[0])importPnlBudget(this.files[0]);this.value='';};
   var missImpDz=el('miss-imp-dz');
   if(missImpDz){
     missImpDz.addEventListener('dragover',function(e){e.preventDefault();missImpDz.style.borderColor='#2563eb';});
@@ -2984,275 +2979,7 @@ function applyMissImp(){
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    PILOTAGE FINANCIER \u2014 Budget P&L (import + comparaison au r\u00e9el)
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
-function downloadPnlTemplate(){
-  loadXLSX(function(){
-    var rows=[['Mois','CA Budget (\u20ac)','Co\u00fbts Budget (\u20ac)']];
-    FY_MONTHS_ORDER.forEach(function(m){
-      var calYear=m>=10?S.year-1:S.year;
-      rows.push([MOIS_FULL[m]+' '+calYear,'','']);
-    });
-    var ws=XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols']=[{wch:18},{wch:16},{wch:16}];
-    var wb=XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb,ws,'P&L Budget');
-    XLSX.writeFile(wb,'modele_pnl_budget_'+fyLbl(S.year)+'.xlsx');
-  });
-}
-
-var MONTH_DICT={
-  'janvier':1,'janv':1,'jan':1,
-  'fevrier':2,'fevr':2,'fev':2,
-  'mars':3,'mar':3,
-  'avril':4,'avr':4,
-  'mai':5,
-  'juin':6,
-  'juillet':7,'juil':7,'jul':7,
-  'aout':8,'aou':8,
-  'septembre':9,'sept':9,'sep':9,
-  'octobre':10,'oct':10,
-  'novembre':11,'nov':11,
-  'decembre':12,'dec':12
-};
-function parseMonthCell(v){
-  if(!v)return null;
-  var s=String(v).toLowerCase().trim();
-  if(s.normalize)s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  s=s.replace(/[0-9]/g,'').trim();
-  return MONTH_DICT[s]||null;
-}
-
-function importPnlXLS(file){
-  /* Met \u00e0 jour le bandeau de statut dans le DOM (pas d'alert) */
-  function pnlStatus(msg,ok){
-    var el=document.getElementById('pnl-status');
-    if(!el){
-      el=document.createElement('div');
-      el.id='pnl-status';
-      el.style.cssText='padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;margin-top:12px';
-      var tbl=document.querySelector('.card.ov');
-      if(tbl)tbl.parentNode.insertBefore(el,tbl);
-    }
-    el.textContent=msg;
-    el.style.background=ok===false?'#fff1f2':ok===true?'#f0fdf4':'#fffbeb';
-    el.style.color=ok===false?'#b91c1c':ok===true?'#15803d':'#92400e';
-  }
-
-  if(!file){pnlStatus('\u26a0 Aucun fichier s\u00e9lectionn\u00e9.',false);return;}
-  pnlStatus('\u23f3 Chargement de la biblioth\u00e8que Excel...',null);
-
-  loadXLSX(function(){
-    pnlStatus('\u23f3 Lecture du fichier \u00ab '+file.name+' \u00bb ...',null);
-    var reader=new FileReader();
-    reader.onerror=function(){pnlStatus('\u26a0 Impossible de lire le fichier. V\u00e9rifiez qu\u2019il n\u2019est pas ouvert dans Excel.',false);};
-    reader.onload=function(e){
-      try{
-        var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
-        var newEntries=[];
-        var fy=S.year;
-
-        function serialToDate(n){
-          if(typeof n!=='number'||n<1)return null;
-          var d=new Date(new Date(Date.UTC(1899,11,30)).getTime()+Math.round(n)*86400000);
-          return isNaN(d.getTime())?null:d;
-        }
-        function isDateSerial(n){return typeof n==='number'&&n>=43831&&n<=49673;}
-
-        var cplName=null;
-        wb.SheetNames.forEach(function(n){
-          var nl=n.toLowerCase().replace(/[^a-z0-9]/g,'');
-          if(nl.indexOf('consolidation')>=0||nl==='pl'||nl.indexOf('pnl')>=0)cplName=n;
-        });
-
-        if(cplName){
-          var ws=wb.Sheets[cplName];
-          if(!ws||!ws['!ref'])throw new Error('Feuille "'+cplName+'" vide.');
-          var rng=XLSX.utils.decode_range(ws['!ref']);
-          function cv(r,c){var cell=ws[XLSX.utils.encode_cell({r:r,c:c})];return cell?cell.v:null;}
-          function cstr(r,c){var v=cv(r,c);return v!=null?String(v).toLowerCase().trim():'';}
-
-          var hdrR=-1,revR=-1,gmR=-1;
-          for(var r=rng.s.r;r<=Math.min(rng.e.r,rng.s.r+20);r++){
-            var dCnt=0;
-            for(var c=rng.s.c;c<=rng.e.c;c++){if(isDateSerial(cv(r,c)))dCnt++;}
-            if(dCnt>=4&&hdrR<0)hdrR=r;
-            for(var c=rng.s.c;c<=Math.min(rng.e.c,rng.s.c+5);c++){
-              var lbl=cstr(r,c);
-              if(lbl.indexOf('delivered')>=0&&lbl.indexOf('rev')>=0)revR=r;
-              if(lbl.indexOf('gross margin')>=0)gmR=r;
-            }
-          }
-          if(hdrR<0)throw new Error('Ligne de dates introuvable dans "'+cplName+'".');
-          if(revR<0)throw new Error('"Delivered Revenues" introuvable dans "'+cplName+'".');
-
-          for(var c=rng.s.c;c<=rng.e.c;c++){
-            var serial=cv(hdrR,c);
-            if(!isDateSerial(serial))continue;
-            var d=serialToDate(serial);
-            if(!d)continue;
-            var m=d.getUTCMonth()+1;
-            var fyCol=m>=10?d.getUTCFullYear()+1:d.getUTCFullYear();
-            var revK=typeof cv(revR,c)==='number'?cv(revR,c):0;
-            var gmPct=gmR>=0&&typeof cv(gmR,c)==='number'?cv(gmR,c):0;
-            var revEur=Math.round(revK*1000);
-            var costEur=Math.round(revEur*(1-gmPct));
-            if(revEur===0&&costEur===0)continue;
-            newEntries.push({id:uid(),fy:fyCol,month:m,revenue:revEur,cost:costEur});
-          }
-        }else{
-          var ws2=wb.Sheets[wb.SheetNames[0]];
-          var rows2=XLSX.utils.sheet_to_json(ws2,{header:1,defval:''});
-          for(var i=1;i<rows2.length;i++){
-            var row=rows2[i];if(!row||!row.length)continue;
-            var month=parseMonthCell(row[0]);if(!month)continue;
-            var rev2=parseFloat(String(row[1]).replace(',','.'))||0;
-            var cost2=parseFloat(String(row[2]).replace(',','.'))||0;
-            if(!rev2&&!cost2)continue;
-            newEntries.push({id:uid(),fy:fy,month:month,revenue:rev2,cost:cost2});
-          }
-        }
-
-        if(!newEntries.length){
-          pnlStatus('\u26a0 Aucune donn\u00e9e trouv\u00e9e. Feuilles: '+wb.SheetNames.join(', ')+'. Feuille P&L d\u00e9tect\u00e9e: '+(cplName||'aucune')+'.',false);
-          return;
-        }
-
-        var fySet={};
-        newEntries.forEach(function(p){fySet[p.fy]=(fySet[p.fy]||0)+1;});
-        var fysTouched=Object.keys(fySet).map(Number);
-        S.pnlBudget=S.pnlBudget.filter(function(p){return fysTouched.indexOf(p.fy)<0;}).concat(newEntries);
-        saveLocal();
-        render();
-        /* r\u00e9afficher le statut apr\u00e8s render (qui reconstruit le DOM) */
-        setTimeout(function(){
-          var summary=fysTouched.map(function(f){return fyLbl(f)+' — '+fySet[f]+' mois';}).join(', ');
-          pnlStatus('\u2713 Import\u00e9 avec succ\u00e8s : '+summary,true);
-          if(sb&&SB_CID){
-            Promise.all(fysTouched.map(function(f){return sbDelPnlFY(f);}))
-              .then(function(){return Promise.all(newEntries.map(function(p){return sbUpsertPnl(p);}));})
-              .then(function(){pnlStatus('\u2713 Import\u00e9 et synchronis\u00e9 Supabase : '+summary,true);})
-              .catch(function(err){pnlStatus('\u2713 Import\u00e9 localement — \u26a0 sync Supabase : '+err.message,null);});
-          }
-        },100);
-
-      }catch(err){
-        pnlStatus('\u26a0 Erreur : '+err.message,false);
-        console.error('[PnL]',err);
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  });
-}
-
-function tPnlBudget(){
-  var Hy=fyHols(S.year);
-  var months=curMonthsList();
-  var rows='',totBudR=0,totRealR=0,totBudC=0,totRealC=0;
-
-  function ecartPct(real,bud){return bud>0?((real-bud)/bud*100):null;}
-  function ecartCell(real,bud,goodIfPositive){
-    var e=real-bud,p=ecartPct(real,bud);
-    var good=goodIfPositive?(e>=0):(e<=0);
-    var col=good?'#16a34a':'#dc2626';
-    return '<td class="tr" style="color:'+col+';font-weight:600">'+(e>=0?'+':'')+fEur(e)
-      +(p!==null?' <span style="font-size:10px;opacity:.75">('+(p>=0?'+':'')+p.toFixed(0)+'%)</span>':'')+'</td>';
-  }
-
-  months.forEach(function(m){
-    var entry=pnlEntry(S.year,m);
-    var budR=entry?entry.revenue:0;
-    var budC=entry?entry.cost:0;
-    var realR=monthRealRevenue(S.year,m,Hy);
-    var realC=monthRealCost(S.year,m,Hy);
-    totBudR+=budR;totRealR+=realR;totBudC+=budC;totRealC+=realC;
-    var margBud=budR>0?(budR-budC)/budR*100:null;
-    var margReal=realR>0?(realR-realC)/realR*100:null;
-    var hasData=budR>0||realR>0;
-    rows+='<tr style="'+(hasData?'':'opacity:.45')+'">'
-      +'<td style="font-weight:700;color:#0f172a">'+MOIS_ABR[m]+'</td>'
-      +'<td class="tr">'+(budR?fEur(budR):'<span style="color:#cbd5e1">—</span>')+'</td>'
-      +'<td class="tr">'+(realR?fEur(realR):'<span style="color:#cbd5e1">—</span>')+'</td>'
-      +ecartCell(realR,budR,true)
-      +'<td class="tr">'+(budC?fEur(budC):'<span style="color:#cbd5e1">—</span>')+'</td>'
-      +'<td class="tr">'+(realC?fEur(realC):'<span style="color:#cbd5e1">—</span>')+'</td>'
-      +ecartCell(realC,budC,false)
-      +'<td class="tr">'+(margBud!==null?margBud.toFixed(1)+'%':'—')+'</td>'
-      +'<td class="tr" style="font-weight:700;color:'+(margReal!==null&&margBud!==null?(margReal>=margBud?'#16a34a':'#dc2626'):'#64748b')+'">'+(margReal!==null?margReal.toFixed(1)+'%':'—')+'</td>'
-      +'</tr>';
-  });
-
-  var totMargBud=totBudR>0?(totBudR-totBudC)/totBudR*100:0;
-  var totMargReal=totRealR>0?(totRealR-totRealC)/totRealR*100:0;
-  var totEcartR=totRealR-totBudR,totEcartC=totRealC-totBudC;
-  var totPctR=totBudR>0?((totEcartR/totBudR)*100):null;
-  var totRow='<tr style="background:#f8fafc;border-top:2px solid #e2e8f0;font-weight:800">'
-    +'<td>TOTAL '+curLbl()+'</td>'
-    +'<td class="tr">'+fEur(totBudR)+'</td>'
-    +'<td class="tr">'+fEur(totRealR)+'</td>'
-    +'<td class="tr" style="color:'+(totEcartR>=0?'#16a34a':'#dc2626')+'">'+(totEcartR>=0?'+':'')+fEur(totEcartR)+(totPctR!==null?' <span style="font-size:10px">('+(totPctR>=0?'+':'')+totPctR.toFixed(0)+'%)</span>':'')+'</td>'
-    +'<td class="tr">'+fEur(totBudC)+'</td>'
-    +'<td class="tr">'+fEur(totRealC)+'</td>'
-    +'<td class="tr" style="color:'+(totEcartC<=0?'#16a34a':'#dc2626')+'">'+(totEcartC>=0?'+':'')+fEur(totEcartC)+'</td>'
-    +'<td class="tr">'+totMargBud.toFixed(1)+'%</td>'
-    +'<td class="tr" style="color:'+(totMargReal>=totMargBud?'#16a34a':'#dc2626')+';font-size:15px">'+totMargReal.toFixed(1)+'%</td>'
-    +'</tr>';
-
-  var hasBudget=S.pnlBudget.some(function(p){return p.fy===S.year;});
-
-  /* Cartes r\u00e9sum\u00e9 \u00e9cart */
-  var heroCards='';
-  if(hasBudget&&(totBudR>0||totRealR>0)){
-    function hCard(lbl,bud,real,goodIfPos){
-      var e=real-bud,p=bud>0?(e/bud*100):null;
-      var good=goodIfPos?(e>=0):(e<=0);
-      return '<div style="background:'+(good?'#f0fdf4':'#fff1f2')+';border:1px solid '+(good?'#86efac':'#fca5a5')+';border-radius:12px;padding:16px 20px">'
-        +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#64748b;letter-spacing:.05em;margin-bottom:6px">'+lbl+'</div>'
-        +'<div style="font-size:22px;font-weight:800;color:'+(good?'#15803d':'#b91c1c')+'">'+(e>=0?'+':'')+fEur(e)+'</div>'
-        +(p!==null?'<div style="font-size:12px;color:#64748b;margin-top:3px">Prévu '+fEur(bud)+' · Réel '+fEur(real)+' ('+(p>=0?'+':'')+p.toFixed(0)+'%)</div>':'')
-        +'</div>';
-    }
-    heroCards='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">'
-      +hCard('\u00c9cart CA cumul\u00e9',totBudR,totRealR,true)
-      +hCard('\u00c9cart co\u00fbts cumul\u00e9s',totBudC,totRealC,false)
-      +'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 20px">'
-      +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#64748b;letter-spacing:.05em;margin-bottom:6px">Marge r\u00e9elle vs budget</div>'
-      +'<div style="font-size:22px;font-weight:800;color:'+(totMargReal>=totMargBud?'#15803d':'#b91c1c')+'">'+totMargReal.toFixed(1)+'%</div>'
-      +'<div style="font-size:12px;color:#64748b;margin-top:3px">Budget : '+totMargBud.toFixed(1)+'% · \u00c9cart : '+(totMargReal-totMargBud>=0?'+':'')+(totMargReal-totMargBud).toFixed(1)+'pt</div>'
-      +'</div>'
-      +'</div>';
-  }
-
-  var banner=hasBudget?'':
-    '<div class="card" style="padding:16px 20px;margin-bottom:16px;background:#fffbeb;border-color:#fde68a">'
-    +'<div style="font-size:13px;color:#92400e"><strong>Aucun budget import\u00e9 pour '+fyLbl(S.year)+'.</strong><br>'
-    +'Importez directement votre fichier Staffing (feuille "Consolidation P&L" d\u00e9tect\u00e9e automatiquement), '
-    +'ou t\u00e9l\u00e9chargez le mod\u00e8le simple ci-dessus.</div></div>';
-
-  return '<div class="vw">'
-    +'<div class="ph"><div><div class="pt">Pilotage financier \u2014 Budget vs R\u00e9el</div>'
-    +'<div class="ps">'+curLbl()+' \u00b7 Budget import\u00e9 depuis "Consolidation P&L" · Co\u00fbts r\u00e9els = jours ouvr\u00e9s \u00d7 SCR · CA r\u00e9el = missions factur\u00e9es</div></div>'
-    +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-    +'<button class="bg" onclick="S.impView=\'pl\';render()">\u2190 Plan vs R\u00e9el par projet</button>'
-    +'<button class="bg" onclick="downloadPnlTemplate()">\uD83D\uDCC4 Mod\u00e8le simple</button>'
-    +'<label id="pnl-lbl" style="display:inline-block;background:#2563eb;color:#fff;padding:11px 28px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer">'
-    +'\u2191 Importer mon P&amp;L<input type="file" id="pnl-imp-fi" accept=".xlsx,.xlsm,.xls" style="display:none">'
-    +'</label>'
-    +'</div></div>'
-    +banner+heroCards
-    +'<div class="card ov">'
-    +'<table><thead><tr><th>Mois</th>'
-    +'<th class="tr">CA Budget</th><th class="tr">CA R\u00e9el</th><th class="tr">\u00c9cart CA</th>'
-    +'<th class="tr">Co\u00fbts Budget</th><th class="tr">Co\u00fbts R\u00e9el</th><th class="tr">\u00c9cart Co\u00fbts</th>'
-    +'<th class="tr">Marge Budget</th><th class="tr">Marge R\u00e9elle</th>'
-    +'</tr></thead>'
-    +'<tbody>'+rows+totRow+'</tbody></table>'
-    +'<div style="font-size:11px;color:#94a3b8;padding:10px 14px">'
-    +'\u2139\uFE0F \u00c9cart CA positif \u2192 vous avez fait mieux que pr\u00e9vu. \u00c9cart co\u00fbts n\u00e9gatif \u2192 vous avez consomm\u00e9 moins que pr\u00e9vu (favorable).'
-    +'</div></div></div>';
-}
-
 function tImpute(){
-  if(S.impView==='budget')return tPnlBudget();
-
   /* ══ ETAT 1 : Zone upload ══ */
   if(S.impView==='import'&&!S.imp){
     return '<div class="vw">'
@@ -3528,12 +3255,74 @@ function tImpute(){
         +'</div>';
     }).join('')+'</div></div>';
 
+  /* ── Section P&L Budget : intégrée directement dans la vue principale ──── */
+  var Hy=fyHols(S.year);
+  var hasBudget=S.pnlBudget.some(function(p){return p.fy===S.year;});
+  var moisList=FY_MONTHS_ORDER;
+  var pnlRows='',pnlTotBR=0,pnlTotRR=0,pnlTotBC=0,pnlTotRC=0;
+  moisList.forEach(function(m){
+    var entry=pnlEntry(S.year,m);
+    var budR=entry?entry.revenue:0;
+    var budC=entry?entry.cost:0;
+    var realR=monthRealRevenue(S.year,m,Hy);
+    var realC=monthRealCost(S.year,m,Hy);
+    pnlTotBR+=budR;pnlTotRR+=realR;pnlTotBC+=budC;pnlTotRC+=realC;
+    if(!budR&&!realR&&!budC&&!realC)return;
+    var eR=realR-budR,eC=realC-budC;
+    var mB=budR>0?(budR-budC)/budR*100:null;
+    var mR=realR>0?(realR-realC)/realR*100:null;
+    pnlRows+='<tr>'
+      +'<td style="font-weight:600">'+MOIS_ABR[m]+'</td>'
+      +'<td class="tr">'+(budR?fEur(budR):'—')+'</td>'
+      +'<td class="tr">'+(realR?fEur(realR):'—')+'</td>'
+      +'<td class="tr" style="font-weight:700;color:'+(eR>=0?'#16a34a':'#dc2626')+'">'+(budR||realR?(eR>=0?'+':'')+fEur(eR):'—')+'</td>'
+      +'<td class="tr">'+(budC?fEur(budC):'—')+'</td>'
+      +'<td class="tr">'+(realC?fEur(realC):'—')+'</td>'
+      +'<td class="tr" style="font-weight:700;color:'+(eC<=0?'#16a34a':'#dc2626')+'">'+(budC||realC?(eC>=0?'+':'')+fEur(eC):'—')+'</td>'
+      +'<td class="tr">'+(mB!==null?mB.toFixed(1)+'%':'—')+'</td>'
+      +'<td class="tr" style="font-weight:700;color:'+(mR!==null&&mB!==null?(mR>=mB?'#16a34a':'#dc2626'):'#64748b')+'">'+(mR!==null?mR.toFixed(1)+'%':'—')+'</td>'
+      +'</tr>';
+  });
+  var pnlTotRow=pnlTotBR||pnlTotRR?'<tr style="background:#f8fafc;border-top:2px solid #e2e8f0;font-weight:800">'
+    +'<td>TOTAL FY'+String(S.year).slice(2)+'</td>'
+    +'<td class="tr">'+fEur(pnlTotBR)+'</td>'
+    +'<td class="tr">'+fEur(pnlTotRR)+'</td>'
+    +'<td class="tr" style="color:'+(pnlTotRR-pnlTotBR>=0?'#16a34a':'#dc2626')+'">'+(pnlTotRR-pnlTotBR>=0?'+':'')+fEur(pnlTotRR-pnlTotBR)+'</td>'
+    +'<td class="tr">'+fEur(pnlTotBC)+'</td>'
+    +'<td class="tr">'+fEur(pnlTotRC)+'</td>'
+    +'<td class="tr" style="color:'+(pnlTotRC-pnlTotBC<=0?'#16a34a':'#dc2626')+'">'+(pnlTotRC-pnlTotBC>=0?'+':'')+fEur(pnlTotRC-pnlTotBC)+'</td>'
+    +'<td class="tr">'+(pnlTotBR>0?((pnlTotBR-pnlTotBC)/pnlTotBR*100).toFixed(1)+'%':'—')+'</td>'
+    +'<td class="tr" style="color:'+(pnlTotRR>0&&pnlTotBR>0?((pnlTotRR-pnlTotRC)/pnlTotRR*100>=(pnlTotBR-pnlTotBC)/pnlTotBR*100?'#16a34a':'#dc2626'):'#64748b')+'">'+(pnlTotRR>0?((pnlTotRR-pnlTotRC)/pnlTotRR*100).toFixed(1)+'%':'—')+'</td>'
+    +'</tr>':'';
+
+  var pnlSection='<div class="card" style="padding:24px;margin-top:20px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:12px">'
+    +'<div><div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:4px">\uD83D\uDCCA Budget vs R\u00e9el \u2014 FY'+String(S.year).slice(2)+'</div>'
+    +'<div style="font-size:12px;color:#64748b">CA r\u00e9el = missions factur\u00e9es · Co\u00fbts r\u00e9els = jours ouvr\u00e9s \u00d7 SCR</div></div>'
+    +'<label style="display:inline-block;background:#2563eb;color:#fff;padding:9px 20px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;flex-shrink:0">'
+    +'\u2191 Charger mon P&amp;L Excel'
+    +'<input type="file" id="pnl-budget-fi" accept=".xlsx,.xlsm,.xls" style="display:none">'
+    +'</label></div>'
+    +(hasBudget?''
+      :'<div style="padding:12px 16px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:13px;color:#92400e;margin-bottom:14px">'
+      +'\uD83D\uDCA1 Aucun budget import\u00e9 pour FY'+String(S.year).slice(2)+'. Chargez votre fichier Excel Staffing CGI — la feuille <strong>Consolidation P&L</strong> est d\u00e9tect\u00e9e automatiquement.'
+      +'</div>')
+    +(pnlRows
+      ?'<div id="pnl-status"></div>'
+      +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
+      +'<thead><tr style="border-bottom:2px solid #e2e8f0">'
+      +'<th>Mois</th><th class="tr">CA Budget</th><th class="tr">CA R\u00e9el</th><th class="tr">\u00c9cart CA</th>'
+      +'<th class="tr">Co\u00fbts Budget</th><th class="tr">Co\u00fbts R\u00e9el</th><th class="tr">\u00c9cart Co\u00fbts</th>'
+      +'<th class="tr">Marge Bud.</th><th class="tr">Marge R\u00e9elle</th>'
+      +'</tr></thead><tbody>'+pnlRows+pnlTotRow+'</tbody></table></div>'
+      :'<div id="pnl-status"></div><div class="emp">Importez votre P&L pour voir la comparaison.</div>')
+    +'</div>';
+
   return '<div class="vw">'
-    +'<div class="ph"><div><div class="pt">P&amp;L R\u00e9alis\u00e9</div>'
-    +'<div class="ps">Plan FY'+String(planFY).substring(2)+' vs R\u00e9el (SHR import\u00e9) \u00b7 par code projet</div></div>'
+    +'<div class="ph"><div><div class="pt">Pilotage financier</div>'
+    +'<div class="ps">FY'+String(S.year).slice(2)+' · Plan vs R\u00e9el SHR · Budget vs R\u00e9el P&L</div></div>'
     +'<div style="display:flex;gap:8px">'
-    +'<button class="bp" onclick="S.impView=\'budget\';render()">\uD83D\uDCB0 Budget vs R\u00e9el (P&amp;L)</button>'
-    +'<button class="bg" onclick="S.impView=\'import\';S.imp=null;render()">+ Ajouter un import</button>'
+    +'<button class="bg" onclick="S.impView=\'import\';S.imp=null;render()">+ Importer SHR</button>'
     +'<button class="bg" onclick="clearAllImports()" style="color:#ef4444;border-color:#fecdd3">Vider l\'historique</button>'
     +'</div></div>'
     +fyBtns+hero
@@ -3544,10 +3333,149 @@ function tImpute(){
     +'</div>'
     +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'+thead+tbody+'</table></div>'
     +'</div>'
-    +hist+'</div>';
+    +hist
+    +pnlSection
+    +'</div>';
 }
 
 /* ======================================================*/
+/* ── Import P&L Budget ─────────────────────────────────────────────────────
+   Lit la feuille "Consolidation P&L" du fichier Staffing CGI :
+   - Ligne en-tête : serials Excel = 1er jour de chaque mois fiscal
+   - "Delivered Revenues" × 1000 → CA budget en €
+   - "Gross Margin (%)"          → Coûts = CA × (1 − marge)
+   Ou modèle simple 3 colonnes : Mois | CA (€) | Coûts (€)
+─────────────────────────────────────────────────────────────────────────── */
+function importPnlBudget(file){
+  function setStatus(msg,type){
+    /* type: 'loading' | 'ok' | 'error' */
+    var el=document.getElementById('pnl-status');
+    if(!el)return;
+    var bg=type==='ok'?'#f0fdf4':type==='error'?'#fff1f2':'#fffbeb';
+    var co=type==='ok'?'#15803d':type==='error'?'#b91c1c':'#92400e';
+    el.style.cssText='padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;background:'+bg+';color:'+co+';margin-bottom:12px';
+    el.textContent=msg;
+  }
+
+  if(!file){setStatus('\u26a0 Aucun fichier.',  'error');return;}
+  setStatus('\u23f3 Chargement de la librairie Excel\u2026','loading');
+
+  loadXLSX(function(){
+    setStatus('\u23f3 Lecture de \u00ab '+file.name+' \u00bb\u2026','loading');
+    var reader=new FileReader();
+    reader.onerror=function(){setStatus('\u26a0 Impossible de lire le fichier. Vérifiez qu\u2019il n\u2019est pas ouvert dans Excel.','error');};
+    reader.onload=function(e){
+      try{
+        var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+
+        /* serial Excel → JS Date (sans cellDates pour éviter les bugs de type) */
+        function serial2date(n){
+          if(typeof n!=='number'||n<1)return null;
+          var d=new Date(new Date(Date.UTC(1899,11,30)).getTime()+Math.round(n)*86400000);
+          return isNaN(d.getTime())?null:d;
+        }
+        function isSerial(n){return typeof n==='number'&&n>=43831&&n<=49673;}
+
+        /* Cherche la feuille P&L */
+        var cplName=null;
+        wb.SheetNames.forEach(function(n){
+          if(n.toLowerCase().replace(/[^a-z0-9]/g,'').indexOf('consolidation')>=0)cplName=n;
+        });
+
+        var newEntries=[];
+        var fy=S.year;
+
+        if(cplName){
+          /* ── FORMAT A : Staffing CGI ─── */
+          var ws=wb.Sheets[cplName];
+          if(!ws||!ws['!ref'])throw new Error('Feuille "'+cplName+'" vide.');
+          var rng=XLSX.utils.decode_range(ws['!ref']);
+          function cv(r,c){var cell=ws[XLSX.utils.encode_cell({r:r,c:c})];return cell?cell.v:null;}
+          function cstr(r,c){var v=cv(r,c);return v!=null?String(v).toLowerCase().trim():'';}
+
+          var hdrR=-1,revR=-1,gmR=-1;
+          for(var r=rng.s.r;r<=Math.min(rng.e.r,rng.s.r+20);r++){
+            var dCnt=0;
+            for(var c=rng.s.c;c<=rng.e.c;c++){if(isSerial(cv(r,c)))dCnt++;}
+            if(dCnt>=4&&hdrR<0)hdrR=r;
+            for(var c=rng.s.c;c<=Math.min(rng.e.c,rng.s.c+5);c++){
+              var lbl=cstr(r,c);
+              if(lbl.indexOf('delivered')>=0&&lbl.indexOf('rev')>=0&&revR<0)revR=r;
+              if(lbl.indexOf('gross margin')>=0&&gmR<0)gmR=r;
+            }
+          }
+          if(hdrR<0)throw new Error('Ligne de dates manquante dans "'+cplName+'".');
+          if(revR<0)throw new Error('"Delivered Revenues" manquant dans "'+cplName+'".');
+
+          for(var c=rng.s.c;c<=rng.e.c;c++){
+            if(!isSerial(cv(hdrR,c)))continue;
+            var d=serial2date(cv(hdrR,c));
+            if(!d)continue;
+            var m=d.getUTCMonth()+1;
+            var fyC=m>=10?d.getUTCFullYear()+1:d.getUTCFullYear();
+            var revK=typeof cv(revR,c)==='number'?cv(revR,c):0;
+            var gm=gmR>=0&&typeof cv(gmR,c)==='number'?cv(gmR,c):0;
+            var revE=Math.round(revK*1000);
+            var cstE=Math.round(revE*(1-gm));
+            if(!revE&&!cstE)continue;
+            newEntries.push({id:uid(),fy:fyC,month:m,revenue:revE,cost:cstE});
+          }
+        }else{
+          /* ── FORMAT B : modèle simple 3 colonnes ── */
+          var ws2=wb.Sheets[wb.SheetNames[0]];
+          var rows2=XLSX.utils.sheet_to_json(ws2,{header:1,defval:''});
+          var MDICT={'janvier':1,'janv':1,'jan':1,'fevrier':2,'fevr':2,'fev':2,'mars':3,'mar':3,
+            'avril':4,'avr':4,'mai':5,'juin':6,'juillet':7,'juil':7,'aout':8,'aou':8,
+            'septembre':9,'sept':9,'sep':9,'octobre':10,'oct':10,'novembre':11,'nov':11,'decembre':12,'dec':12};
+          function parseM(v){
+            var s=String(v||'').toLowerCase().trim();
+            if(s.normalize)s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+            s=s.replace(/[0-9]/g,'').trim();
+            return MDICT[s]||null;
+          }
+          for(var i=1;i<rows2.length;i++){
+            var row=rows2[i];if(!row||!row.length)continue;
+            var month=parseM(row[0]);if(!month)continue;
+            var rev2=parseFloat(String(row[1]).replace(',','.'))||0;
+            var cst2=parseFloat(String(row[2]).replace(',','.'))||0;
+            if(!rev2&&!cst2)continue;
+            newEntries.push({id:uid(),fy:fy,month:month,revenue:rev2,cost:cst2});
+          }
+        }
+
+        if(!newEntries.length){
+          setStatus('\u26a0 Aucune donn\u00e9e trouv\u00e9e. Feuilles d\u00e9tect\u00e9es\u00a0: '+wb.SheetNames.join(', ')+(cplName?'\u00b7 Feuille cible\u00a0: "'+cplName+'"':''),'error');
+          return;
+        }
+
+        var fySet={};
+        newEntries.forEach(function(p){fySet[p.fy]=(fySet[p.fy]||0)+1;});
+        var fysTouched=Object.keys(fySet).map(Number);
+        S.pnlBudget=S.pnlBudget.filter(function(p){return fysTouched.indexOf(p.fy)<0;}).concat(newEntries);
+        saveLocal();
+        render();
+
+        /* re-afficher le statut succès après render (qui reconstruit le DOM) */
+        setTimeout(function(){
+          var summary=fysTouched.map(function(f){return 'FY'+String(f).slice(2)+' ('+fySet[f]+' mois)';}).join(', ');
+          setStatus('\u2713 Import\u00e9\u00a0: '+summary,'ok');
+          if(sb&&SB_CID){
+            Promise.all(fysTouched.map(function(f){return sbDelPnlFY(f);}))
+              .then(function(){return Promise.all(newEntries.map(function(p){return sbUpsertPnl(p);}));})
+              .then(function(){setStatus('\u2713 Import\u00e9 et synchronis\u00e9\u00a0: '+summary,'ok');})
+              .catch(function(err){setStatus('\u2713 Import\u00e9 · \u26a0 sync\u00a0: '+err.message,'loading');});
+          }
+        },150);
+
+      }catch(err){
+        setStatus('\u26a0 Erreur\u00a0: '+err.message,'error');
+        console.error('[pnl]',err);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
 (function(){
   var m=window.innerWidth<768;
   var s=localStorage.getItem('sb-col');
