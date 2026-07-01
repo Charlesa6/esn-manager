@@ -3005,8 +3005,8 @@ function parseMonthCell(v){
 }
 
 function importPnlXLS(file){
+  alert('[Diagnostic] Fonction appelée — fichier : '+(file?file.name+' ('+Math.round(file.size/1024)+'Ko)':'null'));
   if(!file){alert('Aucun fichier sélectionné.');return;}
-  console.log('[PnL] Fichier reçu :',file.name,'(',file.size,'octets)');
   loadXLSX(function(){
     console.log('[PnL] XLSX chargé, lecture du fichier...');
     var reader=new FileReader();
@@ -3229,10 +3229,11 @@ function tPnlBudget(){
     +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
     +'<button class="bg" onclick="S.impView=\'pl\';render()">\u2190 Plan vs R\u00e9el par projet</button>'
     +'<button class="bg" onclick="downloadPnlTemplate()">\uD83D\uDCC4 Mod\u00e8le simple</button>'
-    +'<button class="bp" onclick="document.getElementById(\'pnl-imp\').click()">\u2191 Importer mon P&amp;L</button>'
-    +'<input id="pnl-imp" type="file" accept=".xlsx" '
-    +'style="position:fixed;top:-999px;left:-999px;width:1px;height:1px;opacity:0" '
+    +'<label class="bp" style="cursor:pointer">\u2191 Importer mon P&amp;L'
+    +'<input type="file" accept=".xlsx,.xlsm,.xlsb,.xls" '
+    +'style="position:absolute;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;width:1px;height:1px;border:0;padding:0" '
     +'onchange="importPnlXLS(this.files[0]);this.value=\'\';">'
+    +'</label>'
     +'</div></div>'
     +banner+heroCards
     +'<div class="card ov">'
