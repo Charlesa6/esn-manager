@@ -3005,70 +3005,89 @@ function parseMonthCell(v){
 }
 
 function importPnlXLS(file){
-  if(!file)return;
+  if(!file){console.warn('importPnlXLS: no file');return;}
   loadXLSX(function(){
     var reader=new FileReader();
     reader.onload=function(e){
       try{
+        /* cellDates:true : les cellules date auront t:'d' et v: Date JS */
         var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
         var newEntries=[];
         var fy=S.year;
 
-        /* \u2550\u2550\u2550 FORMAT 1 : Fichier Staffing CGI \u2014 sheet "Consolidation P&L" \u2550\u2550\u2550
-           - Ligne d'en-t\u00eate  : "Forecast"  |  Date Oct 2025 | Date Nov 2025 | ...
-           - "Delivered Revenues" : valeurs en milliers d'\u20ac (\u00d7 1000 pour avoir des \u20ac)
-           - "Gross Margin (%)"  : d\u00e9cimale (0.25 = 25%)
-           - Co\u00fbts budget = CA \u00d7 (1 \u2212 marge brute)                               */
-        var cplSheet=null;
+        /* ── D\u00e9tection du format du fichier ──────────────────────────────────
+           FORMAT A : Fichier Staffing CGI — feuille "Consolidation P&L"
+           FORMAT B : Mod\u00e8le simple (3 colonnes) exportable depuis l'app     */
+        var cplName=null;
         wb.SheetNames.forEach(function(n){
-          if(n.toLowerCase().replace(/\s/g,'').indexOf('consolidationp')>=0||
-             n.toLowerCase().indexOf('p&l')>=0)cplSheet=n;
+          var nl=n.toLowerCase().replace(/\s+/g,'');
+          if(nl.indexOf('consolidation')>=0||nl.indexOf('p&l')>=0||nl.indexOf('pl')>=0)
+            cplName=n;
         });
 
-        if(cplSheet){
-          var ws=wb.Sheets[cplSheet];
-          var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
-          var rawRows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+        if(cplName){
+          /* ══ FORMAT A ═══════════════════════════════════════════════════
+             Acc\u00e8s direct aux cellules via XLSX.utils.encode_cell()
+             pour \u00e9viter les probl\u00e8mes de type avec sheet_to_json         */
+          var ws=wb.Sheets[cplName];
+          if(!ws||!ws['!ref']){throw new Error('Feuille "'+cplName+'" vide ou invalide.');}
+          var range=XLSX.utils.decode_range(ws['!ref']);
+          var nCols=range.e.c-range.s.c+1;
+          var nRows=range.e.r-range.s.r+1;
+          var minC=range.s.c,maxC=range.e.c,minR=range.s.r,maxR=range.e.r;
 
-          /* Trouver la ligne d'en-t\u00eate (contient des objets Date) et les lignes de donn\u00e9es */
-          var hdrRow=-1,revRow=-1,gmRow=-1;
-          for(var i=0;i<rawRows.length;i++){
-            var r=rawRows[i];
-            /* L'en-t\u00eate contient au moins 2 objets Date dans les colonnes 2+ */
+          /* Helper : valeur d'une cellule (row et col en indices absolus) */
+          function cv(r,c){
+            var cell=ws[XLSX.utils.encode_cell({r:r,c:c})];
+            return cell?cell.v:null;
+          }
+          function ct(r,c){
+            var cell=ws[XLSX.utils.encode_cell({r:r,c:c})];
+            return cell?cell.t:null;
+          }
+
+          /* 1. Trouver la ligne d'en-t\u00eate : au moins 4 cellules de type 'd' (date) */
+          var hdrR=-1,revR=-1,gmR=-1;
+          for(var r=minR;r<=Math.min(maxR,minR+15);r++){
             var dateCnt=0;
-            for(var j=2;j<r.length;j++){if(r[j]instanceof Date)dateCnt++;}
-            if(dateCnt>=2&&hdrRow<0)hdrRow=i;
-            /* Lignes de donn\u00e9es : on cherche par label dans la premi\u00e8re colonne non vide */
-            var lbl=String(r[0]||r[1]||'').toLowerCase();
-            if(lbl.indexOf('delivered')>=0&&lbl.indexOf('rev')>=0)revRow=i;
-            if(lbl.indexOf('gross margin')>=0)gmRow=i;
-          }
-
-          if(hdrRow>=0&&revRow>=0){
-            var hdr=rawRows[hdrRow];
-            var rev=rawRows[revRow];
-            var gm=gmRow>=0?rawRows[gmRow]:[];
-
-            for(var j=0;j<hdr.length;j++){
-              if(!(hdr[j]instanceof Date))continue;
-              var d=hdr[j];
-              var m=d.getMonth()+1;  /* 1-12 */
-              var fyCol=m>=10?d.getFullYear()+1:d.getFullYear();
-              var revK=typeof rev[j]==='number'?rev[j]:parseFloat(String(rev[j]||0))||0;
-              var gmPct=typeof gm[j]==='number'?gm[j]:parseFloat(String(gm[j]||0))||0;
-              var revEur=Math.round(revK*1000);
-              var costEur=Math.round(revEur*(1-gmPct));
-              if(revEur===0&&costEur===0)continue;
-              /* Cherche si une entr\u00e9e existe d\u00e9j\u00e0 pour ce FY/mois (on la remplace) */
-              var eid=uid();
-              newEntries.push({id:eid,fy:fyCol,month:m,revenue:revEur,cost:costEur});
+            for(var c=minC;c<=maxC;c++){
+              if(ct(r,c)==='d')dateCnt++;
             }
-          }else{
-            throw new Error('Feuille "'+cplSheet+'" trouv\u00e9e mais structure non reconnue \u2014 colonnes "Delivered Revenues" ou dates introuvables.');
+            if(dateCnt>=4&&hdrR<0)hdrR=r;
+
+            /* Chercher les labels dans les 5 premi\u00e8res colonnes */
+            for(var c=minC;c<=Math.min(maxC,minC+4);c++){
+              var v=cv(r,c);
+              if(!v||typeof v!=='string')continue;
+              var lbl=v.toLowerCase();
+              if(lbl.indexOf('delivered')>=0&&lbl.indexOf('rev')>=0)revR=r;
+              if(lbl.indexOf('gross margin')>=0)gmR=r;
+              break;
+            }
           }
+
+          if(hdrR<0||revR<0)
+            throw new Error('Structure non reconnue dans "'+cplName+'" — lignes "Delivered Revenues" ou dates de m\u00e9nages introuvables. V\u00e9rifiez le fichier.');
+
+          /* 2. Extraire les donn\u00e9es colonne par colonne */
+          for(var c=minC;c<=maxC;c++){
+            if(ct(hdrR,c)!=='d')continue;          /* seulement les colonnes date */
+            var d=cv(hdrR,c);                       /* JS Date gr\u00e2ce \u00e0 cellDates:true */
+            if(!(d instanceof Date)||isNaN(d.getTime()))continue;
+            var m=d.getMonth()+1;                   /* 1-12 */
+            if(m<1||m>12)continue;
+            var fyCol=m>=10?d.getFullYear()+1:d.getFullYear();
+            var revK=typeof cv(revR,c)==='number'?cv(revR,c):0;
+            var gmPct=gmR>=0&&typeof cv(gmR,c)==='number'?cv(gmR,c):0;
+            var revEur=Math.round(revK*1000);
+            var costEur=Math.round(revEur*(1-gmPct));
+            if(revEur===0&&costEur===0)continue;
+            newEntries.push({id:uid(),fy:fyCol,month:m,revenue:revEur,cost:costEur});
+          }
+
         }else{
-          /* \u2550\u2550\u2550 FORMAT 2 : mod\u00e8le simple (t\u00e9l\u00e9charg\u00e9 depuis l\'app) \u2550\u2550\u2550
-             Colonnes : Mois | CA Budget (\u20ac) | Co\u00fbts Budget (\u20ac)           */
+          /* ══ FORMAT B : mod\u00e8le simple 3 colonnes ══════════════════════
+             Colonnes : Mois | CA Budget (\u20ac) | Co\u00fbts Budget (\u20ac)         */
           var ws2=wb.Sheets[wb.SheetNames[0]];
           var rows2=XLSX.utils.sheet_to_json(ws2,{header:1,defval:''});
           for(var i=1;i<rows2.length;i++){
@@ -3078,23 +3097,25 @@ function importPnlXLS(file){
             if(!month)continue;
             var rev2=parseFloat(String(row[1]).replace(',','.'))||0;
             var cost2=parseFloat(String(row[2]).replace(',','.'))||0;
+            if(!rev2&&!cost2)continue;
             newEntries.push({id:uid(),fy:fy,month:month,revenue:rev2,cost:cost2});
           }
         }
 
         if(!newEntries.length){
-          alert('Aucune donn\u00e9e valide trouv\u00e9e.\n\nSi vous importez votre fichier Staffing CGI, v\u00e9rifiez qu\u2019il contient la feuille "Consolidation P&L".\nSinon, utilisez le mod\u00e8le t\u00e9l\u00e9chargeable depuis l\u2019application.');
+          alert('Aucune donn\u00e9e valide trouv\u00e9e dans ce fichier.\n\n'
+            +'Si c\u2019est votre fichier Staffing CGI : l\u2019import porte sur la feuille "Consolidation P&L" (d\u00e9tect\u00e9e automatiquement).\n'
+            +'Sinon, utilisez le mod\u00e8le simple t\u00e9l\u00e9chargeable depuis l\u2019application.');
           return;
         }
 
-        /* Grouper par FY pour l\u2019affichage du bilan */
+        /* Remplacer les entr\u00e9es pour chaque FY concern\u00e9 */
         var fySet={};
         newEntries.forEach(function(p){fySet[p.fy]=(fySet[p.fy]||0)+1;});
-
-        /* Remplacer les entr\u00e9es pour chaque FY concern\u00e9 */
         var fysTouched=Object.keys(fySet).map(Number);
         S.pnlBudget=S.pnlBudget.filter(function(p){return fysTouched.indexOf(p.fy)<0;}).concat(newEntries);
         saveLocal();
+        render();
 
         var summary=fysTouched.map(function(f){return fyLbl(f)+' ('+fySet[f]+' mois)';}).join(', ');
 
@@ -3102,17 +3123,15 @@ function importPnlXLS(file){
           Promise.all(fysTouched.map(function(f){return sbDelPnlFY(f);}))
             .then(function(){return Promise.all(newEntries.map(function(p){return sbUpsertPnl(p);}));})
             .then(function(){alert('\u2713 Import\u00e9 et synchronis\u00e9 : '+summary);})
-            .catch(function(err){
-              console.warn('sync pnl:',err);
-              alert(newEntries.length+' mois import\u00e9(s) localement.\n\u26a0 Erreur de sync : '+err.message);
-            });
+            .catch(function(err){alert(newEntries.length+' mois import\u00e9s localement.\n\u26a0 Erreur sync : '+err.message);});
         }else{
-          alert('\u2713 Import\u00e9 : '+summary+' (local uniquement, Supabase non connect\u00e9).');
+          alert('\u2713 Import\u00e9 : '+summary);
         }
-        render();
+
       }catch(err){
         console.error('importPnlXLS:',err);
-        alert('Erreur de lecture du fichier :\n'+err.message);
+        alert('Erreur de lecture :\n'+err.message+
+          '\n\nConsultez la console (F12) pour plus de d\u00e9tails.');
       }
     };
     reader.readAsArrayBuffer(file);
