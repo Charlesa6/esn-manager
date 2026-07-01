@@ -2354,8 +2354,6 @@ function bind(){
   /* Imputations + Missions : file inputs */
   var missImpFi=el('miss-imp-fi');
   if(missImpFi)missImpFi.onchange=function(){if(this.files[0])handleMissImpFile(this.files[0]);this.value='';};
-  var pnlBudgetFi=el('pnl-budget-fi');
-  if(pnlBudgetFi)pnlBudgetFi.onchange=function(){if(this.files[0])importPnlBudget(this.files[0]);this.value='';};
   var missImpDz=el('miss-imp-dz');
   if(missImpDz){
     missImpDz.addEventListener('dragover',function(e){e.preventDefault();missImpDz.style.borderColor='#2563eb';});
@@ -3299,10 +3297,8 @@ function tImpute(){
     +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:12px">'
     +'<div><div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:4px">\uD83D\uDCCA Budget vs R\u00e9el \u2014 FY'+String(S.year).slice(2)+'</div>'
     +'<div style="font-size:12px;color:#64748b">CA r\u00e9el = missions factur\u00e9es · Co\u00fbts r\u00e9els = jours ouvr\u00e9s \u00d7 SCR</div></div>'
-    +'<label style="display:inline-block;background:#2563eb;color:#fff;padding:9px 20px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;flex-shrink:0">'
-    +'\u2191 Charger mon P&amp;L Excel'
-    +'<input type="file" id="pnl-budget-fi" accept=".xlsx,.xlsm,.xls" style="display:none">'
-    +'</label></div>'
+    +'<button class="bp" onclick="ouvrirPnl(event)" style="white-space:nowrap;flex-shrink:0">\u2191 Charger mon P&L Excel</button>'
+    +'</div>'
     +(hasBudget?''
       :'<div style="padding:12px 16px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:13px;color:#92400e;margin-bottom:14px">'
       +'\uD83D\uDCA1 Aucun budget import\u00e9 pour FY'+String(S.year).slice(2)+'. Chargez votre fichier Excel Staffing CGI — la feuille <strong>Consolidation P&L</strong> est d\u00e9tect\u00e9e automatiquement.'
@@ -3346,6 +3342,38 @@ function tImpute(){
    - "Gross Margin (%)"          → Coûts = CA × (1 − marge)
    Ou modèle simple 3 colonnes : Mois | CA (€) | Coûts (€)
 ─────────────────────────────────────────────────────────────────────────── */
+/* ── Ouvre le sélecteur de fichier P&L ────────────────────────────────────────
+   Utilise showOpenFilePicker() (Chrome 86+) qui ne dépend d'aucun file input.
+   Fallback automatique sur un input classique si l'API n'est pas disponible.  */
+async function ouvrirPnl(e){
+  if(e)e.stopPropagation();
+  if(window.showOpenFilePicker){
+    try{
+      var handles=await window.showOpenFilePicker({
+        types:[{description:'Fichiers Excel',accept:{'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':['.xlsx','.xlsm','.xls']}}],
+        multiple:false
+      });
+      if(handles&&handles[0]){
+        var file=await handles[0].getFile();
+        importPnlBudget(file);
+      }
+    }catch(err){
+      if(err.name!=='AbortError')console.warn('ouvrirPnl:',err);
+    }
+  }else{
+    /* Fallback : input classique temporaire créé dans le body */
+    var inp=document.createElement('input');
+    inp.type='file';inp.accept='.xlsx,.xlsm,.xls';
+    inp.style.cssText='position:fixed;top:-999px;left:-999px';
+    document.body.appendChild(inp);
+    inp.addEventListener('change',function(){
+      if(this.files&&this.files[0])importPnlBudget(this.files[0]);
+      document.body.removeChild(inp);
+    });
+    inp.click();
+  }
+}
+
 function importPnlBudget(file){
   function setStatus(msg,type){
     /* type: 'loading' | 'ok' | 'error' */
