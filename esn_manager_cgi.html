@@ -409,6 +409,44 @@ var S={
   recEditMeetId:null,recEditCgiId:null
 };
 var H=fyHols(CFY);
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MODE DÉMO — données fictives pour présentation commerciale
+══════════════════════════════════════════════════════════════════════════ */
+function loadDemoData(){
+  S.demo=true;
+  S._userEmail='demo@esn-manager.fr';
+  S.role='gestionnaire';
+  S.year=2026;
+  S.quarter=null;
+  S.tab='kpis';
+  S.cons=[
+    {id:'d1',name:'Sophie Martin',   title:'Consultante Senior',scr:520,email:'s.martin@demo.fr',   dir:'Thomas Bernard',arrive:'2024-10-01',depart:null},
+    {id:'d2',name:'Lucas Dupont',    title:'Architecte Cloud',  scr:610,email:'l.dupont@demo.fr',   dir:'Thomas Bernard',arrive:'2024-10-01',depart:null},
+    {id:'d3',name:'Inès Rousseau',   title:'Data Engineer',     scr:480,email:'i.rousseau@demo.fr', dir:'Marie Lefebvre',arrive:'2025-01-06',depart:null},
+    {id:'d4',name:'Karim Belhaj',    title:'Chef de projet',    scr:560,email:'k.belhaj@demo.fr',   dir:'Marie Lefebvre',arrive:'2024-10-01',depart:null},
+    {id:'d5',name:'Claire Morin',    title:'Développeuse BI',   scr:450,email:'c.morin@demo.fr',    dir:'Thomas Bernard',arrive:'2025-04-01',depart:null}
+  ];
+  S.miss=[
+    {id:'m1',cid:'d1',client:'BNP Paribas',   code:'300100001',tjm:780,sd:'2025-10-01',ed:'2026-03-31',type:'Régie'},
+    {id:'m2',cid:'d2',client:'Société Générale',code:'300100002',tjm:920,sd:'2025-10-01',ed:'2026-09-30',type:'Régie'},
+    {id:'m3',cid:'d3',client:'AXA',            code:'300100003',tjm:720,sd:'2025-10-01',ed:'2026-06-30',type:'Régie'},
+    {id:'m4',cid:'d4',client:'SNCF',           code:'300100004',tjm:840,sd:'2025-10-01',ed:'2026-03-31',type:'Forfait'},
+    {id:'m5',cid:'d5',client:'TotalEnergies',  code:'300100005',tjm:680,sd:'2025-10-01',ed:'2026-09-30',type:'Régie'},
+    {id:'m6',cid:'d1',client:'BNP Paribas',    code:'300100006',tjm:800,sd:'2026-04-01',ed:'2026-09-30',type:'Régie'}
+  ];
+  S.lvs=[
+    {id:'v1',cid:'d1',type:'Congé payé',s:'2025-12-22',e:'2026-01-03'},
+    {id:'v2',cid:'d2',type:'RTT',       s:'2025-11-10',e:'2025-11-10'},
+    {id:'v3',cid:'d3',type:'Congé payé',s:'2026-02-17',e:'2026-02-21'},
+    {id:'v4',cid:'d4',type:'Maladie',   s:'2026-01-13',e:'2026-01-17'},
+    {id:'v5',cid:'d5',type:'RTT',       s:'2025-12-29',e:'2025-12-31'}
+  ];
+  S.cands=[
+    {id:'c1',name:'Maxime Guillot',expertise:['React','TypeScript'],sectors:['Banque & Finance'],locations:['Lyon'],nationality:'Française',reqSalary:48000,yearsExp:4,status:'entretien',marginPct:28,createdBy:'demo',feedbacks:[],cgiMeetings:[],cvFiles:[]}
+  ];
+  H=fyHols(2026);
+}
 var SCR_FACTOR=113.35;  /* SCR x ce coefficient = salaire annuel sur le FY */
 
 /* \u2550\u2550\u2550 RECRUTEMENT : statuts du pipeline \u2550\u2550\u2550 */
@@ -621,14 +659,14 @@ function genRecs(goal){
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function tSB(){
   var NAV=[
-    {id:'dashboard',ic:'\uD83D\uDCCA',lb:'Dashboard'},
-    {id:'teams',    ic:'\uD83D\uDC65',lb:'Équipe'},
+    {id:'kpis',      ic:'\uD83D\uDCC8',lb:'KPIs'},
+    {id:'dashboard', ic:'\uD83D\uDCCA',lb:'Dashboard'},
+    {id:'teams',     ic:'\uD83D\uDC65',lb:'Équipe'},
     {id:'recrutement',ic:'\uD83C\uDFAF',lb:'Recrutement'},
-    {id:'missions', ic:'\uD83D\uDCCB',lb:'Missions'},
-    {id:'planning', ic:'\uD83D\uDCC5',lb:'Planning'},
-    {id:'kpis',     ic:'\uD83D\uDCC8',lb:'KPIs'},
-    {id:'leaves',   ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
-    {id:'param',    ic:'\u2699\uFE0F',lb:'Paramétrage'}
+    {id:'missions',  ic:'\uD83D\uDCCB',lb:'Missions'},
+    {id:'planning',  ic:'\uD83D\uDCC5',lb:'Planning'},
+    {id:'leaves',    ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
+    {id:'param',     ic:'\u2699\uFE0F',lb:'Paramétrage'}
   
   ];
   if(S.role==='gestionnaire')NAV.push({id:'directeurs',ic:'🛡️',lb:'Directeurs'});
@@ -1891,7 +1929,7 @@ function tModal(){
    RENDER
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function render(){
-  saveLocal(); /* \u2190 sauvegarde automatique à chaque changement */
+  if(!S.demo)saveLocal(); /* sauvegarde automatique — désactivée en mode démo */
   /* ═══ filtrage par rôle / directeur : on bascule sur la vue filtrée le temps du rendu ═══ */
   S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
   var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;
@@ -1899,11 +1937,18 @@ function render(){
   var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='profile'?tProfile():tParam();
   var _ini=function(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();};
   var _av=S._userEmail?_ini(S._userEmail.split('@')[0].replace(/[._]/g,' ')):'?';
-  var _pfBtn='<div id="prof-btn" style="position:absolute;top:12px;right:14px;z-index:50">' 
+  var _pfBtn='<div id="prof-btn" style="position:absolute;top:12px;right:14px;z-index:50">'
     +'<button onclick="S.tab=\'profile\';render()" title="Profil - '+esc(S._userEmail||'')+'"'
     +' style="width:34px;height:34px;border-radius:50%;background:#1e3a5f;color:#93c5fd;border:2px solid #2563eb;'
     +'font-size:11px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center">'+_av+'</button></div>';
-  document.getElementById('mc').innerHTML='<div class="inn" style="position:relative">'+_pfBtn+v+'</div>';
+  /* Bannière démo */
+  var _demoBanner=S.demo
+    ?'<div style="background:#7c3aed;color:#fff;text-align:center;padding:9px 16px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:16px;flex-shrink:0">'
+    +'\uD83C\uDFAE MODE D\u00c9MO — donn\u00e9es fictives, aucune modification sauvegard\u00e9e'
+    +'<a href="/esn_login.html" style="color:#e9d5ff;font-size:12px;font-weight:600;background:rgba(255,255,255,.15);padding:4px 12px;border-radius:6px;text-decoration:none">'
+    +'Cr\u00e9er un compte \u2192</a></div>'
+    :'';
+  document.getElementById('mc').innerHTML=_demoBanner+'<div class="inn" style="position:relative">'+_pfBtn+v+'</div>';
   document.getElementById('md').innerHTML=tModal();
   /* on restaure les données maîtres (les handlers de bind() mutent l'ensemble complet) */
   S.cons=S._all.cons;S.miss=S._all.miss;S.lvs=S._all.lvs;
@@ -2527,6 +2572,12 @@ async function syncToSB(){
 }
 
 async function initApp(){
+  /* ── Mode démo : ?demo=true dans l'URL → données fictives, pas de Supabase ── */
+  if(new URLSearchParams(window.location.search).get('demo')==='true'){
+    loadDemoData();
+    render();
+    return;
+  }
   if(sb){
     try{
       /* ── 1. V\u00e9rifier la session (avec retry si timing issue) ── */

@@ -135,6 +135,11 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
 .demo-row{text-align:center;margin-top:16px;padding-top:16px;border-top:1px solid #f1f5f9;}
 .demo-row a{font-size:12px;color:#94a3b8;text-decoration:none;}
 .demo-row a:hover{color:#64748b;}
+.left-cta{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:10px;text-decoration:none;color:#fff;transition:all .15s;cursor:pointer;}
+.left-cta-demo{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);}
+.left-cta-demo:hover{background:rgba(255,255,255,.28);}
+.left-cta-sub{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);}
+.left-cta-sub:hover{background:rgba(255,255,255,.18);}
 
 /* Alert */
 .alert{display:none;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;}
@@ -170,6 +175,42 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
     <div class="product-name">ESN Manager</div>
     <div class="product-line"></div>
     <p class="product-tag">Pilotez vos &eacute;quipes de conseil avec clart&eacute; et pr&eacute;cision.</p>
+
+    <div style="margin-top:32px;display:flex;flex-direction:column;gap:10px">
+
+      <!-- Démo -->
+      <a href="/esn_manager_cgi.html?demo=true" class="left-cta left-cta-demo">
+        <span style="font-size:18px">&#x1F3AE;</span>
+        <div>
+          <div style="font-weight:700;font-size:14px">Essayer la d&eacute;mo gratuite</div>
+          <div style="font-size:11px;opacity:.75">Acc&egrave;s imm&eacute;diat &mdash; sans inscription</div>
+        </div>
+      </a>
+
+      <div style="text-align:center;font-size:11px;color:rgba(255,255,255,.4);margin:4px 0">
+        &mdash;&nbsp;ou s&apos;abonner&nbsp;&mdash;
+      </div>
+
+      <!-- Abonnement Directeur -->
+      <a href="#" id="btn-sub-dir" class="left-cta left-cta-sub" onclick="openStore('directeur');return false;">
+        <span style="font-size:18px">&#x1F6E1;&#xFE0F;</span>
+        <div>
+          <div style="font-weight:700;font-size:14px">Abonnement Directeur</div>
+          <div style="font-size:11px;opacity:.75">Gestion d&apos;&eacute;quipe &amp; missions</div>
+        </div>
+        <span style="margin-left:auto;font-size:10px;opacity:.7">&#x2192;</span>
+      </a>
+
+      <!-- Abonnement Gestionnaire -->
+      <a href="#" id="btn-sub-gest" class="left-cta left-cta-sub" onclick="openStore('gestionnaire');return false;">
+        <span style="font-size:18px">&#x1F4CA;</span>
+        <div>
+          <div style="font-weight:700;font-size:14px">Abonnement Gestionnaire</div>
+          <div style="font-size:11px;opacity:.75">Vision globale multi-directeurs</div>
+        </div>
+        <span style="margin-left:auto;font-size:10px;opacity:.7">&#x2192;</span>
+      </a>
+    </div>
   </div>
 </div>
 
@@ -210,7 +251,6 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
         <div class="spin" id="sp-login"></div>
       </button>
       <div class="switch-row">Pas de compte&nbsp;? <button onclick="sw('signup')">Cr&eacute;er un compte</button></div>
-      <div class="demo-row"><a href="/esn_manager_cgi.html">Acc&eacute;der &agrave; la d&eacute;mo</a></div>
     </div>
 
     <!-- SIGNUP -->
@@ -259,6 +299,12 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
           </button>
         </div>
         <p class="err-msg" id="e-s-p2">Les mots de passe ne correspondent pas</p>
+      </div>
+      <div class="fd">
+        <label for="s-lic">Code de licence *</label>
+        <input class="inp" type="text" id="s-lic" placeholder="ex : ESN-XXXX-XXXX" autocomplete="off" style="letter-spacing:.05em;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+        <p class="fd-hint" style="font-size:11px;color:#94a3b8;margin-top:4px">Re&ccedil;u par email apr&egrave;s votre abonnement. <a href="#" onclick="openStore('directeur');return false;" style="color:#2563eb">S&apos;abonner &rarr;</a></p>
+        <p class="err-msg" id="e-s-lic">Code de licence invalide ou d&eacute;j&agrave; utilis&eacute;</p>
       </div>
       <label class="cgu-row">
         <input type="checkbox" id="cgu">
@@ -452,51 +498,89 @@ async function doLogin() {
   window.location.href = '/esn_manager_cgi.html';
 }
 
+/* URL de la boutique — à mettre à jour quand vous aurez votre outil de paiement */
+var STORE_URL_DIRECTEUR   = '#';  /* ex: 'https://buy.stripe.com/xxx' */
+var STORE_URL_GESTIONNAIRE= '#';  /* ex: 'https://buy.stripe.com/yyy' */
+
+function openStore(role) {
+  var url = role === 'gestionnaire' ? STORE_URL_GESTIONNAIRE : STORE_URL_DIRECTEUR;
+  if (url === '#') {
+    showBanner('ok', 'Boutique en ligne bient\u00f4t disponible\u00a0! Contactez-nous : contact@esn-manager.fr');
+    return;
+  }
+  window.open(url, '_blank');
+}
+
+async function validateLicenceCode(code) {
+  if (!sb || !code) return null;
+  /* Cherche un code valide non utilisé dans la table licence_codes */
+  var r = await sb.from('licence_codes')
+    .select('*').eq('code', code).eq('used', false).single();
+  return r.data || null;
+}
+
 async function doSignup() {
   clearErr(); hideBanner();
-  var co = document.getElementById('s-co').value.trim();
-  var fn = document.getElementById('s-fn').value.trim();
-  var ln = document.getElementById('s-ln').value.trim();
-  var em = document.getElementById('s-em').value.trim();
-  var pw = document.getElementById('s-pw').value;
-  var p2 = document.getElementById('s-p2').value;
-  var ok = true;
-  if (!co)           ok = setErr('s-co','e-s-co','Requis');
-  if (!fn)           ok = setErr('s-fn','e-s-fn','Requis') && ok;
-  if (!ln)           ok = setErr('s-ln','e-s-ln','Requis') && ok;
-  if (!isEmail(em))  ok = setErr('s-em','e-s-em','Email invalide') && ok;
-  if (!pw||pw.length<8) ok = setErr('s-pw','e-s-pw','8 caract\u00e8res minimum') && ok;
-  if (pw !== p2)     ok = setErr('s-p2','e-s-p2','Ne correspond pas') && ok;
+  var co  = document.getElementById('s-co').value.trim();
+  var fn  = document.getElementById('s-fn').value.trim();
+  var ln  = document.getElementById('s-ln').value.trim();
+  var em  = document.getElementById('s-em').value.trim();
+  var pw  = document.getElementById('s-pw').value;
+  var p2  = document.getElementById('s-p2').value;
+  var lic = (document.getElementById('s-lic').value||'').trim().toUpperCase();
+  var ok  = true;
+  if (!co)             ok = setErr('s-co','e-s-co','Requis');
+  if (!fn)             ok = setErr('s-fn','e-s-fn','Requis') && ok;
+  if (!ln)             ok = setErr('s-ln','e-s-ln','Requis') && ok;
+  if (!isEmail(em))    ok = setErr('s-em','e-s-em','Email invalide') && ok;
+  if (!pw||pw.length<8)ok = setErr('s-pw','e-s-pw','8 caract\u00e8res minimum') && ok;
+  if (pw !== p2)       ok = setErr('s-p2','e-s-p2','Ne correspond pas') && ok;
+  if (!lic)            ok = setErr('s-lic','e-s-lic','Code de licence requis') && ok;
   if (!document.getElementById('cgu').checked) {
     document.getElementById('e-cgu').classList.add('show'); ok = false;
   }
   if (!ok) return;
   loading('b-signup','sp-signup','lb-signup', true);
-  if (!sb) {
-    await wait(1100);
-    loading('b-signup','sp-signup','lb-signup', false);
-    showSuccess('Bienvenue\u00a0!', 'Votre espace ' + co + ' est pr\u00eat. 14 jours offerts.');
-    return;
-  }
-  var res = await sb.auth.signUp({
-    email: em, password: pw,
-    options: { data: { company_name: co, first_name: fn, last_name: ln } }
-  });
-  loading('b-signup','sp-signup','lb-signup', false);
-  if (res.error) {
-    if (res.error.message.toLowerCase().includes('already')) {
-      setErr('s-em','e-s-em','Cet email est d\u00e9j\u00e0 utilis\u00e9');
-    } else {
-      showBanner('err', res.error.message);
+
+  /* Validation du code de licence */
+  if (sb) {
+    var licData = await validateLicenceCode(lic);
+    if (!licData) {
+      loading('b-signup','sp-signup','lb-signup', false);
+      setErr('s-lic','e-s-lic','Code invalide, déjà utilisé ou inexistant');
+      showBanner('err', 'Code de licence invalide. <a href="#" onclick="openStore(\'directeur\');return false;" style="color:#fff;text-decoration:underline">S\'abonner pour obtenir un code &rarr;</a>');
+      return;
     }
-    return;
-  }
-  if (res.data.user && !res.data.session) {
-    showSuccess('V\u00e9rifiez votre email', 'Un lien de confirmation a \u00e9t\u00e9 envoy\u00e9 \u00e0 ' + em + '.', true);
+    /* Création du compte */
+    var res = await sb.auth.signUp({
+      email: em, password: pw,
+      options: { data: { company_name: co, first_name: fn, last_name: ln,
+                         role: licData.role || 'directeur' } }
+    });
+    loading('b-signup','sp-signup','lb-signup', false);
+    if (res.error) {
+      if (res.error.message.toLowerCase().includes('already')) {
+        setErr('s-em','e-s-em','Cet email est déjà utilisé');
+      } else {
+        showBanner('err', res.error.message);
+      }
+      return;
+    }
+    /* Marquer le code comme utilisé */
+    await sb.from('licence_codes').update({used:true, used_by:em, used_at:new Date().toISOString()}).eq('code', lic);
+    if (res.data.user && !res.data.session) {
+      showSuccess('Vérifiez votre email', 'Un lien de confirmation a été envoyé à ' + em + '.', true);
+    } else {
+      window.location.href = '/esn_manager_cgi.html';
+    }
   } else {
-    window.location.href = '/esn_manager_cgi.html';
+    /* Mode sans Supabase — demo locale */
+    await wait(800);
+    loading('b-signup','sp-signup','lb-signup', false);
+    showSuccess('Bienvenue\u00a0!', 'Votre espace ' + co + ' est prêt.');
   }
 }
+
 
 async function forgot() {
   var em = document.getElementById('l-email').value.trim();
