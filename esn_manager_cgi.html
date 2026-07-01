@@ -217,7 +217,6 @@ var QUARTERS=[
   {id:4,lb:'T4',months:[7,8,9]}
 ];
 var MOIS_ABR=['','Janv','F\u00e9vr','Mars','Avr','Mai','Juin','Juil','Ao\u00fbt','Sept','Oct','Nov','D\u00e9c'];
-var MOIS_FULL=['','Janvier','F\u00e9vrier','Mars','Avril','Mai','Juin','Juillet','Ao\u00fbt','Septembre','Octobre','Novembre','D\u00e9cembre'];
 QUARTERS.forEach(function(q){q.lbFull=q.lb+' ('+MOIS_ABR[q.months[0]]+'-'+MOIS_ABR[q.months[2]]+')';});
 
 /* Bornes ISO d'un trimestre donn\u00e9 \u00e0 l'int\u00e9rieur d'un exercice fiscal fy */
@@ -233,55 +232,14 @@ function qRange(fy,q){
   return [s,e];
 }
 /* P\u00e9riode actuellement s\u00e9lectionn\u00e9e dans la barre lat\u00e9rale : ann\u00e9e enti\u00e8re si S.quarter est null,
-   sinon born\u00e9e au trimestre choisi. Utilis\u00e9e par Dashboard / KPIs / Absences / Pilotage financier. */
+   sinon born\u00e9e au trimestre choisi. Utilis\u00e9e par Dashboard / KPIs / Absences. */
 function curRange(fy){return S.quarter?qRange(fy,S.quarter):[fyStart(fy),fyEnd(fy)];}
 function curRangeLbl(){return S.quarter?(QUARTERS.find(function(q){return q.id===S.quarter;})||{}).lbFull||'':'';}
 /* Libell\u00e9 combin\u00e9 \u00ab FY26 \u00bb ou \u00ab FY26 \u00b7 T2 (Janv-Mars) \u00bb selon le trimestre actif */
 function curLbl(){return fyLbl(S.year)+(S.quarter?' \u00b7 '+curRangeLbl():'');}
 /* Mois fiscaux dans l'ordre Oct\u2192Sept, et bornes ISO d'un mois donn\u00e9 dans un FY */
-var FY_MONTHS_ORDER=[10,11,12,1,2,3,4,5,6,7,8,9];
-function monthRange(fy,month){
-  var calYear=month>=10?fy-1:fy;
-  var lastDay=new Date(calYear,month,0).getDate();
-  var s=calYear+'-'+String(month).padStart(2,'0')+'-01';
-  var e=calYear+'-'+String(month).padStart(2,'0')+'-'+String(lastDay).padStart(2,'0');
-  return [s,e];
-}
 function monthLbl(month){return MOIS_ABR[month];}
 /* Liste des mois \u00e0 afficher selon la s\u00e9lection courante (ann\u00e9e enti\u00e8re ou trimestre) */
-function curMonthsList(){return S.quarter?(QUARTERS.find(function(q){return q.id===S.quarter;})||{}).months||[]:FY_MONTHS_ORDER;}
-/* Co\u00fbt r\u00e9el d'un mois = \u03a3 (jours ouvr\u00e9s pr\u00e9sents \u00d7 SCR) pour tous les consultants actifs ce mois-l\u00e0 */
-function monthRealCost(fy,month,H){
-  var rng=monthRange(fy,month);var ms=rng[0],me=rng[1];
-  var total=0;
-  S.cons.forEach(function(c){
-    var cs=(c.arrive&&c.arrive>ms)?c.arrive:ms;
-    var ce=(c.depart&&c.depart<me)?c.depart:me;
-    if(cs>ce)return;
-    total+=wDays(cs,ce,H)*c.scr;
-  });
-  return total;
-}
-/* CA r\u00e9el d'un mois = \u03a3 des revenus de mission factur\u00e9s ce mois-l\u00e0 (via kpi() born\u00e9) */
-function monthRealRevenue(fy,month,H){
-  var rng=monthRange(fy,month);
-  var total=0;
-  S.cons.forEach(function(c){
-    total+=kpi(c,S.miss,S.lvs,fy,H,rng).rev;
-  });
-  return total;
-}
-function pnlEntry(fy,month){return S.pnlBudget.find(function(p){return p.fy===fy&&p.month===month;});}
-
-
-/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
-   CONSTANTS & HELPERS
-\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
-var TODAY=fD(new Date());
-var CY=new Date().getFullYear();
-var CFY=currentFY();
-var LTYPES=['Congé payé','RTT','Formation','Inter-contrat','Maladie','Congé maternité','Congé sans solde','Mission interne','Autre'];
-var HOLS_N=["1er janvier \u2014 Jour de l'An","Lundi de P\u00e2ques","1er mai \u2014 F\u00eate du Travail","8 mai \u2014 Victoire 1945","Jeudi de l'Ascension","Lundi de Pentec\u00f4te","14 juillet \u2014 F\u00eate Nationale","15 ao\u00fbt \u2014 Assomption","1er novembre \u2014 Toussaint","11 novembre \u2014 Armistice","25 d\u00e9cembre \u2014 No\u00ebl"];
 function fEur(n){return new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n);}
 function fDt(s){return s?pD(s).toLocaleDateString('fr-FR'):'Sans \u00e9ch\u00e9ance';}
 function uid(){return Math.random().toString(36).slice(2,9);}
@@ -442,10 +400,8 @@ var S={
   sbSync:false,
   imp:null,
   impHistory:[],
-  impView:'pl',
   impSelFY:'all',
   missImp:null,
-  pnlBudget:[],
   recSel:null,recF:{status:'all',q:'',loc:[]},recAddMeet:false,recAddCgi:false,recAddCv:false,
   recEditMeetId:null,recEditCgiId:null
 };
@@ -669,7 +625,6 @@ function tSB(){
     {id:'planning', ic:'\uD83D\uDCC5',lb:'Planning'},
     {id:'kpis',     ic:'\uD83D\uDCC8',lb:'KPIs'},
     {id:'leaves',   ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
-    {id:'imputations',ic:'\uD83D\uDCCA',lb:'Pilotage financier'},
     {id:'param',    ic:'\u2699\uFE0F',lb:'Paramétrage'}
   
   ];
@@ -1055,7 +1010,7 @@ function tKPIs(){
   var mArr=ks.filter(function(x){return x.k.om!=null;});
   var avgM=mArr.length?mArr.reduce(function(s,x){return s+x.k.om;},0)/mArr.length:null;
   var avgTJMv=totBill>0?totR/totBill:0;
-  var totSalary=ks.reduce(function(s,x){return s+x.c.scr*SCR_FACTOR;},0);
+  var totSalary=ks.reduce(function(s,x){return s+x.k.tWD*x.c.scr;},0);
   var netC=totR-totSalary;
   var top3=clientRev(ks).slice(0,3);
   var totRevP=Math.max(totR,1);
@@ -1086,7 +1041,7 @@ function tKPIs(){
     +'<div style="background:#0c1424;padding:28px 24px">'
     +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#334155;margin-bottom:8px">Contribution nette</div>'
     +'<div style="font-size:40px;font-weight:900;color:'+(netC>=0?'#34d399':'#f87171')+';letter-spacing:-.03em;line-height:1">'+fEur(netC)+'</div>'
-    +'<div style="font-size:12px;color:#475569;margin-top:8px">CA &minus; salaires ('+fEur(totSalary)+')</div>'
+    +'<div style="font-size:12px;color:#475569;margin-top:8px">CA &minus; co\u00fbts SCR p\u00e9riode ('+fEur(totSalary)+')</div>'
     +'</div></div>';
 
   var clientHtml='<div style="display:flex;flex-direction:column;gap:16px">'
@@ -1290,7 +1245,7 @@ function tParam(){
   var _aktWD=ks.reduce(function(s,x){return s+(x.k.tWD||0);},0);
   var avgSr=_aktWD>0?ks.reduce(function(s,x){return s+x.k.sr*(x.k.tWD||0);},0)/_aktWD:0;
   var avgTJMv=totBill>0?totR/totBill:0;
-  var netC=totR-ks.reduce(function(s,x){return s+x.c.scr*SCR_FACTOR;},0);
+  var netC=totR-ks.reduce(function(s,x){return s+x.k.tWD*x.c.scr;},0);
 
   var context='<div class="card" style="padding:20px;margin-bottom:20px">'
     +'<div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:14px">\uD83D\uDCCC Situation actuelle - '+fyLbl(S.year)+'</div>'
@@ -1930,7 +1885,7 @@ function render(){
   S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
   var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;
   document.getElementById('sb').innerHTML=tSB();
-  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='imputations'?tImpute():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='profile'?tProfile():tParam();
+  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='profile'?tProfile():tParam();
   var _ini=function(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();};
   var _av=S._userEmail?_ini(S._userEmail.split('@')[0].replace(/[._]/g,' ')):'?';
   var _pfBtn='<div id="prof-btn" style="position:absolute;top:12px;right:14px;z-index:50">' 
@@ -2391,7 +2346,7 @@ function bind(){
 var SKEY='esn_cgi_v1';
 
 function saveLocal(){
-  try{localStorage.setItem(SKEY,JSON.stringify({cons:S.cons,miss:S.miss,lvs:S.lvs,cands:S.cands,pnlBudget:S.pnlBudget}));}
+  try{localStorage.setItem(SKEY,JSON.stringify({cons:S.cons,miss:S.miss,lvs:S.lvs,cands:S.cands}));}
   catch(e){console.warn('localStorage indisponible',e);}
 }
 
@@ -2400,7 +2355,7 @@ function loadLocal(){
     var raw=localStorage.getItem(SKEY);
     if(!raw)return false;
     var d=JSON.parse(raw);
-    if(d&&d.cons&&d.cons.length){S.cons=d.cons;S.miss=d.miss||[];S.lvs=d.lvs||[];S.cands=d.cands||[];S.pnlBudget=d.pnlBudget||[];return true;}
+    if(d&&d.cons&&d.cons.length){S.cons=d.cons;S.miss=d.miss||[];S.lvs=d.lvs||[];S.cands=d.cands||[];return true;}
   }catch(e){}
   return false;
 }
@@ -2471,12 +2426,11 @@ async function loadSB(){
       if(!ids.length){S.cons=[];S.miss=[];S.lvs=[];return false;}
       mq=mq.in('consultant_id',ids);lq=lq.in('consultant_id',ids);
     }
-    var res=await Promise.all([mq,lq,rq,pq]);
+    var res=await Promise.all([mq,lq,rq]);
     S.cons=cons;
     if(res[0].data)S.miss=res[0].data.map(mapM);
     if(res[1].data)S.lvs=res[1].data.map(mapL);
     if(res[2].data)S.cands=res[2].data.map(mapCand);
-    if(res[3].data)S.pnlBudget=res[3].data.map(mapPnl);
     return S.cons.length>0;
   }catch(e){console.warn('Supabase load error:',e);return false;}
 }
@@ -2512,38 +2466,6 @@ async function sbUpsertCand(c){
   });
   if(res.error)throw new Error(c.name+': '+res.error.message);
 }
-/* ── P&L Budget (Pilotage financier) : une ligne par mois fiscal, company-wide ── */
-function mapPnl(r){return{id:r.id,fy:r.fy,month:r.month,revenue:r.revenue||0,cost:r.cost||0};}
-async function sbUpsertPnl(p){
-  if(!sb)return;
-  if(!SB_CID)throw new Error('SB_CID null — reconnectez-vous');
-  var res=await sb.from('pnl_budget').upsert({
-    id:p.id,company_id:SB_CID,fy:p.fy,month:p.month,revenue:p.revenue||0,cost:p.cost||0
-  });
-  if(res.error)throw new Error('PnL '+p.fy+'/'+p.month+': '+res.error.message);
-}
-async function sbDelPnlFY(fy){
-  if(!sb||!SB_CID)return;
-  await sb.from('pnl_budget').delete().eq('company_id',SB_CID).eq('fy',fy);
-}
-/* ── Fichiers joints aux retours clients (Supabase Storage, bucket privé "candidate-files") ── */
-async function uploadCandFile(file,candId,fbId){
-  if(!sb||!SB_CID)throw new Error('Supabase non connect\u00e9.');
-  var safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-  var path=SB_CID+'/'+candId+'/'+fbId+'_'+safeName;
-  var res=await sb.storage.from('candidate-files').upload(path,file,{upsert:true});
-  if(res.error)throw new Error('Upload fichier : '+res.error.message);
-  return path;
-}
-async function downloadCandFile(path,fileName){
-  if(!sb)return;
-  try{
-    var res=await sb.storage.from('candidate-files').createSignedUrl(path,3600);
-    if(res.error||!res.data){alert('Impossible de g\u00e9n\u00e9rer le lien de t\u00e9l\u00e9chargement : '+(res.error?res.error.message:''));return;}
-    window.open(res.data.signedUrl,'_blank');
-  }catch(e){alert('Erreur t\u00e9l\u00e9chargement : '+e.message);}
-}
-/* Recalcule SCR / TJM en direct dans le modal candidat (slider marge + r\u00e9mun\u00e9ration) */
 function recCalcRefresh(){
   var sal=+gv('rcsal')||0;
   var marEl=document.getElementById('rcmar');
@@ -2977,538 +2899,6 @@ function applyMissImp(){
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    PILOTAGE FINANCIER \u2014 Budget P&L (import + comparaison au r\u00e9el)
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
-function tImpute(){
-  /* ══ ETAT 1 : Zone upload ══ */
-  if(S.impView==='import'&&!S.imp){
-    return '<div class="vw">'
-      +'<div class="ph"><div><div class="pt">Pilotage financier \u2014 Nouvel import</div>'
-      +'<div class="ps">Importez un fichier PSA/SAP (.xlsx) \u2014 Type ANAL : SHR = facturation \u00b7 CST = co\u00fbt</div></div>'
-      +(S.impHistory.length?'<button class="bg" onclick="S.impView=\'pl\';render()">\u2190 Retour au P&amp;L</button>':'')
-      +'</div>'
-      +'<div class="card" style="padding:60px 32px;text-align:center;border:2px dashed #e2e8f0;background:#fff;border-radius:16px" id="imp-dz">'
-      +'<div style="margin:0 auto 20px;color:#94a3b8"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>'
-      +'<div style="font-size:16px;font-weight:700;color:#0f172a;margin-bottom:8px">Glissez votre fichier ici</div>'
-      +'<div style="font-size:13px;color:#64748b;margin-bottom:24px">.xlsx, .xls ou .csv</div>'
-      +'<label style="display:inline-block;background:#2563eb;color:#fff;padding:11px 28px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer">'
-      +'Choisir un fichier<input type="file" id="imp-fi" accept=".xlsx,.xls,.csv" style="display:none"></label>'
-      +'</div></div>';
-  }
-
-  /* ══ ETAT 2 : Mapping colonnes ══ */
-  if(S.imp){
-    var imp=S.imp;
-    var FIELDS=[
-      ['cons',     'Nom / Consultant *', 'Nom du collaborateur (NOM, Pr\u00e9nom accept\u00e9)'],
-      ['typeAnal', 'Type ANAL',          'SHR = facturation TJM \u00b7 CST = co\u00fbt SCR'],
-      ['date',     'Trans Date *',       'Date de la transaction \u2014 utilis\u00e9e pour le filtre FY'],
-      ['montant',  'Foreign Amount *',   'Montant en devise'],
-      ['projet',   'Projet *',           'Code projet PSA/SAP \u2014 recoupage avec le code projet des missions']
-    ];
-    var rel=imp.headers.reduce(function(a,h,i){
-      var l=h.toLowerCase().trim();
-      if(l==='nom'||l==='projet'||l.includes('type anal')||l.includes('trans date')||l.includes('foreign amount')||l.includes('date')||l.includes('collaborateur'))a.push(i);
-      return a;
-    },[]);
-    if(rel.length===0||imp.headers.length<=15)rel=imp.headers.map(function(_,i){return i;});
-    var opts='<option value="">-- Ignorer --</option>'+rel.map(function(i){return '<option value="'+i+'">'+(i+1)+'. '+esc(imp.headers[i])+'</option>';}).join('');
-    var form=FIELDS.map(function(f){
-      var sel='<select class="ic" id="im-'+f[0]+'">';
-      sel+=opts.replace(new RegExp('value="'+imp.map[f[0]]+'"'),'value="'+imp.map[f[0]]+'" selected');
-      sel+='</select>';
-      return '<div class="fd" style="margin-bottom:12px"><label class="fl">'+f[1]+'</label>'+sel+'<p style="font-size:11px;color:#94a3b8;margin-top:3px">'+f[2]+'</p></div>';
-    }).join('');
-    var prev=imp.raw.slice(0,4).map(function(row){
-      return '<tr>'+rel.map(function(i){return '<td style="padding:5px 8px;font-size:11px;border-bottom:1px solid #f1f5f9;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis">'+esc(String(row[i]||''))+'</td>';}).join('')+'</tr>';
-    }).join('');
-    return '<div class="vw"><div class="ph"><div><div class="pt">Pilotage financier \u2014 Mapping</div>'
-      +'<div class="ps">Fichier : <strong>'+esc(imp.file)+'</strong> \u00b7 '+imp.raw.length+' lignes</div></div>'
-      +'<button class="bg" onclick="clearImp()">Annuler</button></div>'
-      +'<div style="display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start">'
-      +'<div class="card" style="padding:22px"><div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:4px">Association des colonnes</div>'
-      +'<div style="font-size:12px;color:#64748b;margin-bottom:18px">* = obligatoire</div>'
-      +form
-      +'<button class="bp" style="width:100%;margin-top:4px" onclick="applyImpMap()">Consolider et ajouter au P&amp;L</button></div>'
-      +'<div class="card" style="padding:22px"><div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:12px">Aper\u00e7u</div>'
-      +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
-      +'<thead><tr>'+rel.map(function(i){return '<th style="padding:5px 8px;font-size:11px;font-weight:700;color:#64748b;background:#f8fafc;border-bottom:1px solid #e2e8f0;text-align:left;white-space:nowrap">'+esc(imp.headers[i])+'</th>';}).join('')+'</tr></thead>'
-      +'<tbody>'+prev+'</tbody></table>'
-      +'<div style="font-size:11px;color:#94a3b8;margin-top:6px">4 lignes sur '+imp.raw.length+' au total</div></div></div>'
-      +'</div></div>';
-  }
-
-  /* ══ ETAT 3 : P&L global (vide si pas d\u2019historique) ══ */
-  if(S.impHistory.length===0){
-    return '<div class="vw"><div class="ph"><div><div class="pt">P&amp;L R\u00e9alis\u00e9</div>'
-      +'<div class="ps">Importez vos fichiers PSA/SAP pour construire le P&amp;L r\u00e9el vs plan</div></div></div>'
-      +'<div class="card" style="padding:48px;text-align:center">'
-      +'<div style="font-size:13px;color:#64748b;margin-bottom:20px">Aucun import pour le moment. Renseignez d\'abord le <strong>Code projet</strong> sur vos missions, puis importez votre fichier PSA.</div>'
-      +'<button class="bp" onclick="S.impView=\'import\';S.imp=null;render()">Importer un fichier</button>'
-      +'</div></div>';
-  }
-
-  /* ══ CALCUL P&L ══
-   * Cl\u00e9 de comparaison : code projet
-   * Plan  \u2190 missions de l\u2019app avec pcode renseign\u00e9
-   * R\u00e9el  \u2190 lignes SHR de l\u2019historique group\u00e9es par projet
-   */
-  var norm=function(n){return String(n||'').toLowerCase().replace(/[^a-z0-9 ]/gi,'').trim();};
-  var selFY=S.impSelFY||'all';
-
-  /* Bornes FY s\u00e9lectionn\u00e9 */
-  var fyS=null,fyE=null;
-  if(selFY!=='all'){var fyY=fyLabelToYear(selFY);fyS=fyStart(fyY);fyE=fyEnd(fyY);}
-  /* FY du plan : utiliser le FY du filtre s\u00e9lectionn\u00e9 (pas toujours S.year) */
-  var planFY = selFY !== 'all' ? fyLabelToYear(selFY) : S.year;
-  var planH  = fyHols(planFY);   /* jours f\u00e9ri\u00e9s correspondants */
-
-  /* ── Plan : missions avec pcode ── */
-  var planByProj={};  /* {pkey: {pcode,miss,cli,cons,cid,jPlan,caPlan,tjmPlan}} */
-  S.miss.filter(function(m){return m.pcode&&m.pcode.trim();}).forEach(function(m){
-    var c=S.cons.find(function(c){return c.id===m.cid;});
-    if(!c||isGone(c))return;
-    var k=kpi(c,S.miss,S.lvs,planFY,planH);
-    var mk=k.pm.find(function(p){return p.id===m.id;});
-    var jPlan=mk?mk.days:0;
-    var caPlan=mk?mk.rev:0;
-    var pkey=m.pcode.trim().toLowerCase();
-    /* Si plusieurs missions avec le m\u00eame pcode, additionner */
-    if(planByProj[pkey]){
-      planByProj[pkey].jPlan+=jPlan;
-      planByProj[pkey].caPlan+=caPlan;
-    } else {
-      planByProj[pkey]={pcode:m.pcode,miss:m.name,cli:m.cli,cons:c.name,cid:c.id,jPlan:jPlan,caPlan:caPlan,tjmPlan:m.tjm};
-    }
-  });
-
-  /* ── R\u00e9el : SHR group\u00e9s par (projet, consultant, date)
-   *
-   * Cl\u00e9 = pkey|consKey  -> isole chaque consultant sur chaque projet
-   * Jours  : dates \u00e0 montant net > 0
-   * CA     : somme des montants nets positifs par date
-   * TJM r\u00e9el : moyenne des Foreign Amount positifs (valeur directe, pas CA/jours)
-   * ────────────────────────────────────────────────────── */
-  var lastMap=S.impHistory[S.impHistory.length-1].map;
-  var useProjet=lastMap.projet!==undefined;
-
-  var shrPC={};  /* {pkey|ck : {pcode,cons,dates:{dt:net},posAmts:[]}} */
-  S.impHistory.forEach(function(h){
-    h.rows.forEach(function(r){
-      if(r.typeAnal!=='SHR')return;
-      if(!r.date)return;
-      if(fyS&&fyE&&(r.date<fyS||r.date>fyE))return;
-      var pkey=useProjet&&r.projet?r.projet.trim().toLowerCase():norm(r.cons);
-      var ck=norm(r.cons);
-      var key=pkey+'|'+ck;
-      if(!shrPC[key])shrPC[key]={pcode:useProjet&&r.projet?r.projet.trim():'',pkey:pkey,cons:r.cons,dates:{},posAmts:[]};
-      var dt=r.date;
-      shrPC[key].dates[dt]=(shrPC[key].dates[dt]||0)+r.montant;
-      if(r.montant>0)shrPC[key].posAmts.push(r.montant);  /* TJM direct */
-    });
-  });
-
-  /* Pour chaque projet du plan, trouver les donn\u00e9es SHR du consultant li\u00e9 */
-  var actByProj={};
-  Object.keys(planByProj).forEach(function(pkey){
-    var plan=planByProj[pkey];
-    var ck=norm(plan.cons);
-    var key=pkey+'|'+ck;
-    var d=shrPC[key];
-    if(!d){actByProj[pkey]=null;return;}
-    var caAct=0,jAct=0;
-    Object.keys(d.dates).forEach(function(dt){
-      var net=d.dates[dt];
-      if(net>0){caAct+=net;jAct++;}
-    });
-    /* TJM r\u00e9el = moyenne des Foreign Amount positifs (valeur directe du fichier) */
-    var tjmAct=d.posAmts.length>0?d.posAmts.reduce(function(s,v){return s+v;},0)/d.posAmts.length:0;
-    actByProj[pkey]={pcode:d.pcode,cons:d.cons,jAct:jAct,caAct:caAct,tjmAct:tjmAct};
-  });
-
-  /* ── CST : uniquement les consultants mapp\u00e9s via un code projet ── */
-  var mappedCons={};
-  Object.values(planByProj).forEach(function(p){mappedCons[norm(p.cons)]=true;});
-
-  var cstByCons={};
-  S.impHistory.forEach(function(h){
-    h.rows.forEach(function(r){
-      if(r.typeAnal!=='CST')return;
-      if(fyS&&fyE&&r.date&&(r.date<fyS||r.date>fyE))return;
-      var ck=norm(r.cons);
-      if(!mappedCons[ck])return;  /* ignorer les non-mapp\u00e9s */
-      if(!cstByCons[ck])cstByCons[ck]={name:r.cons,cost:0,n:0};
-      cstByCons[ck].cost+=r.montant;cstByCons[ck].n++;
-    });
-  });
-
-  /* ── FY disponibles dans l\u2019historique ── */
-  var allFYs=[];
-  S.impHistory.forEach(function(h){h.rows.forEach(function(r){var fy=dateToFY(r.date);if(fy&&allFYs.indexOf(fy)<0)allFYs.push(fy);});});
-  allFYs.sort();
-
-  /* Lignes du tableau : uniquement les codes projets li\u00e9s \u00e0 une mission de l\u2019app */
-  var tblRows=[];
-  Object.keys(planByProj).forEach(function(pkey){
-    var plan=planByProj[pkey];   /* toujours pr\u00e9sent puisqu\u2019on it\u00e8re sur planByProj */
-    var act=actByProj[pkey]||null;
-    tblRows.push({
-      pcode:plan?plan.pcode:(act?act.pcode:pkey),
-      miss:plan?plan.miss:'',
-      cli:plan?plan.cli:'',
-      cons:plan?plan.cons:(act?act.cons:''),
-      jPlan:plan?plan.jPlan:0,
-      caPlan:plan?plan.caPlan:0,
-      tjmPlan:plan?plan.tjmPlan:0,
-      jAct:act?act.jAct:0,
-      caAct:act?act.caAct:0,
-      tjmAct:act?act.tjmAct:0,
-      ecartJ:(act?act.jAct:0)-(plan?plan.jPlan:0),
-      ecartCA:(act?act.caAct:0)-(plan?plan.caPlan:0),
-      hasPlan:!!plan,hasAct:!!act
-    });
-  });
-
-  /* Totaux */
-  var totJPlan=tblRows.reduce(function(s,r){return s+r.jPlan;},0);
-  var totJAct=tblRows.reduce(function(s,r){return s+r.jAct;},0);
-  var totCAPlan=tblRows.reduce(function(s,r){return s+r.caPlan;},0);
-  var totCAAct=tblRows.reduce(function(s,r){return s+r.caAct;},0);
-  var totCost=Object.values(cstByCons).reduce(function(s,b){return s+b.cost;},0);
-
-  function ecC(v){return v===0?'#374151':v>0?'#16a34a':'#dc2626';}
-  function sgn(v,u){return (v>0?'+':'')+Math.round(v)+(u||'');}
-  function sgnCA(v){return (v>0?'+':'')+fEur(Math.round(v));}
-  function fJ(v){return v>0?+(Math.round(v*10)/10)+'j':'0j';}
-
-  /* Filtre FY */
-  var fyBtns='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">';
-  ['all'].concat(allFYs).forEach(function(fy){
-    var lbl=fy==='all'?'Tous FY':fy;
-    var on=fy===selFY;
-    fyBtns+='<button onclick="S.impSelFY=\''+fy+'\';render()" style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid '+(on?'#2563eb':'#e2e8f0')+';background:'+(on?'#2563eb':'#fff')+';color:'+(on?'#fff':'#64748b')+'">'+lbl+'</button>';
-  });
-  fyBtns+='</div>';
-
-  /* Hero */
-  var hero='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">'
-    +'<div class="card" style="padding:18px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px">Jours planifi\u00e9s</div>'
-    +'<div style="font-size:26px;font-weight:900;color:#0f172a">'+fJ(totJPlan)+'</div>'
-    +'<div style="font-size:11px;color:'+ecC(totJAct-totJPlan)+';margin-top:4px">R\u00e9el : '+fJ(totJAct)+' ('+sgn(totJAct-totJPlan,'j')+')</div></div>'
-    +'<div class="card" style="padding:18px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px">CA planifi\u00e9</div>'
-    +'<div style="font-size:26px;font-weight:900;color:#0f172a">'+fEur(Math.round(totCAPlan))+'</div>'
-    +'<div style="font-size:11px;color:'+ecC(totCAAct-totCAPlan)+';margin-top:4px">R\u00e9el : '+fEur(Math.round(totCAAct))+' ('+sgnCA(totCAAct-totCAPlan)+')</div></div>'
-    +'<div class="card" style="padding:18px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px">Co\u00fbt r\u00e9el (CST)</div>'
-    +'<div style="font-size:26px;font-weight:900;color:#7c3aed">'+fEur(Math.round(totCost))+'</div>'
-    +'<div style="font-size:11px;color:#64748b;margin-top:4px">lignes CST import\u00e9es</div></div>'
-    +'<div class="card" style="padding:18px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px">Contribution nette</div>'
-    +'<div style="font-size:26px;font-weight:900;color:'+ecC(totCAAct-totCost)+'">'+fEur(Math.round(totCAAct-totCost))+'</div>'
-    +'<div style="font-size:11px;color:#64748b;margin-top:4px">CA r\u00e9el \u2212 co\u00fbts CST</div></div>'
-    +'</div>';
-
-  /* Tableau */
-  var TH='padding:8px 10px;font-size:11px;font-weight:700;text-align:right;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;';
-  var THL='padding:8px 10px;font-size:11px;font-weight:700;text-align:left;color:#64748b;border-bottom:1px solid #e2e8f0;';
-  var TD='padding:8px 10px;font-size:12px;text-align:right;border-bottom:1px solid #f1f5f9;';
-  var TDL='padding:8px 10px;font-size:12px;font-weight:600;color:#0f172a;border-bottom:1px solid #f1f5f9;';
-  var TDS='padding:8px 10px;font-size:12px;color:#64748b;border-bottom:1px solid #f1f5f9;';
-  var thead='<thead><tr>'
-    +'<th style="'+THL+'">Code projet</th>'
-    +'<th style="'+THL+'">Mission</th>'
-    +'<th style="'+THL+'">Consultant</th>'
-    +'<th style="'+TH+'">J.Plan</th><th style="'+TH+'">J.R\u00e9el</th><th style="'+TH+'">\u0394\u00a0j</th>'
-    +'<th style="'+TH+'">CA Plan</th><th style="'+TH+'">CA R\u00e9el</th><th style="'+TH+'">\u0394\u00a0CA</th>'
-    +'<th style="'+TH+'">TJM Plan</th><th style="'+TH+'">TJM R\u00e9el</th>'
-    +'</tr></thead>';
-
-  var tbody='<tbody>'+tblRows.map(function(r){
-    var jCol=Math.abs(r.ecartJ)>2?ecC(r.ecartJ):'#374151';
-    var cCol=Math.abs(r.ecartCA)>500?ecC(r.ecartCA):'#374151';
-    return '<tr>'
-      +'<td style="'+TDL+';font-family:monospace;font-size:11px;color:#2563eb">'+esc(r.pcode)+'</td>'
-      +'<td style="'+TDS+'">'+esc(r.miss)+(r.cli?' \u2014 <em>'+esc(r.cli)+'</em>':'')+'</td>'
-      +'<td style="'+TDS+'">'+esc(r.cons)+'</td>'
-      +'<td style="'+TD+'">'+(r.hasPlan?fJ(r.jPlan):'<span style="color:#94a3b8">\u2014</span>')+'</td>'
-      +'<td style="'+TD+'">'+(r.hasAct?fJ(r.jAct):'<span style="color:#94a3b8">\u2014</span>')+'</td>'
-      +'<td style="'+TD+';color:'+jCol+';font-weight:700">'+(r.hasPlan&&r.hasAct?sgn(r.ecartJ,'j'):'\u2014')+'</td>'
-      +'<td style="'+TD+'">'+(r.hasPlan?fEur(Math.round(r.caPlan)):'\u2014')+'</td>'
-      +'<td style="'+TD+'">'+(r.hasAct?fEur(Math.round(r.caAct)):'\u2014')+'</td>'
-      +'<td style="'+TD+';color:'+cCol+';font-weight:700">'+(r.hasPlan&&r.hasAct?sgnCA(r.ecartCA):'\u2014')+'</td>'
-      +'<td style="'+TD+'">'+(r.hasPlan&&r.tjmPlan>0?fEur(r.tjmPlan):'\u2014')+'</td>'
-      +'<td style="'+TD+'">'+(r.hasAct&&r.tjmAct>0?fEur(Math.round(r.tjmAct)):'\u2014')+'</td>'
-      +'</tr>';
-  }).join('')+'</tbody>';
-
-  /* Historique */
-  var hist='<div class="card" style="padding:20px;margin-top:16px">'
-    +'<div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:12px">Fichiers import\u00e9s ('+S.impHistory.length+')</div>'
-    +'<div style="display:flex;flex-direction:column;gap:8px">'
-    +S.impHistory.map(function(h){
-      var fys=[];
-      h.rows.forEach(function(r){var fy=dateToFY(r.date);if(fy&&fys.indexOf(fy)<0)fys.push(fy);});
-      fys.sort();
-      var nSHR=h.rows.filter(function(r){return r.typeAnal==='SHR';}).length;
-      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#f8fafc;border-radius:8px">'
-        +'<div><div style="font-size:12px;font-weight:700;color:#0f172a">'+esc(h.file)+'</div>'
-        +'<div style="font-size:11px;color:#94a3b8">'+esc(h.addedAt)+' \u00b7 '+nSHR+' lignes SHR \u00b7 '+fys.join(', ')+'</div></div>'
-        +'<button onclick="removeImpHistory(\''+h.id+'\')" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;padding:4px 8px">\u00d7</button>'
-        +'</div>';
-    }).join('')+'</div></div>';
-
-  /* ── Section P&L Budget : intégrée directement dans la vue principale ──── */
-  var Hy=fyHols(S.year);
-  var hasBudget=S.pnlBudget.some(function(p){return p.fy===S.year;});
-  var moisList=FY_MONTHS_ORDER;
-  var pnlRows='',pnlTotBR=0,pnlTotRR=0,pnlTotBC=0,pnlTotRC=0;
-  moisList.forEach(function(m){
-    var entry=pnlEntry(S.year,m);
-    var budR=entry?entry.revenue:0;
-    var budC=entry?entry.cost:0;
-    var realR=monthRealRevenue(S.year,m,Hy);
-    var realC=monthRealCost(S.year,m,Hy);
-    pnlTotBR+=budR;pnlTotRR+=realR;pnlTotBC+=budC;pnlTotRC+=realC;
-    if(!budR&&!realR&&!budC&&!realC)return;
-    var eR=realR-budR,eC=realC-budC;
-    var mB=budR>0?(budR-budC)/budR*100:null;
-    var mR=realR>0?(realR-realC)/realR*100:null;
-    pnlRows+='<tr>'
-      +'<td style="font-weight:600">'+MOIS_ABR[m]+'</td>'
-      +'<td class="tr">'+(budR?fEur(budR):'—')+'</td>'
-      +'<td class="tr">'+(realR?fEur(realR):'—')+'</td>'
-      +'<td class="tr" style="font-weight:700;color:'+(eR>=0?'#16a34a':'#dc2626')+'">'+(budR||realR?(eR>=0?'+':'')+fEur(eR):'—')+'</td>'
-      +'<td class="tr">'+(budC?fEur(budC):'—')+'</td>'
-      +'<td class="tr">'+(realC?fEur(realC):'—')+'</td>'
-      +'<td class="tr" style="font-weight:700;color:'+(eC<=0?'#16a34a':'#dc2626')+'">'+(budC||realC?(eC>=0?'+':'')+fEur(eC):'—')+'</td>'
-      +'<td class="tr">'+(mB!==null?mB.toFixed(1)+'%':'—')+'</td>'
-      +'<td class="tr" style="font-weight:700;color:'+(mR!==null&&mB!==null?(mR>=mB?'#16a34a':'#dc2626'):'#64748b')+'">'+(mR!==null?mR.toFixed(1)+'%':'—')+'</td>'
-      +'</tr>';
-  });
-  var pnlTotRow=pnlTotBR||pnlTotRR?'<tr style="background:#f8fafc;border-top:2px solid #e2e8f0;font-weight:800">'
-    +'<td>TOTAL FY'+String(S.year).slice(2)+'</td>'
-    +'<td class="tr">'+fEur(pnlTotBR)+'</td>'
-    +'<td class="tr">'+fEur(pnlTotRR)+'</td>'
-    +'<td class="tr" style="color:'+(pnlTotRR-pnlTotBR>=0?'#16a34a':'#dc2626')+'">'+(pnlTotRR-pnlTotBR>=0?'+':'')+fEur(pnlTotRR-pnlTotBR)+'</td>'
-    +'<td class="tr">'+fEur(pnlTotBC)+'</td>'
-    +'<td class="tr">'+fEur(pnlTotRC)+'</td>'
-    +'<td class="tr" style="color:'+(pnlTotRC-pnlTotBC<=0?'#16a34a':'#dc2626')+'">'+(pnlTotRC-pnlTotBC>=0?'+':'')+fEur(pnlTotRC-pnlTotBC)+'</td>'
-    +'<td class="tr">'+(pnlTotBR>0?((pnlTotBR-pnlTotBC)/pnlTotBR*100).toFixed(1)+'%':'—')+'</td>'
-    +'<td class="tr" style="color:'+(pnlTotRR>0&&pnlTotBR>0?((pnlTotRR-pnlTotRC)/pnlTotRR*100>=(pnlTotBR-pnlTotBC)/pnlTotBR*100?'#16a34a':'#dc2626'):'#64748b')+'">'+(pnlTotRR>0?((pnlTotRR-pnlTotRC)/pnlTotRR*100).toFixed(1)+'%':'—')+'</td>'
-    +'</tr>':'';
-
-  var pnlSection='<div class="card" style="padding:24px;margin-top:20px">'
-    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:12px">'
-    +'<div><div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:4px">\uD83D\uDCCA Budget vs R\u00e9el \u2014 FY'+String(S.year).slice(2)+'</div>'
-    +'<div style="font-size:12px;color:#64748b">CA r\u00e9el = missions factur\u00e9es · Co\u00fbts r\u00e9els = jours ouvr\u00e9s \u00d7 SCR</div></div>'
-    +'<button class="bp" onclick="ouvrirPnl(event)" style="white-space:nowrap;flex-shrink:0">\u2191 Charger mon P&L Excel</button>'
-    +'</div>'
-    +(hasBudget?''
-      :'<div style="padding:12px 16px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:13px;color:#92400e;margin-bottom:14px">'
-      +'\uD83D\uDCA1 Aucun budget import\u00e9 pour FY'+String(S.year).slice(2)+'. Chargez votre fichier Excel Staffing CGI — la feuille <strong>Consolidation P&L</strong> est d\u00e9tect\u00e9e automatiquement.'
-      +'</div>')
-    +(pnlRows
-      ?'<div id="pnl-status"></div>'
-      +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
-      +'<thead><tr style="border-bottom:2px solid #e2e8f0">'
-      +'<th>Mois</th><th class="tr">CA Budget</th><th class="tr">CA R\u00e9el</th><th class="tr">\u00c9cart CA</th>'
-      +'<th class="tr">Co\u00fbts Budget</th><th class="tr">Co\u00fbts R\u00e9el</th><th class="tr">\u00c9cart Co\u00fbts</th>'
-      +'<th class="tr">Marge Bud.</th><th class="tr">Marge R\u00e9elle</th>'
-      +'</tr></thead><tbody>'+pnlRows+pnlTotRow+'</tbody></table></div>'
-      :'<div id="pnl-status"></div><div class="emp">Importez votre P&L pour voir la comparaison.</div>')
-    +'</div>';
-
-  return '<div class="vw">'
-    +'<div class="ph"><div><div class="pt">Pilotage financier</div>'
-    +'<div class="ps">FY'+String(S.year).slice(2)+' · Plan vs R\u00e9el SHR · Budget vs R\u00e9el P&L</div></div>'
-    +'<div style="display:flex;gap:8px">'
-    +'<button class="bg" onclick="S.impView=\'import\';S.imp=null;render()">+ Importer SHR</button>'
-    +'<button class="bg" onclick="clearAllImports()" style="color:#ef4444;border-color:#fecdd3">Vider l\'historique</button>'
-    +'</div></div>'
-    +fyBtns+hero
-    +'<div class="card ov">'
-    +'<div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between">'
-    +'<div style="font-size:13px;font-weight:700;color:#0f172a">Plan vs R\u00e9el par code projet \u2014 '+(selFY==='all'?'Tous FY':selFY)+'</div>'
-    +'<div style="font-size:11px;color:#94a3b8">Jours SHR = dates \u00e0 montant net &gt; 0 dans la fen\u00eatre FY</div>'
-    +'</div>'
-    +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'+thead+tbody+'</table></div>'
-    +'</div>'
-    +hist
-    +pnlSection
-    +'</div>';
-}
-
-/* ======================================================*/
-/* ── Import P&L Budget ─────────────────────────────────────────────────────
-   Lit la feuille "Consolidation P&L" du fichier Staffing CGI :
-   - Ligne en-tête : serials Excel = 1er jour de chaque mois fiscal
-   - "Delivered Revenues" × 1000 → CA budget en €
-   - "Gross Margin (%)"          → Coûts = CA × (1 − marge)
-   Ou modèle simple 3 colonnes : Mois | CA (€) | Coûts (€)
-─────────────────────────────────────────────────────────────────────────── */
-/* ── Ouvre le sélecteur de fichier P&L ────────────────────────────────────────
-   Utilise showOpenFilePicker() (Chrome 86+) qui ne dépend d'aucun file input.
-   Fallback automatique sur un input classique si l'API n'est pas disponible.  */
-async function ouvrirPnl(e){
-  if(e)e.stopPropagation();
-  if(window.showOpenFilePicker){
-    try{
-      var handles=await window.showOpenFilePicker({
-        types:[{description:'Fichiers Excel',accept:{'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':['.xlsx','.xlsm','.xls']}}],
-        multiple:false
-      });
-      if(handles&&handles[0]){
-        var file=await handles[0].getFile();
-        importPnlBudget(file);
-      }
-    }catch(err){
-      if(err.name!=='AbortError')console.warn('ouvrirPnl:',err);
-    }
-  }else{
-    /* Fallback : input classique temporaire créé dans le body */
-    var inp=document.createElement('input');
-    inp.type='file';inp.accept='.xlsx,.xlsm,.xls';
-    inp.style.cssText='position:fixed;top:-999px;left:-999px';
-    document.body.appendChild(inp);
-    inp.addEventListener('change',function(){
-      if(this.files&&this.files[0])importPnlBudget(this.files[0]);
-      document.body.removeChild(inp);
-    });
-    inp.click();
-  }
-}
-
-function importPnlBudget(file){
-  function setStatus(msg,type){
-    /* type: 'loading' | 'ok' | 'error' */
-    var el=document.getElementById('pnl-status');
-    if(!el)return;
-    var bg=type==='ok'?'#f0fdf4':type==='error'?'#fff1f2':'#fffbeb';
-    var co=type==='ok'?'#15803d':type==='error'?'#b91c1c':'#92400e';
-    el.style.cssText='padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;background:'+bg+';color:'+co+';margin-bottom:12px';
-    el.textContent=msg;
-  }
-
-  if(!file){setStatus('\u26a0 Aucun fichier.',  'error');return;}
-  setStatus('\u23f3 Chargement de la librairie Excel\u2026','loading');
-
-  loadXLSX(function(){
-    setStatus('\u23f3 Lecture de \u00ab '+file.name+' \u00bb\u2026','loading');
-    var reader=new FileReader();
-    reader.onerror=function(){setStatus('\u26a0 Impossible de lire le fichier. Vérifiez qu\u2019il n\u2019est pas ouvert dans Excel.','error');};
-    reader.onload=function(e){
-      try{
-        var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
-
-        /* serial Excel → JS Date (sans cellDates pour éviter les bugs de type) */
-        function serial2date(n){
-          if(typeof n!=='number'||n<1)return null;
-          var d=new Date(new Date(Date.UTC(1899,11,30)).getTime()+Math.round(n)*86400000);
-          return isNaN(d.getTime())?null:d;
-        }
-        function isSerial(n){return typeof n==='number'&&n>=43831&&n<=49673;}
-
-        /* Cherche la feuille P&L */
-        var cplName=null;
-        wb.SheetNames.forEach(function(n){
-          if(n.toLowerCase().replace(/[^a-z0-9]/g,'').indexOf('consolidation')>=0)cplName=n;
-        });
-
-        var newEntries=[];
-        var fy=S.year;
-
-        if(cplName){
-          /* ── FORMAT A : Staffing CGI ─── */
-          var ws=wb.Sheets[cplName];
-          if(!ws||!ws['!ref'])throw new Error('Feuille "'+cplName+'" vide.');
-          var rng=XLSX.utils.decode_range(ws['!ref']);
-          function cv(r,c){var cell=ws[XLSX.utils.encode_cell({r:r,c:c})];return cell?cell.v:null;}
-          function cstr(r,c){var v=cv(r,c);return v!=null?String(v).toLowerCase().trim():'';}
-
-          var hdrR=-1,revR=-1,gmR=-1;
-          for(var r=rng.s.r;r<=Math.min(rng.e.r,rng.s.r+20);r++){
-            var dCnt=0;
-            for(var c=rng.s.c;c<=rng.e.c;c++){if(isSerial(cv(r,c)))dCnt++;}
-            if(dCnt>=4&&hdrR<0)hdrR=r;
-            for(var c=rng.s.c;c<=Math.min(rng.e.c,rng.s.c+5);c++){
-              var lbl=cstr(r,c);
-              if(lbl.indexOf('delivered')>=0&&lbl.indexOf('rev')>=0&&revR<0)revR=r;
-              if(lbl.indexOf('gross margin')>=0&&gmR<0)gmR=r;
-            }
-          }
-          if(hdrR<0)throw new Error('Ligne de dates manquante dans "'+cplName+'".');
-          if(revR<0)throw new Error('"Delivered Revenues" manquant dans "'+cplName+'".');
-
-          for(var c=rng.s.c;c<=rng.e.c;c++){
-            if(!isSerial(cv(hdrR,c)))continue;
-            var d=serial2date(cv(hdrR,c));
-            if(!d)continue;
-            var m=d.getUTCMonth()+1;
-            var fyC=m>=10?d.getUTCFullYear()+1:d.getUTCFullYear();
-            var revK=typeof cv(revR,c)==='number'?cv(revR,c):0;
-            var gm=gmR>=0&&typeof cv(gmR,c)==='number'?cv(gmR,c):0;
-            var revE=Math.round(revK*1000);
-            var cstE=Math.round(revE*(1-gm));
-            if(!revE&&!cstE)continue;
-            newEntries.push({id:uid(),fy:fyC,month:m,revenue:revE,cost:cstE});
-          }
-        }else{
-          /* ── FORMAT B : modèle simple 3 colonnes ── */
-          var ws2=wb.Sheets[wb.SheetNames[0]];
-          var rows2=XLSX.utils.sheet_to_json(ws2,{header:1,defval:''});
-          var MDICT={'janvier':1,'janv':1,'jan':1,'fevrier':2,'fevr':2,'fev':2,'mars':3,'mar':3,
-            'avril':4,'avr':4,'mai':5,'juin':6,'juillet':7,'juil':7,'aout':8,'aou':8,
-            'septembre':9,'sept':9,'sep':9,'octobre':10,'oct':10,'novembre':11,'nov':11,'decembre':12,'dec':12};
-          function parseM(v){
-            var s=String(v||'').toLowerCase().trim();
-            if(s.normalize)s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-            s=s.replace(/[0-9]/g,'').trim();
-            return MDICT[s]||null;
-          }
-          for(var i=1;i<rows2.length;i++){
-            var row=rows2[i];if(!row||!row.length)continue;
-            var month=parseM(row[0]);if(!month)continue;
-            var rev2=parseFloat(String(row[1]).replace(',','.'))||0;
-            var cst2=parseFloat(String(row[2]).replace(',','.'))||0;
-            if(!rev2&&!cst2)continue;
-            newEntries.push({id:uid(),fy:fy,month:month,revenue:rev2,cost:cst2});
-          }
-        }
-
-        if(!newEntries.length){
-          setStatus('\u26a0 Aucune donn\u00e9e trouv\u00e9e. Feuilles d\u00e9tect\u00e9es\u00a0: '+wb.SheetNames.join(', ')+(cplName?'\u00b7 Feuille cible\u00a0: "'+cplName+'"':''),'error');
-          return;
-        }
-
-        var fySet={};
-        newEntries.forEach(function(p){fySet[p.fy]=(fySet[p.fy]||0)+1;});
-        var fysTouched=Object.keys(fySet).map(Number);
-        S.pnlBudget=S.pnlBudget.filter(function(p){return fysTouched.indexOf(p.fy)<0;}).concat(newEntries);
-        saveLocal();
-        render();
-
-        /* re-afficher le statut succès après render (qui reconstruit le DOM) */
-        setTimeout(function(){
-          var summary=fysTouched.map(function(f){return 'FY'+String(f).slice(2)+' ('+fySet[f]+' mois)';}).join(', ');
-          setStatus('\u2713 Import\u00e9\u00a0: '+summary,'ok');
-          if(sb&&SB_CID){
-            Promise.all(fysTouched.map(function(f){return sbDelPnlFY(f);}))
-              .then(function(){return Promise.all(newEntries.map(function(p){return sbUpsertPnl(p);}));})
-              .then(function(){setStatus('\u2713 Import\u00e9 et synchronis\u00e9\u00a0: '+summary,'ok');})
-              .catch(function(err){setStatus('\u2713 Import\u00e9 · \u26a0 sync\u00a0: '+err.message,'loading');});
-          }
-        },150);
-
-      }catch(err){
-        setStatus('\u26a0 Erreur\u00a0: '+err.message,'error');
-        console.error('[pnl]',err);
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  });
-}
-
-(function(){
-  var m=window.innerWidth<768;
-  var s=localStorage.getItem('sb-col');
-  if(m||(s==='true'))document.body.classList.add('sb-col');
-})();
 function toggleSB(){
   document.body.classList.toggle('sb-col');
   localStorage.setItem('sb-col',document.body.classList.contains('sb-col'));
