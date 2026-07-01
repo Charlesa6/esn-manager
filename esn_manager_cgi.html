@@ -3010,39 +3010,109 @@ function importPnlXLS(file){
     var reader=new FileReader();
     reader.onload=function(e){
       try{
-        var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
-        var ws=wb.Sheets[wb.SheetNames[0]];
-        var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-        var fy=S.year;
+        var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
         var newEntries=[];
-        for(var i=1;i<rows.length;i++){
-          var row=rows[i];
-          if(!row||!row.length)continue;
-          var month=parseMonthCell(row[0]);
-          if(!month)continue;
-          var rev=parseFloat(String(row[1]).replace(',','.'))||0;
-          var cost=parseFloat(String(row[2]).replace(',','.'))||0;
-          newEntries.push({id:uid(),fy:fy,month:month,revenue:rev,cost:cost});
-        }
-        if(!newEntries.length){alert('Aucune ligne valide trouv\u00e9e. V\u00e9rifiez que la colonne Mois contient des noms de mois reconnaissables (ex : Octobre, Janvier...).');return;}
-        /* Remplace les entr\u00e9es existantes pour ce FY */
-        S.pnlBudget=S.pnlBudget.filter(function(p){return p.fy!==fy;}).concat(newEntries);
-        saveLocal();
-        if(sb&&SB_CID){
-          sbDelPnlFY(fy).then(function(){
-            return Promise.all(newEntries.map(function(p){return sbUpsertPnl(p);}));
-          }).then(function(){
-            alert(newEntries.length+' mois import\u00e9(s) et synchronis\u00e9(s) pour '+fyLbl(fy)+' \u2713');
-          }).catch(function(err){
-            console.warn('sync pnl:',err);
-            alert(newEntries.length+' mois import\u00e9(s) localement.\n\u26a0 Erreur de synchronisation : '+err.message);
-          });
+        var fy=S.year;
+
+        /* \u2550\u2550\u2550 FORMAT 1 : Fichier Staffing CGI \u2014 sheet "Consolidation P&L" \u2550\u2550\u2550
+           - Ligne d'en-t\u00eate  : "Forecast"  |  Date Oct 2025 | Date Nov 2025 | ...
+           - "Delivered Revenues" : valeurs en milliers d'\u20ac (\u00d7 1000 pour avoir des \u20ac)
+           - "Gross Margin (%)"  : d\u00e9cimale (0.25 = 25%)
+           - Co\u00fbts budget = CA \u00d7 (1 \u2212 marge brute)                               */
+        var cplSheet=null;
+        wb.SheetNames.forEach(function(n){
+          if(n.toLowerCase().replace(/\s/g,'').indexOf('consolidationp')>=0||
+             n.toLowerCase().indexOf('p&l')>=0)cplSheet=n;
+        });
+
+        if(cplSheet){
+          var ws=wb.Sheets[cplSheet];
+          var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+          var rawRows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+
+          /* Trouver la ligne d'en-t\u00eate (contient des objets Date) et les lignes de donn\u00e9es */
+          var hdrRow=-1,revRow=-1,gmRow=-1;
+          for(var i=0;i<rawRows.length;i++){
+            var r=rawRows[i];
+            /* L'en-t\u00eate contient au moins 2 objets Date dans les colonnes 2+ */
+            var dateCnt=0;
+            for(var j=2;j<r.length;j++){if(r[j]instanceof Date)dateCnt++;}
+            if(dateCnt>=2&&hdrRow<0)hdrRow=i;
+            /* Lignes de donn\u00e9es : on cherche par label dans la premi\u00e8re colonne non vide */
+            var lbl=String(r[0]||r[1]||'').toLowerCase();
+            if(lbl.indexOf('delivered')>=0&&lbl.indexOf('rev')>=0)revRow=i;
+            if(lbl.indexOf('gross margin')>=0)gmRow=i;
+          }
+
+          if(hdrRow>=0&&revRow>=0){
+            var hdr=rawRows[hdrRow];
+            var rev=rawRows[revRow];
+            var gm=gmRow>=0?rawRows[gmRow]:[];
+
+            for(var j=0;j<hdr.length;j++){
+              if(!(hdr[j]instanceof Date))continue;
+              var d=hdr[j];
+              var m=d.getMonth()+1;  /* 1-12 */
+              var fyCol=m>=10?d.getFullYear()+1:d.getFullYear();
+              var revK=typeof rev[j]==='number'?rev[j]:parseFloat(String(rev[j]||0))||0;
+              var gmPct=typeof gm[j]==='number'?gm[j]:parseFloat(String(gm[j]||0))||0;
+              var revEur=Math.round(revK*1000);
+              var costEur=Math.round(revEur*(1-gmPct));
+              if(revEur===0&&costEur===0)continue;
+              /* Cherche si une entr\u00e9e existe d\u00e9j\u00e0 pour ce FY/mois (on la remplace) */
+              var eid=uid();
+              newEntries.push({id:eid,fy:fyCol,month:m,revenue:revEur,cost:costEur});
+            }
+          }else{
+            throw new Error('Feuille "'+cplSheet+'" trouv\u00e9e mais structure non reconnue \u2014 colonnes "Delivered Revenues" ou dates introuvables.');
+          }
         }else{
-          alert(newEntries.length+' mois import\u00e9(s) pour '+fyLbl(fy)+' (local uniquement).');
+          /* \u2550\u2550\u2550 FORMAT 2 : mod\u00e8le simple (t\u00e9l\u00e9charg\u00e9 depuis l\'app) \u2550\u2550\u2550
+             Colonnes : Mois | CA Budget (\u20ac) | Co\u00fbts Budget (\u20ac)           */
+          var ws2=wb.Sheets[wb.SheetNames[0]];
+          var rows2=XLSX.utils.sheet_to_json(ws2,{header:1,defval:''});
+          for(var i=1;i<rows2.length;i++){
+            var row=rows2[i];
+            if(!row||!row.length)continue;
+            var month=parseMonthCell(row[0]);
+            if(!month)continue;
+            var rev2=parseFloat(String(row[1]).replace(',','.'))||0;
+            var cost2=parseFloat(String(row[2]).replace(',','.'))||0;
+            newEntries.push({id:uid(),fy:fy,month:month,revenue:rev2,cost:cost2});
+          }
+        }
+
+        if(!newEntries.length){
+          alert('Aucune donn\u00e9e valide trouv\u00e9e.\n\nSi vous importez votre fichier Staffing CGI, v\u00e9rifiez qu\u2019il contient la feuille "Consolidation P&L".\nSinon, utilisez le mod\u00e8le t\u00e9l\u00e9chargeable depuis l\u2019application.');
+          return;
+        }
+
+        /* Grouper par FY pour l\u2019affichage du bilan */
+        var fySet={};
+        newEntries.forEach(function(p){fySet[p.fy]=(fySet[p.fy]||0)+1;});
+
+        /* Remplacer les entr\u00e9es pour chaque FY concern\u00e9 */
+        var fysTouched=Object.keys(fySet).map(Number);
+        S.pnlBudget=S.pnlBudget.filter(function(p){return fysTouched.indexOf(p.fy)<0;}).concat(newEntries);
+        saveLocal();
+
+        var summary=fysTouched.map(function(f){return fyLbl(f)+' ('+fySet[f]+' mois)';}).join(', ');
+
+        if(sb&&SB_CID){
+          Promise.all(fysTouched.map(function(f){return sbDelPnlFY(f);}))
+            .then(function(){return Promise.all(newEntries.map(function(p){return sbUpsertPnl(p);}));})
+            .then(function(){alert('\u2713 Import\u00e9 et synchronis\u00e9 : '+summary);})
+            .catch(function(err){
+              console.warn('sync pnl:',err);
+              alert(newEntries.length+' mois import\u00e9(s) localement.\n\u26a0 Erreur de sync : '+err.message);
+            });
+        }else{
+          alert('\u2713 Import\u00e9 : '+summary+' (local uniquement, Supabase non connect\u00e9).');
         }
         render();
       }catch(err){
-        alert('Erreur de lecture : '+err.message);
+        console.error('importPnlXLS:',err);
+        alert('Erreur de lecture du fichier :\n'+err.message);
       }
     };
     reader.readAsArrayBuffer(file);
@@ -3053,6 +3123,16 @@ function tPnlBudget(){
   var Hy=fyHols(S.year);
   var months=curMonthsList();
   var rows='',totBudR=0,totRealR=0,totBudC=0,totRealC=0;
+
+  function ecartPct(real,bud){return bud>0?((real-bud)/bud*100):null;}
+  function ecartCell(real,bud,goodIfPositive){
+    var e=real-bud,p=ecartPct(real,bud);
+    var good=goodIfPositive?(e>=0):(e<=0);
+    var col=good?'#16a34a':'#dc2626';
+    return '<td class="tr" style="color:'+col+';font-weight:600">'+(e>=0?'+':'')+fEur(e)
+      +(p!==null?' <span style="font-size:10px;opacity:.75">('+(p>=0?'+':'')+p.toFixed(0)+'%)</span>':'')+'</td>';
+  }
+
   months.forEach(function(m){
     var entry=pnlEntry(S.year,m);
     var budR=entry?entry.revenue:0;
@@ -3060,54 +3140,89 @@ function tPnlBudget(){
     var realR=monthRealRevenue(S.year,m,Hy);
     var realC=monthRealCost(S.year,m,Hy);
     totBudR+=budR;totRealR+=realR;totBudC+=budC;totRealC+=realC;
-    var ecartR=realR-budR;
-    var ecartC=realC-budC;
-    var margBud=budR>0?(budR-budC)/budR*100:0;
-    var margReal=realR>0?(realR-realC)/realR*100:0;
-    rows+='<tr>'
-      +'<td style="font-weight:700;color:#0f172a">'+monthLbl(m)+'</td>'
-      +'<td class="tr">'+fEur(budR)+'</td>'
-      +'<td class="tr">'+fEur(realR)+'</td>'
-      +'<td class="tr" style="color:'+(ecartR>=0?'#16a34a':'#dc2626')+';font-weight:600">'+(ecartR>=0?'+':'')+fEur(ecartR)+'</td>'
-      +'<td class="tr">'+fEur(budC)+'</td>'
-      +'<td class="tr">'+fEur(realC)+'</td>'
-      +'<td class="tr" style="color:'+(ecartC<=0?'#16a34a':'#dc2626')+';font-weight:600">'+(ecartC>=0?'+':'')+fEur(ecartC)+'</td>'
-      +'<td class="tr">'+margBud.toFixed(0)+'%</td>'
-      +'<td class="tr" style="font-weight:700;color:'+(margReal>=margBud?'#16a34a':'#dc2626')+'">'+margReal.toFixed(0)+'%</td>'
+    var margBud=budR>0?(budR-budC)/budR*100:null;
+    var margReal=realR>0?(realR-realC)/realR*100:null;
+    var hasData=budR>0||realR>0;
+    rows+='<tr style="'+(hasData?'':'opacity:.45')+'">'
+      +'<td style="font-weight:700;color:#0f172a">'+MOIS_ABR[m]+'</td>'
+      +'<td class="tr">'+(budR?fEur(budR):'<span style="color:#cbd5e1">—</span>')+'</td>'
+      +'<td class="tr">'+(realR?fEur(realR):'<span style="color:#cbd5e1">—</span>')+'</td>'
+      +ecartCell(realR,budR,true)
+      +'<td class="tr">'+(budC?fEur(budC):'<span style="color:#cbd5e1">—</span>')+'</td>'
+      +'<td class="tr">'+(realC?fEur(realC):'<span style="color:#cbd5e1">—</span>')+'</td>'
+      +ecartCell(realC,budC,false)
+      +'<td class="tr">'+(margBud!==null?margBud.toFixed(1)+'%':'—')+'</td>'
+      +'<td class="tr" style="font-weight:700;color:'+(margReal!==null&&margBud!==null?(margReal>=margBud?'#16a34a':'#dc2626'):'#64748b')+'">'+(margReal!==null?margReal.toFixed(1)+'%':'—')+'</td>'
       +'</tr>';
   });
+
   var totMargBud=totBudR>0?(totBudR-totBudC)/totBudR*100:0;
   var totMargReal=totRealR>0?(totRealR-totRealC)/totRealR*100:0;
+  var totEcartR=totRealR-totBudR,totEcartC=totRealC-totBudC;
+  var totPctR=totBudR>0?((totEcartR/totBudR)*100):null;
   var totRow='<tr style="background:#f8fafc;border-top:2px solid #e2e8f0;font-weight:800">'
-    +'<td>TOTAL</td>'
+    +'<td>TOTAL '+curLbl()+'</td>'
     +'<td class="tr">'+fEur(totBudR)+'</td>'
     +'<td class="tr">'+fEur(totRealR)+'</td>'
-    +'<td class="tr" style="color:'+(totRealR-totBudR>=0?'#16a34a':'#dc2626')+'">'+(totRealR-totBudR>=0?'+':'')+fEur(totRealR-totBudR)+'</td>'
+    +'<td class="tr" style="color:'+(totEcartR>=0?'#16a34a':'#dc2626')+'">'+(totEcartR>=0?'+':'')+fEur(totEcartR)+(totPctR!==null?' <span style="font-size:10px">('+(totPctR>=0?'+':'')+totPctR.toFixed(0)+'%)</span>':'')+'</td>'
     +'<td class="tr">'+fEur(totBudC)+'</td>'
     +'<td class="tr">'+fEur(totRealC)+'</td>'
-    +'<td class="tr" style="color:'+(totRealC-totBudC<=0?'#16a34a':'#dc2626')+'">'+(totRealC-totBudC>=0?'+':'')+fEur(totRealC-totBudC)+'</td>'
-    +'<td class="tr">'+totMargBud.toFixed(0)+'%</td>'
-    +'<td class="tr" style="color:'+(totMargReal>=totMargBud?'#16a34a':'#dc2626')+'">'+totMargReal.toFixed(0)+'%</td>'
+    +'<td class="tr" style="color:'+(totEcartC<=0?'#16a34a':'#dc2626')+'">'+(totEcartC>=0?'+':'')+fEur(totEcartC)+'</td>'
+    +'<td class="tr">'+totMargBud.toFixed(1)+'%</td>'
+    +'<td class="tr" style="color:'+(totMargReal>=totMargBud?'#16a34a':'#dc2626')+';font-size:15px">'+totMargReal.toFixed(1)+'%</td>'
     +'</tr>';
 
   var hasBudget=S.pnlBudget.some(function(p){return p.fy===S.year;});
 
+  /* Cartes r\u00e9sum\u00e9 \u00e9cart */
+  var heroCards='';
+  if(hasBudget&&(totBudR>0||totRealR>0)){
+    function hCard(lbl,bud,real,goodIfPos){
+      var e=real-bud,p=bud>0?(e/bud*100):null;
+      var good=goodIfPos?(e>=0):(e<=0);
+      return '<div style="background:'+(good?'#f0fdf4':'#fff1f2')+';border:1px solid '+(good?'#86efac':'#fca5a5')+';border-radius:12px;padding:16px 20px">'
+        +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#64748b;letter-spacing:.05em;margin-bottom:6px">'+lbl+'</div>'
+        +'<div style="font-size:22px;font-weight:800;color:'+(good?'#15803d':'#b91c1c')+'">'+(e>=0?'+':'')+fEur(e)+'</div>'
+        +(p!==null?'<div style="font-size:12px;color:#64748b;margin-top:3px">Prévu '+fEur(bud)+' · Réel '+fEur(real)+' ('+(p>=0?'+':'')+p.toFixed(0)+'%)</div>':'')
+        +'</div>';
+    }
+    heroCards='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">'
+      +hCard('\u00c9cart CA cumul\u00e9',totBudR,totRealR,true)
+      +hCard('\u00c9cart co\u00fbts cumul\u00e9s',totBudC,totRealC,false)
+      +'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 20px">'
+      +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#64748b;letter-spacing:.05em;margin-bottom:6px">Marge r\u00e9elle vs budget</div>'
+      +'<div style="font-size:22px;font-weight:800;color:'+(totMargReal>=totMargBud?'#15803d':'#b91c1c')+'">'+totMargReal.toFixed(1)+'%</div>'
+      +'<div style="font-size:12px;color:#64748b;margin-top:3px">Budget : '+totMargBud.toFixed(1)+'% · \u00c9cart : '+(totMargReal-totMargBud>=0?'+':'')+(totMargReal-totMargBud).toFixed(1)+'pt</div>'
+      +'</div>'
+      +'</div>';
+  }
+
+  var banner=hasBudget?'':
+    '<div class="card" style="padding:16px 20px;margin-bottom:16px;background:#fffbeb;border-color:#fde68a">'
+    +'<div style="font-size:13px;color:#92400e"><strong>Aucun budget import\u00e9 pour '+fyLbl(S.year)+'.</strong><br>'
+    +'Importez directement votre fichier Staffing (feuille "Consolidation P&L" d\u00e9tect\u00e9e automatiquement), '
+    +'ou t\u00e9l\u00e9chargez le mod\u00e8le simple ci-dessus.</div></div>';
+
   return '<div class="vw">'
     +'<div class="ph"><div><div class="pt">Pilotage financier \u2014 Budget vs R\u00e9el</div>'
-    +'<div class="ps">'+curLbl()+' \u00b7 Co\u00fbts r\u00e9els = jours ouvr\u00e9s \u00d7 SCR \u00b7 CA r\u00e9el = missions factur\u00e9es</div></div>'
+    +'<div class="ps">'+curLbl()+' \u00b7 Budget import\u00e9 depuis "Consolidation P&L" · Co\u00fbts r\u00e9els = jours ouvr\u00e9s \u00d7 SCR · CA r\u00e9el = missions factur\u00e9es</div></div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
     +'<button class="bg" onclick="S.impView=\'pl\';render()">\u2190 Plan vs R\u00e9el par projet</button>'
-    +'<button class="bg" onclick="downloadPnlTemplate()">\uD83D\uDCC4 T\u00e9l\u00e9charger le mod\u00e8le</button>'
-    +'<button class="bp" onclick="document.getElementById(\'pnl-file\').click()">\u2191 Importer mon P&amp;L</button>'
+    +'<button class="bg" onclick="downloadPnlTemplate()">\uD83D\uDCC4 Mod\u00e8le simple</button>'
+    +'<button class="bp" onclick="document.getElementById(\'pnl-file\').click()">\u2191 Importer mon P&amp;L (Staffing CGI ou mod\u00e8le)</button>'
     +'<input type="file" id="pnl-file" accept=".xlsx" style="display:none" onchange="importPnlXLS(this.files[0]);this.value=\'\'">'
     +'</div></div>'
-    +(hasBudget?'':'<div class="card" style="padding:16px 20px;margin-bottom:16px;background:#fffbeb;border-color:#fde68a"><div style="font-size:13px;color:#92400e">Aucun budget import\u00e9 pour '+fyLbl(S.year)+'. T\u00e9l\u00e9chargez le mod\u00e8le, remplissez les colonnes CA et Co\u00fbts par mois, puis importez-le.</div></div>')
+    +banner+heroCards
     +'<div class="card ov">'
-    +'<table><thead><tr><th>Mois</th><th class="tr">CA Budget</th><th class="tr">CA R\u00e9el</th><th class="tr">\u00c9cart CA</th>'
+    +'<table><thead><tr><th>Mois</th>'
+    +'<th class="tr">CA Budget</th><th class="tr">CA R\u00e9el</th><th class="tr">\u00c9cart CA</th>'
     +'<th class="tr">Co\u00fbts Budget</th><th class="tr">Co\u00fbts R\u00e9el</th><th class="tr">\u00c9cart Co\u00fbts</th>'
-    +'<th class="tr">Marge Budget</th><th class="tr">Marge R\u00e9elle</th></tr></thead>'
+    +'<th class="tr">Marge Budget</th><th class="tr">Marge R\u00e9elle</th>'
+    +'</tr></thead>'
     +'<tbody>'+rows+totRow+'</tbody></table>'
-    +'</div></div>';
+    +'<div style="font-size:11px;color:#94a3b8;padding:10px 14px">'
+    +'\u2139\uFE0F \u00c9cart CA positif \u2192 vous avez fait mieux que pr\u00e9vu. \u00c9cart co\u00fbts n\u00e9gatif \u2192 vous avez consomm\u00e9 moins que pr\u00e9vu (favorable).'
+    +'</div></div></div>';
 }
 
 function tImpute(){
