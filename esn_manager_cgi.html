@@ -1012,7 +1012,13 @@ function tKPIs(){
   var mArr=ks.filter(function(x){return x.k.om!=null;});
   var avgM=mArr.length?mArr.reduce(function(s,x){return s+x.k.om;},0)/mArr.length:null;
   var avgTJMv=totBill>0?totR/totBill:0;
-  var totSalary=ks.reduce(function(s,x){return s+x.c.scr*SCR_FACTOR/(S.quarter?4:1);},0);
+  /* Coût salaire = SCR × SCR_FACTOR × (jours présents dans la période / jours ouvrés totaux du FY)
+     Cela prend en compte : dates d'arrivée/départ (tWD=0 si absent), et proratise
+     automatiquement pour les trimestres ou les consultants arrivés/partis en cours d'année */
+  var fyTotalWD=wDays(fyStart(S.year),fyEnd(S.year),H);
+  var totSalary=fyTotalWD>0
+    ?ks.reduce(function(s,x){return s+x.c.scr*SCR_FACTOR*(x.k.tWD/fyTotalWD);},0)
+    :0;
   var netC=totR-totSalary;
   var top3=clientRev(ks).slice(0,3);
   var totRevP=Math.max(totR,1);
@@ -1247,7 +1253,8 @@ function tParam(){
   var _aktWD=ks.reduce(function(s,x){return s+(x.k.tWD||0);},0);
   var avgSr=_aktWD>0?ks.reduce(function(s,x){return s+x.k.sr*(x.k.tWD||0);},0)/_aktWD:0;
   var avgTJMv=totBill>0?totR/totBill:0;
-  var netC=totR-ks.reduce(function(s,x){return s+x.c.scr*SCR_FACTOR/(S.quarter?4:1);},0);
+  var _fyTWD=wDays(fyStart(S.year),fyEnd(S.year),H);
+  var netC=totR-(_fyTWD>0?ks.reduce(function(s,x){return s+x.c.scr*SCR_FACTOR*(x.k.tWD/_fyTWD);},0):0);
 
   var context='<div class="card" style="padding:20px;margin-bottom:20px">'
     +'<div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:14px">\uD83D\uDCCC Situation actuelle - '+fyLbl(S.year)+'</div>'
