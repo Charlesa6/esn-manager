@@ -3005,96 +3005,96 @@ function parseMonthCell(v){
 }
 
 function importPnlXLS(file){
-  if(!file){console.warn('importPnlXLS: no file');return;}
+  if(!file){alert('Aucun fichier sélectionné.');return;}
+  console.log('[PnL] Fichier reçu :',file.name,'(',file.size,'octets)');
   loadXLSX(function(){
+    console.log('[PnL] XLSX chargé, lecture du fichier...');
     var reader=new FileReader();
+    reader.onerror=function(){alert('Erreur de lecture du fichier. Réessayez.');};
     reader.onload=function(e){
       try{
-        /* cellDates:true : les cellules date auront t:'d' et v: Date JS */
-        var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
+        /* ─── Lecture sans cellDates pour éviter les incohérences de type ─── */
+        var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+        console.log('[PnL] Feuilles trouvées :',wb.SheetNames);
         var newEntries=[];
         var fy=S.year;
 
-        /* ── D\u00e9tection du format du fichier ──────────────────────────────────
-           FORMAT A : Fichier Staffing CGI — feuille "Consolidation P&L"
-           FORMAT B : Mod\u00e8le simple (3 colonnes) exportable depuis l'app     */
+        /* Conversion serial Excel → JS Date (epoch Excel = 30/12/1899, avec bug 1900) */
+        function serialToDate(n){
+          if(typeof n!=='number'||n<1)return null;
+          /* Correction bug 1900 : Excel croit que 1900 est bissextile */
+          var epoch=new Date(Date.UTC(1899,11,30));
+          var d=new Date(epoch.getTime()+Math.round(n)*86400000);
+          return isNaN(d.getTime())?null:d;
+        }
+        /* Un numérique est-il un serial de date plausible (2020-2035) ? */
+        function isDateSerial(n){return typeof n==='number'&&n>=43831&&n<=49673;}
+
+        /* ─── Détection du format ──────────────────────────────────────────
+           FORMAT A : fichier Staffing CGI avec feuille "Consolidation P&L"
+           FORMAT B : modèle simple 3 colonnes                              */
         var cplName=null;
         wb.SheetNames.forEach(function(n){
-          var nl=n.toLowerCase().replace(/\s+/g,'');
-          if(nl.indexOf('consolidation')>=0||nl.indexOf('p&l')>=0||nl.indexOf('pl')>=0)
+          var nl=n.toLowerCase().replace(/[^a-z0-9]/g,'');
+          if(nl.indexOf('consolidation')>=0||nl==='pl'||nl.indexOf('pnl')>=0||nl.indexOf('pandl')>=0)
             cplName=n;
         });
+        console.log('[PnL] Feuille cible :',cplName||'(modèle simple)');
 
         if(cplName){
-          /* ══ FORMAT A ═══════════════════════════════════════════════════
-             Acc\u00e8s direct aux cellules via XLSX.utils.encode_cell()
-             pour \u00e9viter les probl\u00e8mes de type avec sheet_to_json         */
           var ws=wb.Sheets[cplName];
-          if(!ws||!ws['!ref']){throw new Error('Feuille "'+cplName+'" vide ou invalide.');}
-          var range=XLSX.utils.decode_range(ws['!ref']);
-          var nCols=range.e.c-range.s.c+1;
-          var nRows=range.e.r-range.s.r+1;
-          var minC=range.s.c,maxC=range.e.c,minR=range.s.r,maxR=range.e.r;
+          if(!ws||!ws['!ref'])throw new Error('Feuille "'+cplName+'" vide.');
+          var rng=XLSX.utils.decode_range(ws['!ref']);
 
-          /* Helper : valeur d'une cellule (row et col en indices absolus) */
-          function cv(r,c){
-            var cell=ws[XLSX.utils.encode_cell({r:r,c:c})];
-            return cell?cell.v:null;
-          }
-          function ct(r,c){
-            var cell=ws[XLSX.utils.encode_cell({r:r,c:c})];
-            return cell?cell.t:null;
-          }
+          function cell(r,c){return ws[XLSX.utils.encode_cell({r:r,c:c})]||null;}
+          function cv(r,c){var cl=cell(r,c);return cl?cl.v:null;}
+          function cstr(r,c){var v=cv(r,c);return v!=null?String(v).toLowerCase().trim():'';}
 
-          /* 1. Trouver la ligne d'en-t\u00eate : au moins 4 cellules de type 'd' (date) */
+          /* ── Scan des 20 premières lignes pour trouver hdr / rev / gm ── */
           var hdrR=-1,revR=-1,gmR=-1;
-          for(var r=minR;r<=Math.min(maxR,minR+15);r++){
-            var dateCnt=0;
-            for(var c=minC;c<=maxC;c++){
-              if(ct(r,c)==='d')dateCnt++;
+          for(var r=rng.s.r;r<=Math.min(rng.e.r,rng.s.r+20);r++){
+            /* Compte les sériaux de date dans cette ligne */
+            var dCnt=0;
+            for(var c=rng.s.c;c<=rng.e.c;c++){
+              if(isDateSerial(cv(r,c)))dCnt++;
             }
-            if(dateCnt>=4&&hdrR<0)hdrR=r;
+            if(dCnt>=4&&hdrR<0){hdrR=r;console.log('[PnL] Ligne en-tête dates : row',r,'('+dCnt+' dates)');}
 
-            /* Chercher les labels dans les 5 premi\u00e8res colonnes */
-            for(var c=minC;c<=Math.min(maxC,minC+4);c++){
-              var v=cv(r,c);
-              if(!v||typeof v!=='string')continue;
-              var lbl=v.toLowerCase();
-              if(lbl.indexOf('delivered')>=0&&lbl.indexOf('rev')>=0)revR=r;
-              if(lbl.indexOf('gross margin')>=0)gmR=r;
-              break;
+            /* Cherche les labels textuels sur toute la ligne */
+            for(var c=rng.s.c;c<=Math.min(rng.e.c,rng.s.c+5);c++){
+              var lbl=cstr(r,c);
+              if(lbl.indexOf('delivered')>=0&&lbl.indexOf('rev')>=0){revR=r;console.log('[PnL] Delivered Revenues : row',r);}
+              if(lbl.indexOf('gross margin')>=0){gmR=r;console.log('[PnL] Gross Margin : row',r);}
             }
           }
 
-          if(hdrR<0||revR<0)
-            throw new Error('Structure non reconnue dans "'+cplName+'" — lignes "Delivered Revenues" ou dates de m\u00e9nages introuvables. V\u00e9rifiez le fichier.');
+          if(hdrR<0)throw new Error('Ligne de dates introuvable dans "'+cplName+'" — vérifiez que le fichier n\'est pas filtré ou masqué.');
+          if(revR<0)throw new Error('"Delivered Revenues" introuvable dans "'+cplName+'".');
 
-          /* 2. Extraire les donn\u00e9es colonne par colonne */
-          for(var c=minC;c<=maxC;c++){
-            if(ct(hdrR,c)!=='d')continue;          /* seulement les colonnes date */
-            var d=cv(hdrR,c);                       /* JS Date gr\u00e2ce \u00e0 cellDates:true */
-            if(!(d instanceof Date)||isNaN(d.getTime()))continue;
-            var m=d.getMonth()+1;                   /* 1-12 */
-            if(m<1||m>12)continue;
-            var fyCol=m>=10?d.getFullYear()+1:d.getFullYear();
+          /* ── Extraction colonne par colonne ── */
+          for(var c=rng.s.c;c<=rng.e.c;c++){
+            var serial=cv(hdrR,c);
+            if(!isDateSerial(serial))continue;
+            var d=serialToDate(serial);
+            if(!d)continue;
+            var m=d.getUTCMonth()+1;
+            var fyCol=m>=10?d.getUTCFullYear()+1:d.getUTCFullYear();
             var revK=typeof cv(revR,c)==='number'?cv(revR,c):0;
             var gmPct=gmR>=0&&typeof cv(gmR,c)==='number'?cv(gmR,c):0;
             var revEur=Math.round(revK*1000);
             var costEur=Math.round(revEur*(1-gmPct));
             if(revEur===0&&costEur===0)continue;
+            console.log('[PnL] M'+m+'/FY'+fyCol+' CA='+revEur+' Cost='+costEur);
             newEntries.push({id:uid(),fy:fyCol,month:m,revenue:revEur,cost:costEur});
           }
 
         }else{
-          /* ══ FORMAT B : mod\u00e8le simple 3 colonnes ══════════════════════
-             Colonnes : Mois | CA Budget (\u20ac) | Co\u00fbts Budget (\u20ac)         */
+          /* FORMAT B — modèle simple : Mois | CA | Coûts */
           var ws2=wb.Sheets[wb.SheetNames[0]];
           var rows2=XLSX.utils.sheet_to_json(ws2,{header:1,defval:''});
           for(var i=1;i<rows2.length;i++){
-            var row=rows2[i];
-            if(!row||!row.length)continue;
-            var month=parseMonthCell(row[0]);
-            if(!month)continue;
+            var row=rows2[i];if(!row||!row.length)continue;
+            var month=parseMonthCell(row[0]);if(!month)continue;
             var rev2=parseFloat(String(row[1]).replace(',','.'))||0;
             var cost2=parseFloat(String(row[2]).replace(',','.'))||0;
             if(!rev2&&!cost2)continue;
@@ -3102,14 +3102,17 @@ function importPnlXLS(file){
           }
         }
 
+        console.log('[PnL]',newEntries.length,'entrées extraites');
+
         if(!newEntries.length){
-          alert('Aucune donn\u00e9e valide trouv\u00e9e dans ce fichier.\n\n'
-            +'Si c\u2019est votre fichier Staffing CGI : l\u2019import porte sur la feuille "Consolidation P&L" (d\u00e9tect\u00e9e automatiquement).\n'
-            +'Sinon, utilisez le mod\u00e8le simple t\u00e9l\u00e9chargeable depuis l\u2019application.');
+          alert('Aucune donnée valide trouvée.\n\n'
+            +(cplName
+              ?'La feuille "'+cplName+'" a été détectée mais aucune ligne "Delivered Revenues" avec données n\'a pu être extraite.'
+              :'Utilisez le modèle téléchargeable ou vérifiez le format du fichier.')
+            +'\n\nOuvrez la console (F12 → Console) pour le détail.');
           return;
         }
 
-        /* Remplacer les entr\u00e9es pour chaque FY concern\u00e9 */
         var fySet={};
         newEntries.forEach(function(p){fySet[p.fy]=(fySet[p.fy]||0)+1;});
         var fysTouched=Object.keys(fySet).map(Number);
@@ -3118,20 +3121,18 @@ function importPnlXLS(file){
         render();
 
         var summary=fysTouched.map(function(f){return fyLbl(f)+' ('+fySet[f]+' mois)';}).join(', ');
-
         if(sb&&SB_CID){
           Promise.all(fysTouched.map(function(f){return sbDelPnlFY(f);}))
             .then(function(){return Promise.all(newEntries.map(function(p){return sbUpsertPnl(p);}));})
-            .then(function(){alert('\u2713 Import\u00e9 et synchronis\u00e9 : '+summary);})
-            .catch(function(err){alert(newEntries.length+' mois import\u00e9s localement.\n\u26a0 Erreur sync : '+err.message);});
+            .then(function(){alert('\u2713 Importé et synchronisé : '+summary);})
+            .catch(function(err){alert(newEntries.length+' mois importés.\n\u26a0 Erreur sync Supabase : '+err.message);});
         }else{
-          alert('\u2713 Import\u00e9 : '+summary);
+          alert('\u2713 Importé : '+summary);
         }
 
       }catch(err){
-        console.error('importPnlXLS:',err);
-        alert('Erreur de lecture :\n'+err.message+
-          '\n\nConsultez la console (F12) pour plus de d\u00e9tails.');
+        console.error('[PnL] Erreur :',err);
+        alert('Erreur d\'import :\n\n'+err.message+'\n\nOuvrez la console (F12 → Console) pour le détail.');
       }
     };
     reader.readAsArrayBuffer(file);
@@ -3228,8 +3229,10 @@ function tPnlBudget(){
     +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
     +'<button class="bg" onclick="S.impView=\'pl\';render()">\u2190 Plan vs R\u00e9el par projet</button>'
     +'<button class="bg" onclick="downloadPnlTemplate()">\uD83D\uDCC4 Mod\u00e8le simple</button>'
-    +'<button class="bp" onclick="document.getElementById(\'pnl-file\').click()">\u2191 Importer mon P&amp;L (Staffing CGI ou mod\u00e8le)</button>'
-    +'<input type="file" id="pnl-file" accept=".xlsx" style="display:none" onchange="importPnlXLS(this.files[0]);this.value=\'\'">'
+    +'<button class="bp" onclick="document.getElementById(\'pnl-imp\').click()">\u2191 Importer mon P&amp;L</button>'
+    +'<input id="pnl-imp" type="file" accept=".xlsx" '
+    +'style="position:fixed;top:-999px;left:-999px;width:1px;height:1px;opacity:0" '
+    +'onchange="importPnlXLS(this.files[0]);this.value=\'\';">'
     +'</div></div>'
     +banner+heroCards
     +'<div class="card ov">'
