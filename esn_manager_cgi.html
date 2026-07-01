@@ -206,6 +206,8 @@ function fyHols(fy){
   return c;
 }
 function currentFY(){var d=new Date(),m=d.getMonth();return m>=9?d.getFullYear()+1:d.getFullYear();}
+var CFY=currentFY();
+var TODAY=(function(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}());
 function fyLbl(fy){return 'FY'+String(fy).slice(2);}
 function fyRange(fy){return 'oct. '+(fy-1)+' \u2192 sept. '+fy;}
 
@@ -1010,7 +1012,7 @@ function tKPIs(){
   var mArr=ks.filter(function(x){return x.k.om!=null;});
   var avgM=mArr.length?mArr.reduce(function(s,x){return s+x.k.om;},0)/mArr.length:null;
   var avgTJMv=totBill>0?totR/totBill:0;
-  var totSalary=ks.reduce(function(s,x){return s+x.k.tWD*x.c.scr;},0);
+  var totSalary=ks.reduce(function(s,x){return s+x.c.scr*SCR_FACTOR/(S.quarter?4:1);},0);
   var netC=totR-totSalary;
   var top3=clientRev(ks).slice(0,3);
   var totRevP=Math.max(totR,1);
@@ -1041,7 +1043,7 @@ function tKPIs(){
     +'<div style="background:#0c1424;padding:28px 24px">'
     +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#334155;margin-bottom:8px">Contribution nette</div>'
     +'<div style="font-size:40px;font-weight:900;color:'+(netC>=0?'#34d399':'#f87171')+';letter-spacing:-.03em;line-height:1">'+fEur(netC)+'</div>'
-    +'<div style="font-size:12px;color:#475569;margin-top:8px">CA &minus; co\u00fbts SCR p\u00e9riode ('+fEur(totSalary)+')</div>'
+    +'<div style="font-size:12px;color:#475569;margin-top:8px">CA &minus; co\u00fbts salaires p\u00e9riode ('+fEur(totSalary)+')</div>'
     +'</div></div>';
 
   var clientHtml='<div style="display:flex;flex-direction:column;gap:16px">'
@@ -1245,7 +1247,7 @@ function tParam(){
   var _aktWD=ks.reduce(function(s,x){return s+(x.k.tWD||0);},0);
   var avgSr=_aktWD>0?ks.reduce(function(s,x){return s+x.k.sr*(x.k.tWD||0);},0)/_aktWD:0;
   var avgTJMv=totBill>0?totR/totBill:0;
-  var netC=totR-ks.reduce(function(s,x){return s+x.k.tWD*x.c.scr;},0);
+  var netC=totR-ks.reduce(function(s,x){return s+x.c.scr*SCR_FACTOR/(S.quarter?4:1);},0);
 
   var context='<div class="card" style="padding:20px;margin-bottom:20px">'
     +'<div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:14px">\uD83D\uDCCC Situation actuelle - '+fyLbl(S.year)+'</div>'
