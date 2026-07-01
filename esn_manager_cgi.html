@@ -1991,6 +1991,17 @@ function bind(){
   }
   /* widgets multi-sélection Expertises / Secteurs (uniquement si le modal candidat est ouvert) */
   if(S.modal&&S.modal.type==='candidate'){bindExpWidget();bindSecWidget();bindLocWidget();}
+
+  /* ── Pilotage financier : import P&L ─────────────────────────────────────── */
+  var pnlBtn=document.getElementById('pnl-open-btn');
+  var pnlInput=document.getElementById('pnl-file-input');
+  if(pnlBtn&&pnlInput){
+    pnlBtn.onclick=function(e){e.preventDefault();e.stopPropagation();pnlInput.click();};
+    pnlInput.onchange=function(){
+      if(this.files&&this.files[0])importPnlXLS(this.files[0]);
+      this.value='';
+    };
+  }
   /* filtre directeur (gestionnaire) */
   var rcb=document.querySelectorAll('[data-dir]');
   for(var rk=0;rk<rcb.length;rk++){(function(cb){cb.onchange=function(){
@@ -3234,14 +3245,12 @@ function tPnlBudget(){
   return '<div class="vw">'
     +'<div class="ph"><div><div class="pt">Pilotage financier \u2014 Budget vs R\u00e9el</div>'
     +'<div class="ps">'+curLbl()+' \u00b7 Budget import\u00e9 depuis "Consolidation P&L" · Co\u00fbts r\u00e9els = jours ouvr\u00e9s \u00d7 SCR · CA r\u00e9el = missions factur\u00e9es</div></div>'
-    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
     +'<button class="bg" onclick="S.impView=\'pl\';render()">\u2190 Plan vs R\u00e9el par projet</button>'
     +'<button class="bg" onclick="downloadPnlTemplate()">\uD83D\uDCC4 Mod\u00e8le simple</button>'
-    +'<label class="bp" style="cursor:pointer">\u2191 Importer mon P&amp;L'
-    +'<input type="file" accept=".xlsx,.xlsm,.xlsb,.xls" '
-    +'style="position:absolute;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;width:1px;height:1px;border:0;padding:0" '
-    +'onchange="importPnlXLS(this.files[0]);this.value=\'\';">'
-    +'</label>'
+    +'<button class="bp" id="pnl-open-btn">\u2191 Importer mon P&amp;L (.xlsx)</button>'
+    +'<input type="file" id="pnl-file-input" accept=".xlsx,.xlsm,.xls" tabindex="-1" '
+    +'style="opacity:0;width:0;height:0;position:absolute;overflow:hidden">'
     +'</div></div>'
     +banner+heroCards
     +'<div class="card ov">'
