@@ -2359,7 +2359,7 @@ function bind(){
     missImpDz.addEventListener('drop',function(e){e.preventDefault();var f=e.dataTransfer.files[0];if(f)handleMissImpFile(f);});
     missImpDz.addEventListener('click',function(e){if(e.target.tagName!=='LABEL'&&e.target.tagName!=='INPUT'){var fi2=el('miss-imp-fi');if(fi2)fi2.click();}});
   }
-  if(impFi)impFi.onchange=function(){if(this.files[0])handleImpFile(this.files[0]);this.value='';};
+  if(impFile)impFile.onchange=function(){if(this.files[0])handleImpFile(this.files[0]);this.value='';};
   var impDz=el('imp-dz');
   if(impDz){
     impDz.addEventListener('dragover',function(e){e.preventDefault();impDz.style.borderColor='#2563eb';impDz.style.background='#eff6ff';});
