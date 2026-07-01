@@ -192,6 +192,7 @@ function frHols(y){
   var e=easter(y);
   return new Set([y+'-01-01',addD(e,1),y+'-05-01',y+'-05-08',addD(e,39),addD(e,50),y+'-07-14',y+'-08-15',y+'-11-01',y+'-11-11',y+'-12-25']);
 }
+var HOLS_N=['Jour de l\u2019An','Lundi de P\u00e2ques','F\u00eate du Travail','Victoire 1945','Ascension','Lundi de Pentec\u00f4te','F\u00eate Nationale','Assomption','Toussaint','Armistice','No\u00ebl'];
 
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    FISCAL YEAR  (1 oct \u2192 30 sept)
@@ -391,7 +392,7 @@ var IL=[];
    STATE
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 var S={
-  tab:'dashboard',
+  tab:'kpis',
   cons:IC.map(function(c){return Object.assign({},c);}),
   miss:IM.map(function(m){return Object.assign({},m);}),
   lvs:IL.map(function(l){return Object.assign({},l);}),
@@ -1144,6 +1145,7 @@ function tKPIs(){
    TEMPLATE - LEAVES
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function tLeaves(){
+  var H=fyHols(S.year);
   var _r=curRange(S.year);var fyS=_r[0],fyE=_r[1];
 
   var fil=S.lvs.filter(function(l){
