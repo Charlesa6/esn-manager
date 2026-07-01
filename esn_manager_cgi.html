@@ -1993,12 +1993,12 @@ function bind(){
   if(S.modal&&S.modal.type==='candidate'){bindExpWidget();bindSecWidget();bindLocWidget();}
 
   /* ── Pilotage financier : import P&L ─────────────────────────────────────── */
-  var pnlInput=document.getElementById('pnl-file-input');
-  if(pnlInput){
-    pnlInput.onchange=function(){
+  var pnlImpFi=el('pnl-imp-fi');
+  if(pnlImpFi){
+    pnlImpFi.addEventListener('change',function(){
       if(this.files&&this.files[0])importPnlXLS(this.files[0]);
       this.value='';
-    };
+    });
   }
   /* filtre directeur (gestionnaire) */
   var rcb=document.querySelectorAll('[data-dir]');
@@ -3233,12 +3233,9 @@ function tPnlBudget(){
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
     +'<button class="bg" onclick="S.impView=\'pl\';render()">\u2190 Plan vs R\u00e9el par projet</button>'
     +'<button class="bg" onclick="downloadPnlTemplate()">\uD83D\uDCC4 Mod\u00e8le simple</button>'
-    +'<div style="position:relative;display:inline-block">'
-    +'<button class="bp" style="pointer-events:none">\u2191 Importer mon P&amp;L (.xlsx)</button>'
-    +'<input id="pnl-file-input" type="file" accept=".xlsx,.xlsm,.xls" '
-    +'onchange="importPnlXLS(this.files[0]);this.value=\'\';" '
-    +'style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0">'
-    +'</div>'
+    +'<label id="pnl-lbl" style="display:inline-block;background:#2563eb;color:#fff;padding:11px 28px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer">'
+    +'\u2191 Importer mon P&amp;L<input type="file" id="pnl-imp-fi" accept=".xlsx,.xlsm,.xls" style="display:none">'
+    +'</label>'
     +'</div></div>'
     +banner+heroCards
     +'<div class="card ov">'
