@@ -2685,8 +2685,7 @@ async function initApp(){
     loadLocal();
   }
   render();
-  /* Démarrer la sync Teams auto si configurée */
-  loadMSALScript(function(){startTeamsAutoSync();});
+  /* Teams sync désactivé - intégration Azure Portal abandonnée */
 }
 /* FY helper : 'FY26' pour toute date Oct2025-Sep2026 */
 function dateToFY(dateStr){
@@ -2705,7 +2704,16 @@ function loadXLSX(cb){
   var s=document.createElement('script');
   s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
   s.onload=function(){cb();};
-  s.onerror=function(){alert('Impossible de charger la librairie Excel. V\u00e9rifiez votre connexion.');};
+  s.onerror=function(){
+    /* Fallback sur un autre CDN */
+    var s2=document.createElement('script');
+    s2.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s2.onload=function(){cb();};
+    s2.onerror=function(){
+      alert('Impossible de charger la bibliothèque Excel.\n\nVérifiez votre connexion internet et rechargez la page.\n(CDN Cloudflare et jsDelivr tous deux inaccessibles)');
+    };
+    document.head.appendChild(s2);
+  };
   document.head.appendChild(s);
 }
 
@@ -3577,7 +3585,7 @@ function loadMSALScript(cb){
   var s=document.createElement('script');
   s.src='https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js';
   s.onload=function(){cb();};
-  s.onerror=function(){alert('Impossible de charger MSAL. V\u00e9rifiez votre connexion.');};
+  s.onerror=function(){console.warn('MSAL non disponible (Teams non configuré).');};
   document.head.appendChild(s);
 }
 
