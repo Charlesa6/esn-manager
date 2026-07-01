@@ -3022,73 +3022,68 @@ function parseMonthCell(v){
 }
 
 function importPnlXLS(file){
-  alert('[Diagnostic] Fonction appelée — fichier : '+(file?file.name+' ('+Math.round(file.size/1024)+'Ko)':'null'));
-  if(!file){alert('Aucun fichier sélectionné.');return;}
+  /* Met \u00e0 jour le bandeau de statut dans le DOM (pas d'alert) */
+  function pnlStatus(msg,ok){
+    var el=document.getElementById('pnl-status');
+    if(!el){
+      el=document.createElement('div');
+      el.id='pnl-status';
+      el.style.cssText='padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;margin-top:12px';
+      var tbl=document.querySelector('.card.ov');
+      if(tbl)tbl.parentNode.insertBefore(el,tbl);
+    }
+    el.textContent=msg;
+    el.style.background=ok===false?'#fff1f2':ok===true?'#f0fdf4':'#fffbeb';
+    el.style.color=ok===false?'#b91c1c':ok===true?'#15803d':'#92400e';
+  }
+
+  if(!file){pnlStatus('\u26a0 Aucun fichier s\u00e9lectionn\u00e9.',false);return;}
+  pnlStatus('\u23f3 Chargement de la biblioth\u00e8que Excel...',null);
+
   loadXLSX(function(){
-    console.log('[PnL] XLSX chargé, lecture du fichier...');
+    pnlStatus('\u23f3 Lecture du fichier \u00ab '+file.name+' \u00bb ...',null);
     var reader=new FileReader();
-    reader.onerror=function(){alert('Erreur de lecture du fichier. Réessayez.');};
+    reader.onerror=function(){pnlStatus('\u26a0 Impossible de lire le fichier. V\u00e9rifiez qu\u2019il n\u2019est pas ouvert dans Excel.',false);};
     reader.onload=function(e){
       try{
-        /* ─── Lecture sans cellDates pour éviter les incohérences de type ─── */
         var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
-        console.log('[PnL] Feuilles trouvées :',wb.SheetNames);
         var newEntries=[];
         var fy=S.year;
 
-        /* Conversion serial Excel → JS Date (epoch Excel = 30/12/1899, avec bug 1900) */
         function serialToDate(n){
           if(typeof n!=='number'||n<1)return null;
-          /* Correction bug 1900 : Excel croit que 1900 est bissextile */
-          var epoch=new Date(Date.UTC(1899,11,30));
-          var d=new Date(epoch.getTime()+Math.round(n)*86400000);
+          var d=new Date(new Date(Date.UTC(1899,11,30)).getTime()+Math.round(n)*86400000);
           return isNaN(d.getTime())?null:d;
         }
-        /* Un numérique est-il un serial de date plausible (2020-2035) ? */
         function isDateSerial(n){return typeof n==='number'&&n>=43831&&n<=49673;}
 
-        /* ─── Détection du format ──────────────────────────────────────────
-           FORMAT A : fichier Staffing CGI avec feuille "Consolidation P&L"
-           FORMAT B : modèle simple 3 colonnes                              */
         var cplName=null;
         wb.SheetNames.forEach(function(n){
           var nl=n.toLowerCase().replace(/[^a-z0-9]/g,'');
-          if(nl.indexOf('consolidation')>=0||nl==='pl'||nl.indexOf('pnl')>=0||nl.indexOf('pandl')>=0)
-            cplName=n;
+          if(nl.indexOf('consolidation')>=0||nl==='pl'||nl.indexOf('pnl')>=0)cplName=n;
         });
-        console.log('[PnL] Feuille cible :',cplName||'(modèle simple)');
 
         if(cplName){
           var ws=wb.Sheets[cplName];
           if(!ws||!ws['!ref'])throw new Error('Feuille "'+cplName+'" vide.');
           var rng=XLSX.utils.decode_range(ws['!ref']);
-
-          function cell(r,c){return ws[XLSX.utils.encode_cell({r:r,c:c})]||null;}
-          function cv(r,c){var cl=cell(r,c);return cl?cl.v:null;}
+          function cv(r,c){var cell=ws[XLSX.utils.encode_cell({r:r,c:c})];return cell?cell.v:null;}
           function cstr(r,c){var v=cv(r,c);return v!=null?String(v).toLowerCase().trim():'';}
 
-          /* ── Scan des 20 premières lignes pour trouver hdr / rev / gm ── */
           var hdrR=-1,revR=-1,gmR=-1;
           for(var r=rng.s.r;r<=Math.min(rng.e.r,rng.s.r+20);r++){
-            /* Compte les sériaux de date dans cette ligne */
             var dCnt=0;
-            for(var c=rng.s.c;c<=rng.e.c;c++){
-              if(isDateSerial(cv(r,c)))dCnt++;
-            }
-            if(dCnt>=4&&hdrR<0){hdrR=r;console.log('[PnL] Ligne en-tête dates : row',r,'('+dCnt+' dates)');}
-
-            /* Cherche les labels textuels sur toute la ligne */
+            for(var c=rng.s.c;c<=rng.e.c;c++){if(isDateSerial(cv(r,c)))dCnt++;}
+            if(dCnt>=4&&hdrR<0)hdrR=r;
             for(var c=rng.s.c;c<=Math.min(rng.e.c,rng.s.c+5);c++){
               var lbl=cstr(r,c);
-              if(lbl.indexOf('delivered')>=0&&lbl.indexOf('rev')>=0){revR=r;console.log('[PnL] Delivered Revenues : row',r);}
-              if(lbl.indexOf('gross margin')>=0){gmR=r;console.log('[PnL] Gross Margin : row',r);}
+              if(lbl.indexOf('delivered')>=0&&lbl.indexOf('rev')>=0)revR=r;
+              if(lbl.indexOf('gross margin')>=0)gmR=r;
             }
           }
-
-          if(hdrR<0)throw new Error('Ligne de dates introuvable dans "'+cplName+'" — vérifiez que le fichier n\'est pas filtré ou masqué.');
+          if(hdrR<0)throw new Error('Ligne de dates introuvable dans "'+cplName+'".');
           if(revR<0)throw new Error('"Delivered Revenues" introuvable dans "'+cplName+'".');
 
-          /* ── Extraction colonne par colonne ── */
           for(var c=rng.s.c;c<=rng.e.c;c++){
             var serial=cv(hdrR,c);
             if(!isDateSerial(serial))continue;
@@ -3101,12 +3096,9 @@ function importPnlXLS(file){
             var revEur=Math.round(revK*1000);
             var costEur=Math.round(revEur*(1-gmPct));
             if(revEur===0&&costEur===0)continue;
-            console.log('[PnL] M'+m+'/FY'+fyCol+' CA='+revEur+' Cost='+costEur);
             newEntries.push({id:uid(),fy:fyCol,month:m,revenue:revEur,cost:costEur});
           }
-
         }else{
-          /* FORMAT B — modèle simple : Mois | CA | Coûts */
           var ws2=wb.Sheets[wb.SheetNames[0]];
           var rows2=XLSX.utils.sheet_to_json(ws2,{header:1,defval:''});
           for(var i=1;i<rows2.length;i++){
@@ -3119,14 +3111,8 @@ function importPnlXLS(file){
           }
         }
 
-        console.log('[PnL]',newEntries.length,'entrées extraites');
-
         if(!newEntries.length){
-          alert('Aucune donnée valide trouvée.\n\n'
-            +(cplName
-              ?'La feuille "'+cplName+'" a été détectée mais aucune ligne "Delivered Revenues" avec données n\'a pu être extraite.'
-              :'Utilisez le modèle téléchargeable ou vérifiez le format du fichier.')
-            +'\n\nOuvrez la console (F12 → Console) pour le détail.');
+          pnlStatus('\u26a0 Aucune donn\u00e9e trouv\u00e9e. Feuilles: '+wb.SheetNames.join(', ')+'. Feuille P&L d\u00e9tect\u00e9e: '+(cplName||'aucune')+'.',false);
           return;
         }
 
@@ -3136,20 +3122,21 @@ function importPnlXLS(file){
         S.pnlBudget=S.pnlBudget.filter(function(p){return fysTouched.indexOf(p.fy)<0;}).concat(newEntries);
         saveLocal();
         render();
-
-        var summary=fysTouched.map(function(f){return fyLbl(f)+' ('+fySet[f]+' mois)';}).join(', ');
-        if(sb&&SB_CID){
-          Promise.all(fysTouched.map(function(f){return sbDelPnlFY(f);}))
-            .then(function(){return Promise.all(newEntries.map(function(p){return sbUpsertPnl(p);}));})
-            .then(function(){alert('\u2713 Importé et synchronisé : '+summary);})
-            .catch(function(err){alert(newEntries.length+' mois importés.\n\u26a0 Erreur sync Supabase : '+err.message);});
-        }else{
-          alert('\u2713 Importé : '+summary);
-        }
+        /* r\u00e9afficher le statut apr\u00e8s render (qui reconstruit le DOM) */
+        setTimeout(function(){
+          var summary=fysTouched.map(function(f){return fyLbl(f)+' — '+fySet[f]+' mois';}).join(', ');
+          pnlStatus('\u2713 Import\u00e9 avec succ\u00e8s : '+summary,true);
+          if(sb&&SB_CID){
+            Promise.all(fysTouched.map(function(f){return sbDelPnlFY(f);}))
+              .then(function(){return Promise.all(newEntries.map(function(p){return sbUpsertPnl(p);}));})
+              .then(function(){pnlStatus('\u2713 Import\u00e9 et synchronis\u00e9 Supabase : '+summary,true);})
+              .catch(function(err){pnlStatus('\u2713 Import\u00e9 localement — \u26a0 sync Supabase : '+err.message,null);});
+          }
+        },100);
 
       }catch(err){
-        console.error('[PnL] Erreur :',err);
-        alert('Erreur d\'import :\n\n'+err.message+'\n\nOuvrez la console (F12 → Console) pour le détail.');
+        pnlStatus('\u26a0 Erreur : '+err.message,false);
+        console.error('[PnL]',err);
       }
     };
     reader.readAsArrayBuffer(file);
@@ -3249,6 +3236,7 @@ function tPnlBudget(){
     +'<div style="position:relative;display:inline-block">'
     +'<button class="bp" style="pointer-events:none">\u2191 Importer mon P&amp;L (.xlsx)</button>'
     +'<input id="pnl-file-input" type="file" accept=".xlsx,.xlsm,.xls" '
+    +'onchange="importPnlXLS(this.files[0]);this.value=\'\';" '
     +'style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0">'
     +'</div>'
     +'</div></div>'
