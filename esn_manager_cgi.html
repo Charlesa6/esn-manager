@@ -880,6 +880,16 @@ function tDash(){
   });
   var pCount=pendingAppr.length;
 
+  /* Futurs arrivants = consultants recrutés avec date d'arrivée > aujourd'hui */
+  var futursArrivants=S.cons.filter(function(c){return c.arrive&&c.arrive>TODAY&&!isGone(c);})
+    .sort(function(a,b){return a.arrive.localeCompare(b.arrive);});
+  var futurCount=futursArrivants.length;
+
+  /* Lien candidat → consultant pour expertise/secteur */
+  function getCandForCons(cid){
+    return S.cands.find(function(cd){return cd.consId===cid||cd.id===cid;});
+  }
+
   /* ── Section approbations complète (bas de page) ── */
   function apprRow(r,showReject){
     var dt=r.createdAt?new Date(r.createdAt).toLocaleDateString('fr-FR'):'';
@@ -931,13 +941,19 @@ function tDash(){
     +'<p style="font-size:13px;color:#64748b;margin-top:4px">'+dateStr+'</p></div>'
 
     /* Cartes résumé — Approbations EN PREMIER, cliquable */
-    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">'
+    +'<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">'
 
     +'<a href="#approvals-section" style="background:'+(pCount>0?'#fef3c7':'#f8fafc')+';border:1px solid '+(pCount>0?'#fbbf24':'#e2e8f0')+';border-radius:12px;padding:16px 18px;text-decoration:none;cursor:pointer;display:block;transition:box-shadow .15s" '
     +'onmouseover="this.style.boxShadow=\'0 4px 12px rgba(0,0,0,.1)\'" onmouseout="this.style.boxShadow=\'\'">'
     +'<div style="font-size:28px;font-weight:900;color:'+(pCount>0?'#b45309':'#64748b')+'">'+pCount+'</div>'
     +'<div style="font-size:12px;font-weight:700;color:#374151;margin-top:4px">Approbations</div>'
     +'<div style="font-size:11px;color:#94a3b8">en attente \u2193</div></a>'
+
+    +'<a href="#futurs-section" style="background:'+(futurCount>0?'#f0fdf4':'#f8fafc')+';border:1px solid '+(futurCount>0?'#bbf7d0':'#e2e8f0')+';border-radius:12px;padding:16px 18px;text-decoration:none;cursor:pointer;display:block;transition:box-shadow .15s" '
+    +'onmouseover="this.style.boxShadow=\'0 4px 12px rgba(0,0,0,.1)\'" onmouseout="this.style.boxShadow=\'\'">'
+    +'<div style="font-size:28px;font-weight:900;color:'+(futurCount>0?'#15803d':'#64748b')+'">'+futurCount+'</div>'
+    +'<div style="font-size:12px;font-weight:700;color:#374151;margin-top:4px">Recrutements</div>'
+    +'<div style="font-size:11px;color:#94a3b8">arriv\u00e9es \u00e0 venir \u2193</div></a>'
 
     +'<div style="background:'+(icCount>0?'#fff1f2':'#f0fdf4')+';border:1px solid '+(icCount>0?'#fecdd3':'#bbf7d0')+';border-radius:12px;padding:16px 18px">'
     +'<div style="font-size:28px;font-weight:900;color:'+(icCount>0?'#b91c1c':'#15803d')+'">'+icCount+'</div>'
@@ -968,43 +984,85 @@ function tDash(){
     +card('Retours de cong\u00e9s / maladie','\uD83C\uDFD6\uFE0F',retourRows||null,'Personne en cong\u00e9 ou arr\u00eat en ce moment.',retours.length)
     +'</div>'
     +'</div>'
+    /* ── Section futurs arrivants ── */
+    +(function(){
+      var futurRows=futursArrivants.map(function(c){
+        var cand=getCandForCons(c.id);
+        var exp=(cand&&cand.expertise&&cand.expertise.length)?cand.expertise.slice(0,3).join(', '):c.title||'\u2014';
+        var sec=(cand&&cand.sectors&&cand.sectors.length)?cand.sectors.slice(0,2).join(', '):'\u2014';
+        var j=Math.round((pD(c.arrive)-pD(TODAY))/86400000);
+        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:8px;background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:8px">'
+          +'<div style="display:flex;align-items:center;gap:10px">'+av(c.name,32)
+          +'<div>'
+          +'<div style="font-weight:700;font-size:13px;color:#0f172a">'+esc(c.name)+'</div>'
+          +'<div style="font-size:11px;color:#64748b;margin-top:2px">'+esc(exp)+'</div>'
+          +(sec!=='\u2014'?'<div style="font-size:11px;color:#94a3b8">'+esc(sec)+'</div>':'')
+          +'</div></div>'
+          +'<div style="text-align:right;flex-shrink:0">'
+          +'<div style="font-size:16px;font-weight:900;color:#15803d">J\u2212'+j+'</div>'
+          +'<div style="font-size:11px;color:#94a3b8">'+fDt(c.arrive)+'</div>'
+          +'</div></div>';
+      }).join('');
+      return '<details style="background:#fff;border:1px solid '+(futurCount>0?'#bbf7d0':'#e2e8f0')+';border-radius:12px;margin-bottom:10px;overflow:hidden" id="futurs-section"'+(futurCount>0?' open':'')+'>'
+        +'<summary style="display:flex;align-items:center;gap:8px;padding:14px 18px;cursor:pointer;font-size:14px;font-weight:800;color:#0f172a;list-style:none;user-select:none" '
+        +'onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'
+        +'\uD83D\uDCC5<span style="flex:1;margin-left:8px">Prochaines arriv\u00e9es</span>'
+        +'<span style="background:'+(futurCount>0?'#dcfce7':'#e2e8f0')+';color:'+(futurCount>0?'#15803d':'#475569')+';font-size:11px;font-weight:700;padding:1px 8px;border-radius:99px;margin-right:6px">'+futurCount+' \u00e0 venir</span>'
+        +'<span style="font-size:11px;color:#94a3b8">&#x25be;</span>'
+        +'</summary>'
+        +'<div style="padding:0 18px 16px">'
+        +(futurRows||'<div style="font-size:13px;color:#94a3b8;padding:8px 0">Aucune arriv\u00e9e planifi\u00e9e.</div>')
+        +'</div></details>';
+    }())
     +apprSection
     +'</div>';
 }
 function tTeams(){
   var fyS=fyStart(S.year),fyE=fyEnd(S.year);
 
-  /* Filtrer sur le FY : arrive <= fyE ET (depart >= fyS OU pas de depart) */
   var inFY=S.cons.filter(function(c){
     if(c.arrive&&c.arrive>fyE)return false;
     if(c.depart&&c.depart<fyS)return false;
     return true;
   });
 
-  var actifs=inFY.filter(function(c){return !isGone(c);});
+  /* Futurs arrivants : date d'arrivée > aujourd'hui */
+  var futurs=inFY.filter(function(c){return c.arrive&&c.arrive>TODAY;})
+    .sort(function(a,b){return a.arrive.localeCompare(b.arrive);});
+  var actifs=inFY.filter(function(c){return !isGone(c)&&!(c.arrive&&c.arrive>TODAY);});
   var partis=inFY.filter(function(c){return isGone(c);});
 
-  function makeRow(c,gone){
+  function makeRow(c,gone,futur){
     var am=getAct(c.id);var st=am?mSt(am):'none';
-    var rs=gone?'opacity:.4;background:#f8fafc;':'';
+    var rs=gone?'opacity:.4;background:#f8fafc;':futur?'background:#f0fdf4;':'';
     var ns=gone?'text-decoration:line-through;':'';
-    var tag=gone?'<span style="font-size:10px;background:#f1f5f9;color:#94a3b8;padding:2px 6px;border-radius:4px;margin-left:6px">Parti'+(c.depart?' '+fDt(c.depart):'')+'</span>':'';
+    var tag=gone
+      ?'<span style="font-size:10px;background:#f1f5f9;color:#94a3b8;padding:2px 6px;border-radius:4px;margin-left:6px">Parti'+(c.depart?' '+fDt(c.depart):'')+'</span>'
+      :futur
+        ?'<span style="font-size:10px;background:#bbf7d0;color:#15803d;padding:2px 8px;border-radius:4px;margin-left:6px;font-weight:700">\uD83D\uDCC5 Arrive le '+fDt(c.arrive)+'</span>'
+        :'';
     return '<tr style="'+rs+'"><td><div style="display:flex;align-items:center;gap:10px">'+av(c.name,32)
       +'<div><div style="font-weight:600;font-size:13px;'+ns+'">'+esc(c.name)+tag+'</div>'
       +'<div style="font-size:11px;color:#94a3b8">'+esc(c.email)+'</div></div></div></td>'
       +'<td>'+esc(c.title)+'</td>'
       +'<td style="font-weight:700;'+(gone?'color:#cbd5e1':'')+'">'+fEur(c.scr)+'</td>'
-      +'<td>'+(am?'<div style="font-weight:600;font-size:13px">'+esc(am.cli)+'</div><div style="font-size:11px;color:#94a3b8">'+esc(am.name)+'</div>':'<span style="color:#cbd5e1">\u2014</span>')+'</td>'
-      +'<td>'+(gone?'<span style="font-size:11px;color:#94a3b8">Inactif</span>':badge(st,am&&am.ed?dL(am.ed):null))+'</td>'
+      +'<td>'+(am?'<div style="font-weight:600;font-size:13px">'+esc(am.cli)+'</div><div style="font-size:11px;color:#94a3b8">'+esc(am.name)+'</div>':futur?'<span style="color:#22c55e;font-size:12px">Recrutement</span>':'<span style="color:#cbd5e1">\u2014</span>')+'</td>'
+      +'<td>'+(gone?'<span style="font-size:11px;color:#94a3b8">Inactif</span>':futur?'<span style="background:#dcfce7;color:#15803d;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700">À venir</span>':badge(st,am&&am.ed?dL(am.ed):null))+'</td>'
       +'<td class="tr"><button class="lb" style="margin-right:10px" data-act="ec" data-id="'+c.id+'">Modifier</button>'
       +'<button class="lr" data-act="dc" data-id="'+c.id+'">Suppr.</button></td></tr>';
   }
 
-  var sep=partis.length&&actifs.length?'<tr><td colspan="6" style="padding:4px 12px;background:#f8fafc;border-top:1px solid #e2e8f0"><span style="font-size:11px;color:#94a3b8;font-weight:600">Partis ce FY ('+partis.length+')</span></td></tr>':'';
-  var rows=actifs.map(function(c){return makeRow(c,false);}).join('')
-    +sep+partis.map(function(c){return makeRow(c,true);}).join('');
+  var sepFutur=futurs.length?'<tr><td colspan="6" style="padding:4px 12px;background:#f0fdf4;border-bottom:1px solid #bbf7d0"><span style="font-size:11px;color:#15803d;font-weight:700">\uD83D\uDCC5 Prochaines arriv\u00e9es ('+futurs.length+')</span></td></tr>':'';
+  var sepActif=actifs.length&&futurs.length?'<tr><td colspan="6" style="padding:4px 12px;background:#f8fafc;border-bottom:1px solid #e2e8f0"><span style="font-size:11px;color:#64748b;font-weight:600">Consultants actifs ('+actifs.length+')</span></td></tr>':'';
+  var sepParti=partis.length?'<tr><td colspan="6" style="padding:4px 12px;background:#f8fafc;border-top:1px solid #e2e8f0"><span style="font-size:11px;color:#94a3b8;font-weight:600">Partis ce FY ('+partis.length+')</span></td></tr>':'';
 
-  var sub=actifs.length+' actif'+(actifs.length!==1?'s':'')+' \u00b7 '+fyLbl(S.year)
+  var rows=sepFutur+futurs.map(function(c){return makeRow(c,false,true);}).join('')
+    +sepActif+actifs.map(function(c){return makeRow(c,false,false);}).join('')
+    +sepParti+partis.map(function(c){return makeRow(c,true,false);}).join('');
+
+  var sub=actifs.length+' actif'+(actifs.length!==1?'s':'')
+    +(futurs.length?' \u00b7 '+futurs.length+' \u00e0 venir':'')
+    +' \u00b7 '+fyLbl(S.year)
     +(partis.length?' \u00b7 '+partis.length+' parti'+(partis.length!==1?'s':'')+' ce FY':'');
 
   return '<div><div class="ph"><div><div class="pt">\u00c9quipe</div><div class="ps">'+sub+'</div></div>'
