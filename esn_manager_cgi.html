@@ -2256,43 +2256,43 @@ function bind(){
         var invC=((S._all&&S._all.cons)||S.cons).find(function(c){return c.id===id;});
         if(!invC){alert('Consultant introuvable.');return;}
 
-        /* Vérifier qu'un email est renseigné */
         if(!invC.email||!invC.email.trim()){
-          alert('\u26a0 Ce consultant n\u2019a pas d\u2019adresse email renseign\u00e9e.\nModifiez son profil dans l\u2019onglet \u00c9quipe pour ajouter son email avant d\u2019envoyer une invitation.');
+          alert('\u26a0 Ce consultant n\u2019a pas d\u2019adresse email.\nModifiez son profil dans l\u2019onglet \u00c9quipe pour ajouter son email avant d\u2019envoyer une invitation.');
           return;
         }
 
-        /* G\u00e9n\u00e9rer le code d'invitation */
+        /* G\u00e9n\u00e9rer et stocker le code */
         var invCode='CSL-'+id.slice(0,4).toUpperCase()+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
-
-        /* Stocker le code dans Supabase */
         if(sb&&SB_CID){
           sb.from('licence_codes').insert({
             code:invCode,role:'consultant',used:false,
-            linked_cons_id:id,company_id:SB_CID,dir_name:S.dirName
-          }).catch(function(e){console.warn('invite code insert:',e);});
+            linked_cons_id:id,company_id:SB_CID,dir_name:S.dirName||''
+          }).catch(function(e){console.warn('invite:',e);});
         }
 
-        /* Construire le lien d'invitation */
+        /* Construire le lien et le corps du mail */
         var origin=window.location.origin||'';
         var invLink=origin+'/esn_login.html?invite='+encodeURIComponent(invCode);
+        var dirStr=S.dirName||'Votre directeur';
+        var body='Bonjour '+invC.name+',\n\n'
+          +dirStr+' vous invite \u00e0 rejoindre votre espace ESN Manager.\n\n'
+          +'Cliquez ici pour cr\u00e9er votre compte :\n'
+          +invLink+'\n\n'
+          +'Ce lien est personnel et \u00e0 usage unique.\n'
+          +'Une fois connect\u00e9(e), vous aurez acc\u00e8s \u00e0 vos missions, votre planning et vos absences.\n\n'
+          +'Cordialement,\n'+dirStr;
 
-        /* Ouvrir le client mail avec l'email pr\u00e9-rempli */
-        var mailSubject='Invitation \u00e0 rejoindre ESN Manager';
-        var mailBody='Bonjour '+invC.name+','
-          +'\n\n'+esc(S.dirName||'Votre directeur')+' vous invite \u00e0 rejoindre votre espace ESN Manager.'
-          +'\n\nCliquez sur le lien suivant pour cr\u00e9er votre compte\u00a0:'
-          +'\n'+invLink
-          +'\n\nCe lien est personnel et \u00e0 usage unique.'
-          +'\nUne fois votre compte cr\u00e9\u00e9, vous aurez acc\u00e8s \u00e0 vos missions,'
-          +' votre planning et vos absences sur ESN Manager.'
-          +'\n\nCordialement,\n'+esc(S.dirName||'Votre directeur');
+        var mailtoUrl='mailto:'+invC.email
+          +'?subject='+encodeURIComponent('Invitation ESN Manager')
+          +'&body='+encodeURIComponent(body);
 
-        var mailtoUrl='mailto:'+encodeURIComponent(invC.email)
-          +'?subject='+encodeURIComponent(mailSubject)
-          +'&body='+encodeURIComponent(mailBody);
-
-        window.open(mailtoUrl,'_self');
+        /* Ouvrir via un ancre temporaire (fiable même dans un handler async) */
+        var tmp=document.createElement('a');
+        tmp.href=mailtoUrl;
+        tmp.style.display='none';
+        document.body.appendChild(tmp);
+        tmp.click();
+        setTimeout(function(){document.body.removeChild(tmp);},200);
       }
       else if(a==='am'){
       var _now=new Date();
