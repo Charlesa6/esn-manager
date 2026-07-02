@@ -1453,8 +1453,8 @@ function tAdmin(){
   /* Tableau des invitations */
   var invRows=(S.consInvites||[]).map(function(iv){
     var st=iv.status==='active'
-      ?'<span class="badge bgrn">Actif</span>'
-      :'<span class="badge bamb">En attente</span>';
+      ?'<span class="badge bgrn">✓ Compte créé</span>'
+      :'<span class="badge bamb">⏳ En attente</span>';
     return '<tr><td>'+esc(iv.email||'')+'</td>'
       +'<td style="font-weight:600">'+esc(iv.consName||'')+'</td>'
       +'<td>'+st+'</td>'
@@ -1491,7 +1491,7 @@ function tDirecteurs(){
     return '<tr><td style="font-weight:600">'+esc(d)+'</td><td class="tc">'+teams[d]+'</td></tr>';
   }).join('');
   var invRows=(S.invites||[]).map(function(iv){
-    var st=iv.status==='active'?'<span class="badge bgrn">Actif</span>':'<span class="badge bamb">En attente</span>';
+    var st=iv.status==='active'?'<span class="badge bgrn">✓ Compte créé</span>':'<span class="badge bamb">⏳ En attente</span>';
     return '<tr><td>'+esc(iv.email)+'</td><td style="font-weight:600">'+esc(iv.directeur_name||'')+'</td><td>'+st+'</td>'
       +'<td class="tr"><button class="lr" data-act="inv-del" data-id="'+esc(iv.id)+'">Suppr.</button></td></tr>';
   }).join('');
@@ -2248,7 +2248,11 @@ function bind(){
   for(var i=0;i<nbs.length;i++){(function(b){b.onclick=function(){
     var nv=b.getAttribute('data-nav');
     if(nv==='recrutement'){S.recSel=null;S.recAddMeet=false;S.recAddCgi=false;S.recAddCv=false;S.recEditMeetId=null;S.recEditCgiId=null;}
-    S.tab=nv;render();
+    S.tab=nv;
+    /* Rafraîchir les données en temps réel sur les onglets sensibles */
+    if(nv==='admin'){loadConsInvites().then(function(){render();});}
+    else if(nv==='dashboard'&&S.role==='directeur'){loadApprovals().then(function(){render();});}
+    else{render();}
   };})(nbs[i]);}
   /* filters */
   var fc=el('fmc');if(fc)fc.onchange=function(){S.fmc=this.value;render();};
