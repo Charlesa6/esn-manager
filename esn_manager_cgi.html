@@ -403,7 +403,7 @@ var S={
   consInvites:[], /* codes d'accès générés pour les consultants */
   adminCode:null, /* dernier code généré (affiché dans Admin) */
   year:CFY,quarter:null,modal:null,fmc:'all',fms:'all',fmt:'all',flc:'all',precs:{},
-  role:'gestionnaire',dirName:'',consId:null,fdir:[],invites:[],actCid:'',actMonth:'',_all:null,
+  role:'gestionnaire',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],invites:[],actCid:'',actMonth:'',_all:null,
   sbSt:'\uD83D\uDFE2 Sauvegarde locale active',
   sbSync:false,
   imp:null,
@@ -988,8 +988,13 @@ function tDash(){
     +(function(){
       var futurRows=futursArrivants.map(function(c){
         var cand=getCandForCons(c.id);
-        var exp=(cand&&cand.expertise&&cand.expertise.length)?cand.expertise.slice(0,3).join(', '):c.title||'\u2014';
-        var sec=(cand&&cand.sectors&&cand.sectors.length)?cand.sectors.slice(0,2).join(', '):'\u2014';
+        /* Priorité : champs directs du consultant, fallback sur candidat lié */
+        var expArr=(c.expertise&&c.expertise.length)?c.expertise
+          :(cand&&cand.expertise&&cand.expertise.length)?cand.expertise:[];
+        var secArr=(c.sectors&&c.sectors.length)?c.sectors
+          :(cand&&cand.sectors&&cand.sectors.length)?cand.sectors:[];
+        var exp=expArr.length?expArr.slice(0,3).join(', '):'\u2014';
+        var sec=secArr.length?secArr.slice(0,2).join(', '):'\u2014';
         var j=Math.round((pD(c.arrive)-pD(TODAY))/86400000);
         return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:8px;background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:8px">'
           +'<div style="display:flex;align-items:center;gap:10px">'+av(c.name,32)
@@ -1019,18 +1024,54 @@ function tDash(){
 }
 function tTeams(){
   var fyS=fyStart(S.year),fyE=fyEnd(S.year);
+  var allC=(S._all&&S._all.cons)||S.cons;
 
-  var inFY=S.cons.filter(function(c){
+  var inFY=allC.filter(function(c){
     if(c.arrive&&c.arrive>fyE)return false;
     if(c.depart&&c.depart<fyS)return false;
     return true;
   });
 
+  /* ── Filtres expertise / secteur ── */
+  var allExp=[],allSec=[];
+  inFY.forEach(function(c){
+    (c.expertise||[]).forEach(function(e){if(allExp.indexOf(e)<0)allExp.push(e);});
+    (c.sectors||[]).forEach(function(s){if(allSec.indexOf(s)<0)allSec.push(s);});
+  });
+  allExp.sort();allSec.sort();
+
+  function applyFilters(list){
+    return list.filter(function(c){
+      if(S.fexp&&S.fexp.length&&!(c.expertise||[]).some(function(e){return S.fexp.indexOf(e)>=0;}))return false;
+      if(S.fsec&&S.fsec.length&&!(c.sectors||[]).some(function(s){return S.fsec.indexOf(s)>=0;}))return false;
+      return true;
+    });
+  }
+
+  function filterPills(arr,sel,act){
+    if(!arr.length)return '';
+    return arr.map(function(v){
+      var on=(sel||[]).indexOf(v)>=0;
+      return '<button data-act="'+act+'" data-id="'+esc(v)+'" style="padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;border:1px solid '+(on?'#84CC16':'#e2e8f0')+';background:'+(on?'#84CC16':'#fff')+';color:'+(on?'#1B2B3A':'#475569')+';cursor:pointer;margin:0 4px 4px 0">'+esc(v)+'</button>';
+    }).join('');
+  }
+
+  var expPills=filterPills(allExp,S.fexp,'fexp-tog');
+  var secPills=filterPills(allSec,S.fsec,'fsec-tog');
+  var hasFilters=(S.fexp&&S.fexp.length)||(S.fsec&&S.fsec.length);
+
+  var filtersHtml=allExp.length||allSec.length
+    ?'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;margin-bottom:14px">'
+      +(expPills?'<div style="margin-bottom:6px"><span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-right:8px">Expertise</span>'+expPills+'</div>':'')
+      +(secPills?'<div"><span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-right:8px">Secteur</span>'+secPills+'</div>':'')
+      +(hasFilters?'<button data-act="fteams-reset" style="font-size:11px;color:#94a3b8;background:none;border:none;cursor:pointer;text-decoration:underline;margin-top:4px">\u00d7 Effacer les filtres</button>':'')
+      +'</div>':'';
+
   /* Futurs arrivants : date d'arrivée > aujourd'hui */
-  var futurs=inFY.filter(function(c){return c.arrive&&c.arrive>TODAY;})
+  var futurs=applyFilters(inFY.filter(function(c){return c.arrive&&c.arrive>TODAY;}))
     .sort(function(a,b){return a.arrive.localeCompare(b.arrive);});
-  var actifs=inFY.filter(function(c){return !isGone(c)&&!(c.arrive&&c.arrive>TODAY);});
-  var partis=inFY.filter(function(c){return isGone(c);});
+  var actifs=applyFilters(inFY.filter(function(c){return !isGone(c)&&!(c.arrive&&c.arrive>TODAY);}));
+  var partis=applyFilters(inFY.filter(function(c){return isGone(c);}));
 
   function makeRow(c,gone,futur){
     var am=getAct(c.id);var st=am?mSt(am):'none';
@@ -1067,6 +1108,7 @@ function tTeams(){
 
   return '<div><div class="ph"><div><div class="pt">\u00c9quipe</div><div class="ps">'+sub+'</div></div>'
     +'<button class="bp" data-act="ac">+ Ajouter un consultant</button></div>'
+    +filtersHtml
     +'<div class="card ov"><table style="min-width:640px">'
     +'<thead><tr><th>Consultant</th><th>Poste</th><th>SCR/j</th><th>Mission actuelle</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
     +'<tbody>'+rows+(inFY.length?'':'<tr><td colspan="6" class="emp">Aucun consultant sur ce FY.</td></tr>')
@@ -2455,6 +2497,21 @@ function bind(){
       else if(a==='gen-util'){genRecs('util');}
       else if(a==='gen-tjm'){genRecs('tjm');}
       else if(a==='ac'){S.modal={type:'consultant',item:null,expSel:[],secSel:[]};render();}
+      else if(a==='fexp-tog'){
+        S.fexp=S.fexp||[];
+        var ei=S.fexp.indexOf(id);
+        if(ei>=0)S.fexp=S.fexp.filter(function(x){return x!==id;});
+        else S.fexp=S.fexp.concat([id]);
+        render();
+      }
+      else if(a==='fsec-tog'){
+        S.fsec=S.fsec||[];
+        var si=S.fsec.indexOf(id);
+        if(si>=0)S.fsec=S.fsec.filter(function(x){return x!==id;});
+        else S.fsec=S.fsec.concat([id]);
+        render();
+      }
+      else if(a==='fteams-reset'){S.fexp=[];S.fsec=[];render();}
       else if(a==='am'){
       var _now=new Date();
       S.modal={type:'mission',item:null,wmode:'rec',manualDays:[],
