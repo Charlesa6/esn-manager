@@ -2476,7 +2476,8 @@ function bind(){
     };
   }
   /* widgets multi-sélection Expertises / Secteurs (uniquement si le modal candidat est ouvert) */
-  if(S.modal&&S.modal.type==='candidate'){bindExpWidget();bindSecWidget();bindLocWidget();}
+  if(S.modal&&(S.modal.type==='candidate'||S.modal.type==='consultant')){bindExpWidget();bindSecWidget();}
+  if(S.modal&&S.modal.type==='candidate'){bindLocWidget();}
 
 
   /* filtre directeur (gestionnaire) */
