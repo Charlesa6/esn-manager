@@ -583,33 +583,33 @@ async function doSignup() {
     } catch(e) { console.warn('consInvite check:', e); }
 
     if (consInvite) {
-      /* ── Flux consultant invité : pas de code licence requis ── */
-      /* Ne pas passer company_id dans les metadata : le trigger Supabase
-         fait un cast ::uuid qui échoue si la valeur est vide ou mal formée.
-         On l'écrira directement dans profiles après la création du compte. */
+      /* ── Flux consultant invité ──
+         company_id est passé depuis consultant_invites (UUID valide)
+         Le trigger peut maintenant l'accepter car la colonne est nullable */
       var res = await sb.auth.signUp({
         email: em, password: pw,
         options: { data: {
           first_name: fn, last_name: ln,
           role: 'consultant',
           directeur_name: consInvite.dir_name || '',
-          cons_id: consInvite.cons_id || null
+          cons_id: consInvite.cons_id || null,
+          company_id: consInvite.company_id || null
         }}
       });
       loading('b-signup','sp-signup','lb-signup', false);
       if (res.error) { showBanner('err', errMsg(res.error)); return; }
 
-      /* Mettre à jour le profil avec company_id et cons_id
-         (après que le trigger ait créé la ligne profiles) */
+      /* Mettre à jour le profil avec toutes les infos consultant
+         (le trigger crée la ligne, on complète avec les données métier) */
       if (res.data && res.data.user) {
         try {
           await sb.from('profiles').upsert({
             id: res.data.user.id,
-            email: em,
             company_id: consInvite.company_id || null,
             role: 'consultant',
             directeur_name: consInvite.dir_name || '',
-            cons_id: consInvite.cons_id || null
+            cons_id: consInvite.cons_id || null,
+            first_name: fn, last_name: ln
           }, { onConflict: 'id' });
         } catch(e) { console.warn('profile upsert:', e); }
       }
@@ -620,7 +620,7 @@ async function doSignup() {
 
       if (res.data.user && !res.data.session) {
         showSuccess('Compte créé\u00a0!',
-          'Vérifiez votre email ' + em + ' pour confirmer votre compte. Vous pourrez ensuite vous connecter.',
+          'V\u00e9rifiez votre email ' + em + ' pour confirmer. Vous pourrez ensuite vous connecter.',
           true);
       } else {
         window.location.href = '/esn_manager_cgi.html';

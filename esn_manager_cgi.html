@@ -3032,14 +3032,26 @@ async function initApp(){
         SB_CID=pr.data.company_id;
         S.role=(pr.data.role==='directeur')?'directeur':(pr.data.role==='consultant'?'consultant':'gestionnaire');
         S.dirName=pr.data.directeur_name||'';
-        S.consId=pr.data.cons_id||null; /* ID du consultant pour le rôle consultant */
-        if(S.role==='consultant'&&S.consId)S.tab='activite'; /* onglet par défaut */
+        S.consId=pr.data.cons_id||null;
+        if(S.role==='consultant'&&S.consId)S.tab='activite';
+      }else if(pr.data&&pr.data.role==='consultant'){
+        /* Consultant : company_id null dans profiles → résoudre via consultant_invites */
+        try{
+          var ci=await sb.from('consultant_invites').select('*').eq('email',S._userEmail).maybeSingle();
+          if(ci&&ci.data&&ci.data.company_id){
+            SB_CID=ci.data.company_id;
+            S.role='consultant';
+            S.dirName=ci.data.dir_name||pr.data.directeur_name||'';
+            S.consId=ci.data.cons_id||pr.data.cons_id||null;
+            sb.from('profiles').update({company_id:ci.data.company_id,directeur_name:S.dirName,cons_id:S.consId}).eq('id',uid2).catch(function(e){console.warn('profile patch:',e);});
+            if(S.consId)S.tab='activite';
+          }
+        }catch(e){console.warn('ci lookup:',e);}
       }else{
         /* Fallback : chercher company_id directement dans companies */
         var cq=await sb.from('companies').select('id').eq('owner_id',uid2).single();
         if(cq.data)SB_CID=cq.data.id;
       }
-      if(!SB_CID){}
 
       /* ── 3. Charger les donn\u00e9es depuis Supabase ── */
       var ok=await loadSB();
