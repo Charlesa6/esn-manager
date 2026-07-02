@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/app", "destination": "/esn_manager_cgi.html" },
+    { "source": "/login", "destination": "/esn_login.html" },
+    { "source": "/", "destination": "/esn_login.html" }
+  ]
+}

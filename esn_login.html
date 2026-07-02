@@ -180,7 +180,7 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
     <div style="margin-top:32px;display:flex;flex-direction:column;gap:10px">
 
       <!-- Démo -->
-      <a href="/esn_manager_cgi.html?demo=true" class="left-cta left-cta-demo">
+      <a href="/app?demo=true" class="left-cta left-cta-demo">
         <span style="font-size:18px">&#x1F3AE;</span>
         <div>
           <div style="font-weight:700;font-size:14px">Essayer la d&eacute;mo gratuite</div>
@@ -340,7 +340,7 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
       </div>
       <h3 class="success-title" id="suc-title">Connexion r&eacute;ussie</h3>
       <p class="success-msg" id="suc-msg">Votre tableau de bord vous attend.</p>
-      <a href="/esn_manager_cgi.html" class="btn-dash" id="suc-link">
+      <a href="/app" class="btn-dash" id="suc-link">
         Acc&eacute;der au tableau de bord
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
       </a>
@@ -427,7 +427,7 @@ if (sb) {
   document.addEventListener('DOMContentLoaded', async function() {
     try {
       var r = await sb.auth.getSession();
-      if (r.data && r.data.session) window.location.href = '/esn_manager_cgi.html';
+      if (r.data && r.data.session) window.location.href = '/app';
     } catch(e) {}
   });
 }
@@ -519,7 +519,7 @@ async function doLogin() {
   if (!sb) {
     await wait(900);
     loading('b-login','sp-login','lb-login', false);
-    window.location.href = '/esn_manager_cgi.html';
+    window.location.href = '/app';
     return;
   }
   var res = await sb.auth.signInWithPassword({ email: em, password: pw });
@@ -529,7 +529,7 @@ async function doLogin() {
     return;
   }
   saveEmail(em);
-  window.location.href = '/esn_manager_cgi.html';
+  window.location.href = '/app';
 }
 
 /* URL de la boutique — à mettre à jour quand vous aurez votre outil de paiement */
@@ -637,7 +637,7 @@ async function doSignup() {
           'V\u00e9rifiez votre email ' + em + ' pour confirmer. Vous pourrez ensuite vous connecter.',
           true);
       } else {
-        window.location.href = '/esn_manager_cgi.html';
+        window.location.href = '/app';
       }
       return;
     }
@@ -676,7 +676,7 @@ async function doSignup() {
     if (res2.data.user && !res2.data.session) {
       showSuccess('V\u00e9rifiez votre email', 'Un lien de confirmation a \u00e9t\u00e9 envoy\u00e9 \u00e0 ' + em + '.', true);
     } else {
-      window.location.href = '/esn_manager_cgi.html';
+      window.location.href = '/app';
     }
   } else {
     await wait(800);
