@@ -301,9 +301,13 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
         <p class="err-msg" id="e-s-p2">Les mots de passe ne correspondent pas</p>
       </div>
       <div class="fd">
-        <label for="s-lic">Code de licence *</label>
+        <label for="s-lic">Code de licence <span id="lic-optional" style="display:none;font-weight:400;color:#94a3b8">(optionnel si invit&eacute; par votre directeur)</span></label>
         <input class="inp" type="text" id="s-lic" placeholder="ex : ESN-XXXX-XXXX" autocomplete="off" style="letter-spacing:.05em;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
-        <p class="fd-hint" style="font-size:11px;color:#94a3b8;margin-top:4px">Re&ccedil;u par email apr&egrave;s votre abonnement. <a href="#" onclick="openStore('directeur');return false;" style="color:#2563eb">S&apos;abonner &rarr;</a></p>
+        <p class="fd-hint" style="font-size:11px;color:#94a3b8;margin-top:4px">
+          Requis si vous &ecirc;tes directeur ou gestionnaire. 
+          <strong>Consultant\u00a0: laissez vide</strong> si votre directeur vous a invit&eacute; avec votre email.
+          <a href="#" onclick="openStore('directeur');return false;" style="color:#2563eb">S&apos;abonner &rarr;</a>
+        </p>
         <p class="err-msg" id="e-s-lic">Code de licence invalide ou d&eacute;j&agrave; utilis&eacute;</p>
       </div>
       <label class="cgu-row">
@@ -548,60 +552,93 @@ async function doSignup() {
   var p2  = document.getElementById('s-p2').value;
   var lic = (document.getElementById('s-lic').value||'').trim().toUpperCase();
   var ok  = true;
-  if (!co)             ok = setErr('s-co','e-s-co','Requis');
-  if (!fn)             ok = setErr('s-fn','e-s-fn','Requis') && ok;
+  if (!fn)             ok = setErr('s-fn','e-s-fn','Requis');
   if (!ln)             ok = setErr('s-ln','e-s-ln','Requis') && ok;
   if (!isEmail(em))    ok = setErr('s-em','e-s-em','Email invalide') && ok;
   if (!pw||pw.length<8)ok = setErr('s-pw','e-s-pw','8 caract\u00e8res minimum') && ok;
   if (pw !== p2)       ok = setErr('s-p2','e-s-p2','Ne correspond pas') && ok;
-  if (!lic)            ok = setErr('s-lic','e-s-lic','Code de licence requis') && ok;
   if (!document.getElementById('cgu').checked) {
     document.getElementById('e-cgu').classList.add('show'); ok = false;
   }
   if (!ok) return;
   loading('b-signup','sp-signup','lb-signup', true);
 
-  /* Validation du code de licence */
   if (sb) {
+    /* ── 1. Vérifier si l'email est une invitation consultant ── */
+    var consInvite = null;
+    try {
+      var ci = await sb.from('consultant_invites')
+        .select('*').eq('email', em).eq('status','pending').single();
+      consInvite = ci.data || null;
+    } catch(e) {}
+
+    if (consInvite) {
+      /* ── Flux consultant invité : pas de code licence requis ── */
+      var res = await sb.auth.signUp({
+        email: em, password: pw,
+        options: { data: {
+          first_name: fn, last_name: ln,
+          role: 'consultant',
+          directeur_name: consInvite.dir_name || '',
+          cons_id: consInvite.cons_id || null,
+          company_id: consInvite.company_id || null
+        }}
+      });
+      loading('b-signup','sp-signup','lb-signup', false);
+      if (res.error) {
+        showBanner('err', res.error.message); return;
+      }
+      /* Marquer l'invitation comme utilisée */
+      await sb.from('consultant_invites')
+        .update({status:'active'}).eq('id', consInvite.id);
+      if (res.data.user && !res.data.session) {
+        showSuccess('Compte créé !', 'Vérifiez votre email ' + em + ' pour confirmer votre compte. Vous pourrez ensuite vous connecter.', true);
+      } else {
+        window.location.href = '/esn_manager_cgi.html';
+      }
+      return;
+    }
+
+    /* ── 2. Flux standard : code de licence requis ── */
+    if (!co) { loading('b-signup','sp-signup','lb-signup', false); setErr('s-co','e-s-co','Requis'); return; }
+    if (!lic) { loading('b-signup','sp-signup','lb-signup', false); setErr('s-lic','e-s-lic','Code de licence requis'); return; }
+
     var licData = await validateLicenceCode(lic);
     if (!licData) {
       loading('b-signup','sp-signup','lb-signup', false);
-      setErr('s-lic','e-s-lic','Code invalide, déjà utilisé ou inexistant');
+      setErr('s-lic','e-s-lic','Code invalide, d\u00e9j\u00e0 utilis\u00e9 ou inexistant');
       showBanner('err', 'Code de licence invalide. <a href="#" onclick="openStore(\'directeur\');return false;" style="color:#fff;text-decoration:underline">S\'abonner pour obtenir un code &rarr;</a>');
       return;
     }
-    /* Création du compte */
     var userRole = licData.role || 'directeur';
-    var res = await sb.auth.signUp({
+    var res2 = await sb.auth.signUp({
       email: em, password: pw,
       options: { data: {
         company_name: co, first_name: fn, last_name: ln,
         role: userRole,
-        directeur_name: licData.dir_name || '',  /* pour les consultants */
-        cons_id: licData.linked_cons_id || null  /* lien vers le profil consultant */
+        directeur_name: licData.dir_name || '',
+        cons_id: licData.linked_cons_id || null
       }}
     });
     loading('b-signup','sp-signup','lb-signup', false);
-    if (res.error) {
-      if (res.error.message.toLowerCase().includes('already')) {
-        setErr('s-em','e-s-em','Cet email est déjà utilisé');
+    if (res2.error) {
+      if (res2.error.message.toLowerCase().includes('already')) {
+        setErr('s-em','e-s-em','Cet email est d\u00e9j\u00e0 utilis\u00e9');
       } else {
-        showBanner('err', res.error.message);
+        showBanner('err', res2.error.message);
       }
       return;
     }
-    /* Marquer le code comme utilisé */
     await sb.from('licence_codes').update({used:true, used_by:em, used_at:new Date().toISOString()}).eq('code', lic);
-    if (res.data.user && !res.data.session) {
-      showSuccess('Vérifiez votre email', 'Un lien de confirmation a été envoyé à ' + em + '.', true);
+    if (res2.data.user && !res2.data.session) {
+      showSuccess('V\u00e9rifiez votre email', 'Un lien de confirmation a \u00e9t\u00e9 envoy\u00e9 \u00e0 ' + em + '.', true);
     } else {
       window.location.href = '/esn_manager_cgi.html';
     }
   } else {
-    /* Mode sans Supabase — demo locale */
     await wait(800);
     loading('b-signup','sp-signup','lb-signup', false);
-    showSuccess('Bienvenue\u00a0!', 'Votre espace ' + co + ' est prêt.');
+    showSuccess('Bienvenue\u00a0!', 'Votre espace ' + (co||fn+' '+ln) + ' est pr\u00eat.');
   }
 }
 
