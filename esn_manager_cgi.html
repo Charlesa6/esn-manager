@@ -1356,28 +1356,36 @@ function tKPIs(){
   function srBg(v){return v>=80?'#f0fdf4':v>=50?'#fffbeb':'#fff1f2';}
   function ini(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();}
 
-  var srLabel=avgSr>=80?'Excellent':avgSr>=60?'Correct':'A surveiller';
-  var hero='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#243447;border-radius:16px;overflow:hidden;margin-bottom:24px">'
-    +'<div style="background:#0c1424;padding:28px 24px">'
-    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#334155;margin-bottom:8px">Staffing moyen</div>'
-    +'<div style="font-size:40px;font-weight:900;color:#f1f5f9;letter-spacing:-.03em;line-height:1">'+avgSr.toFixed(1)+'<span style="font-size:20px;font-weight:600">%</span></div>'
+  var srLabel=avgSr>=80?'Excellent':avgSr>=60?'Correct':'À surveiller';
+  var hero='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#84CC16;border-radius:16px;overflow:hidden;margin-bottom:24px">'
+
+    /* Staffing moyen */
+    +'<div style="background:#1B2B3A;padding:28px 24px">'
+    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#84CC16;margin-bottom:8px">Staffing moyen</div>'
+    +'<div style="font-size:40px;font-weight:900;color:#ffffff;letter-spacing:-.03em;line-height:1">'+avgSr.toFixed(1)+'<span style="font-size:20px;font-weight:600">%</span></div>'
     +'<div style="font-size:12px;font-weight:700;color:'+srCol(avgSr)+';margin-top:8px">'+srLabel+'</div>'
-    +'<div style="margin-top:10px;height:3px;background:#243447;border-radius:2px;overflow:hidden"><div style="height:100%;width:'+Math.min(avgSr,100).toFixed(0)+'%;background:'+srCol(avgSr)+';border-radius:2px"></div></div>'
+    +'<div style="margin-top:10px;height:3px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden"><div style="height:100%;width:'+Math.min(avgSr,100).toFixed(0)+'%;background:#84CC16;border-radius:2px"></div></div>'
     +'</div>'
-    +'<div style="background:#0c1424;padding:28px 24px">'
-    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#334155;margin-bottom:8px">CA Total</div>'
-    +'<div style="font-size:40px;font-weight:900;color:#60a5fa;letter-spacing:-.03em;line-height:1">'+fEur(totR)+'</div>'
-    +'<div style="font-size:12px;color:#475569;margin-top:8px">'+ks.length+' consultants &middot; '+fyLbl(S.year)+'</div>'
+
+    /* CA Total */
+    +'<div style="background:#1B2B3A;padding:28px 24px">'
+    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#84CC16;margin-bottom:8px">CA Total</div>'
+    +'<div style="font-size:36px;font-weight:900;color:#ffffff;letter-spacing:-.03em;line-height:1">'+fEur(totR)+'</div>'
+    +'<div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:8px">'+ks.length+' consultants &middot; '+fyLbl(S.year)+'</div>'
     +'</div>'
-    +'<div style="background:#0c1424;padding:28px 24px">'
-    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#334155;margin-bottom:8px">TJM moyen</div>'
-    +'<div style="font-size:40px;font-weight:900;color:#a78bfa;letter-spacing:-.03em;line-height:1">'+(avgTJMv>0?fEur(Math.round(avgTJMv)):'&mdash;')+'</div>'
-    +'<div style="font-size:12px;color:#475569;margin-top:8px">'+(avgM!=null?'Marge moyenne : '+avgM.toFixed(1)+'%':'Calcul en cours')+'</div>'
+
+    /* TJM moyen */
+    +'<div style="background:#1B2B3A;padding:28px 24px">'
+    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#84CC16;margin-bottom:8px">TJM moyen</div>'
+    +'<div style="font-size:36px;font-weight:900;color:#ffffff;letter-spacing:-.03em;line-height:1">'+(avgTJMv>0?fEur(Math.round(avgTJMv)):'&mdash;')+'</div>'
+    +'<div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:8px">'+(avgM!=null?'Marge moy. : '+avgM.toFixed(1)+'%':'Données insuffisantes')+'</div>'
     +'</div>'
-    +'<div style="background:#0c1424;padding:28px 24px">'
-    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#334155;margin-bottom:8px">Contribution nette</div>'
-    +'<div style="font-size:40px;font-weight:900;color:'+(netC>=0?'#34d399':'#f87171')+';letter-spacing:-.03em;line-height:1">'+fEur(netC)+'</div>'
-    +'<div style="font-size:12px;color:#475569;margin-top:8px">CA &minus; co\u00fbts salaires p\u00e9riode ('+fEur(totSalary)+')</div>'
+
+    /* Contribution nette */
+    +'<div style="background:#1B2B3A;padding:28px 24px">'
+    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#84CC16;margin-bottom:8px">Contribution nette</div>'
+    +'<div style="font-size:36px;font-weight:900;color:'+(netC>=0?'#86efac':'#fca5a5')+';letter-spacing:-.03em;line-height:1">'+fEur(netC)+'</div>'
+    +'<div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:8px">CA &minus; salaires p\u00e9riode ('+fEur(totSalary)+')</div>'
     +'</div></div>';
 
   var clientHtml='<div style="display:flex;flex-direction:column;gap:16px">'
