@@ -1394,7 +1394,10 @@ function tLeaves(){
       if(!clvs.length)return '';
       var cpJ=0,arJ=0;
       clvs.forEach(function(l){
-        var wd=wDays(l.s,l.e,H);
+        /* Clamp à la période sélectionnée */
+        var effS=l.s>fyS?l.s:fyS;
+        var effE=l.e<fyE?l.e:fyE;
+        var wd=wDays(effS,effE,H);
         if(isArret(l.type))arJ+=wd;
         else if(l.type!=='Inter-contrat')cpJ+=wd;
       });
@@ -1415,7 +1418,10 @@ function tLeaves(){
   } else {
     /* ── Vue d\u00e9tail consultant ── */
     var detRows=fil.map(function(l){
-      var wd=wDays(l.s,l.e,H);
+      /* Clamp à la période pour n'afficher que les jours dans la fenêtre */
+      var effS=l.s>fyS?l.s:fyS;
+      var effE=l.e<fyE?l.e:fyE;
+      var wd=wDays(effS,effE,H);
       var tc=(TCC[l.type]||'#f1f5f9|#475569').split('|');
       return '<tr>'
         +'<td><span style="display:inline-flex;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;background:'+tc[0]+';color:'+tc[1]+'">'+esc(l.type)+'</span></td>'
@@ -1427,7 +1433,9 @@ function tLeaves(){
     }).join('');
     var totCP=0,totAr=0;
     fil.forEach(function(l){
-      var wd=wDays(l.s,l.e,H);
+      var effS=l.s>fyS?l.s:fyS;
+      var effE=l.e<fyE?l.e:fyE;
+      var wd=wDays(effS,effE,H);
       if(isArret(l.type))totAr+=wd;
       else if(l.type!=='Inter-contrat')totCP+=wd;
     });
