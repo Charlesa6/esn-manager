@@ -1471,13 +1471,7 @@ function tAdmin(){
     +'<div class="fd"><label class="fl">Nom du consultant *</label><input class="ic" id="admin-cons-name" list="esn-cons-list" placeholder="ex\u00a0: Sophie Martin"><datalist id="esn-cons-list">'+dlOpts+'</datalist><p class="fh">Doit correspondre exactement au consultant dans votre \u00e9quipe</p></div>'
     +'</div>'
     +'<button class="bp" data-act="admin-cons-add"'+(sbOn?'':' disabled style="opacity:.5;cursor:not-allowed"')+'>+ Inviter ce consultant</button>'
-    +'<div style="margin-top:14px;padding:12px 16px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:13px;color:#92400e">'
-    +'<strong>\uD83D\uDCA1 Aucun email n\u2019est envoy\u00e9 automatiquement.</strong><br>'
-    +'Apr\u00e8s avoir cliqu\u00e9 \u00ab\u202fInviter\u202f\u00bb, transmettez manuellement \u00e0 votre consultant\u00a0:'
-    +'<br>\u2022 Son <strong>adresse email</strong> (celle que vous avez saisie)'
-    +'<br>\u2022 Le lien\u00a0: <strong>'+(window?'':'')+esc(window&&window.location?window.location.origin+'/esn_login.html':'https://votre-domaine.vercel.app/esn_login.html')+'</strong>'
-    +'<br>Il cr\u00e9era son compte avec cet email. Le syst\u00e8me le rattachera automatiquement \u00e0 votre \u00e9quipe.'
-    +'</div>'
+    +'<p class="fh" style="margin-top:8px">Le consultant cr\u00e9era son compte avec cet email sur la page de connexion \u2014 il sera rattach\u00e9 automatiquement \u00e0 votre \u00e9quipe.</p>'
     +'</div>'
     +'<div class="card ov"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">Comptes consultants</div>'
     +'<table><thead><tr><th>Email</th><th>Consultant</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
@@ -2998,8 +2992,13 @@ async function loadApprovals(){
     if(S.role==='directeur')q=q.eq('dir_name',S.dirName);
     else if(S.role==='consultant'&&S.consId)q=q.eq('cons_id',S.consId);
     var r=await q.order('created_at',{ascending:false});
+    if(r.error){
+      console.error('[Approvals] Erreur chargement:',r.error.message,'code:',r.error.code);
+      console.warn('[Approvals] La table "approvals" existe-t-elle ? Exécutez migration_consultant_approvals.sql dans Supabase.');
+      return;
+    }
+    console.log('[Approvals] Chargé',r.data?r.data.length:0,'approbations — role:',S.role,'dir:',S.dirName,'company:',SB_CID);
     if(r.data){
-      /* Mapper snake_case Supabase → camelCase JS */
       S.approvals=r.data.map(function(d){
         return {
           id:d.id, type:d.type, status:d.status,
@@ -3010,7 +3009,7 @@ async function loadApprovals(){
         };
       });
     }
-  }catch(e){console.warn('approvals load:',e);}
+  }catch(e){console.warn('[Approvals] Exception:',e.message);}
 }
 async function sbInviteCons(email,name){
   if(!sb||!SB_CID)return{error:{message:'Supabase non configuré'}};
@@ -3522,14 +3521,16 @@ function applyApproval(req){
 
 /* Supabase : upsert d'une approbation */
 async function sbUpsertApproval(req){
-  if(!sb||!SB_CID)return;
-  await sb.from('approvals').upsert({
+  if(!sb||!SB_CID){console.warn('[Approval] SB_CID manquant, impossible de sauvegarder');return;}
+  var res=await sb.from('approvals').upsert({
     id:req.id,company_id:SB_CID,type:req.type,
     cons_id:req.consId,cons_name:req.consName,dir_name:req.dirName,
     payload:req.payload,apply_desc:req.applyDesc,
     status:req.status,rejection_reason:req.rejectionReason,
     created_at:req.createdAt,resolved_at:req.resolvedAt
   },{onConflict:'id'});
+  if(res.error){console.error('[Approval] Erreur upsert:',res.error.message,'code:',res.error.code);}
+  else{console.log('[Approval] Sauvegardé OK — id:',req.id,'dir:',req.dirName,'company:',SB_CID);}
 }
 
 /* ─── Vue Approbations pour le CONSULTANT ─── */
