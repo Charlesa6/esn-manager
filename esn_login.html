@@ -563,14 +563,24 @@ async function doSignup() {
   if (!ok) return;
   loading('b-signup','sp-signup','lb-signup', true);
 
+  /* Helper : extraire un message d'erreur lisible depuis n'importe quel format Supabase */
+  function errMsg(e) {
+    if (!e) return 'Erreur inconnue';
+    if (typeof e.message === 'string' && e.message) return e.message;
+    if (typeof e.msg === 'string' && e.msg) return e.msg;
+    if (typeof e === 'string') return e;
+    var s = JSON.stringify(e);
+    return (s && s !== '{}') ? s : 'Erreur Supabase (voir console F12)';
+  }
+
   if (sb) {
     /* ── 1. Vérifier si l'email est une invitation consultant ── */
     var consInvite = null;
     try {
       var ci = await sb.from('consultant_invites')
-        .select('*').eq('email', em).eq('status','pending').single();
-      consInvite = ci.data || null;
-    } catch(e) {}
+        .select('*').eq('email', em).eq('status','pending').maybeSingle();
+      consInvite = (ci && ci.data) ? ci.data : null;
+    } catch(e) { console.warn('consInvite check:', e); }
 
     if (consInvite) {
       /* ── Flux consultant invité : pas de code licence requis ── */
@@ -581,18 +591,16 @@ async function doSignup() {
           role: 'consultant',
           directeur_name: consInvite.dir_name || '',
           cons_id: consInvite.cons_id || null,
-          company_id: consInvite.company_id || null
+          company_id: String(consInvite.company_id || '')
         }}
       });
       loading('b-signup','sp-signup','lb-signup', false);
-      if (res.error) {
-        showBanner('err', res.error.message); return;
-      }
+      if (res.error) { showBanner('err', errMsg(res.error)); return; }
       /* Marquer l'invitation comme utilisée */
       await sb.from('consultant_invites')
         .update({status:'active'}).eq('id', consInvite.id);
       if (res.data.user && !res.data.session) {
-        showSuccess('Compte créé !', 'Vérifiez votre email ' + em + ' pour confirmer votre compte. Vous pourrez ensuite vous connecter.', true);
+        showSuccess('Compte créé\u00a0!', 'Vérifiez votre email ' + em + ' pour confirmer votre compte. Vous pourrez ensuite vous connecter.', true);
       } else {
         window.location.href = '/esn_manager_cgi.html';
       }
