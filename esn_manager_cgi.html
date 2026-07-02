@@ -1003,7 +1003,7 @@ function tDash(){
           +'<div style="font-size:11px;color:#94a3b8">'+fDt(c.arrive)+'</div>'
           +'</div></div>';
       }).join('');
-      return '<details style="background:#fff;border:1px solid '+(futurCount>0?'#bbf7d0':'#e2e8f0')+';border-radius:12px;margin-bottom:10px;overflow:hidden" id="futurs-section"'+(futurCount>0?' open':'')+'>'
+      return '<details style="background:#fff;border:1px solid '+(futurCount>0?'#bbf7d0':'#e2e8f0')+';border-radius:12px;margin-bottom:10px;overflow:hidden" id="futurs-section">'
         +'<summary style="display:flex;align-items:center;gap:8px;padding:14px 18px;cursor:pointer;font-size:14px;font-weight:800;color:#0f172a;list-style:none;user-select:none" '
         +'onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'
         +'\uD83D\uDCC5<span style="flex:1;margin-left:8px">Prochaines arriv\u00e9es</span>'
@@ -2217,21 +2217,22 @@ function tModal(){
   }
 
   if(tp==='consultant'){
-    title=it?'Modifier le consultant':'Nouveau consultant';
-    /* champ Directeur : unique par consultant ; libre (datalist) pour le gestionnaire, verrouill\u00e9 pour un directeur */
+    title=it?'Modifier le consultant':'Nouveau consultant';wide=true;
     var _rl=[];((S._all&&S._all.cons)||S.cons).forEach(function(c){var r=c.dir||'';if(r&&_rl.indexOf(r)<0)_rl.push(r);});_rl.sort();
     var dirFld=(S.role==='directeur')
       ? '<div class="fd"><label class="fl">Directeur</label><input class="ic" id="mdir" value="'+esc(S.dirName)+'" disabled style="background:#f1f5f9;color:#64748b"><p class="fh">Consultant rattach\u00e9 automatiquement \u00e0 votre \u00e9quipe</p></div>'
       : '<div class="fd"><label class="fl">Directeur</label><input class="ic" id="mdir" list="esn-dir-list" value="'+esc(it?(it.dir||''):'')+'" placeholder="Nom du directeur"><datalist id="esn-dir-list">'+_rl.map(function(r){return '<option value="'+esc(r)+'">';}).join('')+'</datalist><p class="fh">Directeur unique du consultant (d\u00e9finit l\'\u00e9quipe, filtrable c\u00f4t\u00e9 gestionnaire)</p></div>';
-    body='<div class="fd"><label class="fl">Nom complet *</label><input class="ic" id="mn" value="'+esc(it?it.name:'')+'" placeholder="Pr\u00e9nom Nom"></div>'
+    body='<div class="g2">'
+      +'<div class="fd"><label class="fl">Nom complet *</label><input class="ic" id="mn" value="'+esc(it?it.name:'')+'" placeholder="Pr\u00e9nom Nom"></div>'
       +'<div class="fd"><label class="fl">Poste *</label><input class="ic" id="mti" value="'+esc(it?it.title:'')+'" placeholder="ex\u00a0: Consultant Senior"></div>'
-      +'<div class="fd"><label class="fl">SCR journalier (\u20ac) *</label><input class="ic" id="ms" type="number" min="0" value="'+esc(it?String(it.scr):'')+'" placeholder="450"><p class="fh">Salary Cost Revenue - co\u00fbt journalier (salaire \u00f7 jours travaillables)</p></div>'
-      +'<div class="fd"><label class="fl">Email</label><input class="ic" id="me" type="email" value="'+esc(it?it.email:'')+'" placeholder="prenom.nom@cgi.com"></div>'
-      +'<div class="cs2">'
-      +'<div class="fd"><label class="fl">Date d\'arriv\u00e9e dans l\'\u00e9quipe</label><input class="ic" id="marr" type="date" value="'+esc(it&&it.arrive?it.arrive:'')+'"><p class="fh">Laissez vide si pr\u00e9sent depuis le d\u00e9but du FY</p></div>'
+      +'<div class="fd"><label class="fl">SCR journalier (\u20ac) *</label><input class="ic" id="ms" type="number" min="0" value="'+esc(it?String(it.scr):'')+'" placeholder="450"><p class="fh">Salary Cost Revenue - co\u00fbt journalier</p></div>'
+      +'<div class="fd"><label class="fl">Email</label><input class="ic" id="me" type="email" value="'+esc(it?it.email:'')+'" placeholder="prenom.nom@exemple.com"></div>'
+      +'<div class="fd"><label class="fl">Date d\'arriv\u00e9e</label><input class="ic" id="marr" type="date" value="'+esc(it&&it.arrive?it.arrive:'')+'"><p class="fh">Laissez vide si pr\u00e9sent depuis le d\u00e9but du FY</p></div>'
       +'<div class="fd"><label class="fl">Date de d\u00e9part</label><input class="ic" id="mdep" type="date" value="'+esc(it&&it.depart?it.depart:'')+'"><p class="fh">Laissez vide si toujours en poste</p></div>'
+      +'<div class="fd cs2">'+dirFld+'</div>'
+      +'<div class="fd cs2"><label class="fl">Expertises</label><div id="exp-wrap">'+expPickerHTML()+'</div></div>'
+      +'<div class="fd cs2"><label class="fl">Connaissance secteur</label><div id="sec-wrap">'+secPickerHTML()+'</div></div>'
       +'</div>'
-      +dirFld
       +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="sc">'+(it?'Enregistrer':'Ajouter')+'</button></div>';
   }
   if(tp==='mission'){
@@ -2453,7 +2454,7 @@ function bind(){
       else if(a==='gen-ca'){genRecs('ca');}
       else if(a==='gen-util'){genRecs('util');}
       else if(a==='gen-tjm'){genRecs('tjm');}
-      else if(a==='ac'){S.modal={type:'consultant',item:null};render();}
+      else if(a==='ac'){S.modal={type:'consultant',item:null,expSel:[],secSel:[]};render();}
       else if(a==='am'){
       var _now=new Date();
       S.modal={type:'mission',item:null,wmode:'rec',manualDays:[],
@@ -2461,7 +2462,7 @@ function bind(){
       render();}
       else if(a==='al'){S.modal={type:'leave',item:null};render();}
       else if(a==='mc'){S.modal=null;render();}
-      else if(a==='ec'){S.modal={type:'consultant',item:S.cons.find(function(c){return c.id===id;})};render();}
+      else if(a==='ec'){var _ec=S.cons.find(function(c){return c.id===id;});S.modal={type:'consultant',item:_ec,expSel:(_ec&&_ec.expertise)?_ec.expertise.slice():[],secSel:(_ec&&_ec.sectors)?_ec.sectors.slice():[]};render();}
       else if(a==='em'){
       var _it=S.miss.find(function(m){return m.id===id;});
       var _now2=new Date();
@@ -2520,12 +2521,14 @@ function bind(){
       else if(a==='sc'){
         var n=gv('mn'),t=gv('mti'),s=+gv('ms'),em=gv('me');
         var arr=gv('marr')||null,dep=gv('mdep')||null;
-        var rdir=(S.role==='directeur')?S.dirName:gv('mdir'); /* un directeur ne crée que dans son équipe */
+        var rdir=(S.role==='directeur')?S.dirName:gv('mdir');
+        var expArr=(S.modal.expSel||[]).slice();
+        var secArr=(S.modal.secSel||[]).slice();
         if(!n||!t||!s){alert('Veuillez remplir les champs obligatoires (*).');return;}
         var it=S.modal.item;
         var nc;
-        if(it){S.cons=S.cons.map(function(c){if(c.id===it.id){nc=Object.assign({},c,{name:n,title:t,scr:s,email:em,dir:rdir,arrive:arr,depart:dep});return nc;}return c;});}
-        else{nc={id:uid(),name:n,title:t,scr:s,email:em,dir:rdir,arrive:arr,depart:dep};S.cons=S.cons.concat([nc]);}
+        if(it){S.cons=S.cons.map(function(c){if(c.id===it.id){nc=Object.assign({},c,{name:n,title:t,scr:s,email:em,dir:rdir,arrive:arr,depart:dep,expertise:expArr,sectors:secArr});return nc;}return c;});}
+        else{nc={id:uid(),name:n,title:t,scr:s,email:em,dir:rdir,arrive:arr,depart:dep,expertise:expArr,sectors:secArr};S.cons=S.cons.concat([nc]);}
         sbUpsertCons(nc);
         S.modal=null;render();
       }
