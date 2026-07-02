@@ -458,6 +458,7 @@ var REC_STATUS=[
   {id:'entretien',lb:'Entretien client',  bg:'#fef3c7',fg:'#92400e'},
   {id:'offre',    lb:'Offre en cours',    bg:'#ccfbf1',fg:'#0f766e'},
   {id:'place',    lb:'Plac\u00e9',              bg:'#dcfce7',fg:'#15803d'},
+  {id:'recrute',  lb:'Recrut\u00e9(e) \u2713',     bg:'#d1fae5',fg:'#065f46'},
   {id:'standby',  lb:'Standby',           bg:'#f1f5f9',fg:'#64748b'},
   {id:'refuse',   lb:'Refus\u00e9',             bg:'#fee2e2',fg:'#b91c1c'}
 ];
@@ -1979,10 +1980,40 @@ function tModal(){
       +'<div class="fd"><label class="fl">Marge cible TJM revente : <span id="rcMarVal" style="color:#2563eb;font-weight:800">'+mar0+'%</span></label>'
       +'<input type="range" id="rcmar" min="15" max="50" step="1" value="'+mar0+'" oninput="recCalcRefresh()" style="width:100%;accent-color:#2563eb;margin-top:8px"></div>'
       +'<div class="fd cs2" id="rcCalcOut" style="background:#eff6ff;border-radius:8px;padding:10px 14px;font-size:13px;color:#1e40af">'
-      +'SCR journalier : <strong>'+scr0.toFixed(0)+' €</strong> &nbsp;·&nbsp; TJM de revente (marge '+mar0+'%) : <strong>'+tjm0.toFixed(0)+' €</strong>'
+      +'SCR journalier : <strong>'+scr0.toFixed(0)+' \u20ac</strong> &nbsp;\u00b7&nbsp; TJM de revente (marge '+mar0+'%) : <strong>'+tjm0.toFixed(0)+' \u20ac</strong>'
       +'</div>'
+
+      /* ── Section Recrutement ── */
+      +'<div class="fd cs2" style="border-top:2px solid #e2e8f0;padding-top:16px;margin-top:4px">'
+      +'<label class="fl" style="margin-bottom:10px">Recrutement</label>'
+      +'<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;font-weight:600;color:#0f172a">'
+      +'<input type="checkbox" id="rc-recruited" style="width:18px;height:18px;accent-color:#2563eb;cursor:pointer" onchange="toggleRecruited()"'+(it&&it.recruited?' checked':'')+'>'
+      +'\u2713 Candidat recrut\u00e9(e) \u2014 int\u00e9grer dans l\'\u00e9quipe</label>'
+      +'<p style="font-size:12px;color:#94a3b8;margin-top:4px;margin-left:28px">Si coch\u00e9, un profil consultant sera cr\u00e9\u00e9 automatiquement \u00e0 la sauvegarde.</p>'
       +'</div>'
-      +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="screc">'+(it?'Enregistrer':'Créer le candidat')+'</button></div>';
+
+      +'<div id="rc-recruit-fields" class="g2" style="display:'+(it&&it.recruited?'grid':'none')+'">'
+      +'<div class="fd"><label class="fl">Date de d\u00e9marrage *</label>'
+      +'<input class="ic" type="date" id="rc-start" value="'+(it&&it.recruitStart?it.recruitStart:'')+'">'
+      +'</div>'
+
+      +'<div class="fd"><label class="fl">Poste *</label>'
+      +'<input class="ic" id="rc-poste" placeholder="ex\u00a0: Consultant Senior" value="'+(it&&it.recruitPoste?esc(it.recruitPoste):'')+'">'
+      +'</div>'
+
+      +'<div class="fd cs2"><label class="fl">Directeur *</label>'
+      +'<input class="ic" id="rc-dir" list="rc-dir-list" placeholder="Nom du directeur" value="'+(it&&it.recruitDir?esc(it.recruitDir):'')+'">'
+      +'<datalist id="rc-dir-list">'+(function(){
+        var dirs=[];
+        ((S._all&&S._all.cons)||S.cons).forEach(function(c){var d=c.dir||'';if(d&&dirs.indexOf(d)<0)dirs.push(d);});
+        dirs.sort();
+        return dirs.map(function(d){return '<option value="'+esc(d)+'">'+esc(d)+'</option>';}).join('');
+      }())+'</datalist>'
+      +'<p class="fh">Choisissez parmi les directeurs existants ou saisissez un nouveau nom.</p></div>'
+      +'</div>'
+
+      +'</div>'
+      +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="screc">'+(it?'Enregistrer':'Cr\u00e9er le candidat')+'</button></div>';
   }
 
   if(tp==='consultant'){
@@ -2305,8 +2336,45 @@ function bind(){
           ncand=Object.assign({id:candId,createdBy:S._userEmail||'',feedbacks:[],cgiMeetings:[]},cfields);
           S.cands=S.cands.concat([ncand]);
         }
+
+        /* ── Recrutement : créer le consultant dans l'équipe ── */
+        var rcCb=document.getElementById('rc-recruited');
+        var wasRecruited=itC&&itC.recruited;
+        if(rcCb&&rcCb.checked){
+          var rcStart=gv('rc-start');
+          var rcPoste=gv('rc-poste');
+          var rcDir=gv('rc-dir');
+          if(!rcStart||!rcPoste){alert('La date de d\u00e9marrage et le poste sont obligatoires pour int\u00e9grer le consultant dans l\'\u00e9quipe.');return;}
+          /* Stocker les champs recrutement sur le candidat */
+          ncand.recruited=true;
+          ncand.recruitStart=rcStart;
+          ncand.recruitPoste=rcPoste;
+          ncand.recruitDir=rcDir;
+          ncand.status='recrute';
+          /* Créer ou mettre à jour le profil consultant (ne crée qu'une seule fois) */
+          if(!wasRecruited){
+            var newCons={
+              id:uid(),
+              name:rn,
+              title:rcPoste,
+              scr:Math.round(recScr(cfields.reqSalary||0)),
+              email:cfields.email||'',
+              dir:rcDir||'',
+              arrive:rcStart,
+              depart:null,
+              phone:cfields.phone||''
+            };
+            S.cons=S.cons.concat([newCons]);
+            sbUpsertCons(newCons).catch(function(err){console.warn('sbUpsertCons (recrutement):',err);});
+            ncand.consId=newCons.id; /* lien entre candidat et consultant */
+          }
+        }
+
         sbUpsertCand(ncand).catch(function(err){console.warn('sbUpsertCand:',err);alert('\u26a0 Erreur de synchronisation : '+err.message);});
         S.modal=null;render();
+        if(rcCb&&rcCb.checked&&!wasRecruited){
+          setTimeout(function(){alert('\u2713 '+rn+' a \u00e9t\u00e9 ajout\u00e9(e) \u00e0 l\'\u00e9quipe.\nRetrouvez le profil dans l\'onglet \u00c9quipe pour compl\u00e9ter les informations (SCR, missions...).');},100);
+        }
       }
       else if(a==='recback'){S.recSel=null;S.recAddMeet=false;S.recAddCgi=false;S.recAddCv=false;S.recEditMeetId=null;S.recEditCgiId=null;render();}
       else if(a==='recmtoggle'){S.recAddMeet=true;S.recEditMeetId=null;render();}
@@ -2660,6 +2728,11 @@ async function sbUpsertCand(c){
     created_by:c.createdBy||null,feedbacks:c.feedbacks||[]
   });
   if(res.error)throw new Error(c.name+': '+res.error.message);
+}
+function toggleRecruited(){
+  var cb=document.getElementById('rc-recruited');
+  var fields=document.getElementById('rc-recruit-fields');
+  if(fields)fields.style.display=(cb&&cb.checked)?'grid':'none';
 }
 function recCalcRefresh(){
   var sal=+gv('rcsal')||0;
