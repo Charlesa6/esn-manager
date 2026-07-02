@@ -686,8 +686,8 @@ function tSB(){
       {id:'leaves',    ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
       {id:'param',     ic:'\uD83D\uDCA1',lb:'Pr\u00e9conisations'}
     ];
-    if(S.role==='gestionnaire')NAV.push({id:'directeurs',ic:'\uD83D\uDEE1\uFE0F',lb:'Directeurs'});
-    if(S.role==='directeur')NAV.push({id:'admin',ic:'\uD83D\uDEE1\uFE0F',lb:'Admin'});
+    if(S.role==='gestionnaire')NAV.push({id:'directeurs',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
+    if(S.role==='directeur')NAV.push({id:'admin',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
     NAV.splice(4,0,{id:'activite',ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'});
   }
   var alC=S.miss.filter(function(m){var s=mSt(m);return s==='critical'||s==='soon';}).length;
