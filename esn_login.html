@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ESN Manager</title>
+<title>Konsilys</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -172,7 +172,7 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
 <div class="left">
   <div class="left-inner">
     <div class="logo-mark">E</div>
-    <div class="product-name">ESN Manager</div>
+    <div class="product-name">Konsilys</div>
     <div class="product-line"></div>
     <p class="product-tag">Pilotez vos &eacute;quipes de conseil avec clart&eacute; et pr&eacute;cision.</p>
 
@@ -312,7 +312,7 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
       </div>
       <div class="fd">
         <label for="s-lic">Code de licence <span id="lic-optional" style="display:none;font-weight:400;color:#94a3b8">(optionnel si invit&eacute; par votre directeur)</span></label>
-        <input class="inp" type="text" id="s-lic" placeholder="ex : ESN-XXXX-XXXX" autocomplete="off" style="letter-spacing:.05em;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+        <input class="inp" type="text" id="s-lic" placeholder="ex : KNS-XXXX-XXXX" autocomplete="off" style="letter-spacing:.05em;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
         <p class="fd-hint" style="font-size:11px;color:#94a3b8;margin-top:4px">
           Requis si vous &ecirc;tes directeur ou gestionnaire. 
           <strong>Consultant\u00a0: laissez vide</strong> si votre directeur vous a invit&eacute; avec votre email.
@@ -541,7 +541,7 @@ function openStore(role) {
           : role === 'consultant'   ? STORE_URL_CONSULTANT
           : STORE_URL_DIRECTEUR;
   if (url === '#') {
-    showBanner('ok', 'Boutique en ligne bient\u00f4t disponible\u00a0! Contactez-nous : contact@esn-manager.fr');
+    showBanner('ok', 'Boutique en ligne bient\u00f4t disponible\u00a0! Contactez-nous : contact@konsilys.fr');
     return;
   }
   window.open(url, '_blank');
