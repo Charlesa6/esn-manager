@@ -683,10 +683,10 @@ function tSB(){
       {id:'missions',  ic:'\uD83D\uDCCB',lb:'Missions'},
       {id:'planning',  ic:'\uD83D\uDCC5',lb:'Planning'},
       {id:'leaves',    ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
-      {id:'param',     ic:'\u2699\uFE0F',lb:'Param\u00e9trage'},
-      {id:'admin',     ic:'\uD83D\uDEE1\uFE0F',lb:'Admin'}
+      {id:'param',     ic:'\u2699\uFE0F',lb:'Param\u00e9trage'}
     ];
     if(S.role==='gestionnaire')NAV.push({id:'directeurs',ic:'\uD83D\uDEE1\uFE0F',lb:'Directeurs'});
+    if(S.role==='directeur')NAV.push({id:'admin',ic:'\uD83D\uDEE1\uFE0F',lb:'Admin'});
     NAV.splice(4,0,{id:'activite',ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'});
   }
   var alC=S.miss.filter(function(m){var s=mSt(m);return s==='critical'||s==='soon';}).length;
@@ -1443,60 +1443,41 @@ function tParam(){
    TEMPLATE - DIRECTEURS (gestion des comptes, gestionnaire uniquement)
 ═══════════════════════════════════════════════════════════════ */
 function tAdmin(){
-  if(S.role==='consultant')return '<div class="emp">Acc\u00e8s r\u00e9serv\u00e9.</div>';
+  if(S.role!=='directeur')return '<div class="emp">Acc\u00e8s r\u00e9serv\u00e9 au directeur.</div>';
   var sbOn=!!(sb&&SB_CID);
   var allC=(S._all&&S._all.cons)||S.cons;
-  /* Pour un directeur : seulement ses propres consultants */
-  var myConsList=S.role==='directeur'
-    ?allC.filter(function(c){return (c.dir||'')===S.dirName;})
-    :allC;
+  var myConsList=allC.filter(function(c){return (c.dir||'')===S.dirName;});
+  /* Datalist des consultants de l'\u00e9quipe */
+  var dlOpts=myConsList.map(function(c){return '<option value="'+esc(c.name)+'">'+esc(c.name)+'</option>';}).join('');
 
-  var consOpts=myConsList.map(function(c){
-    return '<option value="'+esc(c.id)+'|'+esc(c.name)+'">'+esc(c.name)+(c.email?' ('+esc(c.email)+')':'')+'</option>';
-  }).join('');
-
-  /* Liste des codes consultants d\u00e9j\u00e0 g\u00e9n\u00e9r\u00e9s (stockés localement) */
-  var codeRows=(S.consInvites||[]).map(function(iv){
-    var st=iv.used
-      ?'<span class="badge bgrn">Utilis\u00e9</span>'
+  /* Tableau des invitations */
+  var invRows=(S.consInvites||[]).map(function(iv){
+    var st=iv.status==='active'
+      ?'<span class="badge bgrn">Actif</span>'
       :'<span class="badge bamb">En attente</span>';
-    return '<tr><td style="font-weight:600">'+esc(iv.consName||'')+'</td>'
-      +'<td style="font-family:monospace;font-size:13px;font-weight:700;letter-spacing:2px;color:#2563eb">'+esc(iv.code||'')+'</td>'
+    return '<tr><td>'+esc(iv.email||'')+'</td>'
+      +'<td style="font-weight:600">'+esc(iv.consName||'')+'</td>'
       +'<td>'+st+'</td>'
-      +'<td class="tr"><button class="lr" data-act="admin-cons-del" data-id="'+esc(iv.code||'')+'">Suppr.</button></td></tr>';
+      +'<td class="tr"><button class="lr" data-act="admin-cons-del" data-id="'+esc(iv.id||iv.code||'')+'">Suppr.</button></td></tr>';
   }).join('');
 
   return '<div class="vw">'
-    +'<div class="ph"><div><div class="pt">\uD83D\uDEE1\uFE0F Admin \u2014 Acc\u00e8s consultants</div>'
-    +'<div class="ps">G\u00e9n\u00e9rez des codes d\u2019acc\u00e8s pour vos consultants \u00b7 chaque code est \u00e0 usage unique</div></div></div>'
-
-    +'<div class="card" style="padding:20px;margin-bottom:16px">'
-    +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">G\u00e9n\u00e9rer un code d\u2019acc\u00e8s consultant</h3>'
-    +(sbOn?'':'<div style="padding:10px 14px;background:#fffbeb;border-radius:8px;font-size:12px;color:#92400e;margin-bottom:12px">\u26a0 Mode local : les codes ne seront pas persistants. Connectez Supabase pour un usage en production.</div>')
+    +'<div><div class="pt">Consultants & acc\u00e8s</div><div class="ps">G\u00e9rez les comptes consultants de votre \u00e9quipe &middot; chaque consultant acc\u00e8de uniquement \u00e0 ses propres donn\u00e9es</div></div>'
+    +'<div class="card" style="padding:20px">'
+    +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">Inviter un consultant</h3>'
+    +(sbOn?'':'<div class="ac acs" style="margin-bottom:14px"><div style="font-size:12px">Connectez Supabase pour envoyer des invitations. En mode d\u00e9mo, cette section est en pr\u00e9visualisation.</div></div>')
     +'<div class="g2">'
-    +'<div class="fd"><label class="fl">Consultant *</label>'
-    +'<select class="ic" id="admin-cons-sel">'
-    +'<option value="">-- Choisir un consultant --</option>'
-    +consOpts
-    +'</select></div>'
+    +'<div class="fd"><label class="fl">Email du consultant *</label><input class="ic" id="admin-cons-email" type="email" placeholder="prenom.nom@exemple.com"></div>'
+    +'<div class="fd"><label class="fl">Nom du consultant *</label><input class="ic" id="admin-cons-name" list="esn-cons-list" placeholder="ex\u00a0: Sophie Martin"><datalist id="esn-cons-list">'+dlOpts+'</datalist><p class="fh">Doit correspondre exactement au consultant dans votre \u00e9quipe</p></div>'
     +'</div>'
-    +'<button class="bp" data-act="admin-cons-add" style="margin-top:12px">+ G\u00e9n\u00e9rer le code d\u2019acc\u00e8s</button>'
-    +'<p class="fh" style="margin-top:8px">Le code g\u00e9n\u00e9r\u00e9 apparaît dans le tableau ci-dessous. Transmettez-le au consultant : il le saisit sur la page de connexion pour cr\u00e9er son compte et \u00eatre rattach\u00e9 \u00e0 votre \u00e9quipe.</p>'
+    +'<button class="bp" data-act="admin-cons-add"'+(sbOn?'':' disabled style="opacity:.5;cursor:not-allowed"')+'>+ Inviter ce consultant</button>'
+    +'<p class="fh" style="margin-top:8px">Le consultant finalise son inscription avec cet email et choisit son mot de passe\u00a0; il est alors rattach\u00e9 automatiquement \u00e0 votre \u00e9quipe avec un acc\u00e8s limit\u00e9 \u00e0 ses propres donn\u00e9es.</p>'
     +'</div>'
-
-    +(S.adminCode?
-      '<div class="card" style="padding:24px;margin-bottom:16px;border:2px solid #2563eb;text-align:center">'
-      +'<div style="font-size:13px;color:#374151;margin-bottom:12px">Code g\u00e9n\u00e9r\u00e9 pour <strong>'+esc(S.adminCode.consName)+'</strong></div>'
-      +'<div id="admin-code-disp" style="font-size:36px;font-weight:900;letter-spacing:6px;color:#2563eb;background:#eff6ff;padding:20px 32px;border-radius:12px;display:inline-block;cursor:text;user-select:all">'+esc(S.adminCode.code)+'</div>'
-      +'<div style="font-size:12px;color:#94a3b8;margin-top:10px">Cliquez sur le code pour le s\u00e9lectionner \u2014 puis Ctrl+C pour copier</div>'
-      +'</div>'
-      :'')
-
-    +'<div class="card ov">'
-    +'<div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">Codes g\u00e9n\u00e9r\u00e9s</div>'
-    +'<table><thead><tr><th>Consultant</th><th>Code</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
-    +'<tbody>'+codeRows+(!codeRows?'<tr><td colspan="4" class="emp">Aucun code g\u00e9n\u00e9r\u00e9 pour le moment.</td></tr>':'')+'</tbody>'
-    +'</table></div></div>';
+    +'<div class="card ov"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">Comptes consultants</div>'
+    +'<table><thead><tr><th>Email</th><th>Consultant</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
+    +'<tbody>'+invRows+(!invRows?'<tr><td colspan="4" class="emp">Aucun consultant invit\u00e9 pour le moment.</td></tr>':'')
+    +'</tbody></table></div>'
+    +'</div>';
 }
 
 function tDirecteurs(){
@@ -2716,29 +2697,16 @@ function bind(){
         if(confirm('Supprimer ce directeur / cette invitation ?')){sbDelInvite(id).then(function(){loadInvites().then(render);});}
       }
       else if(a==='admin-cons-add'){
-        var selEl=document.getElementById('admin-cons-sel');
-        var selVal=selEl?selEl.value:'';
-        if(!selVal){alert('Veuillez s\u00e9lectionner un consultant.');return;}
-        var parts=selVal.split('|');
-        var cid2=parts[0],cname=parts.slice(1).join('|');
-        var newCode='CSL-'+cid2.slice(0,4).toUpperCase()+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
-        var inv={code:newCode,consId:cid2,consName:cname,used:false,dir:S.dirName||'',createdAt:new Date().toISOString()};
-        S.consInvites=(S.consInvites||[]).concat([inv]);
-        S.adminCode={code:newCode,consName:cname};
-        if(sb&&SB_CID){
-          sb.from('licence_codes').insert({
-            code:newCode,role:'consultant',used:false,
-            linked_cons_id:cid2,company_id:SB_CID,dir_name:S.dirName||''
-          }).catch(function(e){console.warn('admin-cons-add:',e);});
-        }
-        saveLocal();render();
+        var aEmail=gv('admin-cons-email'),aName=gv('admin-cons-name');
+        if(!aEmail||!aName){alert('Email et nom du consultant requis.');return;}
+        sbInviteCons(aEmail,aName).then(function(r){
+          if(r&&r.error){alert('Erreur\u00a0: '+(r.error.message||r.error));return;}
+          loadConsInvites().then(render);
+        });
       }
       else if(a==='admin-cons-del'){
-        if(confirm('Supprimer ce code d\u2019acc\u00e8s ?')){
-          S.consInvites=(S.consInvites||[]).filter(function(iv){return iv.code!==id;});
-          if(S.adminCode&&S.adminCode.code===id)S.adminCode=null;
-          if(sb&&SB_CID){sb.from('licence_codes').delete().eq('code',id).catch(function(e){console.warn(e);});}
-          saveLocal();render();
+        if(confirm('Supprimer cette invitation ?')){
+          sbDelConsInvite(id).then(function(){loadConsInvites().then(render);});
         }
       }
       /* activité jour par jour */
@@ -2979,6 +2947,35 @@ async function sbDelInvite(id){
   var r=await sb.from('directeur_invites').delete().eq('id',id);
   if(r.error)console.warn('invite del:',r.error.message);
 }
+/* Même mécanisme pour les consultants */
+async function loadConsInvites(){
+  if(!sb||!SB_CID||S.role!=='directeur')return;
+  try{
+    /* Cherche l'ID du consultant par son nom dans l'équipe */
+    var allC=(S._all&&S._all.cons)||S.cons;
+    var r=await sb.from('consultant_invites').select('*').eq('company_id',SB_CID).eq('dir_name',S.dirName).order('created_at');
+    if(r.data)S.consInvites=r.data;
+  }catch(e){console.warn('consInvites load:',e);}
+}
+async function sbInviteCons(email,name){
+  if(!sb||!SB_CID)return{error:{message:'Supabase non configuré'}};
+  /* Trouver le cons_id correspondant au nom */
+  var allC=(S._all&&S._all.cons)||S.cons;
+  var found=allC.find(function(c){return c.name===name&&(c.dir||'')===S.dirName;});
+  return await sb.from('consultant_invites').insert({
+    company_id:SB_CID,
+    email:email,
+    cons_name:name,
+    cons_id:found?found.id:null,
+    dir_name:S.dirName||'',
+    status:'pending'
+  });
+}
+async function sbDelConsInvite(id){
+  if(!sb)return;
+  var r=await sb.from('consultant_invites').delete().eq('id',id);
+  if(r.error)console.warn('consInvite del:',r.error.message);
+}
 
 async function syncToSB(){
   if(!sb){alert('Supabase non configuré.');return;}
@@ -3084,6 +3081,7 @@ async function initApp(){
       }
 
       await loadInvites();
+      await loadConsInvites();
 
       /* ── 4. Listener pour d\u00e9connexion / expiration de token ── */
       sb.auth.onAuthStateChange(function(event){
