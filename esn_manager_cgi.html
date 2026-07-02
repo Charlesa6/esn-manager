@@ -858,16 +858,81 @@ function tDash(){
     }).join('');
   }
 
-  /* ── Compteur IC pour le header ── */
+  /* ── Compteur IC et approbations ── */
   var icCount=icCons.length;
+  var pendingAppr=(S.approvals||[]).filter(function(r){
+    return r.status==='pending'&&(S.role!=='directeur'||r.dirName===S.dirName);
+  });
+  var approvedAppr=(S.approvals||[]).filter(function(r){
+    return r.status==='approved'&&(S.role!=='directeur'||r.dirName===S.dirName);
+  });
+  var rejectedAppr=(S.approvals||[]).filter(function(r){
+    return r.status==='rejected'&&(S.role!=='directeur'||r.dirName===S.dirName);
+  });
+  var pCount=pendingAppr.length;
+
+  /* ── Section approbations complète (bas de page) ── */
+  function apprRow(r,showReject){
+    var dt=r.createdAt?new Date(r.createdAt).toLocaleDateString('fr-FR'):'';
+    var isP=r.status==='pending',isA=r.status==='approved',isR=r.status==='rejected';
+    var bg=isA?'#f0fdf4':isR?'#fff1f2':'#fffbeb';
+    var bd=isA?'#bbf7d0':isR?'#fecdd3':'#fde68a';
+    return '<div style="background:'+bg+';border:1px solid '+bd+';border-radius:10px;padding:12px 16px;margin-bottom:8px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">'
+      +'<div style="flex:1">'
+      +'<div style="font-size:13px;font-weight:700;color:#0f172a">'+esc(r.consName||'')+' \u2014 '+esc(APPROVAL_LABELS[r.type]||r.type)+'</div>'
+      +'<div style="font-size:12px;color:#64748b;margin-top:2px">'+esc(r.applyDesc||'')+'</div>'
+      +'<div style="font-size:11px;color:#94a3b8;margin-top:2px">'+dt+'</div>'
+      +(isR&&r.rejectionReason?'<div style="margin-top:6px;font-size:12px;color:#b91c1c;font-style:italic">\u26a0 Motif\u00a0: '+esc(r.rejectionReason)+'</div>':'')
+      +'</div>'
+      +(isP&&showReject
+        ?'<div style="display:flex;gap:8px;flex-shrink:0">'
+          +'<button class="bp" style="padding:5px 12px;font-size:12px" data-act="appr-ok" data-id="'+r.id+'">Approuver</button>'
+          +'<button class="bg" style="padding:5px 12px;font-size:12px;color:#b91c1c;border-color:#fecdd3" data-act="appr-ko" data-id="'+r.id+'">Refuser</button>'
+          +'</div>'
+        :'<div style="font-size:18px">'+(isA?'\u2705':isR?'\u274c':'\u23f3')+'</div>')
+      +'</div></div>';
+  }
+
+  var apprSection='<div class="card" style="padding:20px;margin-bottom:16px" id="approvals-section">'
+    +'<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:16px">\uD83D\uDD14 Demandes d\u2019approbation</div>'
+
+    /* En attente */
+    +'<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#92400e;margin-bottom:8px">'
+    +'\u23f3 En attente ('+pCount+')</div>'
+    +(pendingAppr.length
+      ?pendingAppr.map(function(r){return apprRow(r,S.role==='directeur');}).join('')
+      :'<div style="font-size:13px;color:#94a3b8;margin-bottom:14px;padding:8px 0">Aucune demande en attente.</div>')
+
+    /* Approuvées */
+    +'<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#15803d;margin:14px 0 8px">'
+    +'\u2705 Approuv\u00e9es ('+approvedAppr.length+')</div>'
+    +(approvedAppr.length
+      ?approvedAppr.map(function(r){return apprRow(r,false);}).join('')
+      :'<div style="font-size:13px;color:#94a3b8;padding:8px 0">Aucune demande approuv\u00e9e.</div>')
+
+    /* Refusées */
+    +'<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#b91c1c;margin:14px 0 8px">'
+    +'\u274c Refus\u00e9es ('+rejectedAppr.length+')</div>'
+    +(rejectedAppr.length
+      ?rejectedAppr.map(function(r){return apprRow(r,false);}).join('')
+      :'<div style="font-size:13px;color:#94a3b8;padding:8px 0">Aucune demande refus\u00e9e.</div>')
+    +'</div>';
 
   return '<div class="vw">'
     +'<div style="margin-bottom:20px">'
     +'<h1 style="font-size:22px;font-weight:700;color:#0f172a">Tableau de bord</h1>'
     +'<p style="font-size:13px;color:#64748b;margin-top:4px">'+dateStr+'</p></div>'
 
-    /* Cartes résumé rapide */
+    /* Cartes résumé — Approbations EN PREMIER, cliquable */
     +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">'
+
+    +'<a href="#approvals-section" style="background:'+(pCount>0?'#fef3c7':'#f8fafc')+';border:1px solid '+(pCount>0?'#fbbf24':'#e2e8f0')+';border-radius:12px;padding:16px 18px;text-decoration:none;cursor:pointer;display:block;transition:box-shadow .15s" '
+    +'onmouseover="this.style.boxShadow=\'0 4px 12px rgba(0,0,0,.1)\'" onmouseout="this.style.boxShadow=\'\'">'
+    +'<div style="font-size:28px;font-weight:900;color:'+(pCount>0?'#b45309':'#64748b')+'">'+pCount+'</div>'
+    +'<div style="font-size:12px;font-weight:700;color:#374151;margin-top:4px">Approbations</div>'
+    +'<div style="font-size:11px;color:#94a3b8">en attente \u2193</div></a>'
+
     +'<div style="background:'+(icCount>0?'#fff1f2':'#f0fdf4')+';border:1px solid '+(icCount>0?'#fecdd3':'#bbf7d0')+';border-radius:12px;padding:16px 18px">'
     +'<div style="font-size:28px;font-weight:900;color:'+(icCount>0?'#b91c1c':'#15803d')+'">'+icCount+'</div>'
     +'<div style="font-size:12px;font-weight:700;color:#374151;margin-top:4px">En inter-contrat</div>'
@@ -875,25 +940,20 @@ function tDash(){
 
     +'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 18px">'
     +'<div style="font-size:28px;font-weight:900;color:#1e40af">'+startMiss.length+'</div>'
-    +'<div style="font-size:12px;font-weight:700;color:#374151;margin-top:4px">Prochains démarrages</div>'
-    +'<div style="font-size:11px;color:#94a3b8">missions à venir</div></div>'
+    +'<div style="font-size:12px;font-weight:700;color:#374151;margin-top:4px">Prochains d\u00e9marrages</div>'
+    +'<div style="font-size:11px;color:#94a3b8">missions \u00e0 venir</div></div>'
 
     +'<div style="background:'+(endMiss.filter(function(x){return x.j<=30;}).length>0?'#fffbeb':'#f8fafc')+';border:1px solid '+(endMiss.filter(function(x){return x.j<=30;}).length>0?'#fde68a':'#e2e8f0')+';border-radius:12px;padding:16px 18px">'
     +'<div style="font-size:28px;font-weight:900;color:#b45309">'+endMiss.length+'</div>'
     +'<div style="font-size:12px;font-weight:700;color:#374151;margin-top:4px">Fins de mission</div>'
     +'<div style="font-size:11px;color:#94a3b8">missions en cours</div></div>'
-
-    +'<div style="background:'+(retours.length>0?'#fffbeb':'#f8fafc')+';border:1px solid '+(retours.length>0?'#fde68a':'#e2e8f0')+';border-radius:12px;padding:16px 18px">'
-    +'<div style="font-size:28px;font-weight:900;color:#b45309">'+retours.length+'</div>'
-    +'<div style="font-size:12px;font-weight:700;color:#374151;margin-top:4px">En congé / maladie</div>'
-    +'<div style="font-size:11px;color:#94a3b8">retour à venir</div></div>'
     +'</div>'
 
-    +card('En inter-contrat aujourd\'hui','🔴',icRows||null,'Toute l\'équipe est en mission. 🎉')
-    +card('Prochaines missions qui démarrent','🚀',startRows||null,'Aucune mission à venir planifiée.')
-    +card('Prochaines missions qui se terminent','📅',endRows||null,'Aucune mission active en cours.')
-    +card('Retours de congés / maladie','🏖️',retourRows||null,'Personne en congé ou arrêt en ce moment.')
-    +(S.role==='directeur'?tDashApprovals():'')
+    +card('En inter-contrat aujourd\'hui','\uD83D\uDD34',icRows||null,'Toute l\'\u00e9quipe est en mission. \uD83C\uDF89')
+    +card('Prochaines missions qui d\u00e9marrent','\uD83D\uDE80',startRows||null,'Aucune mission \u00e0 venir planifi\u00e9e.')
+    +card('Prochaines missions qui se terminent','\uD83D\uDCC5',endRows||null,'Aucune mission active en cours.')
+    +card('Retours de cong\u00e9s / maladie','\uD83C\uDFD6\uFE0F',retourRows||null,'Personne en cong\u00e9 ou arr\u00eat en ce moment.')
+    +apprSection
     +'</div>';
 }
 function tTeams(){
