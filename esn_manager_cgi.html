@@ -2109,7 +2109,7 @@ function tModal(){
       +'<div class="cs2"><div class="fd"><label class="fl">Nom de la mission *</label><input class="ic" id="mmn" value="'+esc(it?it.name:'')+'" placeholder="ex\u00a0: Transformation Digitale SI"></div></div>'
       +'<div class="cs2"><div class="fd"><label class="fl">Code projet</label><input class="ic" id="mpcd" value="'+(it&&it.pcode?esc(it.pcode):'')+'" placeholder="ex\\u00a0: 300000000106376"><p class="fh">Code de facturation PSA/SAP \\u2014 utilis\\u00e9 pour le recoupement des imputations import\\u00e9es</p></div></div>'
       +'<div class="cs2"><div class="fd"><label class="fl">Nom du client *</label><input class="ic" id="mcl" value="'+esc(it?it.cli:'')+'" placeholder="ex\u00a0: BNP Paribas"></div></div>'
-      +'<div class="fd"><label class="fl">TJM factur\u00e9 (\u20ac)</label><input class="ic" id="mtj" type="number" min="0" value="'+esc(it?String(it.tjm):'')+'" placeholder="750"><p class="fh">Prix journalier de vente (Assistance technique)</p></div>'
+      +(S.role!=='consultant'?'<div class="fd"><label class="fl">TJM factur\u00e9 (\u20ac)</label><input class="ic" id="mtj" type="number" min="0" value="'+esc(it?String(it.tjm):'')+'" placeholder="750"><p class="fh">Prix journalier de vente (Assistance technique)</p></div>':'<input type="hidden" id="mtj" value="0">')
       +'<div class="cs2"><div class="fd"><label class="fl">Type de mission *</label>'
       +'<div style="display:flex;gap:18px;padding:4px 0">'
       +'<label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:500"><input type="radio" name="mbt" value="at"'+(bt!=='forfait'?' checked':'')+' style="accent-color:#2563eb"> Assistance technique</label>'
@@ -2334,6 +2334,53 @@ function bind(){
       render();}
       else if(a==='el'){S.modal={type:'leave',item:S.lvs.find(function(l){return l.id===id;})};render();}
       else if(a==='dc'){var c=S.cons.find(function(c){return c.id===id;});if(c&&confirm('Supprimer '+c.name+' ?')){S.cons=S.cons.filter(function(c){return c.id!==id;});sbDel('consultants',id);render();}}
+<<<<<<< HEAD
+      else if(a==='dm'){
+        if(S.role==='consultant'){
+          var mDel=S.miss.find(function(m){return m.id===id;});
+          if(mDel&&confirm('Soumettre une demande de suppression de cette mission ?')){
+            submitApproval('miss_del',{id:id},'Suppression de mission \u2014 '+esc(mDel.cli)+' \u00b7 '+esc(mDel.name));
+          }
+        }else{
+          if(confirm('Supprimer cette mission ?')){S.miss=S.miss.filter(function(m){return m.id!==id;});sbDel('missions',id);render();}
+        }
+      }
+      else if(a==='dl'){
+        if(S.role==='consultant'){
+          var lvDel=S.lvs.find(function(l){return l.id===id;});
+          if(lvDel&&confirm('Soumettre une demande de suppression de cette absence ?')){
+            submitApproval('leave_del',{id:id},'Suppression d\u2019absence \u2014 '+esc(lvDel.type)+' du '+fDt(lvDel.s)+' au '+fDt(lvDel.e));
+          }
+        }else{
+          if(confirm('Supprimer cette absence ?')){S.lvs=S.lvs.filter(function(l){return l.id!==id;});sbDel('leaves',id);render();}
+        }
+      }
+      /* ── Approbations directeur ── */
+      else if(a==='appr-ok'){
+        var req=S.approvals.find(function(r){return r.id===id;});
+        if(!req)return;
+        req.status='approved';req.resolvedAt=new Date().toISOString();
+        applyApproval(req);
+        S.approvals=S.approvals.map(function(r){return r.id===id?req:r;});
+        sbUpsertApproval(req).catch(function(e){console.warn(e);});
+        saveLocal();render();
+      }
+      else if(a==='appr-ko'){
+        var reqKo=S.approvals.find(function(r){return r.id===id;});
+        if(!reqKo)return;
+        S.modal={type:'appr_reject',reqId:id,consName:reqKo.consName,applyDesc:reqKo.applyDesc};render();
+      }
+      else if(a==='appr-ko-confirm'){
+        var reason=gv('appr-reason');
+        if(!reason){alert('Veuillez saisir un motif de refus.');return;}
+        var reqKo2=S.approvals.find(function(r){return r.id===id;});
+        if(!reqKo2)return;
+        reqKo2.status='rejected';reqKo2.rejectionReason=reason;reqKo2.resolvedAt=new Date().toISOString();
+        S.approvals=S.approvals.map(function(r){return r.id===id?reqKo2:r;});
+        sbUpsertApproval(reqKo2).catch(function(e){console.warn(e);});
+        saveLocal();S.modal=null;render();
+      }
+=======
       else if(a==='dm'){if(confirm('Supprimer cette mission ?')){S.miss=S.miss.filter(function(m){return m.id!==id;});sbDel('missions',id);render();}}
       else if(a==='dl'){
         if(S.role==='consultant'){
@@ -2370,6 +2417,7 @@ function bind(){
         sbUpsertApproval(reqKo2).catch(function(e){console.warn(e);});
         saveLocal();S.modal=null;render();
       }
+>>>>>>> ac4b300a0fd557c299a37777f23b7865a8f8747d
       else if(a==='sc'){
         var n=gv('mn'),t=gv('mti'),s=+gv('ms'),em=gv('me');
         var arr=gv('marr')||null,dep=gv('mdep')||null;
@@ -2394,19 +2442,28 @@ function bind(){
         var manualDays2=(wmode2==='man'&&S.modal&&S.modal.manualDays)?S.modal.manualDays.slice():[];
         var deal=+gv('mdeal')||0,tmar=(gv('mtmar')===''?null:+gv('mtmar'));
         if(!cid||!mn||!cl||!sd){alert('Veuillez remplir les champs obligatoires (*).');return;}
-        if(bt==='forfait'){
-          if(!deal||tmar==null){alert('Pour un forfait : indiquez le montant du deal (CA) et la marge recherchée.');return;}
-        }else if(!tj){alert('Pour une mission en Assistance technique : indiquez le TJM.');return;}
-        if(!wdays.length&&wmode2!=='man'){alert('S\u00e9lectionnez au moins un jour travaill\u00e9.');return;}
-        if(wmode2==='man'&&!manualDays2.length){alert('S\u00e9lectionnez au moins un jour dans le calendrier.');return;}
+        /* Consultant : TJM saisi à 0, le directeur le renseigne lors de l'approbation */
+        if(S.role!=='consultant'){
+          if(bt==='forfait'){
+            if(!deal||tmar==null){alert('Pour un forfait : indiquez le montant du deal (CA) et la marge recherchée.');return;}
+          }else if(!tj){alert('Pour une mission en Assistance technique : indiquez le TJM.');return;}
+        }
+        if(!wdays.length&&wmode2!=='man'){alert('Sélectionnez au moins un jour travaillé.');return;}
+        if(wmode2==='man'&&!manualDays2.length){alert('Sélectionnez au moins un jour dans le calendrier.');return;}
         var pcode=gv('mpcd')||'';
         var d={cid:cid,name:mn,cli:cl,tjm:tj,sd:sd,ed:ed,loc:lo,mgr:mg,ccn:cc,ccr:cr,btype:bt,wdays:wdays,deal:deal,tmar:tmar,pcode:pcode,wmode:wmode2,manualDays:manualDays2};
         var it=S.modal.item;
-        var nm;
-        if(it){S.miss=S.miss.map(function(m){if(m.id===it.id){nm=Object.assign({},m,d);return nm;}return m;});}
-        else{nm=Object.assign({id:uid()},d);S.miss=S.miss.concat([nm]);}
-        sbUpsertMiss(nm);
-        S.modal=null;render();
+        if(S.role==='consultant'){
+          var mDesc=(it?'Modification':'Ajout')+' de mission — '+esc(cl)+' · '+esc(mn)+' début '+fDt(sd)+(ed?' fin '+fDt(ed):'');
+          var mPl=it?Object.assign({},it,d):Object.assign({id:uid()},d);
+          submitApproval(it?'miss_edit':'miss_add',mPl,mDesc);
+        }else{
+          var nm;
+          if(it){S.miss=S.miss.map(function(m){if(m.id===it.id){nm=Object.assign({},m,d);return nm;}return m;});}
+          else{nm=Object.assign({id:uid()},d);S.miss=S.miss.concat([nm]);}
+          sbUpsertMiss(nm);
+          S.modal=null;render();
+        }
       }
       /* save leave */
       else if(a==='sl'){
@@ -2719,11 +2776,21 @@ function bind(){
       else if(a==='day'){S.modal={type:'dayexc',day:b.getAttribute('data-day'),cid:S.actCid};render();}
       else if(a==='day-set'){
         var dt=gv('dexc-type'),dd=S.modal.day,dcid=S.modal.cid;
-        var nl={id:uid(),cid:dcid,type:dt,s:dd,e:dd};
-        S.lvs=S.lvs.concat([nl]);sbUpsertLeave(nl);S.modal=null;render();
+        if(S.role==='consultant'){
+          submitApproval('leave_add',{id:uid(),cid:dcid,type:dt,s:dd,e:dd},
+            'Ajout d\u2019absence \u2014 '+esc(dt)+' le '+fDt(dd));
+        }else{
+          var nl={id:uid(),cid:dcid,type:dt,s:dd,e:dd};
+          S.lvs=S.lvs.concat([nl]);sbUpsertLeave(nl);S.modal=null;render();
+        }
       }
       else if(a==='day-clear'){
-        S.lvs=S.lvs.filter(function(l){return l.id!==id;});sbDel('leaves',id);S.modal=null;render();
+        if(S.role==='consultant'){
+          var lvClr=S.lvs.find(function(l){return l.id===id;});
+          submitApproval('leave_del',{id:id},'Suppression d\u2019absence'+(lvClr?' \u2014 '+esc(lvClr.type)+' le '+fDt(lvClr.s):''));
+        }else{
+          S.lvs=S.lvs.filter(function(l){return l.id!==id;});sbDel('leaves',id);S.modal=null;render();
+        }
       }
       else if(a==='act-prev'){S.actMonth=shiftMonth(S.actMonth||TODAY.slice(0,7),-1);render();}
       else if(a==='act-next'){S.actMonth=shiftMonth(S.actMonth||TODAY.slice(0,7),1);render();}
@@ -3411,6 +3478,17 @@ function applyMissImp(){
    Flux : consultant soumet une demande → directeur approuve/refuse → notification
 ══════════════════════════════════════════════════════════════════════════════ */
 
+<<<<<<< HEAD
+/* Libellés lisibles pour les types d'approbation */
+var APPROVAL_LABELS={
+  'leave_add':'Ajout d\u2019absence',
+  'leave_edit':'\u00c9dition d\u2019absence',
+  'leave_del':'Suppression d\u2019absence',
+  'miss_add':'Ajout de mission',
+  'miss_edit':'\u00c9dition de mission',
+  'miss_del':'Suppression de mission'
+};
+=======
 /* Libellés lisibles pour les types d'approbation */
 var APPROVAL_LABELS={
   'leave_add':'Ajout d\u2019absence',
@@ -3418,6 +3496,7 @@ var APPROVAL_LABELS={
   'leave_del':'Suppression d\u2019absence',
   'miss_edit':'\u00c9dition de mission'
 };
+>>>>>>> ac4b300a0fd557c299a37777f23b7865a8f8747d
 
 /* Créer et stocker une demande d'approbation au lieu d'appliquer directement */
 function submitApproval(type, payload, applyDesc){
@@ -3443,6 +3522,7 @@ function submitApproval(type, payload, applyDesc){
   render();
 }
 
+<<<<<<< HEAD
 /* Appliquer concrètement une modification après approbation */
 function applyApproval(req){
   if(req.type==='leave_add'){
@@ -3455,6 +3535,30 @@ function applyApproval(req){
   }else if(req.type==='leave_del'){
     S.lvs=S.lvs.filter(function(l){return l.id!==req.payload.id;});
     sbDel('leaves',req.payload.id).catch(function(e){console.warn(e);});
+  }else if(req.type==='miss_add'){
+    var nm=Object.assign({},req.payload);
+    S.miss=S.miss.concat([nm]);
+    sbUpsertMiss(nm).catch(function(e){console.warn(e);});
+  }else if(req.type==='miss_edit'){
+    S.miss=S.miss.map(function(m){return m.id===req.payload.id?Object.assign({},req.payload):m;});
+    sbUpsertMiss(req.payload).catch(function(e){console.warn(e);});
+  }else if(req.type==='miss_del'){
+    S.miss=S.miss.filter(function(m){return m.id!==req.payload.id;});
+    sbDel('missions',req.payload.id).catch(function(e){console.warn(e);});
+=======
+/* Appliquer concrètement une modification après approbation */
+function applyApproval(req){
+  if(req.type==='leave_add'){
+    var nl=Object.assign({},req.payload);
+    S.lvs=S.lvs.concat([nl]);
+    sbUpsertLeave(nl).catch(function(e){console.warn(e);});
+  }else if(req.type==='leave_edit'){
+    S.lvs=S.lvs.map(function(l){return l.id===req.payload.id?Object.assign({},req.payload):l;});
+    sbUpsertLeave(req.payload).catch(function(e){console.warn(e);});
+  }else if(req.type==='leave_del'){
+    S.lvs=S.lvs.filter(function(l){return l.id!==req.payload.id;});
+    sbDel('leaves',req.payload.id).catch(function(e){console.warn(e);});
+>>>>>>> ac4b300a0fd557c299a37777f23b7865a8f8747d
   }
 }
 
