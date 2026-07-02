@@ -220,6 +220,7 @@ var QUARTERS=[
   {id:4,lb:'T4',months:[7,8,9]}
 ];
 var MOIS_ABR=['','Janv','F\u00e9vr','Mars','Avr','Mai','Juin','Juil','Ao\u00fbt','Sept','Oct','Nov','D\u00e9c'];
+var LTYPES=['Cong\u00e9 pay\u00e9','RTT','Formation','Inter-contrat','Maladie','Cong\u00e9 maternit\u00e9','Cong\u00e9 sans solde','Mission interne','Autre'];
 QUARTERS.forEach(function(q){q.lbFull=q.lb+' ('+MOIS_ABR[q.months[0]]+'-'+MOIS_ABR[q.months[2]]+')';});
 
 /* Bornes ISO d'un trimestre donn\u00e9 \u00e0 l'int\u00e9rieur d'un exercice fiscal fy */
