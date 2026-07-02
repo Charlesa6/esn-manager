@@ -722,68 +722,108 @@ function tSB(){
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function tDash(){
   var ks=buildKS();
-  var als=S.miss.filter(function(m){
-    var s=mSt(m);
-    var c=S.cons.find(function(c){return c.id===m.cid;});
-    return (s==='critical'||s==='soon')&&(!c||!isGone(c));
-  })
-    .map(function(m){return Object.assign({},m,{c:S.cons.find(function(c){return c.id===m.cid;}),dl:dL(m.ed)});})
-    .sort(function(a,b){return a.dl-b.dl;});
-  var noM=S.cons.filter(function(c){return !getAct(c.id)&&!isGone(c)&&!getActiveLv(c.id);});
+  var Hy=fyHols(S.year);
+  var _r=curRange(S.year);var rS=_r[0],rE=_r[1];
+  var period=curLbl();
+
+  /* ── CA et staffing moyen sur la période ── */
   var totR=ks.reduce(function(s,x){return s+x.k.rev;},0);
   var _aktWD=ks.reduce(function(s,x){return s+(x.k.tWD||0);},0);
   var avgSr=_aktWD>0?ks.reduce(function(s,x){return s+x.k.sr*(x.k.tWD||0);},0)/_aktWD:0;
-  var actCnt=S.miss.filter(function(m){var s=mSt(m);return s==='active'||s==='critical'||s==='soon';}).length;
 
-  var cards=[
-    {ic:'\uD83D\uDC65',lb:'Consultants',v:S.cons.length,sb:"dans l'\u00e9quipe",bg:'#eff6ff'},
-    {ic:'\uD83D\uDCCB',lb:'Missions actives',v:actCnt,sb:'en cours',bg:'#f0fdf4'},
-    {ic:'\u26A0\uFE0F',lb:'Fins prochaines',v:als.length,sb:'dans les 30 jours',bg:als.length>0?'#fffbeb':'#f0fdf4'},
-    {ic:'\uD83D\uDCB6',lb:'CA projeté '+fyLbl(S.year),v:fEur(totR),sb:'Staffing moy. : '+avgSr.toFixed(0)+'%',bg:'#f5f3ff'}
+  /* ── Consultants actifs sur la période (pas partis) ── */
+  var actifs=S.cons.filter(function(c){return !isGone(c);});
+
+  /* ── Inter-contrat : pas de mission facturée sur toute la période ──
+     On considère en intercontrat un consultant dont kpi().bill = 0 sur la période */
+  var icList=ks.filter(function(x){return !isGone(x.c)&&x.k.bill===0;});
+
+  /* ── 3 prochaines fins de missions (à partir d'aujourd'hui) ── */
+  var prochaines=S.miss
+    .filter(function(m){return m.ed&&m.ed>=TODAY;})
+    .map(function(m){
+      var c=S.cons.find(function(c){return c.id===m.cid;})||{name:'?'};
+      return {m:m,c:c,dl:dL(m.ed)};
+    })
+    .sort(function(a,b){return a.dl-b.dl;})
+    .slice(0,3);
+
+  /* ── Cartes hero ── */
+  var heros=[
+    {ic:'\uD83D\uDC65',lb:'Équipe',    v:actifs.length, sub:'consultants actifs',       bg:'#eff6ff',vc:'#1e40af'},
+    {ic:'\uD83D\uDCB6',lb:'CA généré', v:fEur(totR),    sub:period,                     bg:'#f0fdf4',vc:'#15803d'},
+    {ic:'\uD83D\uDCCA',lb:'Staffing',  v:avgSr.toFixed(0)+'%', sub:'moyen '+period,     bg:'#f5f3ff',vc:'#6d28d9'},
+    {ic:'\uD83D\uDD34',lb:'Intercontrat',v:icList.length,sub:'sans mission '+period,    bg:icList.length>0?'#fff1f2':'#f0fdf4',vc:icList.length>0?'#b91c1c':'#15803d'}
   ].map(function(x){
-    return '<div class="kc"><div class="ski" style="background:'+x.bg+'">'+x.ic+'</div>'
-      +'<div style="font-size:22px;font-weight:800;color:#0f172a">'+esc(String(x.v))+'</div>'
-      +'<div style="font-size:13px;font-weight:600;color:#374151">'+esc(x.lb)+'</div>'
-      +'<div style="font-size:11px;color:#94a3b8;margin-top:2px">'+esc(x.sb)+'</div></div>';
+    return '<div class="kc" style="background:'+x.bg+';border:1px solid rgba(0,0,0,.06)">'
+      +'<div style="font-size:28px;line-height:1;margin-bottom:8px">'+x.ic+'</div>'
+      +'<div style="font-size:26px;font-weight:800;color:'+x.vc+';line-height:1">'+x.v+'</div>'
+      +'<div style="font-size:13px;font-weight:700;color:#374151;margin-top:4px">'+x.lb+'</div>'
+      +'<div style="font-size:11px;color:#94a3b8;margin-top:2px">'+x.sub+'</div></div>';
   }).join('');
 
-  var alRows=als.map(function(m){
-    return '<div class="ac '+(m.dl<=14?'acr':'acs')+'">'
-      +'<div style="display:flex;align-items:center;gap:12px">'+av(m.c?m.c.name:'?',36)
-      +'<div><div style="font-weight:700;font-size:13px;color:#0f172a">'+esc(m.c?m.c.name:'')+'</div>'
-      +'<div style="font-size:12px;color:#64748b">'+esc(m.name)+' \u00b7 '+esc(m.cli)+'</div></div></div>'
-      +'<div style="text-align:right"><div style="font-size:24px;font-weight:900;color:'+(m.dl<=14?'#b91c1c':'#b45309')+'">J\u2212'+m.dl+'</div>'
-      +'<div style="font-size:11px;color:#94a3b8">'+fDt(m.ed)+'</div></div></div>';
-  }).join('');
+  /* ── Section inter-contrat ── */
+  var icHtml='';
+  if(icList.length){
+    var icRows=icList.map(function(x){
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:8px;background:#fff1f2;border:1px solid #fecdd3;margin-bottom:8px">'
+        +'<div style="display:flex;align-items:center;gap:10px">'+av(x.c.name,32)
+        +'<div><div style="font-weight:600;font-size:13px;color:#0f172a">'+esc(x.c.name)+'</div>'
+        +'<div style="font-size:11px;color:#94a3b8">'+esc(x.c.title)+'</div></div></div>'
+        +'<span style="font-size:11px;font-weight:700;color:#b91c1c;background:#ffe4e6;padding:3px 10px;border-radius:99px">Inter-contrat</span>'
+        +'</div>';
+    }).join('');
+    icHtml='<div class="card" style="padding:20px;margin-bottom:16px;border-left:4px solid #f87171">'
+      +'<div style="font-size:14px;font-weight:800;color:#b91c1c;margin-bottom:14px">\uD83D\uDD34 En inter-contrat sur '+period+' ('+icList.length+')</div>'
+      +icRows+'</div>';
+  }
 
-  var noMR=noM.map(function(c){
-    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0">'
-      +'<div style="display:flex;align-items:center;gap:10px">'+av(c.name,32)
-      +'<div><div style="font-weight:600;font-size:13px">'+esc(c.name)+'</div><div style="font-size:11px;color:#94a3b8">'+esc(c.title)+'</div></div></div>'
-      +badge('none')+'</div>';
-  }).join('');
+  /* ── 3 prochaines fins de missions ── */
+  var finHtml='';
+  if(prochaines.length){
+    var finRows=prochaines.map(function(x){
+      var urgent=x.dl<=14;
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:10px;background:'+(urgent?'#fff1f2':'#fffbeb')+';border:1px solid '+(urgent?'#fecdd3':'#fde68a')+';margin-bottom:8px">'
+        +'<div style="display:flex;align-items:center;gap:12px">'+av(x.c.name,36)
+        +'<div><div style="font-weight:700;font-size:13px;color:#0f172a">'+esc(x.c.name)+'</div>'
+        +'<div style="font-size:12px;color:#64748b">'+esc(x.m.client||x.m.cli||'')+'</div></div></div>'
+        +'<div style="text-align:right">'
+        +'<div style="font-size:22px;font-weight:900;color:'+(urgent?'#b91c1c':'#b45309')+'">J\u2212'+x.dl+'</div>'
+        +'<div style="font-size:11px;color:#94a3b8">'+fDt(x.m.ed)+'</div></div></div>';
+    }).join('');
+    finHtml='<div class="card" style="padding:20px;margin-bottom:16px">'
+      +'<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:14px">\uD83D\uDCC5 3 prochaines fins de mission</div>'
+      +finRows+'</div>';
+  }
 
+  /* ── Synthèse équipe ── */
   var synR=ks.filter(function(x){return !isGone(x.c);}).map(function(x){
-    var am=getAct(x.c.id);var st=am?mSt(am):'none';
+    var ic=x.k.bill===0;
+    /* jours intercontrat = jours ouvrés présents sans mission ni congé */
+    var lvIC=S.lvs.filter(function(l){return l.cid===x.c.id&&l.type==='Inter-contrat'&&l.e>=rS&&l.s<=rE;});
+    var icDays=lvIC.reduce(function(s,l){return s+wDays(l.s>rS?l.s:rS,l.e<rE?l.e:rE,Hy);},0);
     return '<div style="display:flex;align-items:center;gap:14px;padding:10px 8px;border-bottom:1px solid #f8fafc">'
       +av(x.c.name,34)+'<div style="flex:1;min-width:0">'
-      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-weight:700;font-size:13px;color:#0f172a">'+esc(x.c.name)+'</span>'+badge(st,am&&am.ed?dL(am.ed):null)+'</div>'
-      +'<div style="font-size:11px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(am?esc(am.cli)+' \u00b7 TJM '+fEur(am.tjm):'Aucune mission active')+'</div></div>'
+      +'<div style="font-weight:700;font-size:13px;color:#0f172a">'+esc(x.c.name)+'</div>'
+      +'<div style="font-size:11px;color:#94a3b8">'+esc(x.c.title)+'</div></div>'
       +'<div style="display:flex;gap:20px;text-align:right;flex-shrink:0">'
-      +'<div><div style="font-size:13px;font-weight:800;color:#0f172a">'+x.k.sr.toFixed(0)+'%</div><div style="font-size:10px;color:#94a3b8">staffing</div></div>'
+      +'<div><div style="font-size:13px;font-weight:800;color:'+(ic?'#b91c1c':'#0f172a')+'">'+x.k.sr.toFixed(0)+'%</div><div style="font-size:10px;color:#94a3b8">staffing</div></div>'
       +'<div><div style="font-size:13px;font-weight:800;color:#0f172a">'+fEur(x.k.rev)+'</div><div style="font-size:10px;color:#94a3b8">CA</div></div>'
       +'<div><div style="font-size:13px;font-weight:800;color:'+(x.k.om!=null?(x.k.om>=0?'#15803d':'#b91c1c'):'#94a3b8')+'">'+(x.k.om!=null?x.k.om.toFixed(0)+'%':'\u2014')+'</div><div style="font-size:10px;color:#94a3b8">marge</div></div>'
+      +(icDays>0?'<div><div style="font-size:13px;font-weight:800;color:#f59e0b">'+icDays+'j</div><div style="font-size:10px;color:#94a3b8">IC</div></div>':'')
       +'</div></div>';
   }).join('');
 
   return '<div class="vw">'
-    +'<div><h1 style="font-size:22px;font-weight:700;color:#0f172a">Tableau de bord</h1>'
+    +'<div style="margin-bottom:20px"><h1 style="font-size:22px;font-weight:700;color:#0f172a">Tableau de bord</h1>'
     +'<p style="font-size:13px;color:#64748b;margin-top:4px">'+pD(TODAY).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})
-    +' \u00b7 <strong>'+fyLbl(S.year)+'</strong> ('+fyRange(S.year)+')'+(S.quarter?' \u00b7 <strong style="color:#2563eb">'+curRangeLbl()+'</strong>':'')+'</p></div>'
-    +'<div class="g4">'+cards+'</div>'
-    +(als.length?'<div class="card" style="padding:20px"><h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">\u26A0\uFE0F Fins de mission \u00e0 anticiper</h3><div style="display:flex;flex-direction:column;gap:10px">'+alRows+'</div></div>':'')
-    +(noM.length?'<div class="card" style="padding:20px"><h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">\uD83D\uDD34 Sans mission active</h3><div class="gc">'+noMR+'</div></div>':'')
-    +'<div class="card" style="padding:20px"><h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:16px">\uD83D\uDCCA Vue synth\u00e9tique '+fyLbl(S.year)+'</h3>'+synR+'</div></div>';
+    +' \u00b7 <strong>'+period+'</strong>'+(S.quarter?' ('+fyRange(S.year)+')':'')+'</p></div>'
+    +'<div class="g4" style="margin-bottom:20px">'+heros+'</div>'
+    +icHtml+finHtml
+    +'<div class="card" style="padding:20px">'
+    +'<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:16px">\uD83D\uDCCA Synthèse équipe \u2014 '+period+'</div>'
+    +synR
+    +'</div></div>';
 }
 
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
@@ -1381,9 +1421,48 @@ function tActivite(){
   var cid=S.actCid,c=S.cons.find(function(x){return x.id===cid;});
   var ym=S.actMonth.split('-'),year=+ym[0],mon=+ym[1];
   var hset=frHols(year);
+  var Hy=fyHols(S.year);
+  var _r=curRange(S.year);var rS=_r[0],rE=_r[1];
+  var period=curLbl();
+
+  /* ── Stats sur la période sélectionnée (FY ou trimestre) ── */
+  var kc=kpi(c,S.miss,S.lvs,S.year,Hy,_r);
+
+  /* Jours intercontrat sur la période */
+  var lvIC=S.lvs.filter(function(l){return l.cid===cid&&l.type==='Inter-contrat'&&l.e>=rS&&l.s<=rE;});
+  var icDays=lvIC.reduce(function(s,l){return s+wDays(l.s>rS?l.s:rS,l.e<rE?l.e:rE,Hy);},0);
+
+  /* Jours congés/arrêts sur la période (hors Inter-contrat) */
+  var lvCp=S.lvs.filter(function(l){return l.cid===cid&&l.type!=='Inter-contrat'&&l.type!=='Mission interne'&&l.e>=rS&&l.s<=rE;});
+  var cpDays=lvCp.reduce(function(s,l){return s+wDays(l.s>rS?l.s:rS,l.e<rE?l.e:rE,Hy);},0);
+
+  /* Jours mission interne */
+  var lvInt=S.lvs.filter(function(l){return l.cid===cid&&l.type==='Mission interne'&&l.e>=rS&&l.s<=rE;});
+  var intDays=lvInt.reduce(function(s,l){return s+wDays(l.s>rS?l.s:rS,l.e<rE?l.e:rE,Hy);},0);
+
+  /* Marge sur les missions de la période */
+  var marg=kc.om!=null?kc.om.toFixed(1)+'%':'\u2014';
+
+  function statCard(label,val,sub,col){
+    return '<div style="background:#f8fafc;border-radius:10px;padding:14px 16px;border:1px solid #e2e8f0">'
+      +'<div style="font-size:22px;font-weight:800;color:'+(col||'#0f172a')+'">'+val+'</div>'
+      +'<div style="font-size:12px;font-weight:700;color:#374151;margin-top:3px">'+label+'</div>'
+      +(sub?'<div style="font-size:11px;color:#94a3b8;margin-top:2px">'+sub+'</div>':'')
+      +'</div>';
+  }
+
+  var statsGrid='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px">'
+    +statCard('Jours facturés', kc.bill+'j', period, '#2563eb')
+    +statCard('Jours internes', intDays+'j', 'non facturés', '#0f766e')
+    +statCard('Congés &amp; arrêts', cpDays+'j', period, '#b45309')
+    +statCard('Inter-contrat', icDays+'j', period, icDays>0?'#b91c1c':'#15803d')
+    +statCard('Staffing', kc.sr.toFixed(0)+'%', 'marge : '+marg, kc.sr>=75?'#15803d':kc.sr>=50?'#b45309':'#b91c1c')
+    +'</div>';
+
+  /* ── Calendrier mensuel ── */
   var firstDow=(new Date(year,mon-1,1).getDay()+6)%7;
   var dim=new Date(year,mon,0).getDate();
-  var MNAMES=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  var MNAMES=['Janvier','F\u00e9vrier','Mars','Avril','Mai','Juin','Juillet','Ao\u00fbt','Septembre','Octobre','Novembre','D\u00e9cembre'];
   var co=S.cons.map(function(x){return '<option value="'+x.id+'"'+(x.id===cid?' selected':'')+'>'+esc(x.name)+'</option>';}).join('');
   var cells='',billed=0,leaveD=0,internD=0;
   for(var i=0;i<firstDow;i++)cells+='<div style="background:#f8fafc;border-radius:8px;min-height:62px"></div>';
@@ -1401,7 +1480,7 @@ function tActivite(){
         if(intern)internD++;else leaveD++;
       }else{
         var mm=missOnDay(cid,ds);
-        if(mm){bg='#eff6ff';bd='#bfdbfe';main=mm.cli;sub=mm.name;billed++;clk=true;}
+        if(mm){bg='#eff6ff';bd='#bfdbfe';main=mm.client||mm.cli;sub=mm.name;billed++;clk=true;}
         else{main='Disponible';txt='#94a3b8';clk=true;}
       }
     }
@@ -1415,26 +1494,29 @@ function tActivite(){
   }
   var dows=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(function(x){return '<div style="font-size:10px;font-weight:700;color:#94a3b8;text-align:center;text-transform:uppercase">'+x+'</div>';}).join('');
   var lg=function(b,bd2,t){return '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:'+b+';border:1px solid '+bd2+'"></span>'+t+'</span>';};
+
   return '<div class="vw">'
-    +'<div class="ph"><div><div class="pt">Activité — '+esc(c.name)+'</div><div class="ps">Cliquez un jour pour le marquer congé ou interne (non facturé)</div></div></div>'
+    +'<div class="ph"><div><div class="pt">Activit\u00e9 \u2014 '+esc(c.name)+'</div>'
+    +'<div class="ps">Stats : '+period+' \u00b7 Planning : '+MNAMES[mon-1]+' '+year+'</div></div></div>'
+
     +'<div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">'
     +'<select class="ic" style="max-width:240px" id="act-cid">'+co+'</select>'
     +'<div style="display:flex;align-items:center;gap:8px;margin-left:auto">'
-    +'<button class="bg" data-act="act-prev" style="padding:6px 12px">‹</button>'
+    +'<button class="bg" data-act="act-prev" style="padding:6px 12px">\u2039</button>'
     +'<div style="font-weight:700;min-width:150px;text-align:center">'+MNAMES[mon-1]+' '+year+'</div>'
-    +'<button class="bg" data-act="act-next" style="padding:6px 12px">›</button>'
-    +'<button class="bg" data-act="act-today" style="padding:6px 12px">Aujourd\'hui</button>'
+    +'<button class="bg" data-act="act-next" style="padding:6px 12px">\u203a</button>'
+    +'<button class="bg" data-act="act-today" style="padding:6px 12px">Aujourd\u2019hui</button>'
     +'</div></div>'
+
+    +statsGrid
+
     +'<div class="card" style="padding:16px">'
+    +'<div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:10px">Planning \u2014 '+MNAMES[mon-1]+' '+year
+    +'<span style="font-weight:400;color:#94a3b8;margin-left:10px">('+billed+'j facturés ce mois \u00b7 cliquez un jour pour le marquer)</span></div>'
     +'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px">'+dows+'</div>'
     +'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">'+cells+'</div>'
-    +'<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:#475569">'
-    +'<div><strong>'+billed+'</strong> j facturables</div>'
-    +'<div><strong>'+internD+'</strong> j internes (non facturés)</div>'
-    +'<div><strong>'+leaveD+'</strong> j congés/absence</div>'
-    +'</div>'
-    +'<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:#64748b">'
-    +lg('#eff6ff','#bfdbfe','Mission')+lg('#fffbeb','#fde68a','Congé/absence')+lg('#f0fdfa','#99f6e4','Interne (non facturé)')
+    +'<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-size:11px;color:#64748b">'
+    +lg('#eff6ff','#bfdbfe','Mission client')+lg('#fffbeb','#fde68a','Cong\u00e9/absence')+lg('#f0fdfa','#99f6e4','Interne (non factur\u00e9)')
     +'</div></div></div>';
 }
 
