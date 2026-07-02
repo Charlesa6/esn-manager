@@ -949,10 +949,19 @@ function tDash(){
     +'<div style="font-size:11px;color:#94a3b8">missions en cours</div></div>'
     +'</div>'
 
+    /* ── Layout 2 colonnes ── */
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">'
+    /* Colonne gauche */
+    +'<div>'
     +card('En inter-contrat aujourd\'hui','\uD83D\uDD34',icRows||null,'Toute l\'\u00e9quipe est en mission. \uD83C\uDF89')
     +card('Prochaines missions qui d\u00e9marrent','\uD83D\uDE80',startRows||null,'Aucune mission \u00e0 venir planifi\u00e9e.')
+    +'</div>'
+    /* Colonne droite */
+    +'<div>'
     +card('Prochaines missions qui se terminent','\uD83D\uDCC5',endRows||null,'Aucune mission active en cours.')
     +card('Retours de cong\u00e9s / maladie','\uD83C\uDFD6\uFE0F',retourRows||null,'Personne en cong\u00e9 ou arr\u00eat en ce moment.')
+    +'</div>'
+    +'</div>'
     +apprSection
     +'</div>';
 }
