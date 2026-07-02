@@ -2985,11 +2985,32 @@ async function sbDelInvite(id){
 async function loadConsInvites(){
   if(!sb||!SB_CID||S.role!=='directeur')return;
   try{
-    /* Cherche l'ID du consultant par son nom dans l'équipe */
     var allC=(S._all&&S._all.cons)||S.cons;
     var r=await sb.from('consultant_invites').select('*').eq('company_id',SB_CID).eq('dir_name',S.dirName).order('created_at');
     if(r.data)S.consInvites=r.data;
   }catch(e){console.warn('consInvites load:',e);}
+}
+
+async function loadApprovals(){
+  if(!sb||!SB_CID)return;
+  try{
+    var q=sb.from('approvals').select('*').eq('company_id',SB_CID);
+    if(S.role==='directeur')q=q.eq('dir_name',S.dirName);
+    else if(S.role==='consultant'&&S.consId)q=q.eq('cons_id',S.consId);
+    var r=await q.order('created_at',{ascending:false});
+    if(r.data){
+      /* Mapper snake_case Supabase → camelCase JS */
+      S.approvals=r.data.map(function(d){
+        return {
+          id:d.id, type:d.type, status:d.status,
+          consId:d.cons_id, consName:d.cons_name,
+          dirName:d.dir_name, payload:d.payload,
+          applyDesc:d.apply_desc, rejectionReason:d.rejection_reason||'',
+          createdAt:d.created_at, resolvedAt:d.resolved_at
+        };
+      });
+    }
+  }catch(e){console.warn('approvals load:',e);}
 }
 async function sbInviteCons(email,name){
   if(!sb||!SB_CID)return{error:{message:'Supabase non configuré'}};
@@ -3128,6 +3149,7 @@ async function initApp(){
 
       await loadInvites();
       await loadConsInvites();
+      await loadApprovals();
 
       /* ── 4. Listener pour d\u00e9connexion / expiration de token ── */
       sb.auth.onAuthStateChange(function(event){
