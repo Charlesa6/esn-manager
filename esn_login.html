@@ -584,23 +584,44 @@ async function doSignup() {
 
     if (consInvite) {
       /* ── Flux consultant invité : pas de code licence requis ── */
+      /* Ne pas passer company_id dans les metadata : le trigger Supabase
+         fait un cast ::uuid qui échoue si la valeur est vide ou mal formée.
+         On l'écrira directement dans profiles après la création du compte. */
       var res = await sb.auth.signUp({
         email: em, password: pw,
         options: { data: {
           first_name: fn, last_name: ln,
           role: 'consultant',
           directeur_name: consInvite.dir_name || '',
-          cons_id: consInvite.cons_id || null,
-          company_id: String(consInvite.company_id || '')
+          cons_id: consInvite.cons_id || null
         }}
       });
       loading('b-signup','sp-signup','lb-signup', false);
       if (res.error) { showBanner('err', errMsg(res.error)); return; }
+
+      /* Mettre à jour le profil avec company_id et cons_id
+         (après que le trigger ait créé la ligne profiles) */
+      if (res.data && res.data.user) {
+        try {
+          await sb.from('profiles').upsert({
+            id: res.data.user.id,
+            email: em,
+            company_id: consInvite.company_id || null,
+            role: 'consultant',
+            directeur_name: consInvite.dir_name || '',
+            cons_id: consInvite.cons_id || null
+          }, { onConflict: 'id' });
+        } catch(e) { console.warn('profile upsert:', e); }
+      }
+
       /* Marquer l'invitation comme utilisée */
       await sb.from('consultant_invites')
-        .update({status:'active'}).eq('id', consInvite.id);
+        .update({ status: 'active' }).eq('id', consInvite.id);
+
       if (res.data.user && !res.data.session) {
-        showSuccess('Compte créé\u00a0!', 'Vérifiez votre email ' + em + ' pour confirmer votre compte. Vous pourrez ensuite vous connecter.', true);
+        showSuccess('Compte créé\u00a0!',
+          'Vérifiez votre email ' + em + ' pour confirmer votre compte. Vous pourrez ensuite vous connecter.',
+          true);
       } else {
         window.location.href = '/esn_manager_cgi.html';
       }
