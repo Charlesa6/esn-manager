@@ -880,9 +880,10 @@ function tDash(){
   });
   var pCount=pendingAppr.length;
 
-  /* Futurs arrivants = consultants recrutés avec date d'arrivée > aujourd'hui */
-  var futursArrivants=S.cons.filter(function(c){return c.arrive&&c.arrive>TODAY&&!isGone(c);})
-    .sort(function(a,b){return a.arrive.localeCompare(b.arrive);});
+  /* Futurs arrivants = consultants dont l'arrivée est > aujourd'hui ET dans la période sélectionnée */
+  var futursArrivants=S.cons.filter(function(c){
+    return c.arrive&&c.arrive>TODAY&&!isGone(c);
+  }).sort(function(a,b){return a.arrive.localeCompare(b.arrive);});
   var futurCount=futursArrivants.length;
 
   /* Lien candidat → consultant pour expertise/secteur */
@@ -1067,10 +1068,15 @@ function tTeams(){
       +(hasFilters?'<button data-act="fteams-reset" style="font-size:11px;color:#94a3b8;background:none;border:none;cursor:pointer;text-decoration:underline;margin-top:4px">\u00d7 Effacer les filtres</button>':'')
       +'</div>':'';
 
-  /* Futurs arrivants : date d'arrivée > aujourd'hui */
-  var futurs=applyFilters(inFY.filter(function(c){return c.arrive&&c.arrive>TODAY;}))
-    .sort(function(a,b){return a.arrive.localeCompare(b.arrive);});
-  var actifs=applyFilters(inFY.filter(function(c){return !isGone(c)&&!(c.arrive&&c.arrive>TODAY);}));
+  /* ── Futurs arrivants : arrive > aujourd'hui ET dans la période sélectionnée ──
+     Ex : consultant arrivant le 15/07/2026 :
+     - visible en FY2026 (oct25-sep26) et Q4 FY2026 (jul-sep26) ✓
+     - invisible en FY2027 (oct26-sep27) car il sera déjà arrivé avant ✓ */
+  var _rT=curRange(S.year);var rTS=_rT[0],rTE=_rT[1];
+  var futurs=applyFilters(inFY.filter(function(c){
+    return c.arrive&&c.arrive>TODAY&&c.arrive>=rTS&&c.arrive<=rTE;
+  })).sort(function(a,b){return a.arrive.localeCompare(b.arrive);});
+  var actifs=applyFilters(inFY.filter(function(c){return !isGone(c)&&!(c.arrive&&c.arrive>TODAY&&c.arrive>=rTS&&c.arrive<=rTE);}));
   var partis=applyFilters(inFY.filter(function(c){return isGone(c);}));
 
   function makeRow(c,gone,futur){
