@@ -1349,8 +1349,7 @@ function tKPIs(){
   }).join('');
 
   return '<div class="vw">'
-    +'<div style="margin-bottom:24px"><div class="pt">KPIs &mdash; '+fyLbl(S.year)+(S.quarter?' \u00b7 '+curRangeLbl():'')+'</div>'
-    +'<div class="ps">Marge = (TJM &minus; SCR) / TJM &times; 100 &middot; Staffing = (Facturables + Congés + Maladie/Maternité) / Jours ouvrés FY &times; 100 &middot; Salaire annuel = SCR &times; 113,35</div></div>'
+    +'<div style="margin-bottom:24px"><div class="pt">KPIs &mdash; '+fyLbl(S.year)+(S.quarter?' \u00b7 '+curRangeLbl():'')+'</div></div>'
     +hero
     +'<div style="display:grid;grid-template-columns:1fr 300px;gap:16px;margin-bottom:24px">'
     +'<div class="card" style="padding:20px"><div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:16px">Staffing par consultant (%)</div>'+srBars+'</div>'
