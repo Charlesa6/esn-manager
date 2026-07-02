@@ -2993,11 +2993,9 @@ async function loadApprovals(){
     else if(S.role==='consultant'&&S.consId)q=q.eq('cons_id',S.consId);
     var r=await q.order('created_at',{ascending:false});
     if(r.error){
-      console.error('[Approvals] Erreur chargement:',r.error.message,'code:',r.error.code);
-      console.warn('[Approvals] La table "approvals" existe-t-elle ? Exécutez migration_consultant_approvals.sql dans Supabase.');
+      console.error('[Approvals] Erreur:',r.error.message,'(table approvals existe-t-elle ?)');
       return;
     }
-    console.log('[Approvals] Chargé',r.data?r.data.length:0,'approbations — role:',S.role,'dir:',S.dirName,'company:',SB_CID);
     if(r.data){
       S.approvals=r.data.map(function(d){
         return {
@@ -3521,7 +3519,7 @@ function applyApproval(req){
 
 /* Supabase : upsert d'une approbation */
 async function sbUpsertApproval(req){
-  if(!sb||!SB_CID){console.warn('[Approval] SB_CID manquant, impossible de sauvegarder');return;}
+  if(!sb||!SB_CID){console.warn('[Approval] SB_CID manquant');return;}
   var res=await sb.from('approvals').upsert({
     id:req.id,company_id:SB_CID,type:req.type,
     cons_id:req.consId,cons_name:req.consName,dir_name:req.dirName,
@@ -3529,8 +3527,7 @@ async function sbUpsertApproval(req){
     status:req.status,rejection_reason:req.rejectionReason,
     created_at:req.createdAt,resolved_at:req.resolvedAt
   },{onConflict:'id'});
-  if(res.error){console.error('[Approval] Erreur upsert:',res.error.message,'code:',res.error.code);}
-  else{console.log('[Approval] Sauvegardé OK — id:',req.id,'dir:',req.dirName,'company:',SB_CID);}
+  if(res.error)console.error('[Approval] Erreur:',res.error.message);
 }
 
 /* ─── Vue Approbations pour le CONSULTANT ─── */
