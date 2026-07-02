@@ -349,12 +349,31 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
       var emails = JSON.parse(saved);
       if (emails && emails.length) {
-        /* Pré-remplir le dernier email utilisé */
         document.getElementById('l-email').value = emails[0];
-        /* Afficher la liste des comptes sauvegardés */
         renderSavedEmails(emails);
       }
     } catch(e) {}
+  }
+
+  /* ── Détection lien d'invitation consultant (?invite=CODE) ── */
+  var params = new URLSearchParams(window.location.search);
+  var inviteCode = params.get('invite');
+  if (inviteCode) {
+    /* Basculer sur l'onglet "Créer un compte" */
+    sw('signup');
+    /* Pré-remplir le code de licence */
+    var licInput = document.getElementById('s-lic');
+    if (licInput) {
+      licInput.value = inviteCode.toUpperCase();
+      licInput.setAttribute('readonly', 'readonly');
+      licInput.style.background = '#f0fdf4';
+      licInput.style.color = '#15803d';
+      licInput.style.fontWeight = '700';
+    }
+    /* Message de bienvenue */
+    showBanner('ok', '\uD83C\uDF89 Invitation d\u00e9tect\u00e9e\u00a0! Remplissez vos informations pour activer votre compte.');
+    /* Focus sur le prénom */
+    setTimeout(function(){ var fn=document.getElementById('s-fn'); if(fn)fn.focus(); }, 200);
   }
 });
 
@@ -552,10 +571,15 @@ async function doSignup() {
       return;
     }
     /* Création du compte */
+    var userRole = licData.role || 'directeur';
     var res = await sb.auth.signUp({
       email: em, password: pw,
-      options: { data: { company_name: co, first_name: fn, last_name: ln,
-                         role: licData.role || 'directeur' } }
+      options: { data: {
+        company_name: co, first_name: fn, last_name: ln,
+        role: userRole,
+        directeur_name: licData.dir_name || '',  /* pour les consultants */
+        cons_id: licData.linked_cons_id || null  /* lien vers le profil consultant */
+      }}
     });
     loading('b-signup','sp-signup','lb-signup', false);
     if (res.error) {
