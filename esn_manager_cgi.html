@@ -753,11 +753,19 @@ function tDash(){
   function urgentBg(j){return j<=7?'#fff1f2':j<=14?'#fffbeb':'#f0fdf4';}
   function urgentBd(j){return j<=7?'#fecdd3':j<=14?'#fde68a':'#bbf7d0';}
 
-  function card(title, icon, rows, emptyMsg){
-    return '<div class="card" style="padding:20px;margin-bottom:16px">'
-      +'<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:14px">'+icon+' '+title+'</div>'
+  /* Carte rétractable (details/summary) — fermée par défaut */
+  function card(title, icon, rows, emptyMsg, count){
+    var cntBadge=count!==undefined?'<span style="margin-left:8px;background:#e2e8f0;color:#475569;font-size:11px;font-weight:700;padding:1px 8px;border-radius:99px">'+count+'</span>':'';
+    var hasAlert=count>0;
+    return '<details style="background:#fff;border:1px solid '+(hasAlert?'#fde68a':'#e2e8f0')+';border-radius:12px;margin-bottom:10px;overflow:hidden">'
+      +'<summary style="display:flex;align-items:center;gap:8px;padding:14px 18px;cursor:pointer;font-size:14px;font-weight:800;color:#0f172a;list-style:none;user-select:none"'
+      +' onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'
+      +'<span>'+icon+'</span><span style="flex:1">'+title+'</span>'+cntBadge
+      +'<span style="font-size:11px;color:#94a3b8;margin-left:8px">&#x25be;</span>'
+      +'</summary>'
+      +'<div style="padding:0 18px 16px">'
       +(rows||'<div style="font-size:13px;color:#94a3b8;padding:8px 0">'+emptyMsg+'</div>')
-      +'</div>';
+      +'</div></details>';
   }
 
   /* ══ 1. EN INTER-CONTRAT ══
@@ -894,30 +902,27 @@ function tDash(){
       +'</div></div>';
   }
 
-  var apprSection='<div class="card" style="padding:20px;margin-bottom:16px" id="approvals-section">'
-    +'<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:16px">\uD83D\uDD14 Demandes d\u2019approbation</div>'
-
-    /* En attente */
-    +'<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#92400e;margin-bottom:8px">'
-    +'\u23f3 En attente ('+pCount+')</div>'
+  var apprSection='<details style="background:#fff;border:1px solid '+(pCount>0?'#fbbf24':'#e2e8f0')+';border-radius:12px;margin-bottom:10px;overflow:hidden" id="approvals-section"'+(pCount>0?' open':'')+'>'  
+    +'<summary style="display:flex;align-items:center;gap:8px;padding:14px 18px;cursor:pointer;font-size:14px;font-weight:800;color:#0f172a;list-style:none;user-select:none"'
+    +' onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'  
+    +'\uD83D\uDD14<span style="flex:1;margin-left:8px">Demandes d\u2019approbation</span>'
+    +'<span style="background:'+(pCount>0?'#fef3c7':'#e2e8f0')+';color:'+(pCount>0?'#92400e':'#475569')+';font-size:11px;font-weight:700;padding:1px 8px;border-radius:99px;margin-right:6px">'+pCount+' en attente</span>'
+    +'<span style="font-size:11px;color:#94a3b8">&#x25be;</span>'
+    +'</summary>'
+    +'<div style="padding:0 18px 16px">'
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#92400e;margin:10px 0 8px">\u23f3 En attente ('+pCount+')</div>'
     +(pendingAppr.length
       ?pendingAppr.map(function(r){return apprRow(r,S.role==='directeur');}).join('')
-      :'<div style="font-size:13px;color:#94a3b8;margin-bottom:14px;padding:8px 0">Aucune demande en attente.</div>')
-
-    /* Approuvées */
-    +'<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#15803d;margin:14px 0 8px">'
-    +'\u2705 Approuv\u00e9es ('+approvedAppr.length+')</div>'
+      :'<div style="font-size:13px;color:#94a3b8;padding:6px 0 12px">Aucune demande en attente.</div>')
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#15803d;margin:12px 0 8px">\u2705 Approuv\u00e9es ('+approvedAppr.length+')</div>'
     +(approvedAppr.length
       ?approvedAppr.map(function(r){return apprRow(r,false);}).join('')
-      :'<div style="font-size:13px;color:#94a3b8;padding:8px 0">Aucune demande approuv\u00e9e.</div>')
-
-    /* Refusées */
-    +'<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#b91c1c;margin:14px 0 8px">'
-    +'\u274c Refus\u00e9es ('+rejectedAppr.length+')</div>'
+      :'<div style="font-size:13px;color:#94a3b8;padding:6px 0 12px">Aucune.</div>')
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#b91c1c;margin:12px 0 8px">\u274c Refus\u00e9es ('+rejectedAppr.length+')</div>'
     +(rejectedAppr.length
       ?rejectedAppr.map(function(r){return apprRow(r,false);}).join('')
-      :'<div style="font-size:13px;color:#94a3b8;padding:8px 0">Aucune demande refus\u00e9e.</div>')
-    +'</div>';
+      :'<div style="font-size:13px;color:#94a3b8;padding:6px 0">Aucune.</div>')
+    +'</div></details>';
 
   return '<div class="vw">'
     +'<div style="margin-bottom:20px">'
@@ -953,13 +958,13 @@ function tDash(){
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">'
     /* Colonne gauche */
     +'<div>'
-    +card('En inter-contrat aujourd\'hui','\uD83D\uDD34',icRows||null,'Toute l\'\u00e9quipe est en mission. \uD83C\uDF89')
-    +card('Prochaines missions qui d\u00e9marrent','\uD83D\uDE80',startRows||null,'Aucune mission \u00e0 venir planifi\u00e9e.')
+    +card('En inter-contrat aujourd\'hui','\uD83D\uDD34',icRows||null,'Toute l\'\u00e9quipe est en mission. \uD83C\uDF89',icCount)
+    +card('Prochaines missions qui d\u00e9marrent','\uD83D\uDE80',startRows||null,'Aucune mission \u00e0 venir planifi\u00e9e.',startMiss.length)
     +'</div>'
     /* Colonne droite */
     +'<div>'
-    +card('Prochaines missions qui se terminent','\uD83D\uDCC5',endRows||null,'Aucune mission active en cours.')
-    +card('Retours de cong\u00e9s / maladie','\uD83C\uDFD6\uFE0F',retourRows||null,'Personne en cong\u00e9 ou arr\u00eat en ce moment.')
+    +card('Prochaines missions qui se terminent','\uD83D\uDCC5',endRows||null,'Aucune mission active en cours.',endMiss.length)
+    +card('Retours de cong\u00e9s / maladie','\uD83C\uDFD6\uFE0F',retourRows||null,'Personne en cong\u00e9 ou arr\u00eat en ce moment.',retours.length)
     +'</div>'
     +'</div>'
     +apprSection
