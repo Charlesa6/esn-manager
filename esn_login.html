@@ -210,6 +210,16 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
         </div>
         <span style="margin-left:auto;font-size:10px;opacity:.7">&#x2192;</span>
       </a>
+
+      <!-- Abonnement Consultant -->
+      <a href="#" id="btn-sub-cons" class="left-cta left-cta-sub" onclick="openStore('consultant');return false;">
+        <span style="font-size:18px">&#x1F464;</span>
+        <div>
+          <div style="font-weight:700;font-size:14px">Abonnement Consultant</div>
+          <div style="font-size:11px;opacity:.75">Suivi perso &amp; approbations</div>
+        </div>
+        <span style="margin-left:auto;font-size:10px;opacity:.7">&#x2192;</span>
+      </a>
     </div>
   </div>
 </div>
@@ -524,9 +534,12 @@ async function doLogin() {
 /* URL de la boutique — à mettre à jour quand vous aurez votre outil de paiement */
 var STORE_URL_DIRECTEUR   = '#';  /* ex: 'https://buy.stripe.com/xxx' */
 var STORE_URL_GESTIONNAIRE= '#';  /* ex: 'https://buy.stripe.com/yyy' */
+var STORE_URL_CONSULTANT  = '#';  /* ex: 'https://buy.stripe.com/zzz' */
 
 function openStore(role) {
-  var url = role === 'gestionnaire' ? STORE_URL_GESTIONNAIRE : STORE_URL_DIRECTEUR;
+  var url = role === 'gestionnaire' ? STORE_URL_GESTIONNAIRE
+          : role === 'consultant'   ? STORE_URL_CONSULTANT
+          : STORE_URL_DIRECTEUR;
   if (url === '#') {
     showBanner('ok', 'Boutique en ligne bient\u00f4t disponible\u00a0! Contactez-nous : contact@esn-manager.fr');
     return;
