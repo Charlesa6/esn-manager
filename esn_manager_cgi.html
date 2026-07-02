@@ -399,6 +399,8 @@ var S={
   lvs:IL.map(function(l){return Object.assign({},l);}),
   cands:[],
   approvals:[],   /* demandes d'approbation des consultants */
+  consInvites:[], /* codes d'accès générés pour les consultants */
+  adminCode:null, /* dernier code généré (affiché dans Admin) */
   year:CFY,quarter:null,modal:null,fmc:'all',fms:'all',fmt:'all',flc:'all',precs:{},
   role:'gestionnaire',dirName:'',consId:null,fdir:[],invites:[],actCid:'',actMonth:'',_all:null,
   sbSt:'\uD83D\uDFE2 Sauvegarde locale active',
@@ -681,7 +683,8 @@ function tSB(){
       {id:'missions',  ic:'\uD83D\uDCCB',lb:'Missions'},
       {id:'planning',  ic:'\uD83D\uDCC5',lb:'Planning'},
       {id:'leaves',    ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
-      {id:'param',     ic:'\u2699\uFE0F',lb:'Param\u00e9trage'}
+      {id:'param',     ic:'\u2699\uFE0F',lb:'Param\u00e9trage'},
+      {id:'admin',     ic:'\uD83D\uDEE1\uFE0F',lb:'Admin'}
     ];
     if(S.role==='gestionnaire')NAV.push({id:'directeurs',ic:'\uD83D\uDEE1\uFE0F',lb:'Directeurs'});
     NAV.splice(4,0,{id:'activite',ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'});
@@ -919,7 +922,6 @@ function tTeams(){
       +'<td>'+(am?'<div style="font-weight:600;font-size:13px">'+esc(am.cli)+'</div><div style="font-size:11px;color:#94a3b8">'+esc(am.name)+'</div>':'<span style="color:#cbd5e1">\u2014</span>')+'</td>'
       +'<td>'+(gone?'<span style="font-size:11px;color:#94a3b8">Inactif</span>':badge(st,am&&am.ed?dL(am.ed):null))+'</td>'
       +'<td class="tr"><button class="lb" style="margin-right:10px" data-act="ec" data-id="'+c.id+'">Modifier</button>'
-      +'<button class="lb" style="margin-right:10px;color:#7c3aed;border-color:#ddd6fe" onclick="inviterConsultant(\''+c.id+'\')">\uD83D\uDD11 Inviter</button>'
       +'<button class="lr" data-act="dc" data-id="'+c.id+'">Suppr.</button></td></tr>';
   }
 
@@ -1440,6 +1442,63 @@ function tParam(){
 /* ═══════════════════════════════════════════════════════════════
    TEMPLATE - DIRECTEURS (gestion des comptes, gestionnaire uniquement)
 ═══════════════════════════════════════════════════════════════ */
+function tAdmin(){
+  if(S.role==='consultant')return '<div class="emp">Acc\u00e8s r\u00e9serv\u00e9.</div>';
+  var sbOn=!!(sb&&SB_CID);
+  var allC=(S._all&&S._all.cons)||S.cons;
+  /* Pour un directeur : seulement ses propres consultants */
+  var myConsList=S.role==='directeur'
+    ?allC.filter(function(c){return (c.dir||'')===S.dirName;})
+    :allC;
+
+  var consOpts=myConsList.map(function(c){
+    return '<option value="'+esc(c.id)+'|'+esc(c.name)+'">'+esc(c.name)+(c.email?' ('+esc(c.email)+')':'')+'</option>';
+  }).join('');
+
+  /* Liste des codes consultants d\u00e9j\u00e0 g\u00e9n\u00e9r\u00e9s (stockés localement) */
+  var codeRows=(S.consInvites||[]).map(function(iv){
+    var st=iv.used
+      ?'<span class="badge bgrn">Utilis\u00e9</span>'
+      :'<span class="badge bamb">En attente</span>';
+    return '<tr><td style="font-weight:600">'+esc(iv.consName||'')+'</td>'
+      +'<td style="font-family:monospace;font-size:13px;font-weight:700;letter-spacing:2px;color:#2563eb">'+esc(iv.code||'')+'</td>'
+      +'<td>'+st+'</td>'
+      +'<td class="tr"><button class="lr" data-act="admin-cons-del" data-id="'+esc(iv.code||'')+'">Suppr.</button></td></tr>';
+  }).join('');
+
+  return '<div class="vw">'
+    +'<div class="ph"><div><div class="pt">\uD83D\uDEE1\uFE0F Admin \u2014 Acc\u00e8s consultants</div>'
+    +'<div class="ps">G\u00e9n\u00e9rez des codes d\u2019acc\u00e8s pour vos consultants \u00b7 chaque code est \u00e0 usage unique</div></div></div>'
+
+    +'<div class="card" style="padding:20px;margin-bottom:16px">'
+    +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">G\u00e9n\u00e9rer un code d\u2019acc\u00e8s consultant</h3>'
+    +(sbOn?'':'<div style="padding:10px 14px;background:#fffbeb;border-radius:8px;font-size:12px;color:#92400e;margin-bottom:12px">\u26a0 Mode local : les codes ne seront pas persistants. Connectez Supabase pour un usage en production.</div>')
+    +'<div class="g2">'
+    +'<div class="fd"><label class="fl">Consultant *</label>'
+    +'<select class="ic" id="admin-cons-sel">'
+    +'<option value="">-- Choisir un consultant --</option>'
+    +consOpts
+    +'</select></div>'
+    +'</div>'
+    +'<button class="bp" data-act="admin-cons-add" style="margin-top:12px">+ G\u00e9n\u00e9rer le code d\u2019acc\u00e8s</button>'
+    +'<p class="fh" style="margin-top:8px">Le code g\u00e9n\u00e9r\u00e9 apparaît dans le tableau ci-dessous. Transmettez-le au consultant : il le saisit sur la page de connexion pour cr\u00e9er son compte et \u00eatre rattach\u00e9 \u00e0 votre \u00e9quipe.</p>'
+    +'</div>'
+
+    +(S.adminCode?
+      '<div class="card" style="padding:24px;margin-bottom:16px;border:2px solid #2563eb;text-align:center">'
+      +'<div style="font-size:13px;color:#374151;margin-bottom:12px">Code g\u00e9n\u00e9r\u00e9 pour <strong>'+esc(S.adminCode.consName)+'</strong></div>'
+      +'<div id="admin-code-disp" style="font-size:36px;font-weight:900;letter-spacing:6px;color:#2563eb;background:#eff6ff;padding:20px 32px;border-radius:12px;display:inline-block;cursor:text;user-select:all">'+esc(S.adminCode.code)+'</div>'
+      +'<div style="font-size:12px;color:#94a3b8;margin-top:10px">Cliquez sur le code pour le s\u00e9lectionner \u2014 puis Ctrl+C pour copier</div>'
+      +'</div>'
+      :'')
+
+    +'<div class="card ov">'
+    +'<div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">Codes g\u00e9n\u00e9r\u00e9s</div>'
+    +'<table><thead><tr><th>Consultant</th><th>Code</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
+    +'<tbody>'+codeRows+(!codeRows?'<tr><td colspan="4" class="emp">Aucun code g\u00e9n\u00e9r\u00e9 pour le moment.</td></tr>':'')+'</tbody>'
+    +'</table></div></div>';
+}
+
 function tDirecteurs(){
   if(S.role!=='gestionnaire')return '<div class="emp">Accès réservé au gestionnaire.</div>';
   var sbOn=!!(sb&&SB_CID);
@@ -2176,7 +2235,7 @@ function render(){
   S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
   var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;
   document.getElementById('sb').innerHTML=tSB();
-  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='approvals'?tApprovals():S.tab==='profile'?tProfile():tParam();
+  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():tParam();
   var _ini=function(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();};
   var _av=S._userEmail?_ini(S._userEmail.split('@')[0].replace(/[._]/g,' ')):'?';
   var _pfBtn='<div id="prof-btn" style="position:absolute;top:12px;right:14px;z-index:50">'
@@ -2655,6 +2714,32 @@ function bind(){
       }
       else if(a==='inv-del'){
         if(confirm('Supprimer ce directeur / cette invitation ?')){sbDelInvite(id).then(function(){loadInvites().then(render);});}
+      }
+      else if(a==='admin-cons-add'){
+        var selEl=document.getElementById('admin-cons-sel');
+        var selVal=selEl?selEl.value:'';
+        if(!selVal){alert('Veuillez s\u00e9lectionner un consultant.');return;}
+        var parts=selVal.split('|');
+        var cid2=parts[0],cname=parts.slice(1).join('|');
+        var newCode='CSL-'+cid2.slice(0,4).toUpperCase()+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
+        var inv={code:newCode,consId:cid2,consName:cname,used:false,dir:S.dirName||'',createdAt:new Date().toISOString()};
+        S.consInvites=(S.consInvites||[]).concat([inv]);
+        S.adminCode={code:newCode,consName:cname};
+        if(sb&&SB_CID){
+          sb.from('licence_codes').insert({
+            code:newCode,role:'consultant',used:false,
+            linked_cons_id:cid2,company_id:SB_CID,dir_name:S.dirName||''
+          }).catch(function(e){console.warn('admin-cons-add:',e);});
+        }
+        saveLocal();render();
+      }
+      else if(a==='admin-cons-del'){
+        if(confirm('Supprimer ce code d\u2019acc\u00e8s ?')){
+          S.consInvites=(S.consInvites||[]).filter(function(iv){return iv.code!==id;});
+          if(S.adminCode&&S.adminCode.code===id)S.adminCode=null;
+          if(sb&&SB_CID){sb.from('licence_codes').delete().eq('code',id).catch(function(e){console.warn(e);});}
+          saveLocal();render();
+        }
       }
       /* activité jour par jour */
       else if(a==='day'){S.modal={type:'dayexc',day:b.getAttribute('data-day'),cid:S.actCid};render();}
