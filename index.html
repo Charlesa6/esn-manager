@@ -258,7 +258,6 @@ footer{background:var(--dark);padding:48px 24px 32px}
       <a href="mailto:contact@konsilys.fr">Contact</a>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
-      <a href="#" onclick="document.getElementById('tuto-modal').style.display='flex';return false" style="color:rgba(255,255,255,.75);font-size:14px;font-weight:700;padding:8px 16px;border:1px solid rgba(255,255,255,.2);border-radius:8px;transition:all .15s;background:rgba(132,204,22,.12);border-color:rgba(132,204,22,.3);color:#84CC16" onmouseover="this.style.background='rgba(132,204,22,.2)'" onmouseout="this.style.background='rgba(132,204,22,.12)'">▶ Tutoriel</a>
       <a href="/app?demo=true" style="color:rgba(255,255,255,.75);font-size:14px;font-weight:700;padding:8px 16px;border:1px solid rgba(255,255,255,.2);border-radius:8px;transition:all .15s" onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='transparent'">Démonstration</a>
       <a href="/login" class="btn-connexion">Se connecter →</a>
     </div>
@@ -674,49 +673,5 @@ function submitForm(e){
   </div>
 </footer>
 
-<!-- MODAL TUTORIEL -->
-<div id="tuto-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.85);align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this)this.style.display='none'">
-  <div style="background:#fff;border-radius:16px;overflow:hidden;max-width:840px;width:100%;position:relative">
-    <div style="background:var(--navy);padding:16px 20px;display:flex;align-items:center;justify-content:space-between">
-      <div style="color:#fff;font-weight:800;font-size:15px">▶ Tutoriel Konsilys</div>
-      <button onclick="document.getElementById('tuto-modal').style.display='none';var v=document.getElementById('tuto-video');if(v)v.pause();" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:32px;height:32px;border-radius:8px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">&times;</button>
-    </div>
-    <!-- Remplacez l'attribut src par l'URL de votre vidéo YouTube ou hébergée -->
-    <div style="background:#0f172a;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center" id="tuto-placeholder">
-      <div style="text-align:center;color:rgba(255,255,255,.5)">
-        <div style="font-size:56px;margin-bottom:16px">🎬</div>
-        <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:8px">Vidéo de présentation</div>
-        <div style="font-size:13px">À intégrer — voir instructions ci-dessous</div>
-        <div style="margin-top:20px;padding:12px 20px;background:rgba(255,255,255,.05);border-radius:8px;font-size:12px;color:rgba(255,255,255,.4);max-width:360px;line-height:1.6">
-          Remplacez ce bloc par :<br>
-          &lt;iframe src="https://www.youtube.com/embed/VOTRE_ID"&gt;&lt;/iframe&gt;
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-/* ── IntersectionObserver pour animations au scroll ── */
-(function(){
-  var obs=new IntersectionObserver(function(entries){
-    entries.forEach(function(e){
-      if(e.isIntersecting){
-        e.target.classList.add('visible');
-        obs.unobserve(e.target);
-      }
-    });
-  },{threshold:.12,rootMargin:'0px 0px -40px 0px'});
-  document.querySelectorAll('.anim-up,.anim-fade,.anim-right').forEach(function(el){obs.observe(el);});
-
-  /* Fermer modal avec Escape */
-  document.addEventListener('keydown',function(e){
-    if(e.key==='Escape'){
-      document.getElementById('tuto-modal').style.display='none';
-      var v=document.getElementById('tuto-video');if(v)v.pause();
-    }
-  });
-})();
-</script>
 </body>
 </html>
