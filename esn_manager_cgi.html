@@ -403,7 +403,7 @@ var S={
   consInvites:[], /* codes d'accès générés pour les consultants */
   adminCode:null, /* dernier code généré (affiché dans Admin) */
   year:CFY,quarter:null,modal:null,fmc:'all',fms:'all',fmt:'all',flc:'all',precs:{},
-  role:'gestionnaire',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,invites:[],actCid:'',actMonth:'',_all:null,
+  role:'gestionnaire',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,invites:[],actCid:'',actMonth:'',_all:null,
   sbSt:'\uD83D\uDFE2 Sauvegarde locale active',
   sbSync:false,
   imp:null,
@@ -1508,8 +1508,7 @@ function tKPIs(){
     +srBars+'</div>'
     +'<div class="card" style="padding:16px"><div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:12px">Top clients &mdash; CA</div>'+clientHtml+'</div>'
     +'</div>'
-    +consKpiSection
-    +(S.role==='gestionnaire'?'<div style="margin-top:4px">'+tKPIsDirSection()+'</div>':'')
+    +(S.role==='gestionnaire'?tKPIsDirSection():consKpiSection)
     +'</div>';
 }
 
@@ -1519,56 +1518,108 @@ function tKPIs(){
 ══════════════════════════════════════════════════════════════ */
 function tKPIsDirSection(){
   var allKS=buildKS();
+  var dSort=S.kpiDirSort||null,dAsc=S.kpiDirSortAsc||false;
+
+  /* Grouper par directeur */
   var dirs={};
   allKS.forEach(function(x){
     var dir=x.c.dir||'(Sans directeur)';
-    if(!dirs[dir])dirs[dir]={ca:0,bills:0,margins:[],count:0};
+    if(!dirs[dir])dirs[dir]={ca:0,bills:0,margins:[],cons:[]};
     var d=dirs[dir];
-    d.ca+=x.k.rev;
-    d.bills+=x.k.bill;
+    d.ca+=x.k.rev;d.bills+=x.k.bill;
     if(x.k.om!=null)d.margins.push(x.k.om);
-    d.count++;
+    d.cons.push(x);
   });
-  var rows=Object.keys(dirs).sort().map(function(dir){
+
+  var dirList=Object.keys(dirs).map(function(dir){
     var d=dirs[dir];
-    var avgTJM=d.bills>0?d.ca/d.bills:0;
-    var avgMarge=d.margins.length?d.margins.reduce(function(s,v){return s+v;},0)/d.margins.length:null;
-    var mc=avgMarge!=null?(avgMarge>=30?'#16a34a':avgMarge>=15?'#d97706':'#dc2626'):'#94a3b8';
-    return '<tr>'
-      +'<td><div style="font-weight:700;color:#0f172a;font-size:13px">'+esc(dir)+'</div>'
-      +'<div style="font-size:11px;color:#94a3b8;margin-top:2px">'+d.count+' consultant'+(d.count>1?'s':'')+'</div></td>'
-      +'<td class="tc" style="font-weight:900;font-size:15px;color:#0f172a">'+fEur(d.ca)+'</td>'
-      +'<td class="tc" style="font-weight:700;color:#374151">'+( avgTJM>0?fEur(Math.round(avgTJM)):'&mdash;')+'</td>'
-      +'<td class="tc" style="font-weight:800;color:'+mc+'">'+( avgMarge!=null?avgMarge.toFixed(1)+'%':'&mdash;')+'</td>'
-      +'</tr>';
+    return{name:dir,ca:d.ca,
+      tjm:d.bills>0?d.ca/d.bills:0,
+      marge:d.margins.length?d.margins.reduce(function(s,v){return s+v;},0)/d.margins.length:null,
+      count:d.cons.length,cons:d.cons};
   });
-  var totCA=Object.keys(dirs).reduce(function(s,k){return s+dirs[k].ca;},0);
-  var totBill=Object.keys(dirs).reduce(function(s,k){return s+dirs[k].bills;},0);
-  var allMar=[].concat.apply([],Object.keys(dirs).map(function(k){return dirs[k].margins;}));
+
+  /* Tri directeurs */
+  if(dSort)dirList.sort(function(a,b){
+    var va=dSort==='ca'?a.ca:dSort==='marge'?(a.marge!=null?a.marge:-999):a.tjm;
+    var vb=dSort==='ca'?b.ca:dSort==='marge'?(b.marge!=null?b.marge:-999):b.tjm;
+    return dAsc?va-vb:vb-va;
+  });
+
+  function dSortBtn(col,label){
+    var active=dSort===col;
+    var arrow=active?(dAsc?' \u25b2':' \u25bc'):'';
+    return '<button style="background:none;border:none;cursor:pointer;font-weight:'+(active?800:600)+';color:'+(active?'#84CC16':'#94a3b8')+';font-size:11px;padding:0;font-family:\'Nunito\',sans-serif;text-transform:uppercase;letter-spacing:.04em" data-act="kpi-dir-sort" data-id="'+col+'">'+label+arrow+'</button>';
+  }
+
+  /* Colonnes header */
+  var colDef='display:grid;grid-template-columns:2fr 1fr 1fr 1fr 24px;align-items:center;gap:8px';
+
+  /* Lignes par directeur */
+  var dirCards=dirList.map(function(d){
+    var mc=d.marge!=null?(d.marge>=30?'#16a34a':d.marge>=15?'#d97706':'#dc2626'):'#94a3b8';
+    /* Consultants triés par même colonne */
+    var sortedCons=d.cons.slice().sort(function(a,b){
+      if(!dSort)return 0;
+      var va=dSort==='ca'?a.k.rev:dSort==='marge'?(a.k.om!=null?a.k.om:-999):(a.k.avgT||0);
+      var vb=dSort==='ca'?b.k.rev:dSort==='marge'?(b.k.om!=null?b.k.om:-999):(b.k.avgT||0);
+      return dAsc?va-vb:vb-va;
+    });
+    var consRows=sortedCons.map(function(x){
+      var k=x.k,c=x.c;
+      var cmc=k.om!=null?(k.om>=30?'#16a34a':k.om>=15?'#d97706':'#dc2626'):'#94a3b8';
+      return '<div style="'+colDef+';padding:10px 16px 10px 28px;border-top:1px solid #f1f5f9;background:#f8fafc">'
+        +'<div><div style="font-weight:600;font-size:12px;color:#374151">'+esc(c.name)+'</div>'
+        +'<div style="font-size:10px;color:#94a3b8">'+esc(c.title)+'</div></div>'
+        +'<div style="text-align:center;font-size:12px;font-weight:700;color:#0f172a">'+fEur(k.rev)+'</div>'
+        +'<div style="text-align:center;font-size:12px;font-weight:700;color:'+cmc+'">'+(k.om!=null?k.om.toFixed(1)+'%':'&mdash;')+'</div>'
+        +'<div style="text-align:center;font-size:12px;color:#374151">'+(k.avgT>0?fEur(k.avgT):'&mdash;')+'</div>'
+        +'<div style="text-align:center"><span style="background:'+(k.sr>=80?'#f0fdf4':k.sr>=50?'#fffbeb':'#fff1f2')+';color:'+(k.sr>=80?'#16a34a':k.sr>=50?'#d97706':'#dc2626')+';padding:1px 8px;border-radius:99px;font-size:11px;font-weight:700">'+k.sr.toFixed(0)+'%</span></div>'
+        +'</div>';
+    }).join('');
+    return '<details>'
+      +'<summary style="'+colDef+';padding:14px 16px;cursor:pointer;list-style:none;border-top:1px solid #e2e8f0" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'
+      +'<div><div style="font-weight:700;color:#0f172a;font-size:13px">'+esc(d.name)+'</div>'
+      +'<div style="font-size:11px;color:#94a3b8">'+d.count+' consultant'+(d.count>1?'s':'')+'</div></div>'
+      +'<div style="text-align:center;font-weight:900;font-size:14px;color:#0f172a">'+fEur(d.ca)+'</div>'
+      +'<div style="text-align:center;font-weight:800;color:'+mc+'">'+(d.marge!=null?d.marge.toFixed(1)+'%':'&mdash;')+'</div>'
+      +'<div style="text-align:center;font-weight:700;color:#374151">'+(d.tjm>0?fEur(Math.round(d.tjm)):'&mdash;')+'</div>'
+      +'<div style="text-align:right;font-size:14px;color:#94a3b8">\u25be</div>'
+      +'</summary>'
+      +consRows
+      +'</details>';
+  }).join('');
+
+  /* Totaux */
+  var totCA=allKS.reduce(function(s,x){return s+x.k.rev;},0);
+  var totBill=allKS.reduce(function(s,x){return s+x.k.bill;},0);
+  var allMar=allKS.filter(function(x){return x.k.om!=null;});
   var totTJM=totBill>0?totCA/totBill:0;
-  var totMar=allMar.length?allMar.reduce(function(s,v){return s+v;},0)/allMar.length:null;
+  var totMar=allMar.length?allMar.reduce(function(s,x){return s+x.k.om;},0)/allMar.length:null;
   var totMc=totMar!=null?(totMar>=30?'#16a34a':totMar>=15?'#d97706':'#dc2626'):'#94a3b8';
-  var totalRow='<tr style="background:#f0fdf4;border-top:2px solid #84CC16">'
-    +'<td><div style="font-weight:800;color:#1B2B3A">\u03a3 Total ESN</div></td>'
-    +'<td class="tc" style="font-weight:900;font-size:15px;color:#1B2B3A">'+fEur(totCA)+'</td>'
-    +'<td class="tc" style="font-weight:800;color:#1B2B3A">'+( totTJM>0?fEur(Math.round(totTJM)):'&mdash;')+'</td>'
-    +'<td class="tc" style="font-weight:800;color:'+totMc+'">'+( totMar!=null?totMar.toFixed(1)+'%':'&mdash;')+'</td>'
-    +'</tr>';
-  return '<div class="vw">'
-    +'<div style="margin-bottom:20px"><div class="pt">KPIs Directeurs &mdash; '+fyLbl(S.year)+(S.quarter?' \u00b7 '+curRangeLbl():'')+'</div>'
-    +'<div class="ps">Comparatif CA, TJM moyen et marge g\u00e9n\u00e9r\u00e9s par \u00e9quipe de directeur</div></div>'
-    +'<div class="card ov">'
-    +'<table><thead><tr>'
-    +'<th>Directeur</th>'
-    +'<th class="tc">CA g\u00e9n\u00e9r\u00e9</th>'
-    +'<th class="tc">TJM moyen</th>'
-    +'<th class="tc">Marge moyenne</th>'
-    +'</tr></thead><tbody>'
-    +rows.join('')
+  var totalRow='<div style="'+colDef+';padding:14px 16px;background:#f0fdf4;border-top:2px solid #84CC16">'
+    +'<div style="font-weight:800;color:#1B2B3A">\u03a3 Total ESN</div>'
+    +'<div style="text-align:center;font-weight:900;font-size:14px;color:#1B2B3A">'+fEur(totCA)+'</div>'
+    +'<div style="text-align:center;font-weight:800;color:'+totMc+'">'+(totMar!=null?totMar.toFixed(1)+'%':'&mdash;')+'</div>'
+    +'<div style="text-align:center;font-weight:700;color:#1B2B3A">'+(totTJM>0?fEur(Math.round(totTJM)):'&mdash;')+'</div>'
+    +'<div></div></div>';
+
+  return '<details style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;overflow:hidden"'+(dSort?' open':'')+'>'
+    +'<summary style="display:flex;align-items:center;gap:8px;padding:14px 18px;cursor:pointer;font-size:14px;font-weight:800;color:#0f172a;list-style:none;user-select:none" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'
+    +'\uD83D\uDCCA<span style="flex:1;margin-left:8px">KPIs par Directeur</span>'
+    +'<span style="font-size:11px;font-weight:700;background:#e2e8f0;color:#475569;padding:1px 8px;border-radius:99px;margin-right:6px">'+dirList.length+' directeurs</span>'
+    +'<span style="font-size:11px;color:#94a3b8">&#x25be;</span></summary>'
+    +'<div style="'+colDef+';padding:10px 16px;background:#f8fafc;border-top:1px solid #e2e8f0">'
+    +'<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em">Directeur</div>'
+    +'<div style="text-align:center">'+dSortBtn('ca','CA')+'</div>'
+    +'<div style="text-align:center">'+dSortBtn('marge','Marge')+'</div>'
+    +'<div style="text-align:center">'+dSortBtn('tjm','TJM moy.')+'</div>'
+    +'<div></div></div>'
+    +dirCards
     +totalRow
-    +(rows.length?"":"<tr><td colspan=\"4\" class=\"emp\">Aucune donn\u00e9e sur la p\u00e9riode</td></tr>")
-    +'</tbody></table></div></div>';
+    +'</details>';
 }
+
 
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    TEMPLATE - LEAVES
@@ -2625,6 +2676,11 @@ function bind(){
       else if(a==='kpi-sort'){
         if(S.kpiSort===id){S.kpiSortAsc=!S.kpiSortAsc;}
         else{S.kpiSort=id;S.kpiSortAsc=false;}
+        render();
+      }
+      else if(a==='kpi-dir-sort'){
+        if(S.kpiDirSort===id){S.kpiDirSortAsc=!S.kpiDirSortAsc;}
+        else{S.kpiDirSort=id;S.kpiDirSortAsc=false;}
         render();
       }
       else if(a==='am'){
