@@ -687,10 +687,11 @@ function tSB(){
       {id:'param',     ic:'\uD83D\uDCA1',lb:'Pr\u00e9conisations'}
     ];
     if(S.role==='gestionnaire')NAV.push({id:'directeurs',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
+    if(S.role==='gestionnaire')NAV.push({id:'kpis_dir',ic:'\uD83D\uDCCA',lb:'KPIs Directeurs'});
     if(S.role==='directeur')NAV.push({id:'admin',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
     NAV.splice(4,0,{id:'activite',ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'});
   }
-  var alC=S.miss.filter(function(m){var s=mSt(m);return s==='critical'||s==='soon';}).length;
+  var alC=(S.approvals||[]).filter(function(r){return r.status==='pending'&&(S.role!=='directeur'||r.dirName===S.dirName);}).length;
   var fyOpts=[CFY-2,CFY-1,CFY,CFY+1].map(function(fy){return '<option value="'+fy+'"'+(fy===S.year?' selected':'')+'>'+fyLbl(fy)+'</option>';}).join('');
   var nav=NAV.map(function(n){
     return '<button class="nb'+(S.tab===n.id?' act':'')+'" data-nav="'+n.id+'">'
@@ -1462,17 +1463,98 @@ function tKPIs(){
       }).join('')+'</div>';
   }).join('');
 
+  /* ── KPIs par consultant : tableau déroulable ── */
+  var consKpiRows=ks.map(function(x){
+    var k=x.k,c=x.c;
+    var mc=k.om!=null?(k.om>=30?'#16a34a':k.om>=15?'#d97706':'#dc2626'):'#94a3b8';
+    return '<tr>'
+      +'<td><div style="font-weight:600;font-size:13px;color:#0f172a">'+esc(c.name)+'</div>'
+      +'<div style="font-size:11px;color:#94a3b8">'+esc(c.title)+'</div></td>'
+      +'<td class="tc" style="font-weight:800;font-size:13px;color:#0f172a">'+fEur(k.rev)+'</td>'
+      +'<td class="tc" style="font-weight:800;color:'+mc+'">'+(k.om!=null?k.om.toFixed(1)+'%':'&mdash;')+'</td>'
+      +'<td class="tc" style="font-weight:700;color:#374151">'+(k.avgT>0?fEur(k.avgT):'&mdash;')+'</td>'
+      +'<td class="tc"><div style="display:inline-block;background:'+(k.sr>=80?'#f0fdf4':k.sr>=50?'#fffbeb':'#fff1f2')+';color:'+(k.sr>=80?'#16a34a':k.sr>=50?'#d97706':'#dc2626')+';padding:2px 10px;border-radius:99px;font-size:12px;font-weight:700">'+k.sr.toFixed(0)+'%</div></td>'
+      +'</tr>';
+  }).join('');
+
+  var consKpiSection='<details style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;overflow:hidden">'
+    +'<summary style="display:flex;align-items:center;gap:8px;padding:14px 18px;cursor:pointer;font-size:14px;font-weight:800;color:#0f172a;list-style:none;user-select:none" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'
+    +'\uD83D\uDCCB<span style="flex:1;margin-left:8px">KPIs par Consultant</span>'
+    +'<span style="font-size:11px;font-weight:700;background:#e2e8f0;color:#475569;padding:1px 8px;border-radius:99px;margin-right:6px">'+ks.length+' consultants</span>'
+    +'<span style="font-size:11px;color:#94a3b8">&#x25be;</span></summary>'
+    +'<div style="padding:0 0 4px"><table>'
+    +'<thead><tr><th>Consultant</th><th class="tc">CA</th><th class="tc">Marge</th><th class="tc">TJM moy.</th><th class="tc">Staffing</th></tr></thead>'
+    +'<tbody>'+consKpiRows+(consKpiRows?'':'<tr><td colspan="5" class="emp">Aucune donn\u00e9e sur la p\u00e9riode</td></tr>')
+    +'</tbody></table></div></details>';
+
   return '<div class="vw">'
     +'<div style="margin-bottom:24px"><div class="pt">KPIs &mdash; '+fyLbl(S.year)+(S.quarter?' \u00b7 '+curRangeLbl():'')+'</div></div>'
     +hero
-    +'<div style="display:grid;grid-template-columns:1fr 300px;gap:16px;margin-bottom:24px">'
-    +'<div class="card" style="padding:20px"><div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:16px">Staffing par consultant (%)</div>'+srBars+'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 300px;gap:16px;margin-bottom:16px">'
     +'<div class="card" style="padding:20px"><div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:16px">Top clients &mdash; CA</div>'+clientHtml+'</div>'
+    +'<div class="card" style="padding:20px">'
+    +'<div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:8px">Staffing par consultant</div>'
+    +srBars+'</div>'
     +'</div>'
-    +cards
+    +consKpiSection
+    +'</div>';
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   TEMPLATE - KPIs DIRECTEURS (gestionnaire)
+══════════════════════════════════════════════════════════════ */
+function tKPIsDir(){
+  var allKS=buildKS();
+  var dirs={};
+  allKS.forEach(function(x){
+    var dir=x.c.dir||'(Sans directeur)';
+    if(!dirs[dir])dirs[dir]={ca:0,bills:0,margins:[],count:0};
+    var d=dirs[dir];
+    d.ca+=x.k.rev;
+    d.bills+=x.k.bill;
+    if(x.k.om!=null)d.margins.push(x.k.om);
+    d.count++;
+  });
+  var rows=Object.keys(dirs).sort().map(function(dir){
+    var d=dirs[dir];
+    var avgTJM=d.bills>0?d.ca/d.bills:0;
+    var avgMarge=d.margins.length?d.margins.reduce(function(s,v){return s+v;},0)/d.margins.length:null;
+    var mc=avgMarge!=null?(avgMarge>=30?'#16a34a':avgMarge>=15?'#d97706':'#dc2626'):'#94a3b8';
+    return '<tr>'
+      +'<td><div style="font-weight:700;color:#0f172a;font-size:13px">'+esc(dir)+'</div>'
+      +'<div style="font-size:11px;color:#94a3b8;margin-top:2px">'+d.count+' consultant'+(d.count>1?'s':'')+'</div></td>'
+      +'<td class="tc" style="font-weight:900;font-size:15px;color:#0f172a">'+fEur(d.ca)+'</td>'
+      +'<td class="tc" style="font-weight:700;color:#374151">'+( avgTJM>0?fEur(Math.round(avgTJM)):'&mdash;')+'</td>'
+      +'<td class="tc" style="font-weight:800;color:'+mc+'">'+( avgMarge!=null?avgMarge.toFixed(1)+'%':'&mdash;')+'</td>'
+      +'</tr>';
+  });
+  var totCA=Object.keys(dirs).reduce(function(s,k){return s+dirs[k].ca;},0);
+  var totBill=Object.keys(dirs).reduce(function(s,k){return s+dirs[k].bills;},0);
+  var allMar=[].concat.apply([],Object.keys(dirs).map(function(k){return dirs[k].margins;}));
+  var totTJM=totBill>0?totCA/totBill:0;
+  var totMar=allMar.length?allMar.reduce(function(s,v){return s+v;},0)/allMar.length:null;
+  var totMc=totMar!=null?(totMar>=30?'#16a34a':totMar>=15?'#d97706':'#dc2626'):'#94a3b8';
+  var totalRow='<tr style="background:#f0fdf4;border-top:2px solid #84CC16">'
+    +'<td><div style="font-weight:800;color:#1B2B3A">\u03a3 Total ESN</div></td>'
+    +'<td class="tc" style="font-weight:900;font-size:15px;color:#1B2B3A">'+fEur(totCA)+'</td>'
+    +'<td class="tc" style="font-weight:800;color:#1B2B3A">'+( totTJM>0?fEur(Math.round(totTJM)):'&mdash;')+'</td>'
+    +'<td class="tc" style="font-weight:800;color:'+totMc+'">'+( totMar!=null?totMar.toFixed(1)+'%':'&mdash;')+'</td>'
+    +'</tr>';
+  return '<div class="vw">'
+    +'<div style="margin-bottom:20px"><div class="pt">KPIs Directeurs &mdash; '+fyLbl(S.year)+(S.quarter?' \u00b7 '+curRangeLbl():'')+'</div>'
+    +'<div class="ps">Comparatif CA, TJM moyen et marge g\u00e9n\u00e9r\u00e9s par \u00e9quipe de directeur</div></div>'
     +'<div class="card ov">'
-    +'<div style="padding:14px 20px;border-bottom:1px solid #f1f5f9"><div style="font-size:13px;font-weight:700;color:#0f172a">D\u00e9tail des missions factur\u00e9es</div></div>'
-    +pmR+'</div></div>';
+    +'<table><thead><tr>'
+    +'<th>Directeur</th>'
+    +'<th class="tc">CA g\u00e9n\u00e9r\u00e9</th>'
+    +'<th class="tc">TJM moyen</th>'
+    +'<th class="tc">Marge moyenne</th>'
+    +'</tr></thead><tbody>'
+    +rows.join('')
+    +totalRow
+    +(rows.length?"":"<tr><td colspan=\"4\" class=\"emp\">Aucune donn\u00e9e sur la p\u00e9riode</td></tr>")
+    +'</tbody></table></div></div>';
 }
 
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
@@ -2413,7 +2495,7 @@ function render(){
   S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
   var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;
   document.getElementById('sb').innerHTML=tSB();
-  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():tParam();
+  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDir():tParam();
   var _ini=function(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();};
   var _av=S._userEmail?_ini(S._userEmail.split('@')[0].replace(/[._]/g,' ')):'?';
   var _pfBtn='<div id="prof-btn" style="position:absolute;top:12px;right:14px;z-index:50">'
