@@ -403,7 +403,7 @@ var S={
   consInvites:[], /* codes d'accès générés pour les consultants */
   adminCode:null, /* dernier code généré (affiché dans Admin) */
   year:CFY,quarter:null,modal:null,fmc:'all',fms:'all',fmt:'all',flc:'all',precs:{},
-  role:'gestionnaire',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,kpiDirOpen:{},invites:[],svpInvites:[],recruteurInvites:[],actCid:'',actMonth:'',_all:null,
+  role:'gestionnaire',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,kpiDirOpen:{},invites:[],svpInvites:[],recruteurInvites:[],vpDirMap:{},vpName:'',fvp:[],actCid:'',actMonth:'',_all:null,
   sbSt:'\uD83D\uDFE2 Sauvegarde locale active',
   sbSync:false,
   imp:null,
@@ -543,6 +543,15 @@ function visibleConsIds(){
   var base=(S._all&&S._all.cons)||S.cons;
   if(S.role==='directeur'){base=base.filter(function(c){return (c.dir||'')===S.dirName;});}
   else if(S.role==='consultant'){base=base.filter(function(c){return c.id===S.consId;});}
+  else if(S.role==='senior_vp'&&S.fvp&&S.fvp.length){
+    /* Filtrer par VP : on cherche les directeurs appartenant aux VPs sélectionnés */
+    var allowedDirs=[];
+    S.fvp.forEach(function(vpName){
+      var dirs=(S.vpDirMap||{})[vpName]||[];
+      dirs.forEach(function(d){if(allowedDirs.indexOf(d)<0)allowedDirs.push(d);});
+    });
+    if(allowedDirs.length)base=base.filter(function(c){return allowedDirs.indexOf(c.dir||'')>=0;});
+  }
   else if(S.fdir&&S.fdir.length){base=base.filter(function(c){return S.fdir.indexOf(c.dir||'')>=0;});}
   var s={};base.forEach(function(c){s[c.id]=1;});return s;
 }
@@ -713,6 +722,21 @@ function tSB(){
     dirBlock='<div class="syr"><div class="syr-lbl">Mon profil</div>'
       +'<div style="color:#a5b4fc;font-size:12px;padding:3px 2px;font-weight:600">'+esc(myC.name||S._userEmail||'\u2014')+'</div>'
       +'<div style="color:#64748b;font-size:11px;padding:1px 2px">'+esc(myC.title||'')+'</div></div>';
+  }else if(S.role==='senior_vp'){
+    /* Filtre par Vice Président */
+    var _vps=(S.svpInvites||[]).map(function(iv){return iv.vp_name||iv.email||'';}).filter(Boolean);
+    var _vNone=(!S.fvp||!S.fvp.length);
+    var _vItems=_vps.map(function(vp){
+      var on=S.fvp&&S.fvp.indexOf(vp)>=0;
+      return '<label style="display:flex;align-items:center;gap:7px;padding:2px;color:#cbd5e1;font-size:12px;cursor:pointer">'
+        +'<input type="checkbox" data-vp="'+esc(vp)+'"'+(on?' checked':'')+' style="accent-color:#84CC16;flex-shrink:0">'+esc(vp)+'</label>';
+    }).join('');
+    dirBlock='<div class="syr"><div class="syr-lbl">Vice Président'+(_vNone?'':' ('+S.fvp.length+')')+'</div>'
+      +(_vps.length?_vItems+(_vNone
+          ?'<div style="font-size:10px;color:#475569;margin-top:3px">Tous affichés</div>'
+          :'<div data-vp-clear style="font-size:10px;color:#60a5fa;margin-top:3px;cursor:pointer;text-decoration:underline">Tout afficher</div>')
+        :'<div style="font-size:11px;color:#475569">Aucun VP invité</div>')
+      +'</div>';
   }else{
     var _none=(!S.fdir||!S.fdir.length);
     var _items=_dirs.map(function(r){
@@ -2701,6 +2725,17 @@ function bind(){
   };})(rcb[rk]);}
   var rclr=document.querySelector('[data-dir-clear]');
   if(rclr)rclr.onclick=function(){S.fdir=[];render();};
+  /* VP filter (senior_vp) */
+  var vpcb=document.querySelectorAll('[data-vp]');
+  for(var vi=0;vi<vpcb.length;vi++){(function(cb){cb.onchange=function(){
+    var v=cb.getAttribute('data-vp');
+    if(!S.fvp)S.fvp=[];
+    if(cb.checked){if(S.fvp.indexOf(v)<0)S.fvp.push(v);}
+    else{S.fvp=S.fvp.filter(function(x){return x!==v;});}
+    render();
+  };})(vpcb[vi]);}
+  var vpclr=document.querySelector('[data-vp-clear]');
+  if(vpclr)vpclr.onclick=function(){S.fvp=[];render();};
   /* all data-act */
   var bs=document.querySelectorAll('[data-act]:not([data-act="recopen"]):not([data-act="recf-st"])');
   for(var j=0;j<bs.length;j++){(function(b){
@@ -3175,6 +3210,7 @@ function bind(){
         sbInviteCons(aEmail,aName).then(function(r){
           if(r&&r.error){alert('Erreur\u00a0: '+(r.error.message||r.error));return;}
           loadConsInvites().then(render);
+          if(S.role==='senior_vp')loadSVPInvites().then(function(){});
         });
       }
       else if(a==='admin-cons-del'){
@@ -3423,7 +3459,7 @@ async function loadInvites(){
 }
 async function sbInvite(email,name){
   if(!sb||!SB_CID)return{error:{message:'Supabase non configuré'}};
-  return await sb.from('directeur_invites').insert({company_id:SB_CID,email:email,directeur_name:name,status:'pending'});
+  return await sb.from('directeur_invites').insert({company_id:SB_CID,email:email,directeur_name:name,vp_name:S.vpName||null,status:'pending'});
 }
 async function sbDelInvite(id){
   if(!sb)return;
@@ -3438,6 +3474,18 @@ async function loadSVPInvites(){
     if(rv.data)S.svpInvites=rv.data;
     var rr=await sb.from('recruteur_invites').select('*').eq('company_id',SB_CID).order('created_at');
     if(rr.data)S.recruteurInvites=rr.data;
+    /* Charger le mapping VP → directeurs (via directeur_invites.vp_name) */
+    var rd=await sb.from('directeur_invites').select('directeur_name,vp_name').eq('company_id',SB_CID).not('vp_name','is',null);
+    if(rd.data){
+      S.vpDirMap={};
+      rd.data.forEach(function(r){
+        if(r.vp_name){
+          if(!S.vpDirMap[r.vp_name])S.vpDirMap[r.vp_name]=[];
+          if(r.directeur_name&&S.vpDirMap[r.vp_name].indexOf(r.directeur_name)<0)
+            S.vpDirMap[r.vp_name].push(r.directeur_name);
+        }
+      });
+    }
   }catch(e){console.warn('svp invites load:',e);}
 }
 async function sbSVPInviteVP(email,name){
@@ -3558,6 +3606,8 @@ async function initApp(){
       if(pr.data&&pr.data.company_id){
         SB_CID=pr.data.company_id;
         S.role=pr.data.role==='directeur'?'directeur':pr.data.role==='consultant'?'consultant':pr.data.role==='senior_vp'?'senior_vp':pr.data.role==='recruteur'?'recruteur':'gestionnaire';
+          /* Nom du VP pour l'étiqueter dans directeur_invites */
+          if(S.role==='gestionnaire'&&pr.data.first_name){S.vpName=(pr.data.first_name+' '+(pr.data.last_name||'')).trim();}
         S.dirName=pr.data.directeur_name||'';
         S.consId=pr.data.cons_id||null;
         if(S.role==='consultant'&&S.consId)S.tab='activite';
