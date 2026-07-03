@@ -403,7 +403,7 @@ var S={
   consInvites:[], /* codes d'accès générés pour les consultants */
   adminCode:null, /* dernier code généré (affiché dans Admin) */
   year:CFY,quarter:null,modal:null,fmc:'all',fms:'all',fmt:'all',flc:'all',precs:{},
-  role:'gestionnaire',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,kpiDirOpen:{},invites:[],actCid:'',actMonth:'',_all:null,
+  role:'gestionnaire',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,kpiDirOpen:{},invites:[],svpInvites:[],recruteurInvites:[],actCid:'',actMonth:'',_all:null,
   sbSt:'\uD83D\uDFE2 Sauvegarde locale active',
   sbSync:false,
   imp:null,
@@ -424,7 +424,7 @@ function loadDemoData(){
   S.role='gestionnaire';
   S.year=2026;
   S.quarter=null;
-  S.tab='kpis';
+  S.tab=S.role==='consultant'?'activite':S.role==='recruteur'?'recrutement':'kpis';
   S.cons=[
     {id:'d1',name:'Sophie Martin',   title:'Consultante Senior',scr:520,email:'s.martin@demo.fr',   dir:'Thomas Bernard',arrive:'2024-10-01',depart:null},
     {id:'d2',name:'Lucas Dupont',    title:'Architecte Cloud',  scr:610,email:'l.dupont@demo.fr',   dir:'Thomas Bernard',arrive:'2024-10-01',depart:null},
@@ -666,7 +666,9 @@ function genRecs(goal){
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function tSB(){
   var NAV;
-  if(S.role==='consultant'){
+  if(S.role==='recruteur'){
+    NAV=[{id:'recrutement',ic:'\uD83C\uDFAF',lb:'Recrutement'}];
+  }else if(S.role==='consultant'){
     /* Vue consultant : onglets réduits uniquement sur ses données */
     NAV=[
       {id:'activite',   ic:'\uD83D\uDCC5',lb:'Activit\u00e9'},
@@ -689,9 +691,10 @@ function tSB(){
     if(S.role==='gestionnaire')NAV.push({id:'directeurs',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
 
     if(S.role==='directeur')NAV.push({id:'admin',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
+    if(S.role==='senior_vp')NAV.push({id:'svp_acces',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
     NAV.splice(4,0,{id:'activite',ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'});
   }
-  var alC=(S.approvals||[]).filter(function(r){return r.status==='pending'&&(S.role!=='directeur'||r.dirName===S.dirName);}).length;
+  var alC=S.role==='directeur'?(S.approvals||[]).filter(function(r){return r.status==='pending'&&r.dirName===S.dirName;}).length:0;
   var fyOpts=[CFY-2,CFY-1,CFY,CFY+1].map(function(fy){return '<option value="'+fy+'"'+(fy===S.year?' selected':'')+'>'+fyLbl(fy)+'</option>';}).join('');
   var nav=NAV.map(function(n){
     return '<button class="nb'+(S.tab===n.id?' act':'')+'" data-nav="'+n.id+'">'
@@ -1508,7 +1511,7 @@ function tKPIs(){
     +srBars+'</div>'
     +'<div class="card" style="padding:16px"><div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:12px">Top clients &mdash; CA</div>'+clientHtml+'</div>'
     +'</div>'
-    +(S.role==='gestionnaire'?tKPIsDirSection():consKpiSection)
+    +(S.role==='gestionnaire'||S.role==='senior_vp'?tKPIsDirSection():consKpiSection)
     +'</div>';
 }
 
@@ -1751,6 +1754,43 @@ function tLeaves(){
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    TEMPLATE - PARAMÉTRAGE & PRÉCONISATIONS
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═ */
+/* TEMPLATE - SVP ACCÈS */
+/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═/* ═ */
+function tSVPAcces(){
+  if(S.role!=='senior_vp')return '<div class="emp">Accès réservé au Sénior VP.</div>';
+  var sbOn=!!(sb&&SB_CID);
+  var vpRows=(S.svpInvites||[]).map(function(iv){
+    var st=iv.status==='active'?'<span class="badge bgrn">\u2713 Compte cr\u00e9\u00e9</span>':'<span class="badge bamb">\u23f3 En attente</span>';
+    return '<tr><td>'+esc(iv.email)+'</td><td style="font-weight:600">'+esc(iv.vp_name||'')+'</td><td>'+st+'</td><td class="tr"><button class="lr" data-act="svp-del-vp" data-id="'+esc(iv.id)+'">Suppr.</button></td></tr>';
+  }).join('');
+  var recRows=(S.recruteurInvites||[]).map(function(iv){
+    var st=iv.status==='active'?'<span class="badge bgrn">\u2713 Compte cr\u00e9\u00e9</span>':'<span class="badge bamb">\u23f3 En attente</span>';
+    return '<tr><td>'+esc(iv.email)+'</td><td style="font-weight:600">'+esc(iv.recruteur_name||'')+'</td><td>'+st+'</td><td class="tr"><button class="lr" data-act="svp-del-rec" data-id="'+esc(iv.id)+'">Suppr.</button></td></tr>';
+  }).join('');
+  return '<div class="vw">'
+    +'<div style="margin-bottom:20px"><div class="pt">Gestion des acc\u00e8s</div><div class="ps">Invitez vos Vice Pr\u00e9sidents et Recruteurs</div></div>'
+    +'<div class="card" style="padding:20px;margin-bottom:16px"><h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">\uD83D\uDC54 Inviter un Vice Pr\u00e9sident</h3>'
+    +(sbOn?'':'<div class="ac acs" style="margin-bottom:14px"><div style="font-size:12px">Connectez Supabase pour inviter des Vice Pr\u00e9sidents.</div></div>')
+    +'<div class="g2"><div class="fd"><label class="fl">Email *</label><input class="ic" id="svp-vp-email" type="email" placeholder="prenom.nom@exemple.com"></div>'
+    +'<div class="fd"><label class="fl">Nom *</label><input class="ic" id="svp-vp-name" placeholder="ex : Marie Laurent"></div></div>'
+    +'<button class="bp" data-act="svp-add-vp"'+(sbOn?'':' disabled style="opacity:.5"')+'>+ Inviter ce Vice Pr\u00e9sident</button>'
+    +'<p class="fh" style="margin-top:8px">Le Vice Pr\u00e9sident s\'inscrit sur konsilys.fr avec son email — rattach\u00e9 automatiquement \u00e0 votre organisation.</p></div>'
+    +'<div class="card ov" style="margin-bottom:16px"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">Vice Pr\u00e9sidents invit\u00e9s</div>'
+    +'<table><thead><tr><th>Email</th><th>Nom</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
+    +'<tbody>'+vpRows+(vpRows?'':'<tr><td colspan="4" class="emp">Aucun Vice Pr\u00e9sident invit\u00e9.</td></tr>')+'</tbody></table></div>'
+    +'<div class="card" style="padding:20px;margin-bottom:16px"><h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">\uD83C\uDFAF Inviter un Recruteur</h3>'
+    +(sbOn?'':'<div class="ac acs" style="margin-bottom:14px"><div style="font-size:12px">Connectez Supabase pour inviter des Recruteurs.</div></div>')
+    +'<div class="g2"><div class="fd"><label class="fl">Email *</label><input class="ic" id="svp-rec-email" type="email" placeholder="prenom.nom@exemple.com"></div>'
+    +'<div class="fd"><label class="fl">Nom *</label><input class="ic" id="svp-rec-name" placeholder="ex : Thomas Bernard"></div></div>'
+    +'<button class="bp" data-act="svp-add-rec"'+(sbOn?'':' disabled style="opacity:.5"')+'>+ Inviter ce Recruteur</button>'
+    +'<p class="fh" style="margin-top:8px">Le Recruteur aura acc\u00e8s uniquement \u00e0 l\'onglet Recrutement.</p></div>'
+    +'<div class="card ov"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">Recruteurs invit\u00e9s</div>'
+    +'<table><thead><tr><th>Email</th><th>Nom</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
+    +'<tbody>'+recRows+(recRows?'':'<tr><td colspan="4" class="emp">Aucun recruteur invit\u00e9.</td></tr>')+'</tbody></table></div>'
+    +'</div>';
+}
+
 function tParam(){
   var ks=buildKS();
   var totR=ks.reduce(function(s,x){return s+x.k.rev;},0);
@@ -1838,7 +1878,7 @@ function tAdmin(){
 }
 
 function tDirecteurs(){
-  if(S.role!=='gestionnaire')return '<div class="emp">Accès réservé au gestionnaire.</div>';
+  if(S.role!=='gestionnaire'&&S.role!=='senior_vp')return '<div class="emp">Accès réservé.</div>';
   var sbOn=!!(sb&&SB_CID);
   var allC=(S._all&&S._all.cons)||S.cons;
   var _d=[];allC.forEach(function(c){var x=c.dir||'';if(x&&_d.indexOf(x)<0)_d.push(x);});_d.sort();
@@ -1853,7 +1893,7 @@ function tDirecteurs(){
       +'<td class="tr"><button class="lr" data-act="inv-del" data-id="'+esc(iv.id)+'">Suppr.</button></td></tr>';
   }).join('');
   return '<div class="vw">'
-    +'<div><div class="pt">Directeurs & accès</div><div class="ps">Gérez les comptes directeurs · le gestionnaire voit toutes les équipes, chaque directeur uniquement la sienne</div></div>'
+    +'<div><div class="pt">Directeurs & accès</div><div class="ps">Gérez les comptes directeurs · le Vice Président voit toutes les équipes de ses directeurs</div></div>'
     +'<div class="card" style="padding:20px">'
     +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">Inviter un directeur</h3>'
     +(sbOn?'':'<div class="ac acs" style="margin-bottom:14px"><div style="font-size:12px">Connectez Supabase (voir esn_login.html) pour créer des comptes. En mode démo, cette section est en prévisualisation seule.</div></div>')
@@ -2574,7 +2614,7 @@ function render(){
   S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
   var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;
   document.getElementById('sb').innerHTML=tSB();
-  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDir():tParam();
+  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDir():S.tab==='svp_acces'?tSVPAcces():tParam();
   var _ini=function(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();};
   var _av=S._userEmail?_ini(S._userEmail.split('@')[0].replace(/[._]/g,' ')):'?';
   var _pfBtn='<div id="prof-btn" style="position:absolute;top:12px;right:14px;z-index:50">'
@@ -2609,6 +2649,7 @@ function bind(){
     S.tab=nv;
     /* Rafraîchir les données en temps réel sur les onglets sensibles */
     if(nv==='admin'){loadConsInvites().then(function(){render();});}
+    else if(nv==='svp_acces'){loadSVPInvites().then(function(){render();});}
     else if(nv==='dashboard'&&S.role==='directeur'){loadApprovals().then(function(){render();});}
     else{render();}
   };})(nbs[i]);}
@@ -3104,6 +3145,30 @@ function bind(){
       else if(a==='inv-del'){
         if(confirm('Supprimer ce directeur / cette invitation ?')){sbDelInvite(id).then(function(){loadInvites().then(render);});}
       }
+      else if(a==='svp-add-vp'){
+        var em2=(document.getElementById('svp-vp-email')||{}).value||'';
+        var nm2=(document.getElementById('svp-vp-name')||{}).value||'';
+        if(!em2||!nm2){alert('Email et nom requis.');return;}
+        sbSVPInviteVP(em2,nm2).then(function(r){
+          if(r&&r.error){alert('Erreur : '+r.error.message);return;}
+          loadSVPInvites().then(render);
+        });
+      }
+      else if(a==='svp-del-vp'){
+        if(confirm('Supprimer cette invitation Vice Pr\u00e9sident ?')){sbSVPDelVP(id).then(function(){loadSVPInvites().then(render);});}
+      }
+      else if(a==='svp-add-rec'){
+        var em3=(document.getElementById('svp-rec-email')||{}).value||'';
+        var nm3=(document.getElementById('svp-rec-name')||{}).value||'';
+        if(!em3||!nm3){alert('Email et nom requis.');return;}
+        sbSVPInviteRec(em3,nm3).then(function(r){
+          if(r&&r.error){alert('Erreur : '+r.error.message);return;}
+          loadSVPInvites().then(render);
+        });
+      }
+      else if(a==='svp-del-rec'){
+        if(confirm('Supprimer cette invitation Recruteur ?')){sbSVPDelRec(id).then(function(){loadSVPInvites().then(render);});}
+      }
       else if(a==='admin-cons-add'){
         var aEmail=gv('admin-cons-email'),aName=gv('admin-cons-name');
         if(!aEmail||!aName){alert('Email et nom du consultant requis.');return;}
@@ -3352,7 +3417,7 @@ async function sbDel(tbl,id){
 
 /* ── Directeurs : invitations (le gestionnaire pré-enregistre, le trigger rattache à l'inscription) ── */
 async function loadInvites(){
-  if(!sb||!SB_CID||S.role!=='gestionnaire')return;
+  if(!sb||!SB_CID||(S.role!=='gestionnaire'&&S.role!=='senior_vp'))return;
   try{var r=await sb.from('directeur_invites').select('*').eq('company_id',SB_CID).order('created_at');if(r.data)S.invites=r.data;}
   catch(e){console.warn('invites load:',e);}
 }
@@ -3364,6 +3429,32 @@ async function sbDelInvite(id){
   if(!sb)return;
   var r=await sb.from('directeur_invites').delete().eq('id',id);
   if(r.error)console.warn('invite del:',r.error.message);
+}
+/* ── SVP : invitations Vice Présidents + Recruteurs ── */
+async function loadSVPInvites(){
+  if(!sb||!SB_CID||S.role!=='senior_vp')return;
+  try{
+    var rv=await sb.from('vp_invites').select('*').eq('company_id',SB_CID).order('created_at');
+    if(rv.data)S.svpInvites=rv.data;
+    var rr=await sb.from('recruteur_invites').select('*').eq('company_id',SB_CID).order('created_at');
+    if(rr.data)S.recruteurInvites=rr.data;
+  }catch(e){console.warn('svp invites load:',e);}
+}
+async function sbSVPInviteVP(email,name){
+  if(!sb||!SB_CID)return{error:{message:'Supabase non configur\u00e9'}};
+  return await sb.from('vp_invites').insert({company_id:SB_CID,email:email,vp_name:name,status:'pending'});
+}
+async function sbSVPDelVP(id){
+  if(!sb)return;
+  await sb.from('vp_invites').delete().eq('id',id);
+}
+async function sbSVPInviteRec(email,name){
+  if(!sb||!SB_CID)return{error:{message:'Supabase non configur\u00e9'}};
+  return await sb.from('recruteur_invites').insert({company_id:SB_CID,email:email,recruteur_name:name,status:'pending'});
+}
+async function sbSVPDelRec(id){
+  if(!sb)return;
+  await sb.from('recruteur_invites').delete().eq('id',id);
 }
 /* Même mécanisme pour les consultants */
 async function loadConsInvites(){
@@ -3466,7 +3557,7 @@ async function initApp(){
       var pr=await sb.from('profiles').select('*').eq('id',uid2).single();
       if(pr.data&&pr.data.company_id){
         SB_CID=pr.data.company_id;
-        S.role=(pr.data.role==='directeur')?'directeur':(pr.data.role==='consultant'?'consultant':'gestionnaire');
+        S.role=pr.data.role==='directeur'?'directeur':pr.data.role==='consultant'?'consultant':pr.data.role==='senior_vp'?'senior_vp':pr.data.role==='recruteur'?'recruteur':'gestionnaire';
         S.dirName=pr.data.directeur_name||'';
         S.consId=pr.data.cons_id||null;
         if(S.role==='consultant'&&S.consId)S.tab='activite';

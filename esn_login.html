@@ -202,12 +202,32 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
         <span style="margin-left:auto;font-size:10px;opacity:.7">&#x2192;</span>
       </a>
 
-      <!-- Abonnement Gestionnaire -->
-      <a href="#" id="btn-sub-gest" class="left-cta left-cta-sub" onclick="openStore('gestionnaire');return false;">
+      <!-- Abonnement Vice Président -->
+      <a href="#" id="btn-sub-gest" class="left-cta left-cta-sub" onclick="openStore('vp');return false;">
         <span style="font-size:18px">&#x1F4CA;</span>
         <div>
-          <div style="font-weight:700;font-size:14px">Abonnement Gestionnaire</div>
+          <div style="font-weight:700;font-size:14px">Abonnement Vice Président</div>
           <div style="font-size:11px;opacity:.75">Vision globale multi-directeurs</div>
+        </div>
+        <span style="margin-left:auto;font-size:10px;opacity:.7">&#x2192;</span>
+      </a>
+
+      <!-- Abonnement Sénior VP -->
+      <a href="#" id="btn-sub-svp" class="left-cta left-cta-sub" onclick="openStore('senior_vp');return false;">
+        <span style="font-size:18px">&#x1F451;</span>
+        <div>
+          <div style="font-weight:700;font-size:14px">Abonnement S&eacute;nior VP</div>
+          <div style="font-size:11px;opacity:.75">Vision multi-VP &amp; gestion compl&egrave;te</div>
+        </div>
+        <span style="margin-left:auto;font-size:10px;opacity:.7">&#x2192;</span>
+      </a>
+
+      <!-- Abonnement Recruteur -->
+      <a href="#" id="btn-sub-rec" class="left-cta left-cta-sub" onclick="openStore('recruteur');return false;">
+        <span style="font-size:18px">&#x1F50D;</span>
+        <div>
+          <div style="font-weight:700;font-size:14px">Abonnement Recruteur</div>
+          <div style="font-size:11px;opacity:.75">Acc&egrave;s pipeline recrutement</div>
         </div>
         <span style="margin-left:auto;font-size:10px;opacity:.7">&#x2192;</span>
       </a>
@@ -218,6 +238,26 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
         <div>
           <div style="font-weight:700;font-size:14px">Abonnement Consultant</div>
           <div style="font-size:11px;opacity:.75">Suivi perso &amp; approbations</div>
+        </div>
+        <span style="margin-left:auto;font-size:10px;opacity:.7">&#x2192;</span>
+      </a>
+
+      <!-- Abonnement Sénior VP -->
+      <a href="#" id="btn-sub-svp" class="left-cta left-cta-sub" onclick="openStore('senior_vp');return false;">
+        <span style="font-size:18px">&#x1F3C6;</span>
+        <div>
+          <div style="font-weight:700;font-size:14px">Abonnement Sénior VP</div>
+          <div style="font-size:11px;opacity:.75">Multi-VP &amp; pilotage global</div>
+        </div>
+        <span style="margin-left:auto;font-size:10px;opacity:.7">&#x2192;</span>
+      </a>
+
+      <!-- Abonnement Recruteur -->
+      <a href="#" id="btn-sub-rec" class="left-cta left-cta-sub" onclick="openStore('recruteur');return false;">
+        <span style="font-size:18px">&#x1F50D;</span>
+        <div>
+          <div style="font-weight:700;font-size:14px">Abonnement Recruteur</div>
+          <div style="font-size:11px;opacity:.75">Accès pipeline de recrutement</div>
         </div>
         <span style="margin-left:auto;font-size:10px;opacity:.7">&#x2192;</span>
       </a>
@@ -314,11 +354,6 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
       <div class="fd">
         <label for="s-lic">Code de licence <span id="lic-optional" style="display:none;font-weight:400;color:#94a3b8">(optionnel si invit&eacute; par votre directeur)</span></label>
         <input class="inp" type="text" id="s-lic" placeholder="ex : KNS-XXXX-XXXX" autocomplete="off" style="letter-spacing:.05em;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
-        <p class="fd-hint" style="font-size:11px;color:#94a3b8;margin-top:4px">
-          Requis si vous &ecirc;tes directeur ou gestionnaire. 
-          <strong>Consultant\u00a0: laissez vide</strong> si votre directeur vous a invit&eacute; avec votre email.
-          <a href="#" onclick="openStore('directeur');return false;" style="color:#2563eb">S&apos;abonner &rarr;</a>
-        </p>
         <p class="err-msg" id="e-s-lic">Code de licence invalide ou d&eacute;j&agrave; utilis&eacute;</p>
       </div>
       <label class="cgu-row">
@@ -536,10 +571,16 @@ async function doLogin() {
 var STORE_URL_DIRECTEUR   = '#';  /* ex: 'https://buy.stripe.com/xxx' */
 var STORE_URL_GESTIONNAIRE= '#';  /* ex: 'https://buy.stripe.com/yyy' */
 var STORE_URL_CONSULTANT  = '#';  /* ex: 'https://buy.stripe.com/zzz' */
+var STORE_URL_SENIOR_VP   = '#';  /* ex: 'https://buy.stripe.com/svp' */
+var STORE_URL_RECRUTEUR   = '#';  /* ex: 'https://buy.stripe.com/rec' */
+var STORE_URL_SENIOR_VP   = '#';  /* ex: 'https://buy.stripe.com/svp' */
+var STORE_URL_RECRUTEUR   = '#';  /* ex: 'https://buy.stripe.com/rec' */
 
 function openStore(role) {
-  var url = role === 'gestionnaire' ? STORE_URL_GESTIONNAIRE
+  var url = role === 'vp'           ? STORE_URL_GESTIONNAIRE
           : role === 'consultant'   ? STORE_URL_CONSULTANT
+          : role === 'senior_vp'   ? STORE_URL_SENIOR_VP
+          : role === 'recruteur'   ? STORE_URL_RECRUTEUR
           : STORE_URL_DIRECTEUR;
   if (url === '#') {
     showBanner('ok', 'Boutique en ligne bient\u00f4t disponible\u00a0! Contactez-nous : contact@konsilys.fr');
@@ -588,6 +629,102 @@ async function doSignup() {
   }
 
   if (sb) {
+    /* ── 0. Vérifier si l'email est une invitation VP (créé par Senior VP) ── */
+    var vpInvite = null;
+    try {
+      var vpi = await sb.from('vp_invites').select('*').eq('email', em).eq('status','pending').maybeSingle();
+      vpInvite = (vpi && vpi.data) ? vpi.data : null;
+    } catch(e) { console.warn('vpInvite check:', e); }
+
+    if (vpInvite) {
+      var res = await sb.auth.signUp({
+        email: em, password: pw,
+        options: { data: { first_name: fn, last_name: ln, role: 'gestionnaire', company_id: vpInvite.company_id } }
+      });
+      loading('b-signup','sp-signup','lb-signup', false);
+      if (res.error) { showBanner('err', errMsg(res.error)); return; }
+      if (res.data && res.data.user) {
+        try { await sb.from('profiles').upsert({ id: res.data.user.id, company_id: vpInvite.company_id, role: 'gestionnaire', first_name: fn, last_name: ln }, { onConflict: 'id' }); } catch(e) {}
+        await sb.from('vp_invites').update({ status: 'active' }).eq('id', vpInvite.id);
+      }
+      if (res.data.user && !res.data.session) { showSuccess('Compte créé !', 'Vérifiez votre email ' + em + ' pour confirmer.', true); }
+      else { window.location.href = '/app'; }
+      return;
+    }
+
+    /* ── 0b. Vérifier si l'email est une invitation Recruteur ── */
+    var recInvite = null;
+    try {
+      var rci = await sb.from('recruteur_invites').select('*').eq('email', em).eq('status','pending').maybeSingle();
+      recInvite = (rci && rci.data) ? rci.data : null;
+    } catch(e) { console.warn('recInvite check:', e); }
+
+    if (recInvite) {
+      var res = await sb.auth.signUp({
+        email: em, password: pw,
+        options: { data: { first_name: fn, last_name: ln, role: 'recruteur', company_id: recInvite.company_id } }
+      });
+      loading('b-signup','sp-signup','lb-signup', false);
+      if (res.error) { showBanner('err', errMsg(res.error)); return; }
+      if (res.data && res.data.user) {
+        try { await sb.from('profiles').upsert({ id: res.data.user.id, company_id: recInvite.company_id, role: 'recruteur', first_name: fn, last_name: ln }, { onConflict: 'id' }); } catch(e) {}
+        await sb.from('recruteur_invites').update({ status: 'active' }).eq('id', recInvite.id);
+      }
+      if (res.data.user && !res.data.session) { showSuccess('Compte créé !', 'Vérifiez votre email ' + em + ' pour confirmer.', true); }
+      else { window.location.href = '/app'; }
+      return;
+    }
+
+    /* ── 0. Vérifier si email est une invitation VP (gestionnaire) ── */
+    var vpInvite = null;
+    try {
+      var vpi = await sb.from('vp_invites')
+        .select('*').eq('email', em).eq('status','pending').maybeSingle();
+      vpInvite = (vpi && vpi.data) ? vpi.data : null;
+    } catch(e) { console.warn('vpInvite check:', e); }
+
+    if (vpInvite) {
+      var resVP = await sb.auth.signUp({
+        email: em, password: pw,
+        options: { data: { first_name: fn, last_name: ln, role: 'gestionnaire', company_id: vpInvite.company_id } }
+      });
+      loading('b-signup','sp-signup','lb-signup', false);
+      if (resVP.error) { showBanner('err', errMsg(resVP.error)); return; }
+      if (resVP.data && resVP.data.user) {
+        try { await sb.from('profiles').upsert({ id: resVP.data.user.id, company_id: vpInvite.company_id, role: 'gestionnaire', first_name: fn, last_name: ln }, { onConflict: 'id' }); } catch(e) {}
+        await sb.from('vp_invites').update({ status: 'active' }).eq('id', vpInvite.id);
+      }
+      if (resVP.data.user && !resVP.data.session) {
+        showSuccess('Compte Vice Président créé !', 'Vérifiez votre email ' + em + ' pour confirmer.', true);
+      } else { window.location.href = '/app'; }
+      return;
+    }
+
+    /* ── 0b. Vérifier si email est une invitation recruteur ── */
+    var recInvite = null;
+    try {
+      var reci = await sb.from('recruteur_invites')
+        .select('*').eq('email', em).eq('status','pending').maybeSingle();
+      recInvite = (reci && reci.data) ? reci.data : null;
+    } catch(e) { console.warn('recInvite check:', e); }
+
+    if (recInvite) {
+      var resRec = await sb.auth.signUp({
+        email: em, password: pw,
+        options: { data: { first_name: fn, last_name: ln, role: 'recruteur', company_id: recInvite.company_id } }
+      });
+      loading('b-signup','sp-signup','lb-signup', false);
+      if (resRec.error) { showBanner('err', errMsg(resRec.error)); return; }
+      if (resRec.data && resRec.data.user) {
+        try { await sb.from('profiles').upsert({ id: resRec.data.user.id, company_id: recInvite.company_id, role: 'recruteur', first_name: fn, last_name: ln }, { onConflict: 'id' }); } catch(e) {}
+        await sb.from('recruteur_invites').update({ status: 'active' }).eq('id', recInvite.id);
+      }
+      if (resRec.data.user && !resRec.data.session) {
+        showSuccess('Compte Recruteur créé !', 'Vérifiez votre email ' + em + ' pour confirmer.', true);
+      } else { window.location.href = '/app'; }
+      return;
+    }
+
     /* ── 1. Vérifier si l'email est une invitation consultant ── */
     var consInvite = null;
     try {
