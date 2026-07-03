@@ -403,7 +403,7 @@ var S={
   consInvites:[], /* codes d'accès générés pour les consultants */
   adminCode:null, /* dernier code généré (affiché dans Admin) */
   year:CFY,quarter:null,modal:null,fmc:'all',fms:'all',fmt:'all',flc:'all',precs:{},
-  role:'gestionnaire',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],invites:[],actCid:'',actMonth:'',_all:null,
+  role:'gestionnaire',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,invites:[],actCid:'',actMonth:'',_all:null,
   sbSt:'\uD83D\uDFE2 Sauvegarde locale active',
   sbSync:false,
   imp:null,
@@ -687,7 +687,7 @@ function tSB(){
       {id:'param',     ic:'\uD83D\uDCA1',lb:'Pr\u00e9conisations'}
     ];
     if(S.role==='gestionnaire')NAV.push({id:'directeurs',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
-    if(S.role==='gestionnaire')NAV.push({id:'kpis_dir',ic:'\uD83D\uDCCA',lb:'KPIs Directeurs'});
+
     if(S.role==='directeur')NAV.push({id:'admin',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
     NAV.splice(4,0,{id:'activite',ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'});
   }
@@ -945,11 +945,10 @@ function tDash(){
     /* Cartes résumé — Approbations EN PREMIER, cliquable */
     +'<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">'
 
-    +'<a href="#approvals-section" style="background:'+(pCount>0?'#fef3c7':'#f8fafc')+';border:1px solid '+(pCount>0?'#fbbf24':'#e2e8f0')+';border-radius:12px;padding:16px 18px;text-decoration:none;cursor:pointer;display:block;transition:box-shadow .15s" '
-    +'onmouseover="this.style.boxShadow=\'0 4px 12px rgba(0,0,0,.1)\'" onmouseout="this.style.boxShadow=\'\'">'
+    +(S.role==='directeur'?'<a href="#approvals-section" style="background:'+(pCount>0?'#fef3c7':'#f8fafc')+';border:1px solid '+(pCount>0?'#fbbf24':'#e2e8f0')+';border-radius:12px;padding:16px 18px;text-decoration:none;cursor:pointer;display:block;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 4px 12px rgba(0,0,0,.1)\'" onmouseout="this.style.boxShadow=\'\'">'
     +'<div style="font-size:28px;font-weight:900;color:'+(pCount>0?'#b45309':'#64748b')+'">'+pCount+'</div>'
     +'<div style="font-size:12px;font-weight:700;color:#374151;margin-top:4px">Approbations</div>'
-    +'<div style="font-size:11px;color:#94a3b8">en attente \u2193</div></a>'
+    +'<div style="font-size:11px;color:#94a3b8">en attente \u2193</div></a>':'')
 
     +'<a href="#futurs-section" style="background:'+(futurCount>0?'#f0fdf4':'#f8fafc')+';border:1px solid '+(futurCount>0?'#bbf7d0':'#e2e8f0')+';border-radius:12px;padding:16px 18px;text-decoration:none;cursor:pointer;display:block;transition:box-shadow .15s" '
     +'onmouseover="this.style.boxShadow=\'0 4px 12px rgba(0,0,0,.1)\'" onmouseout="this.style.boxShadow=\'\'">'
@@ -1021,7 +1020,7 @@ function tDash(){
         +(futurRows||'<div style="font-size:13px;color:#94a3b8;padding:8px 0">Aucune arriv\u00e9e planifi\u00e9e.</div>')
         +'</div></details>';
     }())
-    +apprSection
+    +(S.role==='directeur'?apprSection:'')
     +'</div>';
 }
 function tTeams(){
@@ -1464,7 +1463,20 @@ function tKPIs(){
   }).join('');
 
   /* ── KPIs par consultant : tableau déroulable ── */
-  var consKpiRows=ks.map(function(x){
+  /* ── KPIs par consultant : tableau déroulable + tri par colonne ── */
+  var kSort=S.kpiSort||null,kAsc=S.kpiSortAsc||false;
+  var ksSorted=ks.slice().sort(function(a,b){
+    if(!kSort)return 0;
+    var va=kSort==='ca'?a.k.rev:kSort==='marge'?(a.k.om!=null?a.k.om:-999):kSort==='tjm'?(a.k.avgT||0):a.k.sr;
+    var vb=kSort==='ca'?b.k.rev:kSort==='marge'?(b.k.om!=null?b.k.om:-999):kSort==='tjm'?(b.k.avgT||0):b.k.sr;
+    return kAsc?va-vb:vb-va;
+  });
+  function sortTh(col,label){
+    var active=kSort===col;
+    var arrow=active?(kAsc?' ▲':' ▼'):'';
+    return '<th class="tc" style="cursor:pointer;user-select:none;color:'+(active?'#84CC16':'#94a3b8')+';font-weight:'+(active?800:600)+'" data-act="kpi-sort" data-id="'+col+'">'+label+arrow+'</th>';
+  }
+  var consKpiRows=ksSorted.map(function(x){
     var k=x.k,c=x.c;
     var mc=k.om!=null?(k.om>=30?'#16a34a':k.om>=15?'#d97706':'#dc2626'):'#94a3b8';
     return '<tr>'
@@ -1477,26 +1489,27 @@ function tKPIs(){
       +'</tr>';
   }).join('');
 
-  var consKpiSection='<details style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;overflow:hidden">'
-    +'<summary style="display:flex;align-items:center;gap:8px;padding:14px 18px;cursor:pointer;font-size:14px;font-weight:800;color:#0f172a;list-style:none;user-select:none" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'
+  var consKpiSection='<details style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;overflow:hidden"'+(kSort?' open':'')+'>'  
+    +'<summary style="display:flex;align-items:center;gap:8px;padding:14px 18px;cursor:pointer;font-size:14px;font-weight:800;color:#0f172a;list-style:none;user-select:none" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'  
     +'\uD83D\uDCCB<span style="flex:1;margin-left:8px">KPIs par Consultant</span>'
     +'<span style="font-size:11px;font-weight:700;background:#e2e8f0;color:#475569;padding:1px 8px;border-radius:99px;margin-right:6px">'+ks.length+' consultants</span>'
     +'<span style="font-size:11px;color:#94a3b8">&#x25be;</span></summary>'
     +'<div style="padding:0 0 4px"><table>'
-    +'<thead><tr><th>Consultant</th><th class="tc">CA</th><th class="tc">Marge</th><th class="tc">TJM moy.</th><th class="tc">Staffing</th></tr></thead>'
+    +'<thead><tr><th>Consultant</th>'+sortTh('ca','CA')+sortTh('marge','Marge')+sortTh('tjm','TJM moy.')+sortTh('sr','Staffing')+'</tr></thead>'
     +'<tbody>'+consKpiRows+(consKpiRows?'':'<tr><td colspan="5" class="emp">Aucune donn\u00e9e sur la p\u00e9riode</td></tr>')
     +'</tbody></table></div></details>';
 
   return '<div class="vw">'
     +'<div style="margin-bottom:24px"><div class="pt">KPIs &mdash; '+fyLbl(S.year)+(S.quarter?' \u00b7 '+curRangeLbl():'')+'</div></div>'
     +hero
-    +'<div style="display:grid;grid-template-columns:1fr 300px;gap:16px;margin-bottom:16px">'
-    +'<div class="card" style="padding:20px"><div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:16px">Top clients &mdash; CA</div>'+clientHtml+'</div>'
+    +'<div style="display:grid;grid-template-columns:3fr 200px;gap:16px;margin-bottom:16px">'
     +'<div class="card" style="padding:20px">'
-    +'<div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:8px">Staffing par consultant</div>'
+    +'<div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:8px">Staffing par consultant (%)</div>'
     +srBars+'</div>'
+    +'<div class="card" style="padding:16px"><div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:12px">Top clients &mdash; CA</div>'+clientHtml+'</div>'
     +'</div>'
     +consKpiSection
+    +(S.role==='gestionnaire'?'<div style="margin-top:4px">'+tKPIsDirSection()+'</div>':'')
     +'</div>';
 }
 
@@ -1504,7 +1517,7 @@ function tKPIs(){
 /* ══════════════════════════════════════════════════════════════
    TEMPLATE - KPIs DIRECTEURS (gestionnaire)
 ══════════════════════════════════════════════════════════════ */
-function tKPIsDir(){
+function tKPIsDirSection(){
   var allKS=buildKS();
   var dirs={};
   allKS.forEach(function(x){
@@ -2609,6 +2622,11 @@ function bind(){
         render();
       }
       else if(a==='fteams-reset'){S.fexp=[];S.fsec=[];render();}
+      else if(a==='kpi-sort'){
+        if(S.kpiSort===id){S.kpiSortAsc=!S.kpiSortAsc;}
+        else{S.kpiSort=id;S.kpiSortAsc=false;}
+        render();
+      }
       else if(a==='am'){
       var _now=new Date();
       S.modal={type:'mission',item:null,wmode:'rec',manualDays:[],
