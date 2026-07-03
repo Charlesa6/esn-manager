@@ -3556,8 +3556,6 @@ async function loadSB(){
       try{
         var rv=await sb.from('vp_invites').select('*').eq('company_id',SB_CID).order('created_at');
         if(rv.data)S.svpInvites=rv.data;
-        var rr=await sb.from('recruteur_invites').select('*').eq('company_id',SB_CID).order('created_at');
-        if(rr.data)S.recruteurInvites=rr.data;
         var rd=await sb.from('directeur_invites').select('directeur_name,vp_name').eq('company_id',SB_CID).not('vp_name','is',null);
         if(rd.data){
           S.vpDirMap={};
@@ -3571,6 +3569,11 @@ async function loadSB(){
         }
       }catch(e){console.warn('SVP invites load:',e);}
     }
+    /* Recruteurs : chargés pour tous les rôles (utilisé dans le modal candidat) */
+    try{
+      var rr=await sb.from('recruteur_invites').select('*').eq('company_id',SB_CID).order('created_at');
+      if(rr.data)S.recruteurInvites=rr.data;
+    }catch(e){console.warn('recruteur invites load:',e);}
     return S.cons.length>0;
   }catch(e){console.warn('Supabase load error:',e);return false;}
 }
