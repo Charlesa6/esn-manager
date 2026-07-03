@@ -756,13 +756,16 @@ async function doSignup() {
       return;
     }
 
-    /* ── 2. Création compte directeur (sans code de licence) ── */
+    /* ── 2. Création compte directeur ── */
     if (!co) { loading('b-signup','sp-signup','lb-signup', false); setErr('s-co','e-s-co','Requis'); return; }
+    /* Générer un company_id UUID côté client pour garantir l'isolation des données */
+    var newCid = crypto.randomUUID();
     var res2 = await sb.auth.signUp({
       email: em, password: pw,
       options: { data: {
         company_name: co, first_name: fn, last_name: ln,
-        role: 'directeur'
+        role: 'directeur',
+        company_id: newCid
       }}
     });
     loading('b-signup','sp-signup','lb-signup', false);
@@ -772,8 +775,15 @@ async function doSignup() {
       } else { showBanner('err', res2.error.message); }
       return;
     }
+    /* Créer company + profil avec le bon company_id */
+    if (res2.data && res2.data.user) {
+      try {
+        await sb.from('companies').insert({ id: newCid, name: co });
+        await sb.from('profiles').upsert({ id: res2.data.user.id, company_id: newCid, role: 'directeur', first_name: fn, last_name: ln }, { onConflict: 'id' });
+      } catch(e) { console.warn('company/profile:', e); }
+    }
     if (res2.data.user && !res2.data.session) {
-      showSuccess('Compte créé !', 'Vérifiez votre email ' + em + ' pour confirmer.', true);
+      showSuccess('Compte créé !', 'Vérifiez votre email ' + em + ' pour confirmer votre inscription.', true);
     } else { window.location.href = '/app'; }
   } else {
     await wait(800);
