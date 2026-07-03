@@ -403,7 +403,7 @@ var S={
   consInvites:[], /* codes d'accès générés pour les consultants */
   adminCode:null, /* dernier code généré (affiché dans Admin) */
   year:CFY,quarter:null,modal:null,fmc:'all',fms:'all',fmt:'all',flc:'all',precs:{},
-  role:'gestionnaire',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,invites:[],actCid:'',actMonth:'',_all:null,
+  role:'gestionnaire',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,kpiDirOpen:{},invites:[],actCid:'',actMonth:'',_all:null,
   sbSt:'\uD83D\uDFE2 Sauvegarde locale active',
   sbSync:false,
   imp:null,
@@ -1533,16 +1533,19 @@ function tKPIsDirSection(){
 
   var dirList=Object.keys(dirs).map(function(dir){
     var d=dirs[dir];
+    var totTWD=d.cons.reduce(function(s,x){return s+(x.k.tWD||0);},0);
+    var avgSrDir=totTWD>0?d.cons.reduce(function(s,x){return s+x.k.sr*(x.k.tWD||0);},0)/totTWD:0;
     return{name:dir,ca:d.ca,
       tjm:d.bills>0?d.ca/d.bills:0,
       marge:d.margins.length?d.margins.reduce(function(s,v){return s+v;},0)/d.margins.length:null,
+      sr:avgSrDir,
       count:d.cons.length,cons:d.cons};
   });
 
   /* Tri directeurs */
   if(dSort)dirList.sort(function(a,b){
-    var va=dSort==='ca'?a.ca:dSort==='marge'?(a.marge!=null?a.marge:-999):a.tjm;
-    var vb=dSort==='ca'?b.ca:dSort==='marge'?(b.marge!=null?b.marge:-999):b.tjm;
+    var va=dSort==='ca'?a.ca:dSort==='marge'?(a.marge!=null?a.marge:-999):dSort==='sr'?a.sr:a.tjm;
+    var vb=dSort==='ca'?b.ca:dSort==='marge'?(b.marge!=null?b.marge:-999):dSort==='sr'?b.sr:b.tjm;
     return dAsc?va-vb:vb-va;
   });
 
@@ -1553,7 +1556,7 @@ function tKPIsDirSection(){
   }
 
   /* Colonnes header */
-  var colDef='display:grid;grid-template-columns:2fr 1fr 1fr 1fr 24px;align-items:center;gap:8px';
+  var colDef='display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 24px;align-items:center;gap:8px';
 
   /* Lignes par directeur */
   var dirCards=dirList.map(function(d){
@@ -1561,8 +1564,8 @@ function tKPIsDirSection(){
     /* Consultants triés par même colonne */
     var sortedCons=d.cons.slice().sort(function(a,b){
       if(!dSort)return 0;
-      var va=dSort==='ca'?a.k.rev:dSort==='marge'?(a.k.om!=null?a.k.om:-999):(a.k.avgT||0);
-      var vb=dSort==='ca'?b.k.rev:dSort==='marge'?(b.k.om!=null?b.k.om:-999):(b.k.avgT||0);
+      var va=dSort==='ca'?a.k.rev:dSort==='marge'?(a.k.om!=null?a.k.om:-999):dSort==='sr'?a.k.sr:(a.k.avgT||0);
+      var vb=dSort==='ca'?b.k.rev:dSort==='marge'?(b.k.om!=null?b.k.om:-999):dSort==='sr'?b.k.sr:(b.k.avgT||0);
       return dAsc?va-vb:vb-va;
     });
     var consRows=sortedCons.map(function(x){
@@ -1575,15 +1578,21 @@ function tKPIsDirSection(){
         +'<div style="text-align:center;font-size:12px;font-weight:700;color:'+cmc+'">'+(k.om!=null?k.om.toFixed(1)+'%':'&mdash;')+'</div>'
         +'<div style="text-align:center;font-size:12px;color:#374151">'+(k.avgT>0?fEur(k.avgT):'&mdash;')+'</div>'
         +'<div style="text-align:center"><span style="background:'+(k.sr>=80?'#f0fdf4':k.sr>=50?'#fffbeb':'#fff1f2')+';color:'+(k.sr>=80?'#16a34a':k.sr>=50?'#d97706':'#dc2626')+';padding:1px 8px;border-radius:99px;font-size:11px;font-weight:700">'+k.sr.toFixed(0)+'%</span></div>'
+        +'<div></div>'
         +'</div>';
     }).join('');
-    return '<details>'
+    var isOpen=!!(S.kpiDirOpen&&S.kpiDirOpen[d.name]);
+    var srBg2=d.sr>=80?'#f0fdf4':d.sr>=50?'#fffbeb':'#fff1f2';
+    var srFg2=d.sr>=80?'#16a34a':d.sr>=50?'#d97706':'#dc2626';
+    var dKey=d.name.replace(/'/g,"\\'");
+    return '<details'+(isOpen?' open':'')+' ontoggle="if(!S.kpiDirOpen)S.kpiDirOpen={};S.kpiDirOpen[\''+dKey+'\'\']=this.open">'
       +'<summary style="'+colDef+';padding:14px 16px;cursor:pointer;list-style:none;border-top:1px solid #e2e8f0" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'
       +'<div><div style="font-weight:700;color:#0f172a;font-size:13px">'+esc(d.name)+'</div>'
       +'<div style="font-size:11px;color:#94a3b8">'+d.count+' consultant'+(d.count>1?'s':'')+'</div></div>'
       +'<div style="text-align:center;font-weight:900;font-size:14px;color:#0f172a">'+fEur(d.ca)+'</div>'
       +'<div style="text-align:center;font-weight:800;color:'+mc+'">'+(d.marge!=null?d.marge.toFixed(1)+'%':'&mdash;')+'</div>'
       +'<div style="text-align:center;font-weight:700;color:#374151">'+(d.tjm>0?fEur(Math.round(d.tjm)):'&mdash;')+'</div>'
+      +'<div style="text-align:center"><span style="background:'+srBg2+';color:'+srFg2+';padding:2px 10px;border-radius:99px;font-size:12px;font-weight:700">'+d.sr.toFixed(0)+'%</span></div>'
       +'<div style="text-align:right;font-size:14px;color:#94a3b8">\u25be</div>'
       +'</summary>'
       +consRows
@@ -1597,11 +1606,16 @@ function tKPIsDirSection(){
   var totTJM=totBill>0?totCA/totBill:0;
   var totMar=allMar.length?allMar.reduce(function(s,x){return s+x.k.om;},0)/allMar.length:null;
   var totMc=totMar!=null?(totMar>=30?'#16a34a':totMar>=15?'#d97706':'#dc2626'):'#94a3b8';
+  var totTWDAll=allKS.reduce(function(s,x){return s+(x.k.tWD||0);},0);
+  var totSrAll=totTWDAll>0?allKS.reduce(function(s,x){return s+x.k.sr*(x.k.tWD||0);},0)/totTWDAll:0;
+  var totSrBg=totSrAll>=80?'#f0fdf4':totSrAll>=50?'#fffbeb':'#fff1f2';
+  var totSrFg=totSrAll>=80?'#16a34a':totSrAll>=50?'#d97706':'#dc2626';
   var totalRow='<div style="'+colDef+';padding:14px 16px;background:#f0fdf4;border-top:2px solid #84CC16">'
     +'<div style="font-weight:800;color:#1B2B3A">\u03a3 Total ESN</div>'
     +'<div style="text-align:center;font-weight:900;font-size:14px;color:#1B2B3A">'+fEur(totCA)+'</div>'
     +'<div style="text-align:center;font-weight:800;color:'+totMc+'">'+(totMar!=null?totMar.toFixed(1)+'%':'&mdash;')+'</div>'
     +'<div style="text-align:center;font-weight:700;color:#1B2B3A">'+(totTJM>0?fEur(Math.round(totTJM)):'&mdash;')+'</div>'
+    +'<div style="text-align:center"><span style="background:'+totSrBg+';color:'+totSrFg+';padding:2px 10px;border-radius:99px;font-size:12px;font-weight:700">'+totSrAll.toFixed(0)+'%</span></div>'
     +'<div></div></div>';
 
   return '<details style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;overflow:hidden"'+(dSort?' open':'')+'>'
@@ -1614,6 +1628,7 @@ function tKPIsDirSection(){
     +'<div style="text-align:center">'+dSortBtn('ca','CA')+'</div>'
     +'<div style="text-align:center">'+dSortBtn('marge','Marge')+'</div>'
     +'<div style="text-align:center">'+dSortBtn('tjm','TJM moy.')+'</div>'
+    +'<div style="text-align:center">'+dSortBtn('sr','Staffing')+'</div>'
     +'<div></div></div>'
     +dirCards
     +totalRow
