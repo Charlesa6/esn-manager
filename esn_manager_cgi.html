@@ -403,7 +403,7 @@ var S={
   consInvites:[], /* codes d'accès générés pour les consultants */
   adminCode:null, /* dernier code généré (affiché dans Admin) */
   year:CFY,quarter:null,modal:null,fmc:'all',fms:'all',fmt:'all',flc:'all',precs:{},
-  role:'gestionnaire',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,kpiDirOpen:{},invites:[],svpInvites:[],recruteurInvites:[],vpDirMap:{},vpName:'',fvp:[],kpiVPOpen:{},kpiDirDirOpen:{},actCid:'',actMonth:'',_all:null,
+  role:'gestionnaire',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,kpiDirOpen:{},invites:[],svpInvites:[],recruteurInvites:[],vpDirMap:{},vpName:'',profileFirstName:'',profileLastName:'',profileTitle:'',fvp:[],kpiVPOpen:{},kpiDirDirOpen:{},actCid:'',actMonth:'',_all:null,
   sbSt:'\uD83D\uDFE2 Sauvegarde locale active',
   sbSync:false,
   imp:null,
@@ -1982,36 +1982,32 @@ function tOrg(){
   };
 
   function nodeHtml(name,title,col,extra){
-    var brd=col.border?'border:2px solid '+col.border+';':'border:none;';
-    var boxShadow=extra?'box-shadow:0 0 0 3px #84CC16,0 4px 14px rgba(132,204,22,.3);':'box-shadow:0 2px 8px rgba(0,0,0,.08);';
+    var brd=col.border?'border:1px solid '+col.border+';':'border:none;';
+    var sh=extra?'box-shadow:0 0 0 2px #84CC16;':'box-shadow:0 1px 4px rgba(0,0,0,.1);';
     return '<div style="display:flex;flex-direction:column;align-items:center">'
-      +'<div style="background:'+col.bg+';color:'+col.fg+';'+brd+boxShadow+'border-radius:12px;padding:12px 18px;text-align:center;min-width:130px;max-width:160px;position:relative">'
-      +(extra?'<div style="position:absolute;top:-8px;right:-8px;background:#84CC16;color:#1B2B3A;font-size:10px;font-weight:800;padding:2px 7px;border-radius:99px">Moi</div>':'')
-      +'<div style="font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px">'+esc(name)+'</div>'
-      +'<div style="font-size:10px;font-weight:600;color:'+col.sub+';margin-top:2px">'+esc(title)+'</div>'
+      +'<div style="background:'+col.bg+';color:'+col.fg+';'+brd+sh+'border-radius:8px;padding:6px 10px;text-align:center;min-width:80px;max-width:110px;position:relative">'
+      +(extra?'<div style="position:absolute;top:-6px;right:-6px;background:#84CC16;color:#1B2B3A;font-size:8px;font-weight:800;padding:1px 5px;border-radius:99px">Moi</div>':'')
+      +'<div style="font-weight:800;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px">'+esc(name)+'</div>'
+      +'<div style="font-size:8px;font-weight:600;color:'+col.sub+';margin-top:1px">'+esc(title)+'</div>'
       +'</div></div>';
   }
 
-  var vLine='<div style="width:2px;height:22px;background:#CBD5E1;margin:0 auto"></div>';
-  var hLine='<div style="height:2px;background:#CBD5E1;flex:1;min-width:16px"></div>';
+  var vLine='<div style="width:1px;height:14px;background:#CBD5E1;margin:0 auto"></div>';
 
-  /* Rendu d'un groupe d'enfants avec lignes de connexion */
   function childrenRow(items){
     if(!items||!items.length)return '';
     if(items.length===1){
       return vLine+'<div style="display:flex;justify-content:center">'+items[0]+'</div>';
     }
-    /* Ligne horizontale + branches */
-    var branches=items.map(function(item,i){
+    var branches=items.map(function(item){
       return '<div style="display:flex;flex-direction:column;align-items:center">'
-        +'<div style="width:2px;height:18px;background:#CBD5E1"></div>'
+        +'<div style="width:1px;height:12px;background:#CBD5E1"></div>'
         +item+'</div>';
     });
     return vLine
       +'<div style="position:relative;display:flex;align-items:flex-start;gap:0">'
-      /* barre horizontale */
-      +'<div style="position:absolute;top:0;left:calc(50% / '+items.length+');right:calc(50% / '+items.length+');height:2px;background:#CBD5E1"></div>'
-      +branches.join('')
+      +'<div style="position:absolute;top:0;left:calc(50% / '+items.length+');right:calc(50% / '+items.length+');height:1px;background:#CBD5E1"></div>'
+      +branches.join('<div style="width:12px"></div>')
       +'</div>';
   }
 
@@ -3918,6 +3914,9 @@ async function initApp(){
         S.role=pr.data.role==='directeur'?'directeur':pr.data.role==='consultant'?'consultant':pr.data.role==='senior_vp'?'senior_vp':pr.data.role==='recruteur'?'recruteur':'gestionnaire';
           /* Nom du VP pour l'étiqueter dans directeur_invites */
           if(S.role==='gestionnaire'&&pr.data.first_name){S.vpName=(pr.data.first_name+' '+(pr.data.last_name||'')).trim();}
+          S.profileFirstName=pr.data.first_name||'';
+          S.profileLastName=pr.data.last_name||'';
+          S.profileTitle=pr.data.title||''; 
         S.dirName=pr.data.directeur_name||'';
         S.consId=pr.data.cons_id||null;
         if(S.role==='consultant'&&S.consId)S.tab='activite';
@@ -4790,22 +4789,32 @@ function mCalHTML(){
 }
 
 function tProfile(){
-  var sess=sb?null:null; /* \u00e9tat charg\u00e9 via S */
   var userEmail=S._userEmail||'';
-  var userRole=S.role==='directeur'?'Directeur':'Gestionnaire';
+  var roleLabels={directeur:'Directeur',gestionnaire:'Vice Président',senior_vp:'Sénior Vice Président',consultant:'Consultant',recruteur:'Recruteur'};
+  var userRole=roleLabels[S.role]||S.role;
+  var fn=S.profileFirstName||'';
+  var ln=S.profileLastName||'';
+  var titre=S.profileTitle||'';
+  if(S.role==='consultant'&&S.consId){
+    var myC=((S._all&&S._all.cons)||S.cons).find(function(c){return c.id===S.consId;})||{};
+    if(!titre)titre=myC.title||'';
+  }
   return '<div>'
     +'<div class="ph"><div><div class="pt">Mon Profil</div>'
-    +'<div class="ps">Informations de compte et s\u00e9curit\u00e9</div></div></div>'
-
-    /* ── Infos compte ── */
+    +'<div class="ps">Informations de compte et sécurité</div></div></div>'
     +'<div class="card" style="padding:24px;margin-bottom:16px">'
-    +'<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:16px">Informations du compte</div>'
+    +'<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:16px">Informations personnelles</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
-    +'<div class="fd"><label class="fl">Adresse e-mail</label>'
-    +'<div style="padding:8px 12px;background:#f8fafc;border-radius:8px;font-size:13px;color:#0f172a;border:1px solid #e2e8f0">'+esc(userEmail||'—')+'</div></div>'
-    +'<div class="fd"><label class="fl">R\u00f4le</label>'
-    +'<div style="padding:8px 12px;background:#f8fafc;border-radius:8px;font-size:13px;color:#0f172a;border:1px solid #e2e8f0">'+esc(userRole)+'</div></div>'
-    +'</div></div>'
+    +'<div class="fd"><label class="fl">Prénom</label><input class="ic" id="prof-fn" value="'+esc(fn)+'" placeholder="Votre prénom"></div>'
+    +'<div class="fd"><label class="fl">Nom</label><input class="ic" id="prof-ln" value="'+esc(ln)+'" placeholder="Votre nom"></div>'
+    +'<div class="fd"><label class="fl">Titre / Poste</label><input class="ic" id="prof-title" value="'+esc(titre)+'" placeholder="ex : Directeur de pôle"></div>'
+    +'<div class="fd"><label class="fl">Email</label><div style="padding:9px 12px;background:#f8fafc;border-radius:8px;font-size:13px;color:#64748b;border:1px solid #e2e8f0">'+esc(userEmail||'—')+'</div></div>'
+    +'<div class="fd"><label class="fl">Rôle</label><div style="padding:9px 12px;background:#f8fafc;border-radius:8px;font-size:13px;font-weight:700;color:#0f172a;border:1px solid #e2e8f0">'+esc(userRole)+'</div></div>'
+    +'</div>'
+    +'<div id="prof-info-msg" style="font-size:12px;margin-top:10px;display:none"></div>'
+    +'<button class="bp" style="margin-top:14px" onclick="saveProfileInfo()">Enregistrer</button>'
+    +'</div>'
+
 
     /* ── Changer le mot de passe ── */
     +'<div class="card" style="padding:24px;margin-bottom:16px">'
@@ -4829,6 +4838,25 @@ function tProfile(){
     +'</div>';
 }
 
+async function saveProfileInfo(){
+  var fn=(document.getElementById('prof-fn')||{}).value||'';
+  var ln=(document.getElementById('prof-ln')||{}).value||'';
+  var title=(document.getElementById('prof-title')||{}).value||'';
+  var msg=document.getElementById('prof-info-msg');
+  if(msg){msg.style.display='block';msg.style.color='#64748b';msg.textContent='Enregistrement...';}
+  S.profileFirstName=fn;S.profileLastName=ln;S.profileTitle=title;
+  if(sb&&SB_CID){
+    try{
+      var uid=await sb.auth.getUser();
+      if(uid.data&&uid.data.user){
+        await sb.from('profiles').update({first_name:fn,last_name:ln}).eq('id',uid.data.user.id);
+      }
+      if(msg){msg.style.color='#16a34a';msg.textContent='✓ Profil mis à jour.';}
+    }catch(e){if(msg){msg.style.color='#ef4444';msg.textContent='Erreur : '+e.message;}}
+  }else{
+    if(msg){msg.style.color='#16a34a';msg.textContent='✓ Profil mis à jour (mode local).';}
+  }
+}
 async function changePassword(){
   var pw1=(document.getElementById('prof-pw1')||{}).value||'';
   var pw2=(document.getElementById('prof-pw2')||{}).value||'';
