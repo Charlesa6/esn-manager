@@ -3573,7 +3573,7 @@ async function loadSB(){
       var rr=await sb.from('recruteur_invites').select('*').eq('company_id',SB_CID).order('created_at');
       if(rr.data)S.recruteurInvites=rr.data;
     }catch(e){console.warn('recruteur invites load:',e);}
-    return S.cons.length>0;
+    return true; /* Supabase connecté même si 0 consultants (nouvelle entreprise) */
   }catch(e){console.warn('Supabase load error:',e);return false;}
 }
 
@@ -3829,11 +3829,8 @@ async function initApp(){
       /* ── 3. Charger les donn\u00e9es depuis Supabase ── */
       var ok=await loadSB();
       if(!ok){
-        loadLocal();
-        if(S.cons.length>0){
-          S.sbSync=true;
-          S.sbSt='Donn\u00e9es locales - cliquez Sync pour envoyer vers Supabase';
-        }
+        /* Supabase connecté mais sans données : nouvelle entreprise, pas de fallback localStorage */
+        S.sbSt = 'Supabase connecté — aucune donnée pour cette entreprise';
       }else{
         S.sbSt='Supabase connect\u00e9';
         /* Fusionner le localStorage : r\u00e9cup\u00e9rer les entr\u00e9es locales non encore sync\u00e9es */
