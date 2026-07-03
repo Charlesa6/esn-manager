@@ -3531,6 +3531,26 @@ async function loadSB(){
     if(res[0].data)S.miss=res[0].data.map(mapM);
     if(res[1].data)S.lvs=res[1].data.map(mapL);
     if(res[2].data)S.cands=res[2].data.map(mapCand);
+    /* Charger les invites SVP directement dans loadSB pour senior_vp */
+    if(S.role==='senior_vp'){
+      try{
+        var rv=await sb.from('vp_invites').select('*').eq('company_id',SB_CID).order('created_at');
+        if(rv.data)S.svpInvites=rv.data;
+        var rr=await sb.from('recruteur_invites').select('*').eq('company_id',SB_CID).order('created_at');
+        if(rr.data)S.recruteurInvites=rr.data;
+        var rd=await sb.from('directeur_invites').select('directeur_name,vp_name').eq('company_id',SB_CID).not('vp_name','is',null);
+        if(rd.data){
+          S.vpDirMap={};
+          rd.data.forEach(function(r){
+            if(r.vp_name){
+              if(!S.vpDirMap[r.vp_name])S.vpDirMap[r.vp_name]=[];
+              if(r.directeur_name&&S.vpDirMap[r.vp_name].indexOf(r.directeur_name)<0)
+                S.vpDirMap[r.vp_name].push(r.directeur_name);
+            }
+          });
+        }
+      }catch(e){console.warn('SVP invites load:',e);}
+    }
     return S.cons.length>0;
   }catch(e){console.warn('Supabase load error:',e);return false;}
 }
