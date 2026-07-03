@@ -1584,7 +1584,12 @@ function tKPIsSVPSection(){
   allKS.forEach(function(x){
     var dir=x.c.dir||'(Sans directeur)';
     var vp='(Sans VP)';
+    /* Cherche dans vpDirMap si ce directeur y est référencé */
     Object.keys(S.vpDirMap||{}).forEach(function(v){if((S.vpDirMap[v]||[]).indexOf(dir)>=0)vp=v;});
+    /* Fallback : si vpDirMap vide et un seul VP invité, tout lui appartient */
+    if(vp==='(Sans VP)'&&Object.keys(S.vpDirMap||{}).length===0&&S.svpInvites&&S.svpInvites.length===1){
+      vp=S.svpInvites[0].vp_name||S.svpInvites[0].email||'(Sans VP)';
+    }
     if(!vpMap[vp])vpMap[vp]={};
     if(!vpMap[vp][dir])vpMap[vp][dir]=[];
     vpMap[vp][dir].push(x);
@@ -3355,7 +3360,7 @@ function bind(){
         sbInviteCons(aEmail,aName).then(function(r){
           if(r&&r.error){alert('Erreur\u00a0: '+(r.error.message||r.error));return;}
           loadConsInvites().then(render);
-          if(S.role==='senior_vp')loadSVPInvites().then(function(){});
+          if(S.role==='senior_vp')loadSVPInvites().then(function(){render();});
         });
       }
       else if(a==='admin-cons-del'){
