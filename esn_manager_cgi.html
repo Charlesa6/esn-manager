@@ -410,7 +410,7 @@ var S={
   impHistory:[],
   impSelFY:'all',
   missImp:null,
-  recSel:null,recF:{status:'all',q:'',loc:[]},recAddMeet:false,recAddCgi:false,recAddCv:false,
+  recSel:null,recF:{status:'all',q:'',loc:[],rec:'all'},recAddMeet:false,recAddCgi:false,recAddCv:false,
   recEditMeetId:null,recEditCgiId:null
 };
 var H=fyHols(CFY);
@@ -2224,9 +2224,11 @@ function recListBody(){
   var q=(S.recF.q||'').toLowerCase().trim();
   var stF=S.recF.status||'all';
   var locF=S.recF.loc||[];
+  var recF=S.recF.rec||'all';
   var list=S.cands.filter(function(c){
     if(stF!=='all'&&c.status!==stF)return false;
     if(locF.length&&!(c.locations||[]).some(function(l){return locF.indexOf(l)>=0;}))return false;
+    if(recF!=='all'&&(c.recruiter||'')!==recF)return false;
     if(q){
       var hay=(c.name+' '+(c.expertise||[]).join(' ')+' '+(c.email||'')).toLowerCase();
       if(hay.indexOf(q)<0)return false;
@@ -2241,7 +2243,16 @@ function recListBody(){
     var active=stF===id;
     return '<button data-act="recf-st" data-id="'+id+'" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid '+(active?'#2563eb':'#e2e8f0')+';background:'+(active?'#2563eb':'#fff')+';color:'+(active?'#fff':'#475569')+';cursor:pointer;margin:0 6px 6px 0">'+esc(label)+' <span style="opacity:.65">'+count+'</span></button>';
   }
-  var pills=pill('all','Tous',S.cands.length)+REC_STATUS.map(function(s){return pill(s.id,s.lb,counts[s.id]);}).join('');
+  var recList=(S.recruteurInvites||[]).filter(function(r){return r.recruteur_name||r.email;});
+  function recPill(rec,label){
+    var active=recF===rec;
+    return '<button data-act="recf-rec" data-id="'+esc(rec)+'" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid '+(active?'#84CC16':'#e2e8f0')+';background:'+(active?'#84CC16':'#fff')+';color:'+(active?'#1B2B3A':'#475569')+';cursor:pointer;margin:0 6px 6px 0">'+esc(label)+'</button>';
+  }
+  var recPills=recList.length?('<div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:10px 0 4px">Recruteur</div>'
+    +recPill('all','Tous')
+    +recList.map(function(r){return recPill(r.recruteur_name||r.email,r.recruteur_name||r.email);}).join('')):'';
+  var pills='<div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:0 0 4px">Statut</div>'
+    +pill('all','Tous',S.cands.length)+REC_STATUS.map(function(s){return pill(s.id,s.lb,counts[s.id]);}).join('');
 
   var locCounts={};REC_LOCATIONS.forEach(function(l){locCounts[l]=0;});
   S.cands.forEach(function(c){(c.locations||[]).forEach(function(l){if(locCounts[l]!=null)locCounts[l]++;});});
@@ -2276,7 +2287,7 @@ function recListBody(){
       +'</tr>';
   }).join('');
 
-  return '<div>'+pills+locPills+'</div>'
+  return '<div>'+pills+recPills+locPills+'</div>'
     +'<div class="card ov" style="margin-top:14px">'
     +'<table><thead><tr><th>Nom</th><th>Expertise</th><th>Secteurs</th><th>Localisation</th><th>Disponibilité</th><th class="tr">Rém. demandée</th><th class="tr">SCR/j</th><th class="tr">TJM revente</th><th>Statut</th><th>Ajouté par</th></tr></thead>'
     +'<tbody>'+rows+(rows?'':'<tr><td colspan="10" class="emp">Aucun candidat'+(q||stF!=='all'||locF.length?' ne correspond aux filtres.':' pour le moment. Cliquez « + Nouveau candidat » pour commencer.')+'</td></tr>')
@@ -2594,6 +2605,13 @@ function tModal(){
     body='<div class="g2">'
       +'<div class="fd"><label class="fl">Nom complet *</label><input class="ic" id="rcn" value="'+esc(it?it.name:'')+'" placeholder="Prénom Nom"></div>'
       +'<div class="fd"><label class="fl">Statut</label><select class="ic" id="rcst">'+stOpts+'</select></div>'
+      +'<div class="fd"><label class="fl">Recruteur assigné</label><select class="ic" id="rcrec">'
+      +'<option value="">— Aucun —</option>'
+      +(S.recruteurInvites||[]).map(function(r){
+        var nm=r.recruteur_name||r.email||'';
+        return '<option value="'+esc(nm)+'"'+(it&&it.recruiter===nm?' selected':'')+'>'+esc(nm)+'</option>';
+      }).join('')
+      +'</select></div>'
       +'<div class="fd"><label class="fl">Email</label><input class="ic" id="rce" type="email" value="'+esc(it?it.email:'')+'" placeholder="candidat@email.com"></div>'
       +'<div class="fd"><label class="fl">Téléphone</label><input class="ic" id="rcph" value="'+esc(it?it.phone:'')+'" placeholder="06 12 34 56 78"></div>'
       +'<div class="fd cs2"><label class="fl">Localisation(s)</label><div id="loc-wrap">'+locPickerHTML()+'</div></div>'
@@ -2849,6 +2867,7 @@ function bind(){
       if(!t)return;
       var ra=t.getAttribute('data-act'),rid=t.getAttribute('data-id');
       if(ra==='recf-st'){S.recF.status=rid;recListRefresh();}
+      else if(ra==='recf-rec'){S.recF.rec=rid;recListRefresh();}
       else if(ra==='recf-loc'){
         var la=S.recF.loc||[];
         var li=la.indexOf(rid);
@@ -3503,7 +3522,8 @@ function mapCand(r){return{
   compteRendu:r.compte_rendu||'',compteRenduFilePath:r.compte_rendu_file_path||'',compteRenduFileName:r.compte_rendu_file_name||'',
   cgiMeetings:Array.isArray(r.cgi_meetings)?r.cgi_meetings:[],
   marginPct:(r.margin_pct!=null?r.margin_pct:25),status:r.status||'nouveau',
-  createdBy:r.created_by||'',feedbacks:Array.isArray(r.feedbacks)?r.feedbacks:[]
+  createdBy:r.created_by||'',feedbacks:Array.isArray(r.feedbacks)?r.feedbacks:[],
+  recruiter:r.recruiter||''
 };}
 
 async function loadSB(){
@@ -3582,7 +3602,8 @@ async function sbUpsertCand(c){
     compte_rendu:c.compteRendu||null,compte_rendu_file_path:c.compteRenduFilePath||null,compte_rendu_file_name:c.compteRenduFileName||null,
     cgi_meetings:c.cgiMeetings||[],
     margin_pct:(c.marginPct!=null?c.marginPct:25),status:c.status||'nouveau',
-    created_by:c.createdBy||null,feedbacks:c.feedbacks||[]
+    created_by:c.createdBy||null,feedbacks:c.feedbacks||[],
+    recruiter:c.recruiter||null
   });
   if(res.error)throw new Error(c.name+': '+res.error.message);
 }
