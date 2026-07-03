@@ -233,7 +233,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
     <div class="nav-links">
       <a href="#fonctionnalites">Fonctionnalités</a>
       <a href="#licences">Licences</a>
-      <a href="#tarifs">Tarifs</a>
+      <a href="#tarifs">Tarifs & Devis</a>
       <a href="mailto:contact@konsilys.fr">Contact</a>
     </div>
     <a href="/login" class="btn-connexion">Se connecter →</a>
@@ -341,7 +341,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
       <div>
         <div class="step-num">2</div>
         <div class="step-title">Invitez vos équipes</div>
-        <div class="step-desc">Depuis "Gestion des accès", invitez directement vos Gestionnaires, Directeurs et Consultants par email — sans code de licence.</div>
+        <div class="step-desc">Depuis "Gestion des accès", invitez directement vos Vice Présidents, Directeurs et Consultants par email — sans code de licence.</div>
       </div>
       <div>
         <div class="step-num">3</div>
@@ -434,6 +434,164 @@ footer{background:var(--dark);padding:48px 24px 32px}
     <p style="text-align:center;font-size:13px;color:var(--muted);margin-top:24px">Les tarifs seront communiqués lors du lancement commercial. <a href="mailto:contact@konsilys.fr" style="color:var(--navy);font-weight:700;text-decoration:underline">Contactez-nous</a> pour une démonstration ou un devis.</p>
   </div>
 </section>
+
+<!-- TARIFS / FORMULAIRE DE QUALIFICATION -->
+<section id="tarifs" style="background:#fff;padding:80px 24px">
+  <div class="container">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start">
+
+      <!-- Colonne gauche : pitch -->
+      <div>
+        <p class="section-eyebrow">Tarifs</p>
+        <h2 class="section-title" style="margin-bottom:20px">Parlons de votre organisation</h2>
+        <p style="font-size:16px;color:var(--muted);margin-bottom:32px;line-height:1.7">Chaque ESN est différente. Nous préférons comprendre votre structure avant de vous proposer un tarif adapté à votre réalité.</p>
+
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div style="width:36px;height:36px;border-radius:8px;background:var(--off);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">⚡</div>
+            <div>
+              <div style="font-weight:700;color:var(--navy);font-size:14px;margin-bottom:3px">Réponse sous 24h</div>
+              <div style="font-size:13px;color:var(--muted)">Un interlocuteur dédié vous recontacte rapidement avec une proposition personnalisée.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div style="width:36px;height:36px;border-radius:8px;background:var(--off);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🎯</div>
+            <div>
+              <div style="font-weight:700;color:var(--navy);font-size:14px;margin-bottom:3px">Démo incluse</div>
+              <div style="font-size:13px;color:var(--muted)">Nous vous présentons Konsilys avec vos propres données pour vous projeter immédiatement.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div style="width:36px;height:36px;border-radius:8px;background:var(--off);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🤝</div>
+            <div>
+              <div style="font-weight:700;color:var(--navy);font-size:14px;margin-bottom:3px">Accompagnement à l'onboarding</div>
+              <div style="font-size:13px;color:var(--muted)">Mise en place guidée, import de vos données existantes, formation de vos équipes.</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:36px;padding:20px;background:var(--off);border-radius:12px;border:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:10px">Tarification</div>
+          <p style="font-size:13px;color:var(--navy);font-weight:600;line-height:1.6">Nos tarifs sont calculés en fonction du nombre de licences et de la taille de votre organisation. Remplissez le formulaire pour recevoir une proposition adaptée.</p>
+        </div>
+      </div>
+
+      <!-- Colonne droite : formulaire -->
+      <div style="background:var(--off);border-radius:16px;padding:32px;border:1px solid var(--border)">
+        <h3 style="font-size:18px;font-weight:800;color:var(--navy);margin-bottom:6px">Demande de devis</h3>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:24px">Complétez ce formulaire, nous revenons vers vous sous 24h.</p>
+
+        <form id="qualification-form" onsubmit="submitForm(event)" style="display:flex;flex-direction:column;gap:14px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px">Prénom *</label>
+              <input name="prenom" required placeholder="Charles" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='#84CC16'" onblur="this.style.borderColor='#E2E8F0'">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px">Nom *</label>
+              <input name="nom" required placeholder="Allouard" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='#84CC16'" onblur="this.style.borderColor='#E2E8F0'">
+            </div>
+          </div>
+
+          <div>
+            <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px">Email professionnel *</label>
+            <input name="email" type="email" required placeholder="prenom.nom@entreprise.com" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='#84CC16'" onblur="this.style.borderColor='#E2E8F0'">
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px">Entreprise *</label>
+              <input name="entreprise" required placeholder="Nom de l'ESN" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='#84CC16'" onblur="this.style.borderColor='#E2E8F0'">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px">Votre poste</label>
+              <input name="poste" placeholder="ex : Directeur Général" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='#84CC16'" onblur="this.style.borderColor='#E2E8F0'">
+            </div>
+          </div>
+
+          <div>
+            <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px">Nombre de consultants *</label>
+            <select name="nb_consultants" required style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;outline:none;appearance:none;cursor:pointer">
+              <option value="">— Sélectionnez —</option>
+              <option value="1-10">1 à 10 consultants</option>
+              <option value="10-30">10 à 30 consultants</option>
+              <option value="30-100">30 à 100 consultants</option>
+              <option value="100+">Plus de 100 consultants</option>
+            </select>
+          </div>
+
+          <div>
+            <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:8px">Licences souhaitées</label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_svp" style="accent-color:#84CC16"> 👑 Sénior VP</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_vp" style="accent-color:#84CC16"> 📊 Vice Président</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_dir" style="accent-color:#84CC16"> 🛡️ Directeur</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_cons" style="accent-color:#84CC16"> 👤 Consultant</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_rec" style="accent-color:#84CC16"> 🔍 Recruteur</label>
+            </div>
+          </div>
+
+          <div>
+            <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px">Outil actuel</label>
+            <select name="outil_actuel" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;outline:none;appearance:none;cursor:pointer">
+              <option value="">— Sélectionnez —</option>
+              <option value="excel">Excel / Google Sheets</option>
+              <option value="logiciel">Un logiciel RH ou ERP</option>
+              <option value="aucun">Aucun outil en place</option>
+              <option value="autre">Autre</option>
+            </select>
+          </div>
+
+          <div>
+            <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px">Message / besoins spécifiques</label>
+            <textarea name="message" rows="3" placeholder="Décrivez votre contexte, vos priorités ou vos questions..." style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;outline:none;resize:vertical;transition:border-color .15s" onfocus="this.style.borderColor='#84CC16'" onblur="this.style.borderColor='#E2E8F0'"></textarea>
+          </div>
+
+          <button type="submit" style="background:var(--navy);color:#fff;padding:13px 24px;border:none;border-radius:10px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;cursor:pointer;transition:background .15s;margin-top:4px" onmouseover="this.style.background='#243447'" onmouseout="this.style.background='var(--navy)'">
+            Envoyer ma demande →
+          </button>
+
+          <p id="form-success" style="display:none;text-align:center;color:#15803d;font-weight:700;font-size:14px;background:#f0fdf4;padding:12px;border-radius:8px">✅ Demande envoyée ! Nous vous recontactons sous 24h.</p>
+          <p style="font-size:11px;color:var(--muted);text-align:center">En soumettant ce formulaire, vous acceptez notre <a href="/cgu" style="color:var(--navy)">politique de confidentialité</a>.</p>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<script>
+function submitForm(e){
+  e.preventDefault();
+  var f=e.target;
+  var data={
+    prenom:f.prenom.value,nom:f.nom.value,
+    email:f.email.value,entreprise:f.entreprise.value,
+    poste:f.poste.value,nb:f.nb_consultants.value,
+    outil:f.outil_actuel.value,message:f.message.value,
+    licences:[
+      f.licence_svp.checked?'Sénior VP':'',
+      f.licence_vp.checked?'Vice Président':'',
+      f.licence_dir.checked?'Directeur':'',
+      f.licence_cons.checked?'Consultant':'',
+      f.licence_rec.checked?'Recruteur':''
+    ].filter(Boolean).join(', ')
+  };
+  var body='Nouvelle demande de devis Konsilys%0A%0A'
+    +'Prénom : '+data.prenom+'%0A'
+    +'Nom : '+data.nom+'%0A'
+    +'Email : '+data.email+'%0A'
+    +'Entreprise : '+data.entreprise+'%0A'
+    +'Poste : '+data.poste+'%0A'
+    +'Consultants : '+data.nb+'%0A'
+    +'Licences : '+(data.licences||'Non précisé')+'%0A'
+    +'Outil actuel : '+data.outil+'%0A'
+    +'Message : '+data.message;
+  window.location.href='mailto:contact@konsilys.fr?subject=Demande de devis - '+encodeURIComponent(data.entreprise)+'&body='+body;
+  document.getElementById('form-success').style.display='block';
+  f.reset();
+}
+</script>
 
 <!-- CTA FINAL -->
 <section class="cta-section">
