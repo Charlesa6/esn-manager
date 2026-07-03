@@ -332,9 +332,7 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
         <p class="err-msg" id="e-s-p2">Les mots de passe ne correspondent pas</p>
       </div>
       <div class="fd">
-        <label for="s-lic">Code de licence <span id="lic-optional" style="display:none;font-weight:400;color:#94a3b8">(optionnel si invit&eacute; par votre directeur)</span></label>
-        <input class="inp" type="text" id="s-lic" placeholder="ex : KNS-XXXX-XXXX" autocomplete="off" style="letter-spacing:.05em;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
-        <p class="err-msg" id="e-s-lic">Code de licence invalide ou d&eacute;j&agrave; utilis&eacute;</p>
+
       </div>
       <label class="cgu-row">
         <input type="checkbox" id="cgu">
@@ -391,8 +389,8 @@ document.addEventListener('DOMContentLoaded', function() {
   if (inviteCode) {
     /* Basculer sur l'onglet "Créer un compte" */
     sw('signup');
-    /* Pré-remplir le code de licence */
-    var licInput = document.getElementById('s-lic');
+    /* Redirection vers formulaire */
+    var licInput = null;
     if (licInput) {
       licInput.value = inviteCode.toUpperCase();
       licInput.setAttribute('readonly', 'readonly');
@@ -585,7 +583,6 @@ async function doSignup() {
   var em  = document.getElementById('s-em').value.trim();
   var pw  = document.getElementById('s-pw').value;
   var p2  = document.getElementById('s-p2').value;
-  var lic = (document.getElementById('s-lic').value||'').trim().toUpperCase();
   var ok  = true;
   if (!fn)             ok = setErr('s-fn','e-s-fn','Requis');
   if (!ln)             ok = setErr('s-ln','e-s-ln','Requis') && ok;
@@ -759,42 +756,25 @@ async function doSignup() {
       return;
     }
 
-    /* ── 2. Flux standard : code de licence requis ── */
+    /* ── 2. Création compte directeur (sans code de licence) ── */
     if (!co) { loading('b-signup','sp-signup','lb-signup', false); setErr('s-co','e-s-co','Requis'); return; }
-    if (!lic) { loading('b-signup','sp-signup','lb-signup', false); setErr('s-lic','e-s-lic','Code de licence requis'); return; }
-
-    var licData = await validateLicenceCode(lic);
-    if (!licData) {
-      loading('b-signup','sp-signup','lb-signup', false);
-      setErr('s-lic','e-s-lic','Code invalide, d\u00e9j\u00e0 utilis\u00e9 ou inexistant');
-      showBanner('err', 'Code de licence invalide. <a href="#" onclick="openStore(\'directeur\');return false;" style="color:#fff;text-decoration:underline">S\'abonner pour obtenir un code &rarr;</a>');
-      return;
-    }
-    var userRole = licData.role || 'directeur';
     var res2 = await sb.auth.signUp({
       email: em, password: pw,
       options: { data: {
         company_name: co, first_name: fn, last_name: ln,
-        role: userRole,
-        directeur_name: licData.dir_name || '',
-        cons_id: licData.linked_cons_id || null
+        role: 'directeur'
       }}
     });
     loading('b-signup','sp-signup','lb-signup', false);
     if (res2.error) {
       if (res2.error.message.toLowerCase().includes('already')) {
-        setErr('s-em','e-s-em','Cet email est d\u00e9j\u00e0 utilis\u00e9');
-      } else {
-        showBanner('err', res2.error.message);
-      }
+        setErr('s-em','e-s-em','Cet email est déjà utilisé');
+      } else { showBanner('err', res2.error.message); }
       return;
     }
-    await sb.from('licence_codes').update({used:true, used_by:em, used_at:new Date().toISOString()}).eq('code', lic);
     if (res2.data.user && !res2.data.session) {
-      showSuccess('V\u00e9rifiez votre email', 'Un lien de confirmation a \u00e9t\u00e9 envoy\u00e9 \u00e0 ' + em + '.', true);
-    } else {
-      window.location.href = '/app';
-    }
+      showSuccess('Compte créé !', 'Vérifiez votre email ' + em + ' pour confirmer.', true);
+    } else { window.location.href = '/app'; }
   } else {
     await wait(800);
     loading('b-signup','sp-signup','lb-signup', false);

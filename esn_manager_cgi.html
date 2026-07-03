@@ -684,8 +684,7 @@ function tSB(){
       {id:'missions',   ic:'\uD83D\uDCCB',lb:'Missions'},
       {id:'planning',   ic:'\uD83D\uDCC5',lb:'Planning'},
       {id:'leaves',     ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
-      {id:'approvals',  ic:'\uD83D\uDD14',lb:'Approbations'},
-      {id:'organisation',ic:'\uD83C\uDFE2',lb:'Organisation'}
+      {id:'approvals',  ic:'\uD83D\uDD14',lb:'Approbations'}
     ];
   }else{
     NAV=[
@@ -696,7 +695,6 @@ function tSB(){
       {id:'missions',  ic:'\uD83D\uDCCB',lb:'Missions'},
       {id:'planning',  ic:'\uD83D\uDCC5',lb:'Planning'},
       {id:'leaves',    ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
-      {id:'organisation',ic:'\uD83C\uDFE2',lb:'Organisation'},
       {id:'param',     ic:'\uD83D\uDCA1',lb:'Pr\u00e9conisations'}
     ];
     if(S.role==='gestionnaire')NAV.push({id:'directeurs',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
@@ -1966,17 +1964,6 @@ function tSVPAcces(){
     +'</div>';
 }
 
-/* ══════════════════════════════════════════════════════════════
-   TEMPLATE - ORGANISATION (organigramme hiérarchique)
-══════════════════════════════════════════════════════════════ */
-function tOrg(){
-  var allC=(S._all&&S._all.cons)||S.cons;
-
-  /* ── Helpers couleur rôle ── */
-  function srCol(v){return v>=80?'#16a34a':v>=50?'#d97706':'#dc2626';}
-  function srBg(v){return v>=80?'#f0fdf4':v>=50?'#fffbeb':'#fff1f2';}
-  function ini(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();}
-
   /* ── Carte consultant compacte ── */
   function consCard(c,isMe){
     var ks=buildKS().find(function(x){return x.c.id===c.id;})||{k:{sr:0,rev:0}};
@@ -2940,7 +2927,7 @@ function render(){
   S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
   var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;
   document.getElementById('sb').innerHTML=tSB();
-  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDir():S.tab==='svp_acces'?tSVPAcces():S.tab==='organisation'?tOrg():tParam();
+  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDir():S.tab==='svp_acces'?tSVPAcces():tParam();
   var _ini=function(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();};
   var _av=S._userEmail?_ini(S._userEmail.split('@')[0].replace(/[._]/g,' ')):'?';
   var _pfBtn='<div id="prof-btn" style="position:absolute;top:12px;right:14px;z-index:50">'
