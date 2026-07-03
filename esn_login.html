@@ -756,35 +756,52 @@ async function doSignup() {
       return;
     }
 
-    /* ── 2. Création compte directeur ── */
+    /* ── 2. Création compte Directeur ── */
     if (!co) { loading('b-signup','sp-signup','lb-signup', false); setErr('s-co','e-s-co','Requis'); return; }
-    /* Générer un company_id UUID côté client pour garantir l'isolation des données */
-    var newCid = crypto.randomUUID();
+
+    /* Générer un UUID unique pour cette entreprise */
+    var newCid;
+    try { newCid = crypto.randomUUID(); }
+    catch(e) { newCid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return(c==='x'?r:r&0x3|0x8).toString(16);}); }
+
     var res2 = await sb.auth.signUp({
       email: em, password: pw,
       options: { data: {
         company_name: co, first_name: fn, last_name: ln,
-        role: 'directeur',
-        company_id: newCid
+        role: 'directeur', company_id: newCid
       }}
     });
     loading('b-signup','sp-signup','lb-signup', false);
     if (res2.error) {
-      if (res2.error.message.toLowerCase().includes('already')) {
+      var em2 = (res2.error && typeof res2.error.message === 'string') ? res2.error.message : JSON.stringify(res2.error);
+      if (em2.toLowerCase().includes('already') || em2.toLowerCase().includes('registered')) {
         setErr('s-em','e-s-em','Cet email est déjà utilisé');
-      } else { showBanner('err', res2.error.message); }
+      } else {
+        showBanner('err', em2 || 'Erreur lors de la création du compte. Vérifiez la console (F12).');
+      }
       return;
     }
-    /* Créer company + profil avec le bon company_id */
+
+    /* Créer la company et le profil avec le bon company_id */
     if (res2.data && res2.data.user) {
+      var uid3 = res2.data.user.id;
+      /* Créer l'entreprise */
+      try { await sb.from('companies').insert({ id: newCid, name: co }); } catch(e) { console.warn('company insert:', e); }
+      /* Forcer le profil avec le bon company_id et rôle directeur */
       try {
-        await sb.from('companies').insert({ id: newCid, name: co });
-        await sb.from('profiles').upsert({ id: res2.data.user.id, company_id: newCid, role: 'directeur', first_name: fn, last_name: ln }, { onConflict: 'id' });
-      } catch(e) { console.warn('company/profile:', e); }
+        await sb.from('profiles').upsert({
+          id: uid3, company_id: newCid, role: 'directeur', first_name: fn, last_name: ln
+        }, { onConflict: 'id' });
+      } catch(e) { console.warn('profile upsert:', e); }
     }
-    if (res2.data.user && !res2.data.session) {
-      showSuccess('Compte créé !', 'Vérifiez votre email ' + em + ' pour confirmer votre inscription.', true);
-    } else { window.location.href = '/app'; }
+
+    if (res2.data && res2.data.user && !res2.data.session) {
+      showSuccess('Compte créé !', 'Vérifiez votre email « ' + em + ' » pour confirmer votre inscription.', true);
+    } else if (res2.data && res2.data.session) {
+      window.location.href = '/app';
+    } else {
+      showBanner('ok', 'Compte créé ! Connectez-vous avec votre email et mot de passe.');
+    }
   } else {
     await wait(800);
     loading('b-signup','sp-signup','lb-signup', false);
