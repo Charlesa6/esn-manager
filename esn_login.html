@@ -783,12 +783,9 @@ async function doSignup() {
       return;
     }
 
-    /* Créer la company et le profil avec le bon company_id */
+    /* Forcer le profil avec le bon company_id et rôle directeur */
     if (res2.data && res2.data.user) {
       var uid3 = res2.data.user.id;
-      /* Créer l'entreprise */
-      try { await sb.from('companies').insert({ id: newCid, name: co }); } catch(e) { console.warn('company insert:', e); }
-      /* Forcer le profil avec le bon company_id et rôle directeur */
       try {
         await sb.from('profiles').upsert({
           id: uid3, company_id: newCid, role: 'directeur', first_name: fn, last_name: ln
