@@ -1972,109 +1972,131 @@ function tSVPAcces(){
 function tOrg(){
   var allC=(S._all&&S._all.cons)||S.cons;
 
-  /* ── Couleurs par rôle ── */
-  var RC={
-    svp:{bg:'#1B2B3A',fg:'#84CC16',sub:'rgba(255,255,255,.5)'},
-    vp:{bg:'#243447',fg:'#84CC16',sub:'rgba(255,255,255,.5)'},
-    dir:{bg:'#1E40AF',fg:'#fff',sub:'rgba(255,255,255,.6)'},
-    cons:{bg:'#fff',fg:'#0f172a',sub:'#94a3b8',border:'#E2E8F0'},
-    me:{bg:'#84CC16',fg:'#1B2B3A',sub:'#1B2B3A',border:'#84CC16'}
-  };
+  /* ── Helpers couleur rôle ── */
+  function srCol(v){return v>=80?'#16a34a':v>=50?'#d97706':'#dc2626';}
+  function srBg(v){return v>=80?'#f0fdf4':v>=50?'#fffbeb':'#fff1f2';}
+  function ini(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();}
 
-  function nodeHtml(name,title,col,extra){
-    var brd=col.border?'border:1px solid '+col.border+';':'border:none;';
-    var sh=extra?'box-shadow:0 0 0 2px #84CC16;':'box-shadow:0 1px 4px rgba(0,0,0,.1);';
-    return '<div style="display:flex;flex-direction:column;align-items:center">'
-      +'<div style="background:'+col.bg+';color:'+col.fg+';'+brd+sh+'border-radius:8px;padding:6px 10px;text-align:center;min-width:80px;max-width:110px;position:relative">'
-      +(extra?'<div style="position:absolute;top:-6px;right:-6px;background:#84CC16;color:#1B2B3A;font-size:8px;font-weight:800;padding:1px 5px;border-radius:99px">Moi</div>':'')
-      +'<div style="font-weight:800;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px">'+esc(name)+'</div>'
-      +'<div style="font-size:8px;font-weight:600;color:'+col.sub+';margin-top:1px">'+esc(title)+'</div>'
+  /* ── Carte consultant compacte ── */
+  function consCard(c,isMe){
+    var ks=buildKS().find(function(x){return x.c.id===c.id;})||{k:{sr:0,rev:0}};
+    var sr=ks.k.sr||0;
+    var border=isMe?'border:2px solid #84CC16;':'border:1px solid #e2e8f0;';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:'+(isMe?'#f0fdf4':'#fff')+';border-radius:10px;'+border+'">'
+      +'<div style="width:32px;height:32px;border-radius:8px;background:'+(isMe?'#84CC16':'#e2e8f0')+';color:'+(isMe?'#1B2B3A':'#475569')+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">'+ini(c.name)+'</div>'
+      +'<div style="min-width:0;flex:1">'
+      +'<div style="font-size:12px;font-weight:700;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(isMe?'<span style="font-size:9px;font-weight:800;color:#1B2B3A;background:#84CC16;padding:1px 5px;border-radius:4px;margin-right:4px">MOI</span>':'')+esc(c.name)+'</div>'
+      +'<div style="font-size:10px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.title||'Consultant')+'</div>'
+      +'</div>'
+      +'<div style="flex-shrink:0;text-align:right">'
+      +'<div style="font-size:11px;font-weight:800;color:'+srCol(sr)+';background:'+srBg(sr)+';padding:1px 7px;border-radius:99px">'+sr.toFixed(0)+'%</div>'
       +'</div></div>';
   }
 
-  var vLine='<div style="width:1px;height:14px;background:#CBD5E1;margin:0 auto"></div>';
+  /* ── Carte directeur avec ses consultants ── */
+  function dirSection(dirName,cons,myId){
+    var sorted=cons.slice().sort(function(a,b){return a.name.localeCompare(b.name);});
+    var staffingVals=buildKS().filter(function(x){return (x.c.dir||'')=== dirName;});
+    var avgSr=staffingVals.length?staffingVals.reduce(function(s,x){return s+x.k.sr;},0)/staffingVals.length:0;
+    return '<div style="background:#fff;border-radius:14px;border:1px solid #e2e8f0;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.05);display:flex;flex-direction:column">'
+      /* Header directeur */
+      +'<div style="background:#1E40AF;padding:14px 16px">'
+      +'<div style="display:flex;align-items:center;gap:10px">'
+      +'<div style="width:36px;height:36px;border-radius:9px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0">'+ini(dirName)+'</div>'
+      +'<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:800;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(dirName)+'</div>'
+      +'<div style="font-size:10px;color:rgba(255,255,255,.65)">Directeur</div></div>'
+      +'<div style="text-align:right;flex-shrink:0">'
+      +'<div style="font-size:18px;font-weight:900;color:#fff">'+cons.length+'</div>'
+      +'<div style="font-size:9px;color:rgba(255,255,255,.55)">consultant'+(cons.length>1?'s':'')+'</div>'
+      +'</div></div>'
+      /* Barre de staffing */
+      +'<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;font-size:9px;color:rgba(255,255,255,.6);margin-bottom:4px"><span>Staffing moyen</span><span style="font-weight:700;color:#84CC16">'+avgSr.toFixed(0)+'%</span></div>'
+      +'<div style="height:4px;background:rgba(255,255,255,.15);border-radius:2px"><div style="height:100%;width:'+Math.min(avgSr,100).toFixed(0)+'%;background:#84CC16;border-radius:2px"></div></div>'
+      +'</div></div>'
+      /* Liste consultants */
+      +'<div style="padding:12px;display:flex;flex-direction:column;gap:6px;flex:1">'
+      +sorted.map(function(c){return consCard(c,c.id===myId);}).join('')
+      +(cons.length===0?'<div style="text-align:center;color:#94a3b8;font-size:12px;padding:16px">Aucun consultant</div>':'')
+      +'</div></div>';
+  }
 
-  function childrenRow(items){
-    if(!items||!items.length)return '';
-    if(items.length===1){
-      return vLine+'<div style="display:flex;justify-content:center">'+items[0]+'</div>';
-    }
-    var branches=items.map(function(item){
-      return '<div style="display:flex;flex-direction:column;align-items:center">'
-        +'<div style="width:1px;height:12px;background:#CBD5E1"></div>'
-        +item+'</div>';
-    });
-    return vLine
-      +'<div style="position:relative;display:flex;align-items:flex-start;gap:0">'
-      +'<div style="position:absolute;top:0;left:calc(50% / '+items.length+');right:calc(50% / '+items.length+');height:1px;background:#CBD5E1"></div>'
-      +branches.join('<div style="width:12px"></div>')
+  /* ── Header VP/SVP ── */
+  function vpHeader(name,role,count){
+    var col=role==='senior_vp'?'#1B2B3A':'#243447';
+    var lbl=role==='senior_vp'?'S\u00e9nior Vice Pr\u00e9sident':'Vice Pr\u00e9sident';
+    return '<div style="background:'+col+';border-radius:14px;padding:18px 24px;display:flex;align-items:center;gap:14px;margin-bottom:24px">'
+      +'<div style="width:46px;height:46px;border-radius:11px;background:rgba(132,204,22,.15);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#84CC16;flex-shrink:0">'+ini(name)+'</div>'
+      +'<div style="flex:1"><div style="font-size:17px;font-weight:900;color:#fff">'+esc(name)+'</div><div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:1px">'+lbl+'</div></div>'
+      +'<div style="text-align:right"><div style="font-size:26px;font-weight:900;color:#fff">'+count+'</div><div style="font-size:10px;color:rgba(255,255,255,.45)">consultant'+(count>1?'s':'')+'</div></div>'
       +'</div>';
   }
 
   /* ── Construction selon le rôle ── */
-  var html='';
+  var header='', grid='';
 
   if(S.role==='directeur'){
-    /* Dir → consultants */
-    var consCards=S.cons.map(function(c){return nodeHtml(c.name,c.title||'Consultant',RC.cons);});
-    html=nodeHtml(S.dirName||'Directeur','Directeur',RC.dir)
-      +childrenRow(consCards);
+    header='<div style="background:#1E40AF;border-radius:14px;padding:18px 24px;display:flex;align-items:center;gap:14px;margin-bottom:24px">'
+      +'<div style="width:46px;height:46px;border-radius:11px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff;flex-shrink:0">'+ini(S.dirName||'Dir')+'</div>'
+      +'<div style="flex:1"><div style="font-size:17px;font-weight:900;color:#fff">'+esc(S.dirName||'Directeur')+'</div><div style="font-size:12px;color:rgba(255,255,255,.6)">Directeur</div></div>'
+      +'<div style="text-align:right"><div style="font-size:26px;font-weight:900;color:#fff">'+S.cons.length+'</div><div style="font-size:10px;color:rgba(255,255,255,.5)">consultant'+(S.cons.length>1?'s':'')+'</div></div>'
+      +'</div>';
+    var sorted=S.cons.slice().sort(function(a,b){return a.name.localeCompare(b.name);});
+    grid='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">'
+      +sorted.map(function(c){return consCard(c,false);}).join('')+'</div>';
 
   }else if(S.role==='consultant'){
-    /* Directeur → moi + collègues */
     var myC=allC.find(function(c){return c.id===S.consId;})||{};
-    var myDir=myC.dir||'Directeur';
+    var myDir=myC.dir||'';
     var peers=allC.filter(function(c){return (c.dir||'')===myDir;});
-    var peerCards=peers.map(function(c){
-      return nodeHtml(c.name,c.title||'Consultant',c.id===S.consId?RC.me:RC.cons,c.id===S.consId);
-    });
-    html=nodeHtml(myDir,'Directeur',RC.dir)+childrenRow(peerCards);
+    header='<div style="background:#1E40AF;border-radius:14px;padding:18px 24px;display:flex;align-items:center;gap:14px;margin-bottom:24px">'
+      +'<div style="width:46px;height:46px;border-radius:11px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff">'+ini(myDir||'Dir')+'</div>'
+      +'<div style="flex:1"><div style="font-size:17px;font-weight:900;color:#fff">'+esc(myDir||'Directeur')+'</div><div style="font-size:12px;color:rgba(255,255,255,.6)">Directeur · Mon \u00e9quipe</div></div>'
+      +'<div style="text-align:right"><div style="font-size:26px;font-weight:900;color:#fff">'+peers.length+'</div><div style="font-size:10px;color:rgba(255,255,255,.5)">consultant'+(peers.length>1?'s':'')+'</div></div>'
+      +'</div>';
+    var sortedP=peers.slice().sort(function(a,b){return a.name.localeCompare(b.name);});
+    grid='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">'
+      +sortedP.map(function(c){return consCard(c,c.id===S.consId);}).join('')+'</div>';
 
   }else if(S.role==='gestionnaire'){
-    /* VP → directeurs → consultants */
-    var dirs=[];
-    allC.forEach(function(c){var d=c.dir||'';if(d&&dirs.indexOf(d)<0)dirs.push(d);});
-    dirs.sort();
-    var dirCards=dirs.map(function(dirName){
-      var dc=allC.filter(function(c){return (c.dir||'')===dirName;});
-      var dcCards=dc.map(function(c){return nodeHtml(c.name,c.title||'Consultant',RC.cons);});
-      return '<div style="display:flex;flex-direction:column;align-items:center">'
-        +nodeHtml(dirName,'Directeur',RC.dir)
-        +childrenRow(dcCards)+'</div>';
-    });
-    html=nodeHtml(S.vpName||'Vice Président','Vice Président',RC.vp)+childrenRow(dirCards);
+    var vpNm=S.vpName||'Vice Pr\u00e9sident';
+    header=vpHeader(vpNm,'vp',allC.length);
+    var dirs=[];allC.forEach(function(c){var d=c.dir||'(Sans directeur)';if(dirs.indexOf(d)<0)dirs.push(d);});dirs.sort();
+    grid='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">'
+      +dirs.map(function(d){var dc=allC.filter(function(c){return (c.dir||'(Sans directeur)')===d;});return dirSection(d,dc,null);}).join('')+'</div>';
 
   }else if(S.role==='senior_vp'){
-    /* SVP → VPs → directeurs → consultants */
-    var svpName=(S._userEmail||'SVP').split('@')[0];
-    var vpCards=(S.svpInvites||[]).map(function(vp){
-      var vpName=vp.vp_name||vp.email||'VP';
-      var vpDirs=(S.vpDirMap||{})[vpName]||[];
-      /* Fallback : si vpDirMap vide et 1 seul VP → tous les dirs lui appartiennent */
-      if(!vpDirs.length&&Object.keys(S.vpDirMap||{}).length===0&&(S.svpInvites||[]).length===1){
-        allC.forEach(function(c){var d=c.dir||'';if(d&&vpDirs.indexOf(d)<0)vpDirs.push(d);});
-      }
-      var dirCards2=vpDirs.map(function(dirName){
-        var dc=allC.filter(function(c){return (c.dir||'')===dirName;});
-        var dcCards=dc.map(function(c){return nodeHtml(c.name,c.title||'Consultant',RC.cons);});
-        return '<div style="display:flex;flex-direction:column;align-items:center">'
-          +nodeHtml(dirName,'Directeur',RC.dir)
-          +childrenRow(dcCards)+'</div>';
-      });
-      return '<div style="display:flex;flex-direction:column;align-items:center">'
-        +nodeHtml(vpName,'Vice Président',RC.vp)
-        +childrenRow(dirCards2)+'</div>';
-    });
-    html=nodeHtml(svpName,'Sénior VP',RC.svp)+childrenRow(vpCards);
+    var svpNm=(S.profileFirstName&&S.profileLastName)?(S.profileFirstName+' '+S.profileLastName):(S._userEmail||'Sénior VP').split('@')[0];
+    header=vpHeader(svpNm,'senior_vp',allC.length);
+    var vpList=S.svpInvites||[];
+    if(!vpList.length){
+      /* Fallback : 1 seul bloc de dirs */
+      var dirs2=[];allC.forEach(function(c){var d=c.dir||'(Sans directeur)';if(dirs2.indexOf(d)<0)dirs2.push(d);});dirs2.sort();
+      grid='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">'
+        +dirs2.map(function(d){var dc=allC.filter(function(c){return (c.dir||'(Sans directeur)')===d;});return dirSection(d,dc,null);}).join('')+'</div>';
+    }else{
+      grid=vpList.map(function(vp){
+        var vpNm2=vp.vp_name||vp.email||'VP';
+        var vpDirs=(S.vpDirMap||{})[vpNm2]||[];
+        if(!vpDirs.length&&Object.keys(S.vpDirMap||{}).length===0&&vpList.length===1){
+          allC.forEach(function(c){var d=c.dir||'';if(d&&vpDirs.indexOf(d)<0)vpDirs.push(d);});
+        }
+        var vpCons=vpDirs.length?allC.filter(function(c){return vpDirs.indexOf(c.dir||'')>=0;}):allC;
+        return '<div style="margin-bottom:32px">'
+          +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:12px 16px;background:#243447;border-radius:10px">'
+          +'<div style="width:30px;height:30px;border-radius:7px;background:rgba(132,204,22,.15);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#84CC16">'+ini(vpNm2)+'</div>'
+          +'<div style="flex:1"><div style="font-size:13px;font-weight:800;color:#fff">'+esc(vpNm2)+'</div><div style="font-size:10px;color:rgba(255,255,255,.5)">Vice Pr\u00e9sident · '+vpCons.length+' consultant'+(vpCons.length>1?'s':'')+'</div></div>'
+          +'</div>'
+          +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">'
+          +vpDirs.map(function(d){var dc=allC.filter(function(c){return (c.dir||'')===d;});return dirSection(d,dc,null);}).join('')
+          +'</div></div>';
+      }).join('');
+    }
   }
 
   return '<div class="vw">'
-    +'<div style="margin-bottom:24px"><div class="pt">Organisation</div>'
-    +'<div class="ps">Organigramme hiérarchique de votre structure</div></div>'
-    +'<div class="card" style="padding:32px;overflow-x:auto">'
-    +'<div style="min-width:fit-content;display:flex;flex-direction:column;align-items:center;padding-bottom:8px">'
-    +html
-    +'</div></div></div>';
+    +'<div style="margin-bottom:20px"><div class="pt">Organisation</div>'
+    +'<div class="ps">Organigramme de votre structure · '+allC.length+' consultant'+(allC.length>1?'s':'')+'</div></div>'
+    +header+grid+'</div>';
 }
 
 function tParam(){
