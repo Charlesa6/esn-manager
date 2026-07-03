@@ -773,7 +773,8 @@ async function doSignup() {
     });
     loading('b-signup','sp-signup','lb-signup', false);
     if (res2.error) {
-      var em2 = (res2.error && typeof res2.error.message === 'string') ? res2.error.message : JSON.stringify(res2.error);
+      console.error('Signup error:', res2.error, 'message:', res2.error.message, 'status:', res2.error.status);
+      var em2 = errMsg(res2.error);
       if (em2.toLowerCase().includes('already') || em2.toLowerCase().includes('registered')) {
         setErr('s-em','e-s-em','Cet email est déjà utilisé');
       } else {
