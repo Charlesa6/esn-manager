@@ -1495,24 +1495,7 @@ function tKPIs(){
   function ini(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();}
 
   var srLabel=avgSr>=80?'Excellent':avgSr>=60?'Correct':'À surveiller';
-  /* Coût salarial annuel estimé : SCR × 113.35 × 1.25 pour chaque consultant */
-  var totSalaryAnnuel=S.cons.reduce(function(s,cc){
-    if(cc.contract==='freelance')return s+(cc.scr||0)*(totBill>0?totBill/Math.max(S.cons.length,1):200);
-    return s+(cc.scr||0)*113.35*1.25;
-  },0);
-  /* Distinguer rec/bm des autres */
-  var salRecBM=S.cons.filter(function(cc){return cc.grade==='sales_grade'||cc.role==='recruteur';}).reduce(function(s,cc){return s+(cc.scr||0)*113.35*1.25;},0);
-  /* Cliquer ouvre un modal détail */
-  var salDetailRows=S.cons.map(function(cc){
-    var annuel=(cc.contract==='freelance')?(cc.scr||0)*(totBill>0?totBill/Math.max(S.cons.length,1):200):(cc.scr||0)*113.35*1.25;
-    var isRec=cc.role==='recruteur';var isBM=cc.grade==='sales_grade';
-    var color=isRec?'#0F766E':isBM?'#1e40af':'#0f172a';
-    var badge=isRec?'<span style="font-size:9px;background:#d1fae5;color:#065f46;padding:1px 5px;border-radius:99px">Recruteur</span>':isBM?'<span style="font-size:9px;background:#dbeafe;color:#1e40af;padding:1px 5px;border-radius:99px">Business Manager</span>':'';
-    return '<tr><td style="font-weight:600;color:'+color+'">'+esc(cc.name)+'</td><td>'+badge+'</td>'
-      +'<td style="font-size:11px;color:#64748b">'+(cc.contract==='freelance'?'Freelance':'Salarié')+'</td>'
-      +'<td style="font-size:12px;color:#64748b">'+fEur(Math.round(cc.scr||0))+'/j</td>'
-      +'<td style="font-weight:700;color:'+color+'">'+fEur(Math.round(annuel))+'</td></tr>';
-  }).join('');
+  /* totSalary (période) utilisé pour la carte KPI — calcul dans tModal salary_detail */
 
   var hero='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:#84CC16;border-radius:16px;overflow:hidden;margin-bottom:24px">'
 
@@ -1545,13 +1528,12 @@ function tKPIs(){
     +'<div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:8px">CA &minus; salaires p\u00e9riode ('+fEur(totSalary)+')</div>'
     +'</div>'
 
-    /* Coût salarial annuel (cliquable) */
-    +'<div style="background:#1B2B3A;padding:24px 18px;cursor:pointer" onclick="S.modal={type:\'salary_detail\',rows:\''+encodeURIComponent('<table style=\'width:100%\'><thead><tr><th>Nom</th><th>Type</th><th>Contrat</th><th>SCR/j</th><th>Coût annuel</th></tr></thead><tbody>'+salDetailRows+'</tbody></table>')+'\'};render()">'
-    +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#84CC16;margin-bottom:8px">Co\u00fbt salarial ann.</div>'
-    +'<div style="font-size:30px;font-weight:900;color:#ffffff;letter-spacing:-.03em;line-height:1">'+fEur(Math.round(totSalaryAnnuel))+'</div>'
-    +'<div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:4px">'+S.cons.length+' membres &middot; cliquez pour le d\u00e9tail</div>'
-    +(salRecBM>0?'<div style="margin-top:6px;font-size:10px;color:#84CC16">\u25cf Rec/BM : '+fEur(Math.round(salRecBM))+'</div>':'')
-    +'<div style="margin-top:8px;font-size:9px;color:rgba(255,255,255,.3)">\uD83D\uDC49 D\u00e9tail par personne</div>'
+    /* Coût salarial période (cliquable via data-act — pas d'encodeURIComponent) */
+    +'<div style="background:#1B2B3A;padding:24px 18px;cursor:pointer" data-act="open-salary-detail">'
+    +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#84CC16;margin-bottom:8px">Co\u00fbt salarial</div>'
+    +'<div style="font-size:30px;font-weight:900;color:#ffffff;letter-spacing:-.03em;line-height:1">'+fEur(Math.round(totSalary))+'</div>'
+    +'<div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:4px">'+S.cons.length+' membres &middot; p\u00e9riode en cours</div>'
+    +'<div style="margin-top:8px;font-size:9px;font-weight:700;color:#84CC16">\u25b6 D\u00e9tail par personne</div>'
     +'</div>'
 
     +'</div>';
@@ -4602,7 +4584,7 @@ function tModal(){
     var _rl=[];((S._all&&S._all.cons)||S.cons).forEach(function(c){var r=c.dir||'';if(r&&_rl.indexOf(r)<0)_rl.push(r);});_rl.sort();
     /* Grades disponibles selon le rôle du créateur */
     var availGrades=S.role==='super_admin'
-      ?['Consultant Junior','Consultant Confirmé','Consultant Sénior','Manager','Business Manager','[Admin]','[Recruteur]']
+      ?['Consultant Junior','Consultant Confirmé','Consultant Sénior','Manager','Business Manager','[Admin]','[Gestionnaire]','[Recruteur]']
       :S.role==='admin'
       ?['Consultant Junior','Consultant Confirmé','Consultant Sénior','Manager','Business Manager','[Gestionnaire]']
       :['Consultant Junior','Consultant Confirmé','Consultant Sénior','Manager','Business Manager'];
@@ -4737,17 +4719,44 @@ function tModal(){
 
 
   if(tp==='salary_detail'){
-    title='💰 Coût salarial annuel — Détail';wide=true;
-    body='<div class="ov" style="max-height:60vh;overflow-y:auto">'
-      +(m.rows?decodeURIComponent(m.rows):'')
+    /* Calcul depuis buildKS() — période sélectionnée, sans onclick HTML injecté */
+    var _ks2=buildKS();
+    var _periodLabel=S.quarter?('Q'+S.quarter+' '+fyLbl(S.year)):fyLbl(S.year);
+    title='\uD83D\uDCB0 Co\u00fbt salarial \u2014 '+_periodLabel;
+    wide=true;
+    var _totSal2=_ks2.reduce(function(s,x){return s+x.k.cost;},0);
+    var _recBMSal=_ks2.filter(function(x){return x.c.grade==='sales_grade'||x.c.role==='recruteur';}).reduce(function(s,x){return s+x.k.cost;},0);
+    var _rows=_ks2.slice().sort(function(a,b){return b.k.cost-a.k.cost;}).map(function(x){
+      var cc=x.c;var isRec=cc.role==='recruteur';var isBM=cc.grade==='sales_grade';
+      var color=isRec?'#0F766E':isBM?'#1e40af':'#374151';
+      var rowBg=isRec?'#f0fdf4':isBM?'#eff6ff':'transparent';
+      var badge=isRec?'<span style="font-size:9px;background:#d1fae5;color:#065f46;padding:1px 6px;border-radius:99px;font-weight:700">Recruteur</span>':isBM?'<span style="font-size:9px;background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:99px;font-weight:700">Business Manager</span>':'';
+      return '<tr style="background:'+rowBg+'">'
+        +'<td style="font-weight:600;color:'+color+'">'+esc(cc.name)+'</td>'
+        +'<td>'+badge+'</td>'
+        +'<td style="font-size:11px;color:#64748b">'+(cc.contract==='freelance'?'Freelance':'Salari\u00e9')+'</td>'
+        +'<td style="font-size:12px;color:#64748b">'+fEur(Math.round(cc.scr||0))+'/j</td>'
+        +'<td style="font-weight:700;color:'+color+'">'+fEur(Math.round(x.k.cost))+'</td>'
+        +'<td style="font-size:11px;color:#94a3b8">'+x.k.tWD+'j</td>'
+        +'</tr>';
+    }).join('');
+    body='<div class="ov" style="max-height:55vh;overflow-y:auto">'
+      +'<table><thead><tr><th>Nom</th><th></th><th>Contrat</th><th>SCR/j</th><th>Co\u00fbt p\u00e9riode</th><th>Jours</th></tr></thead><tbody>'
+      +_rows
+      +'</tbody></table></div>'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding:12px;background:#f8fafc;border-radius:8px">'
+      +'<div style="font-size:13px;font-weight:700;color:#0f172a">Total co\u00fbt \u00e9quipe \u2014 '+_periodLabel+'</div>'
+      +'<div style="font-size:16px;font-weight:900;color:#1B2B3A">'+fEur(Math.round(_totSal2))+'</div>'
       +'</div>'
-      +'<div style="margin-top:14px;padding:12px;background:#f8fafc;border-radius:8px;font-size:12px;color:#64748b;line-height:1.6">'
-      +'<strong>Méthode de calcul</strong> : SCR journalier × 113,35 (jours ouvrables annuels) × 1,25 (charges patronales = coût employeur).<br>'
-      +'<span style="display:inline-block;margin-top:6px;padding:2px 8px;border-radius:99px;background:#d1fae5;color:#065f46;font-size:11px;font-weight:700">Recruteur</span> et <span style="display:inline-block;padding:2px 8px;border-radius:99px;background:#dbeafe;color:#1e40af;font-size:11px;font-weight:700">Business Manager</span> : hors production billable directe.'
-      +'</div>';
+      +(_recBMSal>0?'<div style="margin-top:8px;padding:10px 12px;background:#f0fdf4;border-radius:8px;font-size:12px;display:flex;justify-content:space-between">'
+        +'<span style="color:#64748b">dont Recruteurs &amp; Business Managers :</span>'
+        +'<strong style="color:#0F766E">'+fEur(Math.round(_recBMSal))+'</strong></div>':'')
+      +'<div style="margin-top:10px;font-size:11px;color:#94a3b8">Co\u00fbt = SCR \u00d7 113,35 \u00d7 1,25 \u00d7 (jours pr\u00e9sents / jours FY). Freelance : SCR \u00d7 jours factur\u00e9s.</div>';
     return '<div class="mov" id="mov"><div class="mbox '+(wide?'mw':'mn')+'">'
-      +'<div class="moh"><div class="mot">'+title+'</div><button class="moc" data-act="mc">✕</button></div>'
-      +'<div class="mody">'+body+'<div class="br"><button class="bg" data-act="mc">Fermer</button></div></div></div></div>';
+      +'<div class="moh"><div class="mot">'+title+'</div><button class="moc" data-act="mc">\u2715</button></div>'
+      +'<div class="mody">'+body
+      +'<div class="br"><button class="bg" data-act="mc">Fermer</button></div>'
+      +'</div></div></div>';
   }
 
   if(tp==='leave'){
@@ -5501,6 +5510,7 @@ function bind(){
       else if(a==='biz-del'){var _tbl=b.getAttribute('data-table')||'';bizDelItem(_tbl,id);}
       else if(a==='biz-opp-mission'){bizOppToMission(id);}
       else if(a==='restart-onboarding'){restartOnboarding();}
+      else if(a==='open-salary-detail'){S.modal={type:'salary_detail'};render();}
       else if(a==='open-tutorial'){var tid=b.getAttribute('data-tutid');if(tid&&TUTORIALS[tid]){S.modal={type:'tutorial',tutId:tid,tutStep:0};render();}}
       else if(a==='biz-tab'){S.bizTab=b.getAttribute('data-biz-tab')||'pipeline';render();}
     };
