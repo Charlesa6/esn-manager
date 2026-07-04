@@ -440,7 +440,7 @@ var S={
   consInvites:[], /* codes d'accès générés pour les consultants */
   adminCode:null, /* dernier code généré (affiché dans Admin) */
   year:CFY,quarter:null,modal:null,fmc:'all',fms:'all',fmt:'all',flc:'all',precs:{},
-  role:'gestionnaire',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,kpiDirOpen:{},invites:[],svpInvites:[],recruteurInvites:[],vpDirMap:{},vpName:'',profileFirstName:'',profileLastName:'',profileTitle:'',fvp:[],settings:{currency:'EUR',currencySymbol:'€',fyStartMonth:10,fyStartDay:1,roleLabels:{}},kpiVPOpen:{},kpiDirDirOpen:{},actCid:'',actMonth:'',_all:null,
+  role:'admin',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,kpiDirOpen:{},invites:[],svpInvites:[],recruteurInvites:[],vpDirMap:{},vpName:'',profileFirstName:'',profileLastName:'',profileTitle:'',fvp:[],settings:{currency:'EUR',currencySymbol:'€',fyStartMonth:10,fyStartDay:1,roleLabels:{}},kpiVPOpen:{},kpiDirDirOpen:{},actCid:'',actMonth:'',_all:null,
   sbSt:'\uD83D\uDFE2 Sauvegarde locale active',
   sbSync:false,
   imp:null,
@@ -458,10 +458,10 @@ var H=fyHols(CFY);
 function loadDemoData(){
   S.demo=true;
   S._userEmail='demo@esn-manager.fr';
-  S.role='gestionnaire';
+  S.role='admin';
   S.year=2026;
   S.quarter=null;
-  S.tab=S.role==='consultant'?'activite':S.role==='recruteur'?'recrutement':'kpis';
+  S.tab=S.role==='utilisateur'?'activite':S.role==='recruteur'?'recrutement':'kpis';
   S.cons=[
     {id:'d1',name:'Sophie Martin',   title:'Consultante Senior',scr:520,email:'s.martin@demo.fr',   dir:'Thomas Bernard',arrive:'2024-10-01',depart:null},
     {id:'d2',name:'Lucas Dupont',    title:'Architecte Cloud',  scr:610,email:'l.dupont@demo.fr',   dir:'Thomas Bernard',arrive:'2024-10-01',depart:null},
@@ -572,10 +572,10 @@ function getActiveLv(cid){
 }
 /* ── Libellé d'un rôle (avec personnalisation via Paramètres SVP) ── */
 var _ROLE_DEFAULTS={
-  'senior_vp':'Sénior Vice Président',
-  'gestionnaire':'Vice Président',
-  'directeur':'Directeur',
-  'consultant':'Consultant',
+  'super_admin':'Super Admin',
+  'admin':'Admin',
+  'gestionnaire':'Gestionnaire',
+  'utilisateur':'Utilisateur',
   'recruteur':'Recruteur'
 };
 function rLabel(role){
@@ -598,15 +598,15 @@ function clientRev(ks){
 }
 
 /* ═══ PERMISSIONS / VUE FILTRÉE PAR DIRECTEUR ═══
-   - role 'gestionnaire' : accès à tout, peut filtrer par un ou plusieurs directeurs (S.fdir)
-   - role 'directeur'    : accès limité aux consultants de son équipe (c.dir === S.dirName)
+   - role 'admin' : accès à tout, peut filtrer par un ou plusieurs directeurs (S.fdir)
+   - role 'gestionnaire'    : accès limité aux consultants de son équipe (c.dir === S.dirName)
    visibleData() renvoie le sous-ensemble cons/miss/lvs à afficher (les données maîtres
    restent dans S._all pour la sauvegarde et les mutations). */
 function visibleConsIds(){
   var base=(S._all&&S._all.cons)||S.cons;
-  if(S.role==='directeur'){base=base.filter(function(c){return (c.dir||'')===S.dirName;});}
-  else if(S.role==='consultant'){base=base.filter(function(c){return c.id===S.consId;});}
-  else if(S.role==='senior_vp'&&S.fvp&&S.fvp.length){
+  if(S.role==='gestionnaire'){base=base.filter(function(c){return (c.dir||'')===S.dirName;});}
+  else if(S.role==='utilisateur'){base=base.filter(function(c){return c.id===S.consId;});}
+  else if(S.role==='super_admin'&&S.fvp&&S.fvp.length){
     /* Filtrer par VP : on cherche les directeurs appartenant aux VPs sélectionnés */
     var allowedDirs=[];
     S.fvp.forEach(function(vpName){
@@ -740,7 +740,7 @@ function tSB(){
   var NAV;
   if(S.role==='recruteur'){
     NAV=[{id:'recrutement',ic:'\uD83C\uDFAF',lb:'Recrutement'}];
-  }else if(S.role==='consultant'){
+  }else if(S.role==='utilisateur'){
     /* Vue consultant : onglets réduits uniquement sur ses données */
     NAV=[
       {id:'activite',   ic:'\uD83D\uDCC5',lb:'Activit\u00e9'},
@@ -760,13 +760,13 @@ function tSB(){
       {id:'leaves',    ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
       {id:'param',     ic:'\uD83D\uDCA1',lb:'Pr\u00e9conisations'}
     ];
-    if(S.role==='gestionnaire')NAV.push({id:'directeurs',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
-    if(S.role==='directeur')NAV.push({id:'admin',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
-    if(S.role==='senior_vp')NAV.push({id:'svp_acces',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
-    if(S.role==='senior_vp')NAV.push({id:'svp_settings',ic:'⚙️',lb:'Param\u00e8tres'});
+    if(S.role==='admin')NAV.push({id:'directeurs',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
+    if(S.role==='gestionnaire')NAV.push({id:'admin',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
+    if(S.role==='super_admin')NAV.push({id:'svp_acces',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
+    if(S.role==='super_admin')NAV.push({id:'svp_settings',ic:'⚙️',lb:'Param\u00e8tres'});
     NAV.splice(4,0,{id:'activite',ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'});
   }
-  var alC=S.role==='directeur'?(S.approvals||[]).filter(function(r){return r.status==='pending'&&r.dirName===S.dirName;}).length:0;
+  var alC=S.role==='gestionnaire'?(S.approvals||[]).filter(function(r){return r.status==='pending'&&r.dirName===S.dirName;}).length:0;
   var fyOpts=[CFY-2,CFY-1,CFY,CFY+1].map(function(fy){return '<option value="'+fy+'"'+(fy===S.year?' selected':'')+'>'+fyLbl(fy)+'</option>';}).join('');
   var nav=NAV.map(function(n){
     return '<button class="nb'+(S.tab===n.id?' act':'')+'" data-nav="'+n.id+'">'
@@ -777,15 +777,15 @@ function tSB(){
   var _allC=(S._all&&S._all.cons)||S.cons;
   var _dirs=[];_allC.forEach(function(c){var r=c.dir||'';if(r&&_dirs.indexOf(r)<0)_dirs.push(r);});_dirs.sort();
   var dirBlock;
-  if(S.role==='directeur'){
+  if(S.role==='gestionnaire'){
     dirBlock='<div class="syr"><div class="syr-lbl">Mon \u00e9quipe</div>'
       +'<div style="color:#cbd5e1;font-size:12px;padding:3px 2px;font-weight:600">'+esc(S.dirName||'\u2014')+'</div></div>';
-  }else if(S.role==='consultant'){
+  }else if(S.role==='utilisateur'){
     var myC=(S._all||S).cons.find(function(c){return c.id===S.consId;})||{};
     dirBlock='<div class="syr"><div class="syr-lbl">Mon profil</div>'
       +'<div style="color:#a5b4fc;font-size:12px;padding:3px 2px;font-weight:600">'+esc(myC.name||S._userEmail||'\u2014')+'</div>'
       +'<div style="color:#64748b;font-size:11px;padding:1px 2px">'+esc(myC.title||'')+'</div></div>';
-  }else if(S.role==='senior_vp'){
+  }else if(S.role==='super_admin'){
     /* Filtre par Vice Président */
     var _vps=(S.svpInvites||[]).map(function(iv){return iv.vp_name||iv.email||'';}).filter(Boolean);
     var _vNone=(!S.fvp||!S.fvp.length);
@@ -794,7 +794,7 @@ function tSB(){
       return '<label style="display:flex;align-items:center;gap:7px;padding:2px;color:#cbd5e1;font-size:12px;cursor:pointer">'
         +'<input type="checkbox" data-vp="'+esc(vp)+'"'+(on?' checked':'')+' style="accent-color:#84CC16;flex-shrink:0">'+esc(vp)+'</label>';
     }).join('');
-    dirBlock='<div class="syr"><div class="syr-lbl">'+rLabel('gestionnaire')+(_vNone?'':' ('+S.fvp.length+')')+'</div>'
+    dirBlock='<div class="syr"><div class="syr-lbl">'+rLabel('admin')+(_vNone?'':' ('+S.fvp.length+')')+'</div>'
       +(_vps.length?_vItems+(_vNone
           ?'<div style="font-size:10px;color:#475569;margin-top:3px">Tous affichés</div>'
           :'<div data-vp-clear style="font-size:10px;color:#60a5fa;margin-top:3px;cursor:pointer;text-decoration:underline">Tout afficher</div>')
@@ -807,7 +807,7 @@ function tSB(){
       return '<label style="display:flex;align-items:center;gap:7px;padding:2px;color:#cbd5e1;font-size:12px;cursor:pointer">'
         +'<input type="checkbox" data-dir="'+esc(r)+'"'+(on?' checked':'')+' style="accent-color:#84CC16;flex-shrink:0">'+esc(r)+'</label>';
     }).join('');
-    dirBlock='<div class="syr"><div class="syr-lbl">'+rLabel('directeur')+(_none?'':' ('+S.fdir.length+')')+'</div>'
+    dirBlock='<div class="syr"><div class="syr-lbl">'+rLabel('gestionnaire')+(_none?'':' ('+S.fdir.length+')')+'</div>'
       +(_dirs.length?_items+(_none
           ?'<div style="font-size:10px;color:#475569;margin-top:3px">Tous affichés</div>'
           :'<div data-dir-clear style="font-size:10px;color:#60a5fa;margin-top:3px;cursor:pointer;text-decoration:underline">Tout afficher</div>')
@@ -961,13 +961,13 @@ function tDash(){
   /* ── Compteur IC et approbations ── */
   var icCount=icCons.length;
   var pendingAppr=(S.approvals||[]).filter(function(r){
-    return r.status==='pending'&&(S.role!=='directeur'||r.dirName===S.dirName);
+    return r.status==='pending'&&(S.role!=='gestionnaire'||r.dirName===S.dirName);
   });
   var approvedAppr=(S.approvals||[]).filter(function(r){
-    return r.status==='approved'&&(S.role!=='directeur'||r.dirName===S.dirName);
+    return r.status==='approved'&&(S.role!=='gestionnaire'||r.dirName===S.dirName);
   });
   var rejectedAppr=(S.approvals||[]).filter(function(r){
-    return r.status==='rejected'&&(S.role!=='directeur'||r.dirName===S.dirName);
+    return r.status==='rejected'&&(S.role!=='gestionnaire'||r.dirName===S.dirName);
   });
   var pCount=pendingAppr.length;
 
@@ -1015,7 +1015,7 @@ function tDash(){
     +'<div style="padding:0 18px 16px">'
     +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#92400e;margin:10px 0 8px">\u23f3 En attente ('+pCount+')</div>'
     +(pendingAppr.length
-      ?pendingAppr.map(function(r){return apprRow(r,S.role==='directeur');}).join('')
+      ?pendingAppr.map(function(r){return apprRow(r,S.role==='gestionnaire');}).join('')
       :'<div style="font-size:13px;color:#94a3b8;padding:6px 0 12px">Aucune demande en attente.</div>')
     +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#15803d;margin:12px 0 8px">\u2705 Approuv\u00e9es ('+approvedAppr.length+')</div>'
     +(approvedAppr.length
@@ -1035,7 +1035,7 @@ function tDash(){
     /* Cartes résumé — Approbations EN PREMIER, cliquable */
     +'<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">'
 
-    +(S.role==='directeur'?'<a href="#approvals-section" style="background:'+(pCount>0?'#fef3c7':'#f8fafc')+';border:1px solid '+(pCount>0?'#fbbf24':'#e2e8f0')+';border-radius:12px;padding:16px 18px;text-decoration:none;cursor:pointer;display:block;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 4px 12px rgba(0,0,0,.1)\'" onmouseout="this.style.boxShadow=\'\'">'
+    +(S.role==='gestionnaire'?'<a href="#approvals-section" style="background:'+(pCount>0?'#fef3c7':'#f8fafc')+';border:1px solid '+(pCount>0?'#fbbf24':'#e2e8f0')+';border-radius:12px;padding:16px 18px;text-decoration:none;cursor:pointer;display:block;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 4px 12px rgba(0,0,0,.1)\'" onmouseout="this.style.boxShadow=\'\'">'
     +'<div style="font-size:28px;font-weight:900;color:'+(pCount>0?'#b45309':'#64748b')+'">'+pCount+'</div>'
     +'<div style="font-size:12px;font-weight:700;color:#374151;margin-top:4px">Approbations</div>'
     +'<div style="font-size:11px;color:#94a3b8">en attente \u2193</div></a>':'')
@@ -1110,7 +1110,7 @@ function tDash(){
         +(futurRows||'<div style="font-size:13px;color:#94a3b8;padding:8px 0">Aucune arriv\u00e9e planifi\u00e9e.</div>')
         +'</div></details>';
     }())
-    +(S.role==='directeur'?apprSection:'')
+    +(S.role==='gestionnaire'?apprSection:'')
     +'</div>';
 }
 function tTeams(){
@@ -1206,7 +1206,7 @@ function tTeams(){
     +'<button class="bp" data-act="ac">+ Ajouter un consultant</button></div>'
     +filtersHtml
     +'<div class="card ov"><table style="min-width:640px">'
-    +'<thead><tr><th>'+rLabel('consultant')+'</th><th>Poste</th><th>SCR/j</th><th>Mission actuelle</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
+    +'<thead><tr><th>'+rLabel('utilisateur')+'</th><th>Poste</th><th>SCR/j</th><th>Mission actuelle</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
     +'<tbody>'+rows+(inFY.length?'':'<tr><td colspan="6" class="emp">Aucun consultant sur ce FY.</td></tr>')
     +'</tbody></table></div></div>';
 }
@@ -1224,9 +1224,9 @@ function tMiss(){
     var isFf=m.btype==='forfait';
     var WJ=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
     var wdLbl=(m.wdays&&m.wdays.length&&m.wdays.length<5)?m.wdays.slice().sort().map(function(x){return WJ[x];}).join(' '):'Tous (L\u2192V)';
-    var flds=[['Client',m.cli],[rLabel('consultant'),c?c.name:'\u2014'],['Type',isFf?'Forfait':'Assistance technique']];
+    var flds=[['Client',m.cli],[rLabel('utilisateur'),c?c.name:'\u2014'],['Type',isFf?'Forfait':'Assistance technique']];
     if(isFf){flds.push(['CA deal',fEur((+m.deal)||0)]);flds.push(['Marge cible',(m.tmar!=null?m.tmar:0)+'%']);}
-    else if(S.role!=='consultant'){flds.push(['TJM',fEur(m.tjm)]);}  /* TJM masqué pour les consultants */
+    else if(S.role!=='utilisateur'){flds.push(['TJM',fEur(m.tjm)]);}  /* TJM masqué pour les consultants */
     flds.push(['D\u00e9but',fDt(m.sd)]);flds.push(['Fin',fDt(m.ed)]);flds.push(['Jours/sem.',wdLbl]);
     flds.push(['Lieu',m.loc||'\u2014']);flds.push(['Resp. mission',m.mgr||'\u2014']);flds.push(['Contact client',m.ccn||'\u2014']);flds.push(['Poste contact',m.ccr||'\u2014']);
     var ffBlock='';
@@ -1270,7 +1270,7 @@ function tMiss(){
         +'Choisir un fichier<input type="file" id="miss-imp-fi" accept=".xlsx,.xls,.csv" style="display:none"></label>'
         +'</div></div>';
     }
-    var MFLDS=[[rLabel('consultant')+' *','Consultant *','Doit correspondre \u00e0 un consultant existant'],['name','Nom de la mission *','Libell\u00e9 de la mission'],['pcode','Code projet','Code PSA/SAP'],['cli','Client *','Soci\u00e9t\u00e9 cliente'],['tjm','TJM','TJM en \u20ac \u2014 vide si Forfait'],['sd','Date d\u00e9but *','AAAA-MM-JJ'],['ed','Date fin','Vide si mission ouverte'],['btype','Type facturation *','Valeur : AT ou Forfait'],['deal','Budget forfait (\u20ac)','Montant total \u2014 vide si AT'],['wdays','Jours/sem. *','5=L-V, 4=L-J, 3=L-Me ou codes L,M,Me,J,V'],['loc','Lieu','Ex : Paris'],['mgr','Responsable','Manager de mission'],['ccn','Contact client (Nom)','Nom du contact'],['ccr','Contact client (R\u00f4le)','Poste du contact']];
+    var MFLDS=[[rLabel('utilisateur')+' *','Consultant *','Doit correspondre \u00e0 un consultant existant'],['name','Nom de la mission *','Libell\u00e9 de la mission'],['pcode','Code projet','Code PSA/SAP'],['cli','Client *','Soci\u00e9t\u00e9 cliente'],['tjm','TJM','TJM en \u20ac \u2014 vide si Forfait'],['sd','Date d\u00e9but *','AAAA-MM-JJ'],['ed','Date fin','Vide si mission ouverte'],['btype','Type facturation *','Valeur : AT ou Forfait'],['deal','Budget forfait (\u20ac)','Montant total \u2014 vide si AT'],['wdays','Jours/sem. *','5=L-V, 4=L-J, 3=L-Me ou codes L,M,Me,J,V'],['loc','Lieu','Ex : Paris'],['mgr','Responsable','Manager de mission'],['ccn','Contact client (Nom)','Nom du contact'],['ccr','Contact client (R\u00f4le)','Poste du contact']];
     var opts2='<option value="">-- Ignorer --</option>'+mi.headers.map(function(h,i){return '<option value="'+i+'">'+(i+1)+'. '+esc(h)+'</option>';}).join('');
     var form2=MFLDS.map(function(f){var s2='<select class="ic" id="mim-'+f[0]+'">'+opts2.replace(new RegExp('value="'+mi.map[f[0]]+'"'),'value="'+mi.map[f[0]]+'" selected')+'</select>';return '<div class="fd" style="margin-bottom:9px"><label class="fl">'+f[1]+'</label>'+s2+'<p style="font-size:11px;color:#94a3b8;margin-top:3px">'+f[2]+'</p></div>';}).join('');
     var prev2=mi.raw.slice(0,3).map(function(row){return '<tr>'+mi.headers.map(function(h,i){return '<td style="padding:4px 8px;font-size:11px;border-bottom:1px solid #f1f5f9;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(String(row[i]||''))+'</td>';}).join('')+'</tr>';}).join('');
@@ -1587,7 +1587,7 @@ function tKPIs(){
     +'<span style="font-size:11px;font-weight:700;background:#e2e8f0;color:#475569;padding:1px 8px;border-radius:99px;margin-right:6px">'+ks.length+' consultants</span>'
     +'<span style="font-size:11px;color:#94a3b8">&#x25be;</span></summary>'
     +'<div style="padding:0 0 4px"><table>'
-    +'<thead><tr><th>'+rLabel('consultant')+'</th>'+sortTh('ca','CA')+sortTh('marge','Marge')+sortTh('tjm','TJM moy.')+sortTh('sr','Staffing')+'</tr></thead>'
+    +'<thead><tr><th>'+rLabel('utilisateur')+'</th>'+sortTh('ca','CA')+sortTh('marge','Marge')+sortTh('tjm','TJM moy.')+sortTh('sr','Staffing')+'</tr></thead>'
     +'<tbody>'+consKpiRows+(consKpiRows?'':'<tr><td colspan="5" class="emp">Aucune donn\u00e9e sur la p\u00e9riode</td></tr>')
     +'</tbody></table></div></details>';
 
@@ -1600,7 +1600,7 @@ function tKPIs(){
     +srBars+'</div>'
     +'<div class="card" style="padding:16px"><div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:12px">Top clients &mdash; CA</div>'+clientHtml+'</div>'
     +'</div>'
-    +(S.role==='gestionnaire'?tKPIsDirSection():S.role==='senior_vp'?tKPIsSVPSection():consKpiSection)
+    +(S.role==='admin'?tKPIsDirSection():S.role==='super_admin'?tKPIsSVPSection():consKpiSection)
     +'</div>';
 }
 
@@ -1747,7 +1747,7 @@ function tKPIsSVPSection(){
     +'<span style="font-size:11px;font-weight:700;background:#e2e8f0;color:#475569;padding:1px 8px;border-radius:99px;margin-right:6px">'+vpList.length+' VP</span>'
     +'<span style="font-size:11px;color:#94a3b8">&#x25be;</span></summary>'
     +'<div style="'+colDef+';padding:10px 16px;background:#f8fafc;border-top:1px solid #e2e8f0">'
-    +'<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em">'+rLabel('gestionnaire')+'</div>'
+    +'<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em">'+rLabel('admin')+'</div>'
     +'<div style="text-align:center">'+sortBtn('ca','CA')+'</div>'
     +'<div style="text-align:center">'+sortBtn('marge','Marge')+'</div>'
     +'<div style="text-align:center">'+sortBtn('tjm','TJM moy.')+'</div>'
@@ -1862,11 +1862,11 @@ function tKPIsDirSection(){
 
   return '<details style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;overflow:hidden"'+(dSort?' open':'')+'>'
     +'<summary style="display:flex;align-items:center;gap:8px;padding:14px 18px;cursor:pointer;font-size:14px;font-weight:800;color:#0f172a;list-style:none;user-select:none" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'
-    +'\uD83D\uDCCA<span style="flex:1;margin-left:8px">KPIs par '+rLabel('directeur')+'</span>'
+    +'\uD83D\uDCCA<span style="flex:1;margin-left:8px">KPIs par '+rLabel('gestionnaire')+'</span>'
     +'<span style="font-size:11px;font-weight:700;background:#e2e8f0;color:#475569;padding:1px 8px;border-radius:99px;margin-right:6px">'+dirList.length+' directeurs</span>'
     +'<span style="font-size:11px;color:#94a3b8">&#x25be;</span></summary>'
     +'<div style="'+colDef+';padding:10px 16px;background:#f8fafc;border-top:1px solid #e2e8f0">'
-    +'<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em">'+rLabel('directeur')+'</div>'
+    +'<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em">'+rLabel('gestionnaire')+'</div>'
     +'<div style="text-align:center">'+dSortBtn('ca','CA')+'</div>'
     +'<div style="text-align:center">'+dSortBtn('marge','Marge')+'</div>'
     +'<div style="text-align:center">'+dSortBtn('tjm','TJM moy.')+'</div>'
@@ -1928,7 +1928,7 @@ function tLeaves(){
         +'<td class="tr"><button class="lb" data-act="lvc" data-id="'+c.id+'">\u2192 D\u00e9tail</button></td>'
         +'</tr>';
     }).filter(Boolean).join('');
-    bodyHtml='<table><thead><tr><th>'+rLabel('consultant')+'</th><th class="tc">Cong\u00e9s &amp; RTT</th>'
+    bodyHtml='<table><thead><tr><th>'+rLabel('utilisateur')+'</th><th class="tc">Cong\u00e9s &amp; RTT</th>'
       +'<th class="tc">Arr\u00eats / Mat.</th><th class="tc">Total '+curLbl()+'</th><th></th></tr></thead>'
       +'<tbody>'+sumRows+(sumRows?'':'<tr><td colspan="5" class="emp">Aucune absence enregistr\u00e9e sur le '+curLbl()+'</td></tr>')
       +'</tbody></table>';
@@ -2000,7 +2000,7 @@ function tLeaves(){
    TEMPLATE - PARAMÈTRES (Sénior VP uniquement)
 ══════════════════════════════════════════════════════════════ */
 function tSettings(){
-  if(S.role!=='senior_vp')return '<div class="emp">Accès réservé au Sénior VP.</div>';
+  if(S.role!=='super_admin')return '<div class="emp">Accès réservé au Sénior VP.</div>';
   var st=S.settings||{};
   var currencies=[
     {code:'EUR',sym:'\u20ac',lbl:'Euro (€)'},
@@ -2015,7 +2015,7 @@ function tSettings(){
     {v:5,lbl:'Mai'},{v:6,lbl:'Juin'},{v:7,lbl:'Juillet'},{v:8,lbl:'Août'},
     {v:9,lbl:'Septembre'},{v:10,lbl:'Octobre'},{v:11,lbl:'Novembre'},{v:12,lbl:'Décembre'}
   ];
-  var roleKeys=['senior_vp','gestionnaire','directeur','consultant','recruteur'];
+  var roleKeys=['super_admin','admin','gestionnaire','utilisateur','recruteur'];
   var roleDefaults=JSON.parse(JSON.stringify(_ROLE_DEFAULTS)); /* utilise les defaults globaux */
   var curOpts=currencies.map(function(cr){return '<option value="'+cr.code+'"'+(st.currency===cr.code?' selected':'')+'>'+cr.lbl+'</option>';}).join('');
   var moOpts=months.map(function(m){return '<option value="'+m.v+'"'+((st.fyStartMonth||10)===m.v?' selected':'')+'>'+m.lbl+'</option>';}).join('');
@@ -2072,7 +2072,7 @@ function saveSettings(){
   var cur=document.getElementById('set-currency');
   var fym=document.getElementById('set-fystart');
   var currencies={EUR:'\u20ac',USD:'$',GBP:'\u00a3',CHF:'CHF',CAD:'CA$',MAD:'DH'};
-  var roleKeys=['senior_vp','gestionnaire','directeur','consultant','recruteur'];
+  var roleKeys=['super_admin','admin','gestionnaire','utilisateur','recruteur'];
   var labels={};
   roleKeys.forEach(function(k){var el=document.getElementById('rol-'+k);if(el&&el.value.trim())labels[k]=el.value.trim();});
   /* Labels statuts recrutement */
@@ -2106,7 +2106,7 @@ function saveSettings(){
 }
 
 function tSVPAcces(){
-  if(S.role!=='senior_vp')return '<div class="emp">Accès réservé au Sénior VP.</div>';
+  if(S.role!=='super_admin')return '<div class="emp">Accès réservé au Sénior VP.</div>';
   var sbOn=!!(sb&&SB_CID);
   var vpRows=(S.svpInvites||[]).map(function(iv){
     var st=iv.status==='active'?'<span class="badge bgrn">\u2713 Compte cr\u00e9\u00e9</span>':'<span class="badge bamb">\u23f3 En attente</span>';
@@ -2117,16 +2117,16 @@ function tSVPAcces(){
     return '<tr><td>'+esc(iv.email)+'</td><td style="font-weight:600">'+esc(iv.recruteur_name||'')+'</td><td>'+st+'</td><td class="tr"><button class="lr" data-act="svp-del-rec" data-id="'+esc(iv.id)+'">Suppr.</button></td></tr>';
   }).join('');
   return '<div class="vw">'
-    +'<div style="margin-bottom:20px"><div class="pt">Gestion des acc\u00e8s</div><div class="ps">'+rLabel('gestionnaire')+'s et '+rLabel('recruteur')+'s</div></div>'
-    +'<div class="card" style="padding:20px;margin-bottom:16px"><h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">\uD83D\uDC54 Inviter un '+rLabel('gestionnaire')+'</h3>'
-    +(sbOn?'':'<div class="ac acs" style="margin-bottom:14px"><div style="font-size:12px">Connectez Supabase pour inviter des '+rLabel('gestionnaire')+'s.</div></div>')
+    +'<div style="margin-bottom:20px"><div class="pt">Gestion des acc\u00e8s</div><div class="ps">'+rLabel('admin')+'s et '+rLabel('recruteur')+'s</div></div>'
+    +'<div class="card" style="padding:20px;margin-bottom:16px"><h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">\uD83D\uDC54 Inviter un '+rLabel('admin')+'</h3>'
+    +(sbOn?'':'<div class="ac acs" style="margin-bottom:14px"><div style="font-size:12px">Connectez Supabase pour inviter des '+rLabel('admin')+'s.</div></div>')
     +'<div class="g2"><div class="fd"><label class="fl">Email *</label><input class="ic" id="svp-vp-email" type="email" placeholder="prenom.nom@exemple.com"></div>'
     +'<div class="fd"><label class="fl">Nom *</label><input class="ic" id="svp-vp-name" placeholder="ex : Marie Laurent"></div></div>'
-    +'<button class="bp" data-act="svp-add-vp"'+(sbOn?'':' disabled style="opacity:.5"')+'>+ Inviter ce '+rLabel('gestionnaire')+'</button>'
-    +'<p class="fh" style="margin-top:8px">Le '+rLabel('gestionnaire')+' s\'inscrit sur konsilys.fr avec son email — rattach\u00e9 automatiquement \u00e0 votre organisation.</p></div>'
-    +'<div class="card ov" style="margin-bottom:16px"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">'+rLabel('gestionnaire')+'s invit\u00e9s</div>'
+    +'<button class="bp" data-act="svp-add-vp"'+(sbOn?'':' disabled style="opacity:.5"')+'>+ Inviter ce '+rLabel('admin')+'</button>'
+    +'<p class="fh" style="margin-top:8px">Le '+rLabel('admin')+' s\'inscrit sur konsilys.fr avec son email — rattach\u00e9 automatiquement \u00e0 votre organisation.</p></div>'
+    +'<div class="card ov" style="margin-bottom:16px"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">'+rLabel('admin')+'s invit\u00e9s</div>'
     +'<table><thead><tr><th>Email</th><th>Nom</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
-    +'<tbody>'+vpRows+(vpRows?'':'<tr><td colspan="4" class="emp">Aucun '+rLabel('gestionnaire')+'  invit\u00e9.</td></tr>')+'</tbody></table></div>'
+    +'<tbody>'+vpRows+(vpRows?'':'<tr><td colspan="4" class="emp">Aucun '+rLabel('admin')+'  invit\u00e9.</td></tr>')+'</tbody></table></div>'
     +'<div class="card" style="padding:20px;margin-bottom:16px"><h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">\uD83C\uDFAF Inviter un Recruteur</h3>'
     +(sbOn?'':'<div class="ac acs" style="margin-bottom:14px"><div style="font-size:12px">Connectez Supabase pour inviter des Recruteurs.</div></div>')
     +'<div class="g2"><div class="fd"><label class="fl">Email *</label><input class="ic" id="svp-rec-email" type="email" placeholder="prenom.nom@exemple.com"></div>'
@@ -2188,7 +2188,7 @@ function tParam(){
    TEMPLATE - DIRECTEURS (gestion des comptes, gestionnaire uniquement)
 ═══════════════════════════════════════════════════════════════ */
 function tAdmin(){
-  if(S.role!=='directeur')return '<div class="emp">Acc\u00e8s r\u00e9serv\u00e9 au directeur.</div>';
+  if(S.role!=='gestionnaire')return '<div class="emp">Acc\u00e8s r\u00e9serv\u00e9 au directeur.</div>';
   var sbOn=!!(sb&&SB_CID);
   var allC=(S._all&&S._all.cons)||S.cons;
   var myConsList=allC.filter(function(c){return (c.dir||'')===S.dirName;});
@@ -2226,7 +2226,7 @@ function tAdmin(){
 }
 
 function tDirecteurs(){
-  if(S.role!=='gestionnaire'&&S.role!=='senior_vp')return '<div class="emp">Accès réservé.</div>';
+  if(S.role!=='admin'&&S.role!=='super_admin')return '<div class="emp">Accès réservé.</div>';
   var sbOn=!!(sb&&SB_CID);
   var allC=(S._all&&S._all.cons)||S.cons;
   var _d=[];allC.forEach(function(c){var x=c.dir||'';if(x&&_d.indexOf(x)<0)_d.push(x);});_d.sort();
@@ -2241,7 +2241,7 @@ function tDirecteurs(){
       +'<td class="tr"><button class="lr" data-act="inv-del" data-id="'+esc(iv.id)+'">Suppr.</button></td></tr>';
   }).join('');
   return '<div class="vw">'
-    +'<div><div class="pt">Directeurs & accès</div><div class="ps">Gérez les comptes directeurs · le '+rLabel('gestionnaire')+'  voit toutes les équipes</div></div>'
+    +'<div><div class="pt">Directeurs & accès</div><div class="ps">Gérez les comptes directeurs · le '+rLabel('admin')+'  voit toutes les équipes</div></div>'
     +'<div class="card" style="padding:20px">'
     +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">Inviter un directeur</h3>'
     +(sbOn?'':'<div class="ac acs" style="margin-bottom:14px"><div style="font-size:12px">Connectez Supabase (voir esn_login.html) pour créer des comptes. En mode démo, cette section est en prévisualisation seule.</div></div>')
@@ -2253,7 +2253,7 @@ function tDirecteurs(){
     +'<p class="fh" style="margin-top:8px">Le directeur finalise son inscription avec cet email et choisit son mot de passe ; il est alors rattaché automatiquement à votre entreprise avec un accès limité à son équipe.</p>'
     +'</div>'
     +'<div class="card ov"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">Comptes directeurs</div>'
-    +'<table><thead><tr><th>Email</th><th>'+rLabel('directeur')+'</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
+    +'<table><thead><tr><th>Email</th><th>'+rLabel('gestionnaire')+'</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
     +'<tbody>'+invRows+((S.invites&&S.invites.length)?'':'<tr><td colspan="4" class="emp">Aucun directeur invité pour le moment.</td></tr>')+'</tbody></table></div>'
     +'<div class="card ov"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">Équipes (d\'après le champ Directeur des consultants)</div>'
     +'<table><thead><tr><th>Directeur</th><th class="tc">Consultants</th></tr></thead>'
@@ -2824,7 +2824,7 @@ function tModal(){
       +'<input class="ic" id="rc-poste" placeholder="ex\u00a0: Consultant Senior" value="'+(it&&it.recruitPoste?esc(it.recruitPoste):'')+'">'
       +'</div>'
 
-      +'<div class="fd cs2"><label class="fl">'+rLabel('directeur')+'</label>'
+      +'<div class="fd cs2"><label class="fl">'+rLabel('gestionnaire')+'</label>'
       +'<input class="ic" id="rc-dir" list="rc-dir-list" placeholder="Nom du directeur" value="'+(it&&it.recruitDir?esc(it.recruitDir):'')+'">'
       +'<datalist id="rc-dir-list">'+(function(){
         var dirs=[];
@@ -2839,12 +2839,12 @@ function tModal(){
       +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="screc">'+(it?'Enregistrer':'Cr\u00e9er le candidat')+'</button></div>';
   }
 
-  if(tp==='consultant'){
+  if(tp==='utilisateur'){
     title=it?'Modifier le consultant':'Nouveau consultant';wide=true;
     var _rl=[];((S._all&&S._all.cons)||S.cons).forEach(function(c){var r=c.dir||'';if(r&&_rl.indexOf(r)<0)_rl.push(r);});_rl.sort();
-    var dirFld=(S.role==='directeur')
-      ? '<div class="fd"><label class="fl">'+rLabel('directeur')+'</label><input class="ic" id="mdir" value="'+esc(S.dirName)+'" disabled style="background:#f1f5f9;color:#64748b"><p class="fh">Consultant rattach\u00e9 automatiquement \u00e0 votre \u00e9quipe</p></div>'
-      : '<div class="fd"><label class="fl">'+rLabel('directeur')+'</label><input class="ic" id="mdir" list="esn-dir-list" value="'+esc(it?(it.dir||''):'')+'" placeholder="Nom du directeur"><datalist id="esn-dir-list">'+_rl.map(function(r){return '<option value="'+esc(r)+'">';}).join('')+'</datalist><p class="fh">Directeur unique du consultant (d\u00e9finit l\'\u00e9quipe, filtrable c\u00f4t\u00e9 gestionnaire)</p></div>';
+    var dirFld=(S.role==='gestionnaire')
+      ? '<div class="fd"><label class="fl">'+rLabel('gestionnaire')+'</label><input class="ic" id="mdir" value="'+esc(S.dirName)+'" disabled style="background:#f1f5f9;color:#64748b"><p class="fh">Consultant rattach\u00e9 automatiquement \u00e0 votre \u00e9quipe</p></div>'
+      : '<div class="fd"><label class="fl">'+rLabel('gestionnaire')+'</label><input class="ic" id="mdir" list="esn-dir-list" value="'+esc(it?(it.dir||''):'')+'" placeholder="Nom du directeur"><datalist id="esn-dir-list">'+_rl.map(function(r){return '<option value="'+esc(r)+'">';}).join('')+'</datalist><p class="fh">Directeur unique du consultant (d\u00e9finit l\'\u00e9quipe, filtrable c\u00f4t\u00e9 gestionnaire)</p></div>';
     body='<div class="g2">'
       +'<div class="fd"><label class="fl">Nom complet *</label><input class="ic" id="mn" value="'+esc(it?it.name:'')+'" placeholder="Pr\u00e9nom Nom"></div>'
       +'<div class="fd"><label class="fl">Poste *</label><input class="ic" id="mti" value="'+esc(it?it.title:'')+'" placeholder="ex\u00a0: Consultant Senior"></div>'
@@ -2871,7 +2871,7 @@ function tModal(){
       +'<div class="cs2"><div class="fd"><label class="fl">Nom de la mission *</label><input class="ic" id="mmn" value="'+esc(it?it.name:'')+'" placeholder="ex\u00a0: Transformation Digitale SI"></div></div>'
       +'<div class="cs2"><div class="fd"><label class="fl">Code projet</label><input class="ic" id="mpcd" value="'+(it&&it.pcode?esc(it.pcode):'')+'" placeholder="ex\\u00a0: 300000000106376"><p class="fh">Code de facturation PSA/SAP \\u2014 utilis\\u00e9 pour le recoupement des imputations import\\u00e9es</p></div></div>'
       +'<div class="cs2"><div class="fd"><label class="fl">Nom du client *</label><input class="ic" id="mcl" value="'+esc(it?it.cli:'')+'" placeholder="ex\u00a0: BNP Paribas"></div></div>'
-      +(S.role!=='consultant'?'<div class="fd"><label class="fl">TJM factur\u00e9 (\u20ac)</label><input class="ic" id="mtj" type="number" min="0" value="'+esc(it?String(it.tjm):'')+'" placeholder="750"><p class="fh">Prix journalier de vente (Assistance technique)</p></div>':'<input type="hidden" id="mtj" value="0">')
+      +(S.role!=='utilisateur'?'<div class="fd"><label class="fl">TJM factur\u00e9 (\u20ac)</label><input class="ic" id="mtj" type="number" min="0" value="'+esc(it?String(it.tjm):'')+'" placeholder="750"><p class="fh">Prix journalier de vente (Assistance technique)</p></div>':'<input type="hidden" id="mtj" value="0">')
       +'<div class="cs2"><div class="fd"><label class="fl">Type de mission *</label>'
       +'<div style="display:flex;gap:18px;padding:4px 0">'
       +'<label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:500"><input type="radio" name="mbt" value="at"'+(bt!=='forfait'?' checked':'')+' style="accent-color:#84CC16"> Assistance technique</label>'
@@ -2895,7 +2895,7 @@ function tModal(){
     title=it?"Modifier l'absence":"Nouvelle absence / cong\u00e9";
     var dt=(it&&it.type)||'Cong\u00e9 pay\u00e9';
     var lo=LTYPES.map(function(t){return '<option value="'+t+'"'+(t===dt?' selected':'')+'>'+esc(t)+'</option>';}).join('');
-    body='<div class="fd"><label class="fl">'+rLabel('consultant')+'</label><select class="ic" id="mlc">'+co+'</select></div>'
+    body='<div class="fd"><label class="fl">'+rLabel('utilisateur')+'</label><select class="ic" id="mlc">'+co+'</select></div>'
       +'<div class="fd"><label class="fl">Type *</label><select class="ic" id="mlt">'+lo+'</select></div>'
       +'<div class="g2"><div class="fd"><label class="fl">Du *</label><input class="ic" id="mls" type="date" value="'+esc(it?it.s:'')+'"></div>'
       +'<div class="fd"><label class="fl">Au *</label><input class="ic" id="mle" type="date" value="'+esc(it?it.e:'')+'"></div></div>'
@@ -3021,7 +3021,7 @@ function bind(){
     /* Rafraîchir les données en temps réel sur les onglets sensibles */
     if(nv==='admin'){loadConsInvites().then(function(){render();});}
     else if(nv==='svp_acces'){loadSVPInvites().then(function(){render();});}
-    else if(nv==='dashboard'&&S.role==='directeur'){loadApprovals().then(function(){render();});}
+    else if(nv==='dashboard'&&S.role==='gestionnaire'){loadApprovals().then(function(){render();});}
     else{render();}
   };})(nbs[i]);}
   /* filters */
@@ -3058,7 +3058,7 @@ function bind(){
     };
   }
   /* widgets multi-sélection Expertises / Secteurs (uniquement si le modal candidat est ouvert) */
-  if(S.modal&&(S.modal.type==='candidate'||S.modal.type==='consultant')){bindExpWidget();bindSecWidget();}
+  if(S.modal&&(S.modal.type==='candidate'||S.modal.type==='utilisateur')){bindExpWidget();bindSecWidget();}
   if(S.modal&&S.modal.type==='candidate'){bindLocWidget();}
 
 
@@ -3096,7 +3096,7 @@ function bind(){
       else if(a==='gen-ca'){genRecs('ca');}
       else if(a==='gen-util'){genRecs('util');}
       else if(a==='gen-tjm'){genRecs('tjm');}
-      else if(a==='ac'){S.modal={type:'consultant',item:null,expSel:[],secSel:[]};render();}
+      else if(a==='ac'){S.modal={type:'utilisateur',item:null,expSel:[],secSel:[]};render();}
       else if(a==='fexp-tog'){
         S.fexp=S.fexp||[];
         var ei=S.fexp.indexOf(id);
@@ -3129,7 +3129,7 @@ function bind(){
       render();}
       else if(a==='al'){S.modal={type:'leave',item:null};render();}
       else if(a==='mc'){S.modal=null;render();}
-      else if(a==='ec'){var _ec=S.cons.find(function(c){return c.id===id;});S.modal={type:'consultant',item:_ec,expSel:(_ec&&_ec.expertise)?_ec.expertise.slice():[],secSel:(_ec&&_ec.sectors)?_ec.sectors.slice():[]};render();}
+      else if(a==='ec'){var _ec=S.cons.find(function(c){return c.id===id;});S.modal={type:'utilisateur',item:_ec,expSel:(_ec&&_ec.expertise)?_ec.expertise.slice():[],secSel:(_ec&&_ec.sectors)?_ec.sectors.slice():[]};render();}
       else if(a==='em'){
       var _it=S.miss.find(function(m){return m.id===id;});
       var _now2=new Date();
@@ -3141,7 +3141,7 @@ function bind(){
       else if(a==='el'){S.modal={type:'leave',item:S.lvs.find(function(l){return l.id===id;})};render();}
       else if(a==='dc'){var c=S.cons.find(function(c){return c.id===id;});if(c&&confirm('Supprimer '+c.name+' ?')){S.cons=S.cons.filter(function(c){return c.id!==id;});sbDel('consultants',id);render();}}
       else if(a==='dm'){
-        if(S.role==='consultant'){
+        if(S.role==='utilisateur'){
           var mDel=S.miss.find(function(m){return m.id===id;});
           if(mDel&&confirm('Soumettre une demande de suppression de cette mission ?')){
             submitApproval('miss_del',{id:id},'Suppression de mission \u2014 '+esc(mDel.cli)+' \u00b7 '+esc(mDel.name));
@@ -3151,7 +3151,7 @@ function bind(){
         }
       }
       else if(a==='dl'){
-        if(S.role==='consultant'){
+        if(S.role==='utilisateur'){
           var lvDel=S.lvs.find(function(l){return l.id===id;});
           if(lvDel&&confirm('Soumettre une demande de suppression de cette absence ?')){
             submitApproval('leave_del',{id:id},'Suppression d\u2019absence \u2014 '+esc(lvDel.type)+' du '+fDt(lvDel.s)+' au '+fDt(lvDel.e));
@@ -3188,7 +3188,7 @@ function bind(){
       else if(a==='sc'){
         var n=gv('mn'),t=gv('mti'),s=+gv('ms'),em=gv('me');
         var arr=gv('marr')||null,dep=gv('mdep')||null;
-        var rdir=(S.role==='directeur')?S.dirName:gv('mdir');
+        var rdir=(S.role==='gestionnaire')?S.dirName:gv('mdir');
         var expArr=(S.modal.expSel||[]).slice();
         var secArr=(S.modal.secSel||[]).slice();
         var ctrct=gv('mcontract')||'salarie';
@@ -3213,7 +3213,7 @@ function bind(){
         var deal=+gv('mdeal')||0,tmar=(gv('mtmar')===''?null:+gv('mtmar'));
         if(!cid||!mn||!cl||!sd){alert('Veuillez remplir les champs obligatoires (*).');return;}
         /* Consultant : TJM saisi à 0, le directeur le renseigne lors de l'approbation */
-        if(S.role!=='consultant'){
+        if(S.role!=='utilisateur'){
           if(bt==='forfait'){
             if(!deal||tmar==null){alert('Pour un forfait : indiquez le montant du deal (CA) et la marge recherchée.');return;}
           }else if(!tj){alert('Pour une mission en Assistance technique : indiquez le TJM.');return;}
@@ -3223,7 +3223,7 @@ function bind(){
         var pcode=gv('mpcd')||'';
         var d={cid:cid,name:mn,cli:cl,tjm:tj,sd:sd,ed:ed,loc:lo,mgr:mg,ccn:cc,ccr:cr,btype:bt,wdays:wdays,deal:deal,tmar:tmar,pcode:pcode,wmode:wmode2,manualDays:manualDays2};
         var it=S.modal.item;
-        if(S.role==='consultant'){
+        if(S.role==='utilisateur'){
           var mDesc=(it?'Modification':'Ajout')+' de mission — '+esc(cl)+' · '+esc(mn)+' début '+fDt(sd)+(ed?' fin '+fDt(ed):'');
           var mPl=it?Object.assign({},it,d):Object.assign({id:uid()},d);
           submitApproval(it?'miss_edit':'miss_add',mPl,mDesc);
@@ -3241,7 +3241,7 @@ function bind(){
         if(!lci||!ls||!le){alert('Veuillez remplir les champs obligatoires (*).');return;}
         var it=S.modal.item;
         /* ── Consultant : soumettre à approbation au lieu d'appliquer directement ── */
-        if(S.role==='consultant'){
+        if(S.role==='utilisateur'){
           var desc=(it?'Modification':'Ajout')+' d\u2019absence — '+esc(lt)+' du '+fDt(ls)+' au '+fDt(le);
           var pl=it
             ?Object.assign({},it,{cid:lci,type:lt,s:ls,e:le})
@@ -3539,7 +3539,7 @@ function bind(){
         });
       }
       else if(a==='svp-del-vp'){
-        if(confirm('Supprimer cette invitation '+rLabel('gestionnaire')+' ?')){sbSVPDelVP(id).then(function(){loadSVPInvites().then(render);});}
+        if(confirm('Supprimer cette invitation '+rLabel('admin')+' ?')){sbSVPDelVP(id).then(function(){loadSVPInvites().then(render);});}
       }
       else if(a==='svp-add-rec'){
         var em3=(document.getElementById('svp-rec-email')||{}).value||'';
@@ -3559,7 +3559,7 @@ function bind(){
         sbInviteCons(aEmail,aName).then(function(r){
           if(r&&r.error){alert('Erreur\u00a0: '+(r.error.message||r.error));return;}
           loadConsInvites().then(render);
-          if(S.role==='senior_vp')loadSVPInvites().then(function(){render();});
+          if(S.role==='super_admin')loadSVPInvites().then(function(){render();});
         });
       }
       else if(a==='admin-cons-del'){
@@ -3571,7 +3571,7 @@ function bind(){
       else if(a==='day'){S.modal={type:'dayexc',day:b.getAttribute('data-day'),cid:S.actCid};render();}
       else if(a==='day-set'){
         var dt=gv('dexc-type'),dd=S.modal.day,dcid=S.modal.cid;
-        if(S.role==='consultant'){
+        if(S.role==='utilisateur'){
           submitApproval('leave_add',{id:uid(),cid:dcid,type:dt,s:dd,e:dd},
             'Ajout d\u2019absence \u2014 '+esc(dt)+' le '+fDt(dd));
         }else{
@@ -3580,7 +3580,7 @@ function bind(){
         }
       }
       else if(a==='day-clear'){
-        if(S.role==='consultant'){
+        if(S.role==='utilisateur'){
           var lvClr=S.lvs.find(function(l){return l.id===id;});
           submitApproval('leave_del',{id:id},'Suppression d\u2019absence'+(lvClr?' \u2014 '+esc(lvClr.type)+' le '+fDt(lvClr.s):''));
         }else{
@@ -3727,7 +3727,7 @@ async function loadSB(){
     H=fyHols(S.year=S.year||CFY); /* réinitialiser les jours fériés avec le bon FY */
     /* un directeur ne charge que les consultants de son équipe (puis leurs missions/absences) */
     var cq=sb.from('consultants').select('*').eq('company_id',SB_CID).order('name');
-    if(S.role==='directeur')cq=cq.eq('directeur',S.dirName);
+    if(S.role==='gestionnaire')cq=cq.eq('gestionnaire',S.dirName);
     var cr=await cq;
     var cons=(cr.data||[]).map(mapC);
     var mq=sb.from('missions').select('*').eq('company_id',SB_CID);
@@ -3737,7 +3737,7 @@ async function loadSB(){
     var rq=sb.from('candidates').select('*').eq('company_id',SB_CID).order('created_at',{ascending:false});
     /* P&L Budget (Pilotage financier) : company-wide \u00e9galement */
     var pq=sb.from('pnl_budget').select('*').eq('company_id',SB_CID);
-    if(S.role==='directeur'){
+    if(S.role==='gestionnaire'){
       var ids=cons.map(function(c){return c.id;});
       if(!ids.length){S.cons=[];S.miss=[];S.lvs=[];return false;}
       mq=mq.in('consultant_id',ids);lq=lq.in('consultant_id',ids);
@@ -3748,7 +3748,7 @@ async function loadSB(){
     if(res[1].data)S.lvs=res[1].data.map(mapL);
     if(res[2].data)S.cands=res[2].data.map(mapCand);
     /* Charger les invites SVP directement dans loadSB pour senior_vp */
-    if(S.role==='senior_vp'){
+    if(S.role==='super_admin'){
       try{
         var rv=await sb.from('vp_invites').select('*').eq('company_id',SB_CID).order('created_at');
         if(rv.data)S.svpInvites=rv.data;
@@ -3813,7 +3813,7 @@ function inviterConsultant(id){
   var code='CSL-'+id.slice(0,4).toUpperCase()+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
   if(sb&&SB_CID){
     sb.from('licence_codes').insert({
-      code:code,role:'consultant',used:false,
+      code:code,role:'utilisateur',used:false,
       linked_cons_id:id,company_id:SB_CID,dir_name:S.dirName||''
     }).catch(function(e){console.warn('invite:',e);});
   }
@@ -3843,7 +3843,7 @@ async function sbDel(tbl,id){
 
 /* ── Directeurs : invitations (le gestionnaire pré-enregistre, le trigger rattache à l'inscription) ── */
 async function loadInvites(){
-  if(!sb||!SB_CID||(S.role!=='gestionnaire'&&S.role!=='senior_vp'))return;
+  if(!sb||!SB_CID||(S.role!=='admin'&&S.role!=='super_admin'))return;
   try{var r=await sb.from('directeur_invites').select('*').eq('company_id',SB_CID).order('created_at');if(r.data)S.invites=r.data;}
   catch(e){console.warn('invites load:',e);}
 }
@@ -3858,7 +3858,7 @@ async function sbDelInvite(id){
 }
 /* ── SVP : invitations Vice Présidents + Recruteurs ── */
 async function loadSVPInvites(){
-  if(!sb||!SB_CID||S.role!=='senior_vp')return;
+  if(!sb||!SB_CID||S.role!=='super_admin')return;
   try{
     var rv=await sb.from('vp_invites').select('*').eq('company_id',SB_CID).order('created_at');
     if(rv.data)S.svpInvites=rv.data;
@@ -3896,7 +3896,7 @@ async function sbSVPDelRec(id){
 }
 /* Même mécanisme pour les consultants */
 async function loadConsInvites(){
-  if(!sb||!SB_CID||S.role!=='directeur')return;
+  if(!sb||!SB_CID||S.role!=='gestionnaire')return;
   try{
     var allC=(S._all&&S._all.cons)||S.cons;
     var r=await sb.from('consultant_invites').select('*').eq('company_id',SB_CID).eq('dir_name',S.dirName).order('created_at');
@@ -3908,8 +3908,8 @@ async function loadApprovals(){
   if(!sb||!SB_CID)return;
   try{
     var q=sb.from('approvals').select('*').eq('company_id',SB_CID);
-    if(S.role==='directeur')q=q.eq('dir_name',S.dirName);
-    else if(S.role==='consultant'&&S.consId)q=q.eq('cons_id',S.consId);
+    if(S.role==='gestionnaire')q=q.eq('dir_name',S.dirName);
+    else if(S.role==='utilisateur'&&S.consId)q=q.eq('cons_id',S.consId);
     var r=await q.order('created_at',{ascending:false});
     if(r.error){
       console.error('[Approvals] Erreur:',r.error.message,'(table approvals existe-t-elle ?)');
@@ -3995,22 +3995,22 @@ async function initApp(){
       var pr=await sb.from('profiles').select('*').eq('id',uid2).single();
       if(pr.data&&pr.data.company_id){
         SB_CID=pr.data.company_id;
-        S.role=pr.data.role==='directeur'?'directeur':pr.data.role==='consultant'?'consultant':pr.data.role==='senior_vp'?'senior_vp':pr.data.role==='recruteur'?'recruteur':'gestionnaire';
+        S.role=pr.data.role==='gestionnaire'?'gestionnaire':pr.data.role==='utilisateur'?'utilisateur':pr.data.role==='super_admin'?'super_admin':pr.data.role==='recruteur'?'recruteur':'admin';
           /* Nom du VP pour l'étiqueter dans directeur_invites */
-          if(S.role==='gestionnaire'&&pr.data.first_name){S.vpName=(pr.data.first_name+' '+(pr.data.last_name||'')).trim();}
+          if(S.role==='admin'&&pr.data.first_name){S.vpName=(pr.data.first_name+' '+(pr.data.last_name||'')).trim();}
           S.profileFirstName=pr.data.first_name||'';
           S.profileLastName=pr.data.last_name||'';
           S.profileTitle=pr.data.title||''; 
         S.dirName=pr.data.directeur_name||'';
         S.consId=pr.data.cons_id||null;
-        if(S.role==='consultant'&&S.consId)S.tab='activite';
-      }else if(pr.data&&pr.data.role==='consultant'){
+        if(S.role==='utilisateur'&&S.consId)S.tab='activite';
+      }else if(pr.data&&pr.data.role==='utilisateur'){
         /* Consultant : company_id null dans profiles → résoudre via consultant_invites */
         try{
           var ci=await sb.from('consultant_invites').select('*').eq('email',S._userEmail).maybeSingle();
           if(ci&&ci.data&&ci.data.company_id){
             SB_CID=ci.data.company_id;
-            S.role='consultant';
+            S.role='utilisateur';
             S.dirName=ci.data.dir_name||pr.data.directeur_name||'';
             S.consId=ci.data.cons_id||pr.data.cons_id||null;
             sb.from('profiles').update({company_id:ci.data.company_id,directeur_name:S.dirName,cons_id:S.consId}).eq('id',uid2).catch(function(e){console.warn('profile patch:',e);});
@@ -4133,7 +4133,7 @@ function handleImpFile(file){
         var am={};
         headers.forEach(function(h,i){
           var l=h.toLowerCase().replace(/\s+/g,' ').trim();
-          if(am.cons===undefined&&(l==='nom'||l.includes('collaborateur')||l.includes('consultant')||l.includes('salarie')||l.includes('employe')))am.cons=i;
+          if(am.cons===undefined&&(l==='nom'||l.includes('collaborateur')||l.includes('utilisateur')||l.includes('salarie')||l.includes('employe')))am.cons=i;
           if(am.typeAnal===undefined&&(l==='type anal.'||l==='type anal'||l.includes('type anal')))am.typeAnal=i;
           if(am.date===undefined&&(l==='trans date'||l==='trans. date'||l.includes('trans date')||l.includes('date')||l.includes('mois')||l.includes('periode')))am.date=i;
           if(am.montant===undefined&&(l==='foreign amount'||l.includes('foreign amount')||l.includes('montant')||l.includes('total')||l.includes('amount')||l.includes('facture')))am.montant=i;
@@ -4207,7 +4207,7 @@ function handleMissImpFile(file){
         var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
         var hdrIdx=-1;
         for(var i=0;i<Math.min(rows.length,6);i++){
-          if(rows[i].some(function(c){return String(c).toLowerCase().includes('consultant');})){hdrIdx=i;break;}
+          if(rows[i].some(function(c){return String(c).toLowerCase().includes('utilisateur');})){hdrIdx=i;break;}
         }
         if(hdrIdx<0){alert('En-t\u00eate non trouv\u00e9. Utilisez le template fourni.');return;}
         var headers=rows[hdrIdx].map(function(h){return String(h||'').replace(/\s*\*/g,'').trim();});
@@ -4216,7 +4216,7 @@ function handleMissImpFile(file){
         var am={};
         headers.forEach(function(h,i){
           var l=h.toLowerCase();
-          if(am.cons===undefined&&(l.includes('consultant')||l.includes('collaborateur')))am.cons=i;
+          if(am.cons===undefined&&(l.includes('utilisateur')||l.includes('collaborateur')))am.cons=i;
           if(am.name===undefined&&(l.includes('nom')&&l.includes('mission')||l.includes('libell')))am.name=i;
           if(am.pcode===undefined&&(l.includes('code projet')||l.includes('psa')||l.includes('projet')))am.pcode=i;
           if(am.cli===undefined&&l.includes('client'))am.cli=i;
@@ -4871,12 +4871,12 @@ function mCalHTML(){
 
 function tProfile(){
   var userEmail=S._userEmail||'';
-  var roleLabels={directeur:rLabel('directeur'),gestionnaire:rLabel('gestionnaire'),senior_vp:rLabel('senior_vp'),consultant:rLabel('consultant'),recruteur:rLabel('recruteur')};
+  var roleLabels={directeur:rLabel('gestionnaire'),gestionnaire:rLabel('admin'),senior_vp:rLabel('super_admin'),consultant:rLabel('utilisateur'),recruteur:rLabel('recruteur')};
   var userRole=roleLabels[S.role]||S.role;
   var fn=S.profileFirstName||'';
   var ln=S.profileLastName||'';
   var titre=S.profileTitle||'';
-  if(S.role==='consultant'&&S.consId){
+  if(S.role==='utilisateur'&&S.consId){
     var myC=((S._all&&S._all.cons)||S.cons).find(function(c){return c.id===S.consId;})||{};
     if(!titre)titre=myC.title||'';
   }

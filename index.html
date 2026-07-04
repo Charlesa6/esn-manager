@@ -360,12 +360,12 @@ footer{background:var(--dark);padding:48px 24px 32px}
       <div class="anim-up delay-1">
         <div class="step-num">1</div>
         <div class="step-title">Choisissez votre licence</div>
-        <div class="step-desc">Sélectionnez le niveau d'accès adapté à votre rôle. Le compte Sénior VP donne accès à la gestion complète de l'organisation.</div>
+        <div class="step-desc">Sélectionnez le niveau d'accès adapté à votre rôle. Le compte Super Admin donne accès à la gestion complète de l'organisation.</div>
       </div>
       <div class="anim-up delay-2">
         <div class="step-num">2</div>
         <div class="step-title">Invitez vos équipes</div>
-        <div class="step-desc">Depuis "Gestion des accès", invitez directement vos Vice Présidents, Directeurs et Consultants par email — sans code de licence.</div>
+        <div class="step-desc">Depuis "Gestion des accès", invitez directement vos Admins, Directeurs et Consultants par email — sans code de licence.</div>
       </div>
       <div class="anim-up delay-3">
         <div class="step-num">3</div>
@@ -381,7 +381,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
   <div class="container">
     <p class="section-eyebrow">Licences</p>
     <h2 class="section-title">Un accès adapté à chaque rôle</h2>
-    <p class="section-sub" style="margin-bottom:40px">5 niveaux d'accès pour couvrir toute votre organisation, du Sénior VP au Consultant.</p>
+    <p class="section-sub" style="margin-bottom:40px">5 niveaux d'accès pour couvrir toute votre organisation, du Super Admin au Consultant.</p>
     <div class="licence-grid">
 
       <div class="licence-card anim-up delay-1">
@@ -400,7 +400,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
 
       <div class="licence-card anim-up delay-2">
         <div class="lic-icon">👤</div>
-        <div class="lic-name">Consultant</div>
+        <div class="lic-name">Utilisateur</div>
         <div class="lic-price">Sur devis</div>
         <div class="lic-period">par mois</div>
         <ul class="lic-features">
@@ -414,7 +414,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
 
       <div class="licence-card anim-up delay-3">
         <div class="lic-icon">🛡️</div>
-        <div class="lic-name">Directeur</div>
+        <div class="lic-name">Gestionnaire</div>
         <div class="lic-price">Sur devis</div>
         <div class="lic-period">par mois</div>
         <ul class="lic-features">
@@ -428,21 +428,21 @@ footer{background:var(--dark);padding:48px 24px 32px}
 
       <div class="licence-card featured anim-up delay-3">
         <div class="lic-icon">📊</div>
-        <div class="lic-name">Vice Président</div>
+        <div class="lic-name">Admin</div>
         <div class="lic-price">Sur devis</div>
         <div class="lic-period">par mois</div>
         <ul class="lic-features">
-          <li>Vision multi-directeurs</li>
+          <li>Vision multi-Gestionnaires</li>
           <li>KPIs agrégés équipes</li>
           <li>Dashboard complet</li>
-          <li>Invite ses directeurs</li>
+          <li>Invite ses Gestionnaires</li>
         </ul>
         <a href="mailto:contact@konsilys.fr" class="lic-cta">Nous contacter</a>
       </div>
 
       <div class="licence-card anim-up delay-4">
         <div class="lic-icon">👑</div>
-        <div class="lic-name">Sénior VP</div>
+        <div class="lic-name">Super Admin</div>
         <div class="lic-price">Sur devis</div>
         <div class="lic-period">par mois</div>
         <ul class="lic-features">
@@ -547,9 +547,9 @@ footer{background:var(--dark);padding:48px 24px 32px}
           <div>
             <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:8px">Licences souhaitées</label>
             <div style="display:flex;flex-wrap:wrap;gap:8px">
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_svp" style="accent-color:#84CC16"> 👑 Sénior VP</label>
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_vp" style="accent-color:#84CC16"> 📊 Vice Président</label>
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_dir" style="accent-color:#84CC16"> 🛡️ Directeur</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_svp" style="accent-color:#84CC16"> 👑 Super Admin</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_vp" style="accent-color:#84CC16"> 📊 Admin</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_dir" style="accent-color:#84CC16"> 🛡️ Gestionnaire</label>
               <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_cons" style="accent-color:#84CC16"> 👤 Consultant</label>
               <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_rec" style="accent-color:#84CC16"> 🔍 Recruteur</label>
             </div>
@@ -594,8 +594,8 @@ function submitForm(e){
     poste:f.poste.value,nb:f.nb_consultants.value,
     outil:f.outil_actuel.value,message:f.message.value,
     licences:[
-      f.licence_svp.checked?'Sénior VP':'',
-      f.licence_vp.checked?'Vice Président':'',
+      f.licence_svp.checked?'Super Admin':'',
+      f.licence_vp.checked?'Admin':'',
       f.licence_dir.checked?'Directeur':'',
       f.licence_cons.checked?'Consultant':'',
       f.licence_rec.checked?'Recruteur':''

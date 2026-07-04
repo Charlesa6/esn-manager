@@ -192,8 +192,8 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
         &mdash;&nbsp;ou s&apos;abonner&nbsp;&mdash;
       </div>
 
-      <!-- Abonnement Sénior Vice Président -->
-      <a href="#" id="btn-sub-svp" class="left-cta left-cta-sub" onclick="openStore('senior_vp');return false;">
+      <!-- Abonnement Super Admin -->
+      <a href="#" id="btn-sub-svp" class="left-cta left-cta-sub" onclick="openStore('super_admin');return false;">
         <span style="font-size:18px">&#x1F451;</span>
         <div>
           <div style="font-weight:700;font-size:14px">S&eacute;nior Vice Pr&eacute;sident</div>
@@ -202,8 +202,8 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
         <span style="margin-left:auto;font-size:10px;opacity:.7">&#x2192;</span>
       </a>
 
-      <!-- Abonnement Vice Président -->
-      <a href="#" id="btn-sub-vp" class="left-cta left-cta-sub" onclick="openStore('gestionnaire');return false;">
+      <!-- Abonnement Admin -->
+      <a href="#" id="btn-sub-vp" class="left-cta left-cta-sub" onclick="openStore('admin');return false;">
         <span style="font-size:18px">&#x1F4CA;</span>
         <div>
           <div style="font-weight:700;font-size:14px">Vice Pr&eacute;sident</div>
@@ -213,20 +213,20 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
       </a>
 
       <!-- Abonnement Directeur -->
-      <a href="#" id="btn-sub-dir" class="left-cta left-cta-sub" onclick="openStore('directeur');return false;">
+      <a href="#" id="btn-sub-dir" class="left-cta left-cta-sub" onclick="openStore('gestionnaire');return false;">
         <span style="font-size:18px">&#x1F6E1;&#xFE0F;</span>
         <div>
-          <div style="font-weight:700;font-size:14px">Directeur</div>
+          <div style="font-weight:700;font-size:14px">Gestionnaire</div>
           <div style="font-size:11px;opacity:.75">Gestion d&apos;&eacute;quipe &amp; missions</div>
         </div>
         <span style="margin-left:auto;font-size:10px;opacity:.7">&#x2192;</span>
       </a>
 
       <!-- Abonnement Consultant -->
-      <a href="#" id="btn-sub-cons" class="left-cta left-cta-sub" onclick="openStore('consultant');return false;">
+      <a href="#" id="btn-sub-cons" class="left-cta left-cta-sub" onclick="openStore('utilisateur');return false;">
         <span style="font-size:18px">&#x1F464;</span>
         <div>
-          <div style="font-weight:700;font-size:14px">Consultant</div>
+          <div style="font-weight:700;font-size:14px">Utilisateur</div>
           <div style="font-size:11px;opacity:.75">Suivi perso &amp; approbations</div>
         </div>
         <span style="margin-left:auto;font-size:10px;opacity:.7">&#x2192;</span>
@@ -556,8 +556,8 @@ var STORE_URL_RECRUTEUR   = '#';  /* ex: 'https://buy.stripe.com/rec' */
 
 function openStore(role) {
   var url = role === 'vp'           ? STORE_URL_GESTIONNAIRE
-          : role === 'consultant'   ? STORE_URL_CONSULTANT
-          : role === 'senior_vp'   ? STORE_URL_SENIOR_VP
+          : role === 'utilisateur'   ? STORE_URL_CONSULTANT
+          : role === 'super_admin'   ? STORE_URL_SENIOR_VP
           : role === 'recruteur'   ? STORE_URL_RECRUTEUR
           : STORE_URL_DIRECTEUR;
   if (url === '#') {
@@ -616,12 +616,12 @@ async function doSignup() {
     if (vpInvite) {
       var res = await sb.auth.signUp({
         email: em, password: pw,
-        options: { data: { first_name: fn, last_name: ln, role: 'gestionnaire', company_id: vpInvite.company_id } }
+        options: { data: { first_name: fn, last_name: ln, role: 'admin', company_id: vpInvite.company_id } }
       });
       loading('b-signup','sp-signup','lb-signup', false);
       if (res.error) { showBanner('err', errMsg(res.error)); return; }
       if (res.data && res.data.user) {
-        try { await sb.from('profiles').upsert({ id: res.data.user.id, company_id: vpInvite.company_id, role: 'gestionnaire', first_name: fn, last_name: ln }, { onConflict: 'id' }); } catch(e) {}
+        try { await sb.from('profiles').upsert({ id: res.data.user.id, company_id: vpInvite.company_id, role: 'admin', first_name: fn, last_name: ln }, { onConflict: 'id' }); } catch(e) {}
         await sb.from('vp_invites').update({ status: 'active' }).eq('id', vpInvite.id);
       }
       if (res.data.user && !res.data.session) { showSuccess('Compte créé !', 'Vérifiez votre email ' + em + ' pour confirmer.', true); }
@@ -663,16 +663,16 @@ async function doSignup() {
     if (vpInvite) {
       var resVP = await sb.auth.signUp({
         email: em, password: pw,
-        options: { data: { first_name: fn, last_name: ln, role: 'gestionnaire', company_id: vpInvite.company_id } }
+        options: { data: { first_name: fn, last_name: ln, role: 'admin', company_id: vpInvite.company_id } }
       });
       loading('b-signup','sp-signup','lb-signup', false);
       if (resVP.error) { showBanner('err', errMsg(resVP.error)); return; }
       if (resVP.data && resVP.data.user) {
-        try { await sb.from('profiles').upsert({ id: resVP.data.user.id, company_id: vpInvite.company_id, role: 'gestionnaire', first_name: fn, last_name: ln }, { onConflict: 'id' }); } catch(e) {}
+        try { await sb.from('profiles').upsert({ id: resVP.data.user.id, company_id: vpInvite.company_id, role: 'admin', first_name: fn, last_name: ln }, { onConflict: 'id' }); } catch(e) {}
         await sb.from('vp_invites').update({ status: 'active' }).eq('id', vpInvite.id);
       }
       if (resVP.data.user && !resVP.data.session) {
-        showSuccess('Compte Vice Président créé !', 'Vérifiez votre email ' + em + ' pour confirmer.', true);
+        showSuccess('Compte Admin créé !', 'Vérifiez votre email ' + em + ' pour confirmer.', true);
       } else { window.location.href = '/app'; }
       return;
     }
@@ -718,7 +718,7 @@ async function doSignup() {
         email: em, password: pw,
         options: { data: {
           first_name: fn, last_name: ln,
-          role: 'consultant',
+          role: 'utilisateur',
           directeur_name: consInvite.dir_name || '',
           cons_id: consInvite.cons_id || null,
           company_id: consInvite.company_id || null
@@ -734,7 +734,7 @@ async function doSignup() {
           await sb.from('profiles').upsert({
             id: res.data.user.id,
             company_id: consInvite.company_id || null,
-            role: 'consultant',
+            role: 'utilisateur',
             directeur_name: consInvite.dir_name || '',
             cons_id: consInvite.cons_id || null,
             first_name: fn, last_name: ln
@@ -768,7 +768,7 @@ async function doSignup() {
       email: em, password: pw,
       options: { data: {
         company_name: co, first_name: fn, last_name: ln,
-        role: 'directeur', company_id: newCid
+        role: 'gestionnaire', company_id: newCid
       }}
     });
     loading('b-signup','sp-signup','lb-signup', false);
@@ -788,7 +788,7 @@ async function doSignup() {
       var uid3 = res2.data.user.id;
       try {
         await sb.from('profiles').upsert({
-          id: uid3, company_id: newCid, role: 'directeur', first_name: fn, last_name: ln
+          id: uid3, company_id: newCid, role: 'gestionnaire', first_name: fn, last_name: ln
         }, { onConflict: 'id' });
       } catch(e) { console.warn('profile upsert:', e); }
     }
