@@ -852,7 +852,12 @@ function tSB(){
     +dirBlock
     +'<nav class="snv">'+nav+'</nav>'
     +'<div class="sft">'
-    +'<div style="font-size:11px;color:#475569;margin-bottom:8px">'+S.cons.length+' consultants \u00b7 '+S.miss.length+' missions</div>'
+    +'<button data-nav="profile" style="width:100%;display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;border:none;background:rgba(255,255,255,.06);cursor:pointer;text-align:left;margin-bottom:4px">'
+    +'<div style="width:28px;height:28px;border-radius:50%;background:#84CC16;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#1B2B3A;flex-shrink:0">'+(S.profileFirstName?S.profileFirstName[0].toUpperCase():'?')+'</div>'
+    +'<div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:700;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(S.profileFirstName||S._userEmail||'Profil')+'</div>'
+    +'<div style="font-size:10px;color:#475569">'+rLabel(S.role)+'</div></div>'
+    +'<span style="font-size:11px;color:#475569">&#x270E;</span></button>'
+    +'<div style="font-size:10px;color:#475569;padding:0 2px">'+S.cons.length+' collab. \u00b7 '+S.miss.length+' missions</div>'
     +'</div>';
 }
 
@@ -2562,7 +2567,7 @@ function tBusiness(){
   var subNav='<div style="display:flex;gap:4px;margin-bottom:20px;background:#f1f5f9;padding:4px;border-radius:10px;flex-wrap:wrap">'
     +subTabs.map(function(t){
       var act=S.bizTab===t.id;
-      return '<button data-biz-tab="'+t.id+'" style="flex:1;min-width:80px;padding:8px 14px;border:none;border-radius:7px;font-family:Nunito,sans-serif;font-size:13px;font-weight:700;cursor:pointer;background:'+(act?'#fff':'transparent')+';color:'+(act?'#1B2B3A':'#64748b')+';box-shadow:'+(act?'0 1px 4px rgba(0,0,0,.1)':'')+'">'
+      return '<button data-act="biz-tab" data-biz-tab="'+t.id+'" style="flex:1;min-width:80px;padding:8px 14px;border:none;border-radius:7px;font-family:Nunito,sans-serif;font-size:13px;font-weight:700;cursor:pointer;background:'+(act?'#fff':'transparent')+';color:'+(act?'#1B2B3A':'#64748b')+';box-shadow:'+(act?'0 1px 4px rgba(0,0,0,.1)':'')+'">'
         +t.lb+(t.n!=null?' <span style="background:'+(act?'#84CC16':'#cbd5e1')+';color:'+(act?'#1B2B3A':'#475569')+';border-radius:99px;padding:1px 7px;font-size:11px">'+t.n+'</span>':'')+'</button>';
     }).join('')+'</div>';
 
@@ -4384,6 +4389,19 @@ function bind(){
       else if(a==='act-prev'){S.actMonth=shiftMonth(S.actMonth||TODAY.slice(0,7),-1);render();}
       else if(a==='act-next'){S.actMonth=shiftMonth(S.actMonth||TODAY.slice(0,7),1);render();}
       else if(a==='act-today'){S.actMonth=TODAY.slice(0,7);render();}
+      /* ── CRM Business handlers ── */
+      else if(a==='biz-new'){
+        var types={pipeline:'opp',comptes:'acc',contacts:'ct',activites:'act'};
+        var t=types[S.bizTab||'pipeline']||'opp';
+        S.bizModal={type:t,item:null};render();
+      }
+      else if(a==='biz-edit-acc'){var _a=S.bizAccounts.find(function(x){return x.id===id;});S.bizModal={type:'acc',item:_a};render();}
+      else if(a==='biz-edit-ct'){var _ct=S.bizContacts.find(function(x){return x.id===id;});S.bizModal={type:'ct',item:_ct};render();}
+      else if(a==='biz-edit-opp'){var _o=S.bizOpps.find(function(x){return x.id===id;});S.bizModal={type:'opp',item:_o};render();}
+      else if(a==='biz-edit-act'){var _k=S.bizActivities.find(function(x){return x.id===id;});S.bizModal={type:'act',item:_k};render();}
+      else if(a==='biz-del'){var _tbl=b.getAttribute('data-table')||'';bizDelItem(_tbl,id);}
+      else if(a==='biz-opp-mission'){bizOppToMission(id);}
+      else if(a==='biz-tab'){S.bizTab=b.getAttribute('data-biz-tab')||'pipeline';render();}
     };
   })(bs[j]);}
   /* overlay */
