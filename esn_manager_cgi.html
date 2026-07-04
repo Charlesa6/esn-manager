@@ -492,19 +492,25 @@ function loadDemoData(){
 var SCR_FACTOR=113.35;   /* SCR × coeff = salaire brut annuel employé */
 var EMPLOYER_FACTOR=1.25; /* Charges patronales : coût réel employeur = brut × 1.25 */
 
-/* \u2550\u2550\u2550 RECRUTEMENT : statuts du pipeline \u2550\u2550\u2550 */
-var REC_STATUS=[
-  {id:'dmr_a',     lb:'A rencontrer DMR',          bg:'#eff6ff',fg:'#1e40af'},
-  {id:'dmr_ec',    lb:'En cours de rencontre DMR',  bg:'#dbeafe',fg:'#1d4ed8'},
-  {id:'pipe',      lb:'Pipe',                        bg:'#ede9fe',fg:'#5b21b6'},
-  {id:'op_a',      lb:'A rencontrer OP',             bg:'#fff7ed',fg:'#c2410c'},
-  {id:'op_ec',     lb:'En cours de rencontre OP',    bg:'#ffedd5',fg:'#ea580c'},
-  {id:'offre',     lb:'Offre en cours',              bg:'#ccfbf1',fg:'#0f766e'},
-  {id:'nogo_cgi',  lb:'NoGo CGI',                    bg:'#fee2e2',fg:'#b91c1c'},
-  {id:'nogo_cand', lb:'NoGo Candidat',               bg:'#fce7f3',fg:'#9d174d'},
-  {id:'recrute',   lb:'Recrut\u00e9(e) \u2713',         bg:'#d1fae5',fg:'#065f46'}
+/* Statuts recrutement — modifiables par le Super Admin */
+var _DEFAULT_REC_STATUS=[
+  {id:'rh_a',      lb:'A rencontrer RH',           bg:'#eff6ff',fg:'#1e40af'},
+  {id:'rh_ec',     lb:'En cours de rencontre RH',  bg:'#dbeafe',fg:'#1d4ed8'},
+  {id:'op_a',      lb:'A rencontrer OP',            bg:'#fff7ed',fg:'#c2410c'},
+  {id:'op_ec',     lb:'En cours de rencontre OP',   bg:'#ffedd5',fg:'#ea580c'},
+  {id:'nogo_cand', lb:'NoGo candidat',              bg:'#fce7f3',fg:'#9d174d'},
+  {id:'nogo',      lb:'NoGo',                       bg:'#fee2e2',fg:'#b91c1c'},
+  {id:'pipe',      lb:'Pipe',                       bg:'#ede9fe',fg:'#5b21b6'},
+  {id:'recrute',   lb:'Recruté',               bg:'#d1fae5',fg:'#065f46'}
 ];
-function recStLb(id){var s=REC_STATUS.find(function(x){return x.id===id;});return s?s.lb:id;}
+var REC_STATUS=_DEFAULT_REC_STATUS.slice();
+function applyRecStatuses(){
+  if(S.settings&&S.settings.recStatuses&&S.settings.recStatuses.length){
+    REC_STATUS=S.settings.recStatuses;
+  }else{
+    REC_STATUS=_DEFAULT_REC_STATUS.slice();
+  }
+}
 /* Label avec personnalisation Sénior VP */
 function recStLbD(id){
   var custom=S.settings&&S.settings.recStatusLabels&&S.settings.recStatusLabels[id];
@@ -2052,22 +2058,57 @@ function tSettings(){
     /* ── Labels statuts recrutement ── */
     +'<div class="card" style="padding:24px;margin-bottom:16px">'
     +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:6px">🎓 Statuts du pipeline recrutement</h3>'
-    +'<p style="font-size:12px;color:#94a3b8;margin-bottom:16px">Renommez les statuts. Laisser vide pour garder le nom par défaut.</p>'
-    +'<div class="g2">'
-    +REC_STATUS.map(function(s){
-      var custom=(st.recStatusLabels&&st.recStatusLabels[s.id])||'';
-      return '<div class="fd"><label class="fl" style="display:flex;align-items:center;gap:6px">'
-        +'<span style="padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;background:'+s.bg+';color:'+s.fg+'">'+esc(s.lb)+'</span>'
-        +'</label><input class="ic" id="rec-st-'+s.id+'" value="'+esc(custom)+'" placeholder="'+esc(s.lb)+'"></div>';
+    +'<p style="font-size:12px;color:#94a3b8;margin-bottom:14px">Renommez, ajoutez ou supprimez des statuts. Le dernier statut est toujours le statut "Recruté".</p>'
+    /* Liste des statuts actuels */
+    +'<div id="rec-status-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">'
+    +REC_STATUS.map(function(s,idx){
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0">'
+        +'<span style="min-width:14px;text-align:center;color:#94a3b8;font-size:11px;font-weight:700">'+(idx+1)+'</span>'
+        +'<span style="padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;background:'+s.bg+';color:'+s.fg+';white-space:nowrap">'+esc(s.lb)+'</span>'
+        +'<input class="ic" id="rec-st-'+s.id+'" value="'+esc(s.lb)+'" style="flex:1;min-width:0;font-size:13px">'
+        +'<button onclick="delRecStatus(\''+esc(s.id)+'\')" style="background:#fff;border:1px solid #e2e8f0;color:#dc2626;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap">✕ Suppr.</button>'
+        +'</div>';
     }).join('')
+    +'</div>'
+    /* Formulaire ajout nouveau statut */
+    +'<div style="display:flex;gap:8px;align-items:center;padding:10px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0">'
+    +'<input class="ic" id="rec-st-new-lb" placeholder="Nom du nouveau statut..." style="flex:1;font-size:13px">'
+    +'<select id="rec-st-new-color" style="padding:8px;border:1px solid #e2e8f0;border-radius:8px;font-family:Calibri,sans-serif;font-size:12px">'
+    +'<option value="blue">🔵 Bleu</option><option value="orange">🟠 Orange</option>'
+    +'<option value="purple">🟣 Violet</option><option value="teal">🟢 Vert</option>'
+    +'<option value="red">🔴 Rouge</option><option value="pink">🩷 Rose</option>'
+    +'</select>'
+    +'<button onclick="addRecStatus()" style="background:#84CC16;color:#1B2B3A;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:800;font-size:13px;white-space:nowrap">+ Ajouter</button>'
     +'</div></div>'
 
     /* ── Bouton sauvegarder ── */
-    +'<button class="bp" onclick="saveSettings()" style="min-width:180px">💾 Enregistrer les param\u00e8tres</button>'
+    +'<button class="bp" onclick="saveSettings()" style="min-width:180px">💾 Enregistrer les paramètres</button>'
     +'<div id="set-msg" style="font-size:13px;margin-top:12px;display:none"></div>'
     +'</div>';
 }
 
+var _REC_COLORS={
+  blue:{bg:'#eff6ff',fg:'#1e40af'},orange:{bg:'#fff7ed',fg:'#c2410c'},
+  purple:{bg:'#ede9fe',fg:'#5b21b6'},teal:{bg:'#d1fae5',fg:'#065f46'},
+  red:{bg:'#fee2e2',fg:'#b91c1c'},pink:{bg:'#fce7f3',fg:'#9d174d'}
+};
+function addRecStatus(){
+  var lb=(document.getElementById('rec-st-new-lb')||{}).value||'';
+  var col=(document.getElementById('rec-st-new-color')||{}).value||'blue';
+  if(!lb.trim()){alert('Saisissez un nom de statut.');return;}
+  var colors=_REC_COLORS[col]||_REC_COLORS.blue;
+  var id='st_'+Date.now();
+  REC_STATUS.push({id:id,lb:lb.trim(),bg:colors.bg,fg:colors.fg});
+  if(S.settings)S.settings.recStatuses=REC_STATUS.slice();
+  render();
+}
+function delRecStatus(id){
+  if(REC_STATUS.length<=2){alert('Il faut au moins 2 statuts.');return;}
+  if(!confirm('Supprimer ce statut ? Les candidats avec ce statut garderont l\'ancien statut.'))return;
+  REC_STATUS=REC_STATUS.filter(function(s){return s.id!==id;});
+  if(S.settings)S.settings.recStatuses=REC_STATUS.slice();
+  render();
+}
 function saveSettings(){
   var cur=document.getElementById('set-currency');
   var fym=document.getElementById('set-fystart');
@@ -2075,10 +2116,15 @@ function saveSettings(){
   var roleKeys=['super_admin','admin','gestionnaire','utilisateur','recruteur'];
   var labels={};
   roleKeys.forEach(function(k){var el=document.getElementById('rol-'+k);if(el&&el.value.trim())labels[k]=el.value.trim();});
-  /* Labels statuts recrutement */
-  var recLbls={};
-  REC_STATUS.forEach(function(s){var el=document.getElementById('rec-st-'+s.id);if(el&&el.value.trim())recLbls[s.id]=el.value.trim();});
-  S.settings.recStatusLabels=recLbls;
+  /* Lire les statuts actuels depuis les inputs */
+  var newStatuses=REC_STATUS.map(function(s){
+    var el=document.getElementById('rec-st-'+s.id);
+    var lb=el&&el.value.trim()?el.value.trim():s.lb;
+    return Object.assign({},s,{lb:lb});
+  });
+  S.settings.recStatuses=newStatuses;
+  S.settings.recStatusLabels={}; /* déprécié — on utilise recStatuses désormais */
+  applyRecStatuses();
   S.settings.currency=cur?cur.value:'EUR';
   S.settings.currencySymbol=currencies[S.settings.currency]||S.settings.currency;
   S.settings.fyStartMonth=fym?parseInt(fym.value):10;
@@ -2086,6 +2132,7 @@ function saveSettings(){
   /* Sauvegarder en localStorage (cache local) */
   try{localStorage.setItem('esn_settings_'+SB_CID,JSON.stringify(S.settings));}catch(e){}
   rebuildQuarters(); /* Recalculer T1/T2/T3/T4 si le FY a changé */
+  applyRecStatuses();
   var msg=document.getElementById('set-msg');
   if(msg){msg.style.display='block';msg.style.color='#94a3b8';msg.textContent='Enregistrement...';}
   /* Sauvegarder dans Supabase pour toute l\'entreprise */
@@ -3701,7 +3748,9 @@ function mapCand(r){return{
   cvFiles:Array.isArray(r.cv_files)?r.cv_files:[],
   compteRendu:r.compte_rendu||'',compteRenduFilePath:r.compte_rendu_file_path||'',compteRenduFileName:r.compte_rendu_file_name||'',
   cgiMeetings:Array.isArray(r.cgi_meetings)?r.cgi_meetings:[],
-  marginPct:(r.margin_pct!=null?r.margin_pct:25),status:r.status||'nouveau',
+  marginPct:(r.margin_pct!=null?r.margin_pct:25),
+  /* Migrer anciens IDs vers nouveaux si nécessaire */
+  status:(function(s){var m={'dmr_a':'rh_a','dmr_ec':'rh_ec','nogo_cgi':'nogo','offre':'pipe','recrute(e)':'recrute'};return m[s]||s||'rh_a';})( r.status||'rh_a'),
   createdBy:r.created_by||'',feedbacks:Array.isArray(r.feedbacks)?r.feedbacks:[],
   recruiter:r.recruiter||''
 };}
@@ -3724,6 +3773,7 @@ async function loadSB(){
     /* Recalculer CFY avec le bon mois de départ */
     CFY=currentFY();
     rebuildQuarters(); /* T1/T2/T3/T4 selon le nouveau mois fiscal */
+    applyRecStatuses(); /* Statuts recrutement custom */
     H=fyHols(S.year=S.year||CFY); /* réinitialiser les jours fériés avec le bon FY */
     /* un directeur ne charge que les consultants de son équipe (puis leurs missions/absences) */
     var cq=sb.from('consultants').select('*').eq('company_id',SB_CID).order('name');
