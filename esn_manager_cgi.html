@@ -487,11 +487,11 @@ var REC_STATUS=[
   {id:'nogo_cand', lb:'NoGo Candidat',               bg:'#fce7f3',fg:'#9d174d'},
   {id:'recrute',   lb:'Recrut\u00e9(e) \u2713',         bg:'#d1fae5',fg:'#065f46'}
 ];
-function recStLbD(id){var s=REC_STATUS.find(function(x){return x.id===id;});return s?s.lb:id;}
+function recStLb(id){var s=REC_STATUS.find(function(x){return x.id===id;});return s?s.lb:id;}
 /* Label avec personnalisation Sénior VP */
 function recStLbD(id){
   var custom=S.settings&&S.settings.recStatusLabels&&S.settings.recStatusLabels[id];
-  return custom||recStLbD(id);
+  return custom||recStLb(id);
 }
 function recStCol(id){var s=REC_STATUS.find(function(x){return x.id===id;});return s?[s.bg,s.fg]:['#f1f5f9','#475569'];}
 function recScr(sal){return sal>0?sal/SCR_FACTOR:0;}
@@ -553,7 +553,14 @@ function getActiveLv(cid){
     return l.cid===cid&&l.type!=='Inter-contrat'&&l.s<=TODAY&&l.e>=TODAY;
   });
 }
-function buildKS(){var _rng=S.quarter?curRange(S.year):null;return S.cons.map(function(c){return{c:c,k:kpi(c,S.miss,S.lvs,S.year,H,_rng)};});}
+function buildKS(){
+  /* Cache par render — évite de recalculer pour chaque template */
+  if(S._ks&&S._ks._valid)return S._ks.data;
+  var _rng=S.quarter?curRange(S.year):null;
+  var data=S.cons.map(function(c){return{c:c,k:kpi(c,S.miss,S.lvs,S.year,H,_rng)};});
+  S._ks={data:data,_valid:true};
+  return data;
+}
 function clientRev(ks){
   var map={};
   ks.forEach(function(x){x.k.pm.forEach(function(m){if(m.days>0){map[m.cli]=(map[m.cli]||0)+m.rev;}});});
@@ -1276,7 +1283,10 @@ function tPlan(){
   var fyS=pD(fyStart(S.year)),fyE=pD(fyEnd(S.year));
   var ysT=fyS.getTime(),yeT=fyE.getTime(),dur=yeT-ysT;
   var nowP=((new Date().getTime()-ysT)/dur)*100;
-  var fyMonths=['Oct','Nov','D\u00e9c','Jan','F\u00e9v','Mar','Avr','Mai','Jun','Jul','Ao\u00fb','Sep'];
+  /* Mois planification dynamiques selon fyStartMonth */
+  var ALL_MONTHS=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  var _fm=((S.settings&&S.settings.fyStartMonth)||10)-1;
+  var fyMonths=ALL_MONTHS.slice(_fm).concat(ALL_MONTHS.slice(0,_fm));
   var COL={active:'#22c55e',critical:'#ef4444',soon:'#f59e0b',future:'#22c55e',ended:'#d1d5db'};
   var LVC={'Maladie':'#1d4ed8','Cong\u00e9 maternit\u00e9':'#1d4ed8','Cong\u00e9 pay\u00e9':'#fbbf24','RTT':'#a78bfa','Formation':'#34d399','Cong\u00e9 sans solde':'#cbd5e1','Mission interne':'#60a5fa','Autre':'#d1d5db'};
 
@@ -2938,6 +2948,7 @@ function tModal(){
    RENDER
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function render(){
+  if(S._ks)S._ks._valid=false; /* invalider cache KS */
   if(!S.demo)saveLocal(); /* sauvegarde automatique — désactivée en mode démo */
   /* ═══ filtrage par rôle / directeur : on bascule sur la vue filtrée le temps du rendu ═══ */
   S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
