@@ -2515,10 +2515,18 @@ function bizOppToMission(oppId){
       :(o.consultant_ids||[]).map(function(cid){
         return {cid:cid,taux:Math.round(100/Math.max((o.consultant_ids||[]).length,1)),staffing:20,tmar:25};
       });
+    var allConsForCalc=S.cons.concat([]); /* ref locale pour calculs */
     team.filter(function(t){return t.cid;}).forEach(function(tm){
       var cons=S.cons.find(function(x){return x.id===tm.cid;})||{scr:0,name:'?'};
-      var totalTaux=team.reduce(function(s,t){return s+(t.taux||0);},0)||100;
-      var dealPortion=(o.deal_amount||0)*(tm.taux||100)/totalTaux;
+      /* Calcul automatique : poids = SCR × jours_staffing */
+      var cons_for_weight=allConsForCalc.find(function(x){return x.id===tm.cid;})||{scr:1};
+      var sdays=(STAFFING_WDAYS&&STAFFING_WDAYS[tm.staffing||20]||[1,2]).length;
+      var tmWeight=(cons_for_weight.scr||1)*sdays;
+      var totalWeight=team.filter(function(t){return t.cid;}).reduce(function(s,t){
+        var tc=allConsForCalc.find(function(x){return x.id===t.cid;})||{scr:1};
+        return s+(tc.scr||1)*((STAFFING_WDAYS&&STAFFING_WDAYS[t.staffing||20]||[1,2]).length);
+      },0)||1;
+      var dealPortion=(o.deal_amount||0)*tmWeight/totalWeight;
       var tmar=tm.tmar!=null?tm.tmar:25;
       var wdays=(STAFFING_WDAYS&&STAFFING_WDAYS[tm.staffing||20])||[1,2];
       /* TJM = SCR × 113.35 × 1.25 / (1 - marge) */
@@ -2924,7 +2932,7 @@ function oppConsPickerHTML(){
   return rows
     +'<div style="display:flex;gap:8px;margin-top:6px">'
     +'<button type="button" onclick="oppTeamAdd()" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:7px;padding:6px 14px;cursor:pointer;font-size:12px;font-weight:700">+ Ajouter un consultant</button>'
-    +(team.length>1?'<span style="font-size:11px;color:#94a3b8;align-self:center">Total CA : '+(team.reduce(function(s,t){return s+(t.taux||0);},0))+'% — idéalement 100%</span>':'')
+    +'<span style="font-size:11px;color:#94a3b8;align-self:center">CA distribué selon SCR × staffing</span>'
     +'</div>';
 }
 
@@ -3054,13 +3062,16 @@ function tBizModal(){
       +(btOpp==='at'?
         '<div class="fd"><label class="fl">TJM cible (\u20ac)</label><input class="ic" type="number" id="biz-opp-tjm" value="'+(it.tjm_cible||'')+'" placeholder="700"></div>'
         +'<div class="fd"><label class="fl">Jours estim\u00e9s</label><input class="ic" type="number" id="biz-opp-jours" value="'+(it.jours_estimes||'')+'" placeholder="20"></div>'
-        +'<div class="fd"><label class="fl">Date fin</label><input class="ic" type="date" id="biz-opp-end" value="'+(it.date_end||'')+'"></div>'
-        :'<input type="hidden" id="biz-opp-tjm"><input type="hidden" id="biz-opp-jours"><input type="hidden" id="biz-opp-end">')
+        :'<input type="hidden" id="biz-opp-tjm"><input type="hidden" id="biz-opp-jours">')
       /* Forfait fields */
       +(btOpp==='forfait'?
         '<div class="fd"><label class="fl">Montant deal (\u20ac)</label><input class="ic" type="number" id="biz-opp-deal" value="'+(it.deal_amount||'')+'" placeholder="150000"></div>'
         :'<input type="hidden" id="biz-opp-deal">')
+      /* Date démarrage toujours visible, date fin seulement pour AT */
       +'<div class="fd"><label class="fl">Date d\u00e9marrage</label><input class="ic" type="date" id="biz-opp-start" value="'+(it.date_start||'')+'"></div>'
+      +(btOpp==='at'?
+        '<div class="fd"><label class="fl">Date fin</label><input class="ic" type="date" id="biz-opp-end" value="'+(it.date_end||'')+'"></div>'
+        :'<input type="hidden" id="biz-opp-end">')
       +'<div class="fd"><label class="fl">Probabilit\u00e9 (%)</label><input class="ic" type="number" id="biz-opp-prob" min="0" max="100" value="'+(it.probability!=null?it.probability:20)+'"></div>'
       +'<div class="fd"><label class="fl">Date closing estim\u00e9e</label><input class="ic" type="date" id="biz-opp-closing" value="'+(it.date_closing||'')+'"></div>'
       +'<div class="fd"><label class="fl">Assign\u00e9 \u00e0</label><input class="ic" id="biz-opp-assign" value="'+esc(it.assigned_to||'')+'" placeholder="Commercial responsable"></div>'
@@ -4025,10 +4036,7 @@ function render(){
   var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDirSection():S.tab==='svp_acces'?tSVPAcces():S.tab==='svp_settings'?tSettings():S.tab==='business'?tBusiness():tParam();
   var _ini=function(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();};
   var _av=S._userEmail?_ini(S._userEmail.split('@')[0].replace(/[._]/g,' ')):'?';
-  var _pfBtn='<div id="prof-btn" style="position:absolute;top:12px;right:14px;z-index:50">'
-    +'<button onclick="S.tab=\'profile\';render()" title="Profil - '+esc(S._userEmail||'')+'"'
-    +' style="width:34px;height:34px;border-radius:50%;background:#1B2B3A;color:#84CC16;border:2px solid #84CC16;'
-    +'font-size:11px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center">'+_av+'</button></div>';
+  var _pfBtn=''; /* Profil déplacé dans la sidebar gauche */
   /* Bannière démo */
   var _demoBanner=S.demo
     ?'<div style="background:#7c3aed;color:#fff;text-align:center;padding:9px 16px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:16px;flex-shrink:0">'
