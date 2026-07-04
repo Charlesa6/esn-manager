@@ -598,15 +598,21 @@ footer{background:var(--dark);padding:48px 24px 32px}
           <div>
             <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:8px">Licences souhaitées</label>
             <div style="display:flex;flex-wrap:wrap;gap:8px">
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_svp" style="accent-color:#84CC16"> Super Admin</label>
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_vp" style="accent-color:#84CC16"> Admin</label>
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_dir" style="accent-color:#84CC16"> Gestionnaire</label>
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_cons" style="accent-color:#84CC16"> Utilisateur</label>
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_rec" style="accent-color:#0F766E"> Recruteur</label>
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_sales" style="accent-color:#2D6A4F"> Sales</label>
-              <div style="margin-top:6px;padding-top:6px;border-top:1px solid #e2e8f0;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em">Modules optionnels</div>
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="module_rec" style="accent-color:#84CC16"> Module Recrutement (Admins + Gestionnaires + Utilisateurs)</label>
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="module_biz" style="accent-color:#84CC16"> Module Business CRM (Admins + Gestionnaires + Utilisateurs)</label>
+              <select name="licences" multiple required style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;outline:none;height:180px">
+                <optgroup label="Licences">
+                  <option value="Super Admin">Super Admin — pilotage global</option>
+                  <option value="Admin">Admin — vision multi-équipes</option>
+                  <option value="Gestionnaire">Gestionnaire — gestion équipe</option>
+                  <option value="Utilisateur">Utilisateur — suivi personnel</option>
+                  <option value="Recruteur">Recruteur — pipeline candidats</option>
+                  <option value="Sales">Sales — CRM Business</option>
+                </optgroup>
+                <optgroup label="Modules optionnels">
+                  <option value="[Module Recrutement]">Module Recrutement (pour Admin/Gest./Utilisateur)</option>
+                  <option value="[Module Business]">Module Business CRM (pour Admin/Gest./Utilisateur)</option>
+                </optgroup>
+              </select>
+              <p style="font-size:11px;color:#94a3b8;margin-top:4px">Ctrl/Cmd pour sélectionner plusieurs</p>
               <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_rec" style="accent-color:#84CC16"> Recruteur</label>
             </div>
           </div>
@@ -650,14 +656,7 @@ function submitForm(e){
     poste:f.poste.value,nb:f.nb_consultants.value,
     outil:f.outil_actuel.value,message:f.message.value,
     licences:[
-      f.licence_svp.checked?'Super Admin':'',
-      f.licence_vp.checked?'Admin':'',
-      f.licence_dir.checked?'Gestionnaire':'',
-      f.licence_cons.checked?'Utilisateur':'',
-      f.licence_rec.checked?'Recruteur':'',
-      f.licence_sales.checked?'Sales':'',
-      f.module_rec.checked?'[Module Recrutement]':'',
-      f.module_biz.checked?'[Module Business]':'',
+      ...Array.from(f.licences.selectedOptions).map(function(o){return o.value;}),
       f.licence_rec.checked?'Recruteur':''
     ].filter(Boolean).join(', ')
   };

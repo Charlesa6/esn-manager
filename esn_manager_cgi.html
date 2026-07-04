@@ -841,6 +841,12 @@ function tSB(){
   }
   return '<div class="sbl" style="display:flex;align-items:flex-start;justify-content:space-between"><div style="display:flex;align-items:center;gap:10px">'+'<div style="display:flex;align-items:flex-end;gap:3px;height:28px">'+'<div style="width:5px;border-radius:2px;height:45%;background:#f8fafc"></div>'+'<div style="width:5px;border-radius:2px;height:68%;background:#f8fafc"></div>'+'<div style="width:5px;border-radius:2px;height:100%;background:#84CC16"></div>'+'</div>'+'<div><div class="sbn" style="font-family:\'Nunito\',sans-serif;letter-spacing:-0.3px">Konsilys</div></div></div>'
     +'<button onclick="toggleSB()" style="background:none;border:none;color:#475569;cursor:pointer;font-size:16px;padding:2px 0 0;line-height:1;flex-shrink:0" aria-label="R\u00e9duire">&#8592;</button></div>'
+    /* ── Profil utilisateur juste sous le logo ── */
+    +'<button data-nav="profile" style="width:100%;display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;border:none;background:rgba(255,255,255,.06);cursor:pointer;text-align:left;margin:8px 0">'
+    +'<div style="width:26px;height:26px;border-radius:50%;background:#84CC16;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#1B2B3A;flex-shrink:0">'+(S.profileFirstName?S.profileFirstName[0].toUpperCase():'?')+'</div>'
+    +'<div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:700;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(S.profileFirstName||S._userEmail||'Profil')+'</div>'
+    +'<div style="font-size:10px;color:#475569">'+rLabel(S.role)+'</div></div>'
+    +'<span style="font-size:10px;color:#475569">&#x270E;</span></button>'
     +'<div class="syr"><div class="syr-lbl">Exercice fiscal</div><select id="yrs">'+fyOpts+'</select>'
     +'<div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap">'
     +'<button data-act="qsel" data-id="" style="flex:1;min-width:54px;padding:5px 4px;border-radius:6px;font-size:10px;font-weight:700;border:1px solid '+(!S.quarter?'#2563eb':'#334155')+';background:'+(!S.quarter?'#2563eb':'transparent')+';color:'+(!S.quarter?'#fff':'#94a3b8')+';cursor:pointer">Ann\u00e9e</button>'
@@ -852,11 +858,6 @@ function tSB(){
     +dirBlock
     +'<nav class="snv">'+nav+'</nav>'
     +'<div class="sft">'
-    +'<button data-nav="profile" style="width:100%;display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;border:none;background:rgba(255,255,255,.06);cursor:pointer;text-align:left;margin-bottom:4px">'
-    +'<div style="width:28px;height:28px;border-radius:50%;background:#84CC16;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#1B2B3A;flex-shrink:0">'+(S.profileFirstName?S.profileFirstName[0].toUpperCase():'?')+'</div>'
-    +'<div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:700;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(S.profileFirstName||S._userEmail||'Profil')+'</div>'
-    +'<div style="font-size:10px;color:#475569">'+rLabel(S.role)+'</div></div>'
-    +'<span style="font-size:11px;color:#475569">&#x270E;</span></button>'
     +'<div style="font-size:10px;color:#475569;padding:0 2px">'+S.cons.length+' collab. \u00b7 '+S.miss.length+' missions</div>'
     +'</div>';
 }
@@ -2407,14 +2408,17 @@ function bizSaveOpp(){
     account_id:gv('biz-opp-acc'),
     contact_id:gv('biz-opp-ct')||null,
     status:gv('biz-opp-status')||'identification',
+    btype:gv('biz-opp-btype')||'at',
     tjm_cible:+gv('biz-opp-tjm')||0,
     jours_estimes:+gv('biz-opp-jours')||0,
-    duree_mois:+gv('biz-opp-duree')||0,
+    deal_amount:+gv('biz-opp-deal')||0,
+    date_start:gv('biz-opp-start')||null,
+    date_end:gv('biz-opp-end')||null,
     probability:+gv('biz-opp-prob')||20,
     date_closing:gv('biz-opp-closing')||null,
     assigned_to:gv('biz-opp-assign'),
     motif_perte:gv('biz-opp-motif')||null,
-    consultant_ids:it?(it.consultant_ids||[]):[],
+    consultant_ids:(function(){var sel=document.getElementById('biz-opp-cons');if(!sel)return it?(it.consultant_ids||[]):[];return Array.from(sel.selectedOptions).map(function(o){return o.value;});})(),
     notes:gv('biz-opp-notes'),
     owner_email:it?(it.owner_email||S._userEmail||''):S._userEmail||'',
     owner_name:it?(it.owner_name||S.profileFirstName||''):S.profileFirstName||'',
@@ -2468,27 +2472,36 @@ function bizOppToMission(oppId){
   var o=S.bizOpps.find(function(x){return x.id===oppId;});
   if(!o)return;
   var acc=S.bizAccounts.find(function(x){return x.id===o.account_id;})||{};
-  var mission={
-    id:uid2(),
-    name:o.name+(acc.name?' — '+acc.name:''),
-    type:'at',
-    client:acc.name||'',
-    tjm:o.tjm_cible||0,
-    days:o.jours_estimes||0,
-    start:new Date().toISOString().slice(0,10),
-    end:null,
-    status:'active',
-    notes:o.notes||'',
-    biz_opp_id:o.id,
-  };
-  S.miss=S.miss.concat([mission]);
-  /* Mettre à jour l'opportunité avec le lien mission */
-  S.bizOpps=S.bizOpps.map(function(x){return x.id===oppId?Object.assign({},x,{linked_mission_id:mission.id}):x;});
+  var isFor=o.btype==='forfait';
+  var consIds=o.consultant_ids||[];
+  var missions=[];
+  if(isFor&&consIds.length>1){
+    /* Forfait multi-consultants : une mission par consultant */
+    consIds.forEach(function(cid){
+      var cons=S.cons.find(function(x){return x.id===cid;})||{};
+      var m={id:uid2(),name:o.name+(acc.name?' — '+acc.name:''),btype:'forfait',
+        cid:cid,cli:acc.name||'',tjm:0,deal:(o.deal_amount||0)/consIds.length,
+        sd:o.date_start||new Date().toISOString().slice(0,10),ed:null,
+        notes:o.notes||'',biz_opp_id:o.id};
+      missions.push(m);
+    });
+  }else{
+    /* AT ou Forfait mono-consultant */
+    var cid1=consIds[0]||null;
+    missions.push({id:uid2(),name:o.name+(acc.name?' — '+acc.name:''),
+      btype:o.btype||'at',cid:cid1,cli:acc.name||'',
+      tjm:o.tjm_cible||0,days:o.jours_estimes||0,deal:o.deal_amount||0,
+      sd:o.date_start||new Date().toISOString().slice(0,10),
+      ed:o.date_end||null,notes:o.notes||'',biz_opp_id:o.id});
+  }
+  S.miss=S.miss.concat(missions);
+  var firstId=missions[0].id;
+  S.bizOpps=S.bizOpps.map(function(x){return x.id===oppId?Object.assign({},x,{linked_mission_id:firstId}):x;});
   sbUpsertOpp(S.bizOpps.find(function(x){return x.id===oppId;}));
-  if(sb&&SB_CID){sb.from('missions').insert(Object.assign({},mission,{company_id:SB_CID})).then(function(){});}
+  if(sb&&SB_CID){missions.forEach(function(m){sb.from('missions').insert(Object.assign({company_id:SB_CID,consultant_id:m.cid,name:m.name,client_name:m.cli,tjm:m.tjm||0,start_date:m.sd,end_date:m.ed||null,billing_type:m.btype,deal_amount:m.deal||null},m)).then(function(){});});}
   S.bizModal=null;
   S.tab='missions';
-  alert('Mission créée : '+mission.name+'\nRetrouvez-la dans l\'onglet Missions.');
+  alert(missions.length+' mission(s) créée(s) dans l\'onglet Missions.');
   render();
 }
 
@@ -2829,21 +2842,38 @@ function tBizModal(){
   }
   else if(m.type==='opp'){
     var it=m.item||{};
-    title=it.id?'Modifier l\'opportunité':'Nouvelle opportunité';
+    title=it.id?'Modifier l\'opportunit\u00e9':'Nouvelle opportunit\u00e9';
     saveAction='bizSaveOpp()';
     var stOpts=OPP_STATUS.map(function(s){return '<option value="'+s.id+'"'+(it.status===s.id?' selected':(!it.id&&s.id==='identification'?' selected':''))+'>'+s.lb+'</option>';}).join('');
+    var btOpp=m.btype||it.btype||'at';
+    var consOpts='<option value="">-- Aucun --</option>'+S.cons.map(function(cc){return '<option value="'+cc.id+'"'+((it.consultant_ids||[]).indexOf(cc.id)>=0?' selected':'')+'>'+esc(cc.name)+'</option>';}).join('');
     body='<div class="g2">'
-      +'<div class="fd cs2"><label class="fl">Nom de l\'opportunité *</label><input class="ic" id="biz-opp-name" value="'+esc(it.name||'')+'" placeholder="Ex: Refonte SI DSI BNP"></div>'
+      +'<div class="fd cs2"><label class="fl">Nom de l\'opportunit\u00e9 *</label><input class="ic" id="biz-opp-name" value="'+esc(it.name||'')+'" placeholder="Ex: Refonte SI DSI BNP"></div>'
       +'<div class="fd"><label class="fl">Compte</label><select class="ic" id="biz-opp-acc">'+accOpts+'</select></div>'
       +'<div class="fd"><label class="fl">Contact</label><select class="ic" id="biz-opp-ct">'+ctOpts+'</select></div>'
+      +'<div class="fd"><label class="fl">Type de mission</label><select class="ic" id="biz-opp-btype" onchange="S.bizModal.btype=this.value;render()">'
+        +'<option value="at"'+(btOpp==='at'?' selected':'')+'>AT \u2014 Assistance Technique</option>'
+        +'<option value="forfait"'+(btOpp==='forfait'?' selected':'')+'>Forfait</option>'
+        +'</select></div>'
       +'<div class="fd"><label class="fl">Statut</label><select class="ic" id="biz-opp-status">'+stOpts+'</select></div>'
-      +'<div class="fd"><label class="fl">Probabilité (%)</label><input class="ic" type="number" id="biz-opp-prob" min="0" max="100" value="'+(it.probability!=null?it.probability:20)+'" placeholder="0-100"></div>'
-      +'<div class="fd"><label class="fl">TJM cible (€)</label><input class="ic" type="number" id="biz-opp-tjm" value="'+(it.tjm_cible||'')+'" placeholder="700"></div>'
-      +'<div class="fd"><label class="fl">Jours estimés</label><input class="ic" type="number" id="biz-opp-jours" value="'+(it.jours_estimes||'')+'" placeholder="20"></div>'
-      +'<div class="fd"><label class="fl">Durée (mois)</label><input class="ic" type="number" id="biz-opp-duree" value="'+(it.duree_mois||'')+'" placeholder="6"></div>'
-      +'<div class="fd"><label class="fl">Date closing estimée</label><input class="ic" type="date" id="biz-opp-closing" value="'+(it.date_closing||'')+'"></div>'
-      +'<div class="fd"><label class="fl">Assigné à</label><input class="ic" id="biz-opp-assign" value="'+esc(it.assigned_to||'')+'" placeholder="Nom du commercial"></div>'
-      +(it.status==='perdu'?'<div class="fd cs2"><label class="fl">Motif de perte</label><input class="ic" id="biz-opp-motif" value="'+esc(it.motif_perte||'')+'" placeholder="Prix, concurrent, budget..."></div>':'<input type="hidden" id="biz-opp-motif">')
+      /* AT fields */
+      +(btOpp==='at'?
+        '<div class="fd"><label class="fl">TJM cible (\u20ac)</label><input class="ic" type="number" id="biz-opp-tjm" value="'+(it.tjm_cible||'')+'" placeholder="700"></div>'
+        +'<div class="fd"><label class="fl">Jours estim\u00e9s</label><input class="ic" type="number" id="biz-opp-jours" value="'+(it.jours_estimes||'')+'" placeholder="20"></div>'
+        +'<div class="fd"><label class="fl">Date fin</label><input class="ic" type="date" id="biz-opp-end" value="'+(it.date_end||'')+'"></div>'
+        :'<input type="hidden" id="biz-opp-tjm"><input type="hidden" id="biz-opp-jours"><input type="hidden" id="biz-opp-end">')
+      /* Forfait fields */
+      +(btOpp==='forfait'?
+        '<div class="fd"><label class="fl">Montant deal (\u20ac)</label><input class="ic" type="number" id="biz-opp-deal" value="'+(it.deal_amount||'')+'" placeholder="150000"></div>'
+        :'<input type="hidden" id="biz-opp-deal">')
+      +'<div class="fd"><label class="fl">Date d\u00e9marrage</label><input class="ic" type="date" id="biz-opp-start" value="'+(it.date_start||'')+'"></div>'
+      +'<div class="fd"><label class="fl">Probabilit\u00e9 (%)</label><input class="ic" type="number" id="biz-opp-prob" min="0" max="100" value="'+(it.probability!=null?it.probability:20)+'"></div>'
+      +'<div class="fd"><label class="fl">Date closing estim\u00e9e</label><input class="ic" type="date" id="biz-opp-closing" value="'+(it.date_closing||'')+'"></div>'
+      +'<div class="fd"><label class="fl">Assign\u00e9 \u00e0</label><input class="ic" id="biz-opp-assign" value="'+esc(it.assigned_to||'')+'" placeholder="Commercial responsable"></div>'
+      /* Consultant(s) pr\u00e9sent\u00e9(s) */
+      +'<div class="fd cs2"><label class="fl">Consultant(s) pr\u00e9sent\u00e9(s)</label><select class="ic" id="biz-opp-cons" multiple style="height:80px">'+consOpts+'</select>'
+      +'<p class="fh">Ctrl/Cmd pour s\u00e9lectionner plusieurs</p></div>'
+      +(it.status==='perdu'?'<div class="fd cs2"><label class="fl">Motif de perte</label><input class="ic" id="biz-opp-motif" value="'+esc(it.motif_perte||'')+'"></div>':'<input type="hidden" id="biz-opp-motif">')
       +'<div class="fd cs2"><label class="fl">Notes</label><textarea class="ic" id="biz-opp-notes" rows="2">'+esc(it.notes||'')+'</textarea></div>'
       +'</div>';
   }
@@ -3532,6 +3562,35 @@ function bindLocWidget(){
   };
 }
 
+
+function addMissTeamRow(){
+  var wrap=document.getElementById('miss-team');
+  if(!wrap)return;
+  var idx=wrap.querySelectorAll('.miss-team-row').length;
+  var tCons=S.cons.filter(function(c){return c.grade!=='sales_grade';});
+  var cOpts=tCons.map(function(c){return '<option value="'+c.id+'">'+esc(c.name)+'</option>';}).join('');
+  var row=document.createElement('div');
+  row.className='miss-team-row';row.style.cssText='display:flex;gap:8px;align-items:center';
+  row.innerHTML='<select class="ic" style="flex:2" data-team-cid="'+idx+'"><option value="">— Consultant —</option>'+cOpts+'</select>'
+    +'<div style="display:flex;align-items:center;gap:4px;flex:1"><input class="ic" type="number" min="1" max="100" placeholder="%" style="width:60px" value="100" data-team-taux="'+idx+'"><span style="color:#64748b;font-size:12px">%</span></div>'
+    +'<button onclick="this.closest(\'.miss-team-row\').remove()" style="background:#fee2e2;color:#dc2626;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-weight:700">✕</button>';
+  wrap.appendChild(row);
+}
+function readMissTeam(){
+  var wrap=document.getElementById('miss-team');
+  if(!wrap)return null;
+  var rows=wrap.querySelectorAll('.miss-team-row');
+  var team=[];
+  rows.forEach(function(row){
+    var csel=row.querySelector('[data-team-cid]');
+    var tinp=row.querySelector('[data-team-taux]');
+    var cid=csel?csel.value:'';
+    var taux=tinp?+tinp.value||100:100;
+    if(cid)team.push({cid:cid,taux:taux});
+  });
+  return team;
+}
+
 function tModal(){
   var m=S.modal;if(!m)return '';
   var tp=m.type,it=m.item,title='',body='',wide=false;
@@ -3648,7 +3707,23 @@ function tModal(){
       +'<div class="cs2" id="ft-fields" style="display:'+(bt==='forfait'?'block':'none')+'"><div class="g2">'
       +'<div class="fd"><label class="fl">Montant du deal \u2014 CA (\u20ac) *</label><input class="ic" id="mdeal" type="number" min="0" value="'+esc(it&&it.deal?String(it.deal):'')+'" placeholder="120000"></div>'
       +'<div class="fd"><label class="fl">Marge recherch\u00e9e (%) *</label><input class="ic" id="mtmar" type="number" min="0" max="100" value="'+((it&&it.tmar!=null&&it.tmar!=='')?esc(String(it.tmar)):'')+'" placeholder="30"><p class="fh">Sert \u00e0 calculer les jours restants \u00e0 travailler</p></div>'
-      +'</div></div>'
+      /* Multi-consultant team pour forfait */
+      +(bt==='forfait'?
+        +'<div class="fd cs2"><label class="fl">Consultants sur le forfait</label>'
+        +'<div id="miss-team" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">'
+        +((it&&it.team&&it.team.length?it.team:S.modal&&S.modal.team&&S.modal.team.length?S.modal.team:[{cid:defCid,taux:100}]).map(function(tm,idx){
+          var tCons=S.cons.filter(function(c){return c.grade!=='sales_grade';});
+          var cOpts=tCons.map(function(c){return '<option value="'+c.id+'"'+(c.id===tm.cid?' selected':'')+'>'+esc(c.name)+'</option>';}).join('');
+          return '<div class="miss-team-row" style="display:flex;gap:8px;align-items:center">'
+            +'<select class="ic" style="flex:2" data-team-cid="'+idx+'"><option value="">— Consultant —</option>'+cOpts+'</select>'
+            +'<div style="display:flex;align-items:center;gap:4px;flex:1"><input class="ic" type="number" min="1" max="100" placeholder="%" style="width:60px" value="'+(tm.taux||100)+'" data-team-taux="'+idx+'"><span style="color:#64748b;font-size:12px">%</span></div>'
+            +'<button onclick="this.closest(\'.miss-team-row\').remove()" style="background:#fee2e2;color:#dc2626;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-weight:700">✕</button>'
+            +'</div>';
+        }).join(''))
+        +'</div>'
+        +'<button onclick="addMissTeamRow()" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:7px;padding:5px 12px;cursor:pointer;font-size:12px;font-weight:700">+ Ajouter un consultant</button>'
+        +'</div></div>'
+        :'')
       +'<div class="cs2"><div class="fd"><label class="fl">Jours travaillés</label>'
       +'<div id="mcal-wrap">'+mCalHTML()+'</div></div></div>'
       +'<div class="fd"><label class="fl">Localisation</label><input class="ic" id="mlo" value="'+esc(it?it.loc:'')+'" placeholder="Paris (75009)"></div>'
@@ -3999,7 +4074,7 @@ function bind(){
         for(var wi=0;wi<wdEls.length;wi++)wdays.push(+wdEls[wi].value);
         var wmode2=(S.modal&&S.modal.wmode==='man')?'man':'rec';
         var manualDays2=(wmode2==='man'&&S.modal&&S.modal.manualDays)?S.modal.manualDays.slice():[];
-        var deal=+gv('mdeal')||0,tmar=(gv('mtmar')===''?null:+gv('mtmar'));
+        var deal=+gv('mdeal')||0,tmar=(gv('mtmar')===''?null:+gv('mtmar'));var missTeam=readMissTeam();
         if(!cid||!mn||!cl||!sd){alert('Veuillez remplir les champs obligatoires (*).');return;}
         /* Consultant : TJM saisi à 0, le directeur le renseigne lors de l'approbation */
         if(S.role!=='utilisateur'){
@@ -4502,7 +4577,7 @@ function importJSON(file){
    SUPABASE - helpers (synchronisation non-bloquante)
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function mapC(r){return{id:r.id,name:r.name,title:r.title||'',scr:r.scr||0,email:r.email||'',dir:r.directeur||'',arrive:r.arrive||null,depart:r.depart||null,expertise:r.expertise||[],sectors:r.sectors||[],contract:r.contract||'salarie',grade:r.grade||''};}
-function mapM(r){return{id:r.id,cid:r.consultant_id,name:r.name,cli:r.client_name||'',tjm:r.tjm||0,sd:r.start_date,ed:r.end_date||null,loc:r.location||'',mgr:r.manager_name||'',ccn:r.client_contact_name||'',ccr:r.client_contact_role||'',pcode:r.code_projet||'',btype:r.billing_type||'at',wdays:(Array.isArray(r.work_days)?r.work_days:(r.work_days?String(r.work_days).split(',').map(Number):[1,2,3,4,5])),deal:r.deal_amount||0,tmar:(r.target_margin!=null?r.target_margin:null)};}
+function mapM(r){return{id:r.id,cid:r.consultant_id,name:r.name,cli:r.client_name||'',tjm:r.tjm||0,sd:r.start_date,ed:r.end_date||null,loc:r.location||'',mgr:r.manager_name||'',ccn:r.client_contact_name||'',ccr:r.client_contact_role||'',pcode:r.code_projet||'',btype:r.billing_type||'at',wdays:(Array.isArray(r.work_days)?r.work_days:(r.work_days?String(r.work_days).split(',').map(Number):[1,2,3,4,5])),deal:r.deal_amount||0,tmar:(r.target_margin!=null?r.target_margin:null),team:r.team||[]};}
 function mapL(r){return{id:r.id,cid:r.consultant_id,type:r.type||'Congé payé',s:r.start_date,e:r.end_date};}
 function mapCand(r){return{
   id:r.id,name:r.name,email:r.email||'',phone:r.phone||'',
@@ -4599,7 +4674,7 @@ async function sbUpsertCons(c){
 async function sbUpsertMiss(m){
   if(!sb)return;
   if(!SB_CID)throw new Error('SB_CID null — reconnectez-vous');
-  var res=await sb.from('missions').upsert({id:m.id,company_id:SB_CID,consultant_id:m.cid,name:m.name,client_name:m.cli,tjm:m.tjm,start_date:m.sd,end_date:m.ed||null,location:m.loc,manager_name:m.mgr,client_contact_name:m.ccn,client_contact_role:m.ccr,billing_type:m.btype||'at',work_days:(m.wdays&&m.wdays.length?m.wdays:[1,2,3,4,5]),deal_amount:(m.deal||null),target_margin:((m.tmar!=null&&m.tmar!=='')?m.tmar:null),code_projet:m.pcode||null});
+  var res=await sb.from('missions').upsert({id:m.id,company_id:SB_CID,consultant_id:m.cid,name:m.name,client_name:m.cli,tjm:m.tjm,start_date:m.sd,end_date:m.ed||null,location:m.loc,manager_name:m.mgr,client_contact_name:m.ccn,client_contact_role:m.ccr,billing_type:m.btype||'at',work_days:(m.wdays&&m.wdays.length?m.wdays:[1,2,3,4,5]),deal_amount:(m.deal||null),target_margin:((m.tmar!=null&&m.tmar!=='')?m.tmar:null),code_projet:m.pcode||null,team:m.team||null});
   if(res.error)throw new Error(m.name+': '+res.error.message);
 }
 async function sbUpsertLeave(l){
