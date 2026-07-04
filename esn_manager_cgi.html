@@ -202,13 +202,14 @@ var HOLS_N=['Jour de l\u2019An','Lundi de P\u00e2ques','F\u00eate du Travail','V
 function fyStart(fy){
   var m=((S&&S.settings&&S.settings.fyStartMonth)||10);
   var ms=String(m).padStart(2,'0');
-  return (m<=9?fy-1:fy-1)+'-'+ms+'-01';
+  var sy=(m===1)?fy:(fy-1); /* FY janvier = même année; sinon année précédente */
+  return sy+'-'+ms+'-01';
 }
 function fyEnd(fy){
   var m=((S&&S.settings&&S.settings.fyStartMonth)||10);
   var em=m===1?12:m-1;var ems=String(em).padStart(2,'0');
-  var lastDay=new Date(m===1?fy:fy,em,0).getDate();
-  return (m<=9?fy:fy)+'-'+ems+'-'+lastDay;
+  var lastDay=new Date(fy,em,0).getDate(); /* dernier jour du mois em de l'année fy */
+  return fy+'-'+ems+'-'+String(lastDay).padStart(2,'0');
 }
 function fyHols(fy){
   var h1=frHols(fy-1),h2=frHols(fy),c=new Set();
@@ -216,7 +217,13 @@ function fyHols(fy){
   h2.forEach(function(d){c.add(d);});
   return c;
 }
-function currentFY(){var d=new Date(),m=d.getMonth();return m>=9?d.getFullYear()+1:d.getFullYear();}
+function currentFY(){
+  var d=new Date();
+  var cm=d.getMonth()+1; /* mois courant 1-12 */
+  var fm=((S&&S.settings&&S.settings.fyStartMonth)||10);
+  if(fm===1)return d.getFullYear(); /* FY = année calendaire */
+  return cm>=fm?d.getFullYear()+1:d.getFullYear();
+}
 var CFY=currentFY();
 var TODAY=(function(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}());
 function fyLbl(fy){return 'FY'+String(fy).slice(2);}
@@ -480,11 +487,11 @@ var REC_STATUS=[
   {id:'nogo_cand', lb:'NoGo Candidat',               bg:'#fce7f3',fg:'#9d174d'},
   {id:'recrute',   lb:'Recrut\u00e9(e) \u2713',         bg:'#d1fae5',fg:'#065f46'}
 ];
-function recStLb(id){var s=REC_STATUS.find(function(x){return x.id===id;});return s?s.lb:id;}
+function recStLbD(id){var s=REC_STATUS.find(function(x){return x.id===id;});return s?s.lb:id;}
 /* Label avec personnalisation Sénior VP */
 function recStLbD(id){
   var custom=S.settings&&S.settings.recStatusLabels&&S.settings.recStatusLabels[id];
-  return custom||recStLb(id);
+  return custom||recStLbD(id);
 }
 function recStCol(id){var s=REC_STATUS.find(function(x){return x.id===id;});return s?[s.bg,s.fg]:['#f1f5f9','#475569'];}
 function recScr(sal){return sal>0?sal/SCR_FACTOR:0;}
