@@ -589,7 +589,8 @@ var _ROLE_DEFAULTS={
   'admin':'Admin',
   'gestionnaire':'Gestionnaire',
   'utilisateur':'Utilisateur',
-  'recruteur':'Recruteur'
+  'recruteur':'Recruteur',
+  'sales':'Business Manager'
 };
 function rLabel(role){
   var custom=S.settings&&S.settings.roleLabels&&S.settings.roleLabels[role];
@@ -758,7 +759,7 @@ function tSB(){
       {id:'leaves',     ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'}
     ];
   }else if(S.role==='sales'){
-    /* Licence Sales : Business + Activité + Absences */
+    /* Licence Business Manager : Business + Activité + Absences */
     NAV=[
       {id:'business',   ic:'\uD83D\uDCBC',lb:'Business'},
       {id:'activite',   ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'},
@@ -991,7 +992,7 @@ function tDash(){
 
   /* ── Compteur IC et approbations ── */
   var icCount=icCons.length;
-  /* Absences Recruteur/Sales en attente */
+  /* Absences Recruteur/Business Manager en attente */
   var pendingLvAppr=S.lvs.filter(function(lv){return lv.approval_role&&lv.approved===false;});
   var myPendingLvAppr=S.role==='super_admin'?pendingLvAppr.filter(function(lv){return lv.approval_role==='super_admin';}):
     S.role==='gestionnaire'?pendingLvAppr.filter(function(lv){return lv.approval_role==='gestionnaire';}):
@@ -2115,7 +2116,7 @@ function tSettings(){
     +'<div class="card" style="padding:24px;margin-bottom:16px">'
     +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">📌 Modules &amp; Add-ons</h3>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
-    +[{k:'hasBusinessModule',lb:'Module Business',desc:'Onglet Business pour Admin/Gestionnaire/Utilisateur + Licence Sales'},
+    +[{k:'hasBusinessModule',lb:'Business Développement',desc:'Onglet Business pour Admin/Gestionnaire/Utilisateur + Licence Business Manager'},
       {k:'hasRecrutementModule',lb:'Add-on Recruteur',desc:'Comptes recruteur, pipeline candidats'}].map(function(m){
         var on=!!(st[m.k]);
         return '<div style="border:1px solid '+(on?'#bbf7d0':'#e2e8f0')+';border-radius:10px;padding:12px 14px;background:'+(on?'#f0fdf4':'#f8fafc')+'">'
@@ -2201,9 +2202,9 @@ function tSalesInvitePaywall(){
   return '<div style="background:#f8fafc;border:2px dashed #e2e8f0;border-radius:10px;padding:16px;margin-bottom:12px">'
     +'<div style="display:flex;align-items:center;gap:10px">'
     +'<span style="font-size:24px">&#x1F4BC;</span>'
-    +'<div style="flex:1"><div style="font-weight:700;color:#1B2B3A;font-size:13px">Licence Sales — Module Business requis</div>'
-    +'<div style="font-size:12px;color:#64748b">Activez le module Business pour inviter des Sales.</div></div>'
-    +'<a href="mailto:contact@konsilys.fr?subject=Module Business" style="background:#84CC16;color:#1B2B3A;padding:8px 14px;border-radius:8px;font-weight:800;font-size:12px;text-decoration:none">Activer</a>'
+    +'<div style="flex:1"><div style="font-weight:700;color:#1B2B3A;font-size:13px">Licence Business Manager — Business Développement requis</div>'
+    +'<div style="font-size:12px;color:#64748b">Activez le module Business pour inviter des Business Manager.</div></div>'
+    +'<a href="mailto:contact@konsilys.fr?subject=Business Développement" style="background:#84CC16;color:#1B2B3A;padding:8px 14px;border-radius:8px;font-weight:800;font-size:12px;text-decoration:none">Activer</a>'
     +'</div></div>';
 }
 function tRecruteurPaywall(){
@@ -2333,18 +2334,18 @@ function visibleOpps(){
       return false;
     });
   }
-  /* Gestionnaire : ses opps + opps des Sales/Utilisateurs de son équipe */
+  /* Gestionnaire : ses opps + opps des Business Manager/Utilisateurs de son équipe */
   if(S.role==='gestionnaire'){
     var myTeamEmails=((S._all&&S._all.cons)||S.cons).map(function(c){return c.email||'';}).filter(Boolean);
     return all.filter(function(o){
       if(!o.owner_email)return true;
       if(o.owner_email===me)return true;
       if(myTeamEmails.indexOf(o.owner_email)>=0)return true;
-      if(o.owner_dir===S.dirName)return true; /* Sales rattachés à ce Gestionnaire */
+      if(o.owner_dir===S.dirName)return true; /* Business Manager rattachés à ce Gestionnaire */
       return false;
     });
   }
-  /* Sales / Utilisateur : uniquement leurs propres opportunités */
+  /* Business Manager / Utilisateur : uniquement leurs propres opportunités */
   return all.filter(function(o){return !o.owner_email||o.owner_email===me;});
 }
 function pendingBizApprovals(){
@@ -2621,19 +2622,19 @@ function tBizApprovals(){
 function tBusinessPaywall(){
   return '<div class="vw"><div style="max-width:560px;margin:60px auto;text-align:center">'
     +'<div style="font-size:48px;margin-bottom:16px">💼</div>'
-    +'<div style="font-size:26px;font-weight:900;color:#1B2B3A;margin-bottom:10px">Module Business CRM</div>'
+    +'<div style="font-size:26px;font-weight:900;color:#1B2B3A;margin-bottom:10px">Business Développement</div>'
     +'<div style="font-size:15px;color:#64748b;margin-bottom:28px;line-height:1.6">Gérez vos comptes clients, votre pipeline et vos activités commerciales dans Konsilys.</div>'
     +'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:24px;margin-bottom:24px;text-align:left">'
     +'<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:12px">Ce module inclut :</div>'
     +['CRM Comptes & Contacts','Pipeline opportunités avec probabilités','Suivi activités commerciales','KPIs Business & entonnoir de vente','Workflow d’approbation','Mission créée auto à la signature'].map(function(f){return '<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:#84CC16;font-weight:800">✓</span><span style="font-size:13px;color:#374151">'+f+'</span></div>';}).join('')
     +'</div>'
-    +'<a href="mailto:contact@konsilys.fr?subject=Activation module Business CRM" style="display:inline-block;background:#1B2B3A;color:#fff;padding:14px 32px;border-radius:10px;font-weight:800;font-size:15px;text-decoration:none">Contacter pour activer →</a>'
+    +'<a href="mailto:contact@konsilys.fr?subject=Activation module Business Développement" style="display:inline-block;background:#1B2B3A;color:#fff;padding:14px 32px;border-radius:10px;font-weight:800;font-size:15px;text-decoration:none">Contacter pour activer →</a>'
     +'<div style="font-size:12px;color:#94a3b8;margin-top:12px">contact@konsilys.fr · Activation sous 24h</div>'
     +'</div></div>';
 }
 function tBusiness(){
-  /* Sales a toujours accès au Business ; les autres ont besoin du module */
-  /* Sales a toujours accès ; TOUS les autres (y compris Super Admin) ont besoin du module */
+  /* Business Manager a toujours accès au Business ; les autres ont besoin du module */
+  /* Business Manager a toujours accès ; TOUS les autres (y compris Super Admin) ont besoin du module */
   if(S.role!=='sales'&&!(S.settings&&S.settings.hasBusinessModule))return tBusinessPaywall();
   var subTabs=[
     {id:'pipeline',  lb:'📋 Pipeline',    n:S.bizOpps.filter(function(o){return o.status!=='gagne'&&o.status!=='perdu';}).length},
@@ -3383,7 +3384,7 @@ function tRecrutementPaywall(){
     +'</div></div>';
 }
 function tRecrut(){
-  /* Recruteur et Sales ont toujours accès ; les autres doivent avoir le module */
+  /* Recruteur et Business Manager ont toujours accès ; les autres doivent avoir le module */
   /* Recruteur a toujours accès ; TOUS les autres (y compris Super Admin) ont besoin du module */
   if(S.role!=='recruteur'&&!(S.settings&&S.settings.hasRecrutementModule))return tRecrutementPaywall();
   if(S.recSel){
@@ -3888,7 +3889,7 @@ function tModal(){
       +'<div class="fd"><label class="fl">Nom complet *</label><input class="ic" id="mn" value="'+esc(it?it.name:'')+'" placeholder="Pr\u00e9nom Nom"></div>'
       +'<div class="fd"><label class="fl">Poste *</label><input class="ic" id="mti" value="'+esc(it?it.title:'')+'" placeholder="ex\u00a0: Consultant Senior"></div>'
       +'<div class="fd"><label class="fl">SCR journalier (\u20ac) *</label><input class="ic" id="ms" type="number" min="0" value="'+esc(it?String(it.scr):'')+'" placeholder="450"><p class="fh">Salary Cost Revenue - co\u00fbt journalier</p></div>'
-      +'<div class="fd"><label class="fl">Grade</label><select class="ic" id="mgrade"><option value="">— Sélectionner —</option><option value="junior"'+(it&&it.grade==="junior"?' selected':'')+'>Consultant Junior</option><option value="confirme"'+(it&&it.grade==="confirme"?' selected':'')+'>Consultant Confirmé</option><option value="senior"'+(it&&it.grade==="senior"?' selected':'')+'>Consultant Sénior</option><option value="manager"'+(it&&it.grade==="manager"?' selected':'')+'>Manager</option><option value="sales_grade"'+(it&&it.grade==="sales_grade"?' selected':'')+'>Sales</option></select></div>'+'<div class="fd"><label class="fl">Type de contrat</label><select class="ic" id="mcontract">'
+      +'<div class="fd"><label class="fl">Grade</label><select class="ic" id="mgrade"><option value="">— Sélectionner —</option><option value="junior"'+(it&&it.grade==="junior"?' selected':'')+'>Consultant Junior</option><option value="confirme"'+(it&&it.grade==="confirme"?' selected':'')+'>Consultant Confirmé</option><option value="senior"'+(it&&it.grade==="senior"?' selected':'')+'>Consultant Sénior</option><option value="manager"'+(it&&it.grade==="manager"?' selected':'')+'>Manager</option><option value="sales_grade"'+(it&&it.grade==="sales_grade"?' selected':'')+'>Business Manager</option></select></div>'+'<div class="fd"><label class="fl">Type de contrat</label><select class="ic" id="mcontract">'
       +'<option value="salarie"'+(it&&it.contract==='salarie'?' selected':(!it?' selected':''))+'>\uD83D\uDC54 Salari\u00e9</option>'
       +'<option value="freelance"'+(it&&it.contract==='freelance'?' selected':'')+'>\uD83D\uDD17 Freelance</option>'
       +'</select><p class="fh">Salari\u00e9 : co\u00fbt = SCR \u00d7 113.35 \u00d7 1.25 \u00b7 Freelance : co\u00fbt = SCR \u00d7 jours</p></div>'
@@ -4324,9 +4325,9 @@ function bind(){
           var desc2=(it?'Modification':'Ajout')+' d\u2019absence Recruteur — '+esc(lt)+' du '+fDt(ls)+' au '+fDt(le);
           var pl2=it?Object.assign({},it,{cid:lci,type:lt,s:ls,e:le}):{id:uid(),cid:lci,type:lt,s:ls,e:le};
           submitApproval(it?'leave_edit':'leave_add',Object.assign({},pl2,{approval_role:'gestionnaire'}),desc2);
-        /* ── Sales (licence) → approbation Super Admin ── */
+        /* ── Business Manager (licence) → approbation Super Admin ── */
         }else if(S.role==='sales'){
-          var desc3=(it?'Modification':'Ajout')+' d\u2019absence Sales — '+esc(lt)+' du '+fDt(ls)+' au '+fDt(le);
+          var desc3=(it?'Modification':'Ajout')+' d\u2019absence Business Manager — '+esc(lt)+' du '+fDt(ls)+' au '+fDt(le);
           var pl3=it?Object.assign({},it,{cid:lci,type:lt,s:ls,e:le}):{id:uid(),cid:lci,type:lt,s:ls,e:le};
           submitApproval(it?'leave_edit':'leave_add',Object.assign({},pl3,{approval_role:'super_admin'}),desc3);
         }else{
@@ -5553,17 +5554,17 @@ async function sbUpsertApproval(req){
 
 /* ─── Vue Approbations pour le CONSULTANT ─── */
 function tApprovals(){
-  /* Vue Super Admin : approbations absences Sales/Recruteur */
+  /* Vue Super Admin : approbations absences Business Manager/Recruteur */
   if(S.role==='super_admin'||S.role==='admin'){
     var pending=S.approvals.filter(function(r){return r.status==='pending';}).sort(function(a,b){return b.createdAt.localeCompare(a.createdAt);});
     var done=S.approvals.filter(function(r){return r.status!=='pending';}).slice(0,30);
-    // Aussi les congés Sales en attente (approval_role = 'super_admin')
+    // Aussi les congés Business Manager en attente (approval_role = 'super_admin')
     var pendingLv=(S._all&&S._all.lvs||S.lvs).filter(function(lv){return lv.approval_role==='super_admin'&&lv.approved===false;});
     if(!pending.length&&!pendingLv.length)return '<div class="vw"><div class="ph"><div class="pt">\uD83D\uDD14 Approbations</div><div class="ps">Demandes en attente de validation</div></div><div class="emp">Aucune demande en attente.</div></div>';
     var lvRows=pendingLv.map(function(lv){
       var who=(S._all&&S._all.cons||S.cons).find(function(c){return c.id===lv.cid;});
       return '<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px">'
-        +'<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#0f172a">Absence Sales — '+esc(lv.type)+'</div>'
+        +'<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#0f172a">Absence Business Manager — '+esc(lv.type)+'</div>'
         +'<div style="font-size:12px;color:#64748b;margin-top:3px">'+esc(who?who.name:'?')+' \u00b7 du '+fDt(lv.s)+' au '+fDt(lv.e)+'</div></div>'
         +'<div style="display:flex;gap:8px">'
         +'<button class="bp" style="background:#16a34a;font-size:12px;padding:6px 12px" onclick="approveLvSA(\''+lv.id+'\',true)">\u2713 Approuver</button>'
@@ -5571,13 +5572,13 @@ function tApprovals(){
         +'</div></div>';
     }).join('');
     return '<div class="vw"><div class="ph"><div class="pt">\uD83D\uDD14 Approbations</div><div class="ps">Demandes en attente de validation</div></div>'
-      +(lvRows?'<div class="card" style="padding:20px;margin-bottom:16px"><div style="font-weight:700;color:#0f172a;margin-bottom:12px">\u23f3 Absences Sales en attente ('+pendingLv.length+')</div>'+lvRows+'</div>':'')
+      +(lvRows?'<div class="card" style="padding:20px;margin-bottom:16px"><div style="font-weight:700;color:#0f172a;margin-bottom:12px">\u23f3 Absences Business Manager en attente ('+pendingLv.length+')</div>'+lvRows+'</div>':'')
       +(pending.length?'<div class="card" style="padding:20px"><div style="font-weight:700;color:#0f172a;margin-bottom:12px">\u23f3 Approbations missions/équipe ('+pending.length+')</div>'
         +pending.map(function(r){return '<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;margin-bottom:8px;font-size:12px;color:#374151">'+esc(r.applyDesc||r.type)+'</div>';}).join('')+'</div>':'')
       +'</div>';
   }
 
-  /* Vue Utilisateur/Recruteur/Sales : ses propres approbations */
+  /* Vue Utilisateur/Recruteur/Business Manager : ses propres approbations */
   var mine=S.approvals.filter(function(r){return r.consId===S.consId;})
     .sort(function(a,b){return b.createdAt.localeCompare(a.createdAt);});
   var pending2=mine.filter(function(r){return r.status==='pending';});
