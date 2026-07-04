@@ -230,6 +230,7 @@ function fyLbl(fy){return 'FY'+String(fy).slice(2);}
 function fyRange(fy){return 'oct. '+(fy-1)+' \u2192 sept. '+fy;}
 
 /* \u2550\u2550\u2550 TRIMESTRES FISCAUX : Q1=Oct-D\u00e9c, Q2=Janv-Mars, Q3=Avr-Juin, Q4=Juil-Sept \u2550\u2550\u2550 */
+/* QUARTERS : recalculé dynamiquement selon fyStartMonth (via rebuildQuarters()) */
 var QUARTERS=[
   {id:1,lb:'T1',months:[10,11,12]},
   {id:2,lb:'T2',months:[1,2,3]},
@@ -238,7 +239,23 @@ var QUARTERS=[
 ];
 var MOIS_ABR=['','Janv','F\u00e9vr','Mars','Avr','Mai','Juin','Juil','Ao\u00fbt','Sept','Oct','Nov','D\u00e9c'];
 var LTYPES=['Cong\u00e9 pay\u00e9','RTT','Formation','Inter-contrat','Maladie','Cong\u00e9 maternit\u00e9','Cong\u00e9 sans solde','Mission interne','Autre'];
-QUARTERS.forEach(function(q){q.lbFull=q.lb+' ('+MOIS_ABR[q.months[0]]+'-'+MOIS_ABR[q.months[2]]+')';});
+/* Reconstruire QUARTERS selon le mois de début du FY */
+function rebuildQuarters(){
+  var fm=((S&&S.settings&&S.settings.fyStartMonth)||10);
+  /* Générer les 12 mois dans l'ordre fiscal */
+  var ms=[];for(var i=0;i<12;i++)ms.push(((fm-1+i)%12)+1);
+  QUARTERS=[
+    {id:1,lb:'T1',months:[ms[0],ms[1],ms[2]]},
+    {id:2,lb:'T2',months:[ms[3],ms[4],ms[5]]},
+    {id:3,lb:'T3',months:[ms[6],ms[7],ms[8]]},
+    {id:4,lb:'T4',months:[ms[9],ms[10],ms[11]]}
+  ];
+  QUARTERS.forEach(function(q){
+    q.lbFull=q.lb+' ('+MOIS_ABR[q.months[0]]+'\u2013'+MOIS_ABR[q.months[2]]+')';
+  });
+}
+rebuildQuarters(); /* initialisation par défaut */
+
 
 /* Bornes ISO d'un trimestre donn\u00e9 \u00e0 l'int\u00e9rieur d'un exercice fiscal fy */
 function qRange(fy,q){
@@ -3692,6 +3709,7 @@ async function loadSB(){
     }catch(e){/* table pas encore créée : utiliser les defaults */}
     /* Recalculer CFY avec le bon mois de départ */
     CFY=currentFY();
+    rebuildQuarters(); /* T1/T2/T3/T4 selon le nouveau mois fiscal */
     H=fyHols(S.year=S.year||CFY); /* réinitialiser les jours fériés avec le bon FY */
     /* un directeur ne charge que les consultants de son équipe (puis leurs missions/absences) */
     var cq=sb.from('consultants').select('*').eq('company_id',SB_CID).order('name');
