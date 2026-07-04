@@ -2513,22 +2513,22 @@ function bizOppToMission(oppId){
     /* Forfait : utiliser opp_team si disponible */
     var team=o.opp_team&&o.opp_team.length?o.opp_team
       :(o.consultant_ids||[]).map(function(cid){
-        return {cid:cid,taux:Math.round(100/Math.max((o.consultant_ids||[]).length,1)),staffing:20,tmar:25};
+        return {cid:cid,taux:Math.round(100/Math.max((o.consultant_ids||[]).length,1)),wdays:[1,2],tmar:25};
       });
     var allConsForCalc=S.cons.concat([]); /* ref locale pour calculs */
     team.filter(function(t){return t.cid;}).forEach(function(tm){
       var cons=S.cons.find(function(x){return x.id===tm.cid;})||{scr:0,name:'?'};
       /* Calcul automatique : poids = SCR × jours_staffing */
       var cons_for_weight=allConsForCalc.find(function(x){return x.id===tm.cid;})||{scr:1};
-      var sdays=(STAFFING_WDAYS&&STAFFING_WDAYS[tm.staffing||20]||[1,2]).length;
+      var sdays=(tm.wdays&&tm.wdays.length?tm.wdays:[1,2]).length;
       var tmWeight=(cons_for_weight.scr||1)*sdays;
       var totalWeight=team.filter(function(t){return t.cid;}).reduce(function(s,t){
         var tc=allConsForCalc.find(function(x){return x.id===t.cid;})||{scr:1};
-        return s+(tc.scr||1)*((STAFFING_WDAYS&&STAFFING_WDAYS[t.staffing||20]||[1,2]).length);
+        return s+(tc.scr||1)*((t.wdays&&t.wdays.length?t.wdays:[1,2]).length);
       },0)||1;
       var dealPortion=(o.deal_amount||0)*tmWeight/totalWeight;
       var tmar=tm.tmar!=null?tm.tmar:25;
-      var wdays=(STAFFING_WDAYS&&STAFFING_WDAYS[tm.staffing||20])||[1,2];
+      var wdays=tm.wdays&&tm.wdays.length?tm.wdays:[1,2];
       /* TJM = SCR × 113.35 × 1.25 / (1 - marge) */
       var tjm=cons.scr>0?Math.round(cons.scr*113.35*1.25/(1-Math.min(tmar,99)/100)):0;
       var days=tjm>0?Math.round(dealPortion/tjm):0;
@@ -2883,10 +2883,11 @@ function oppConsPickerHTML(){
   /* FORFAIT : builder avec staffing + marge par consultant */
   var allCons=S.cons.filter(function(c){return c.grade!=='sales_grade';});
   var rows=team.map(function(tm,idx){
-    var staffOpts=STAFFING_OPTIONS.map(function(pct){
-      var days=STAFFING_WDAYS[pct];
-      var label=pct+'% ('+['Lun','Mar','Mer','Jeu','Ven'].slice(0,days.length).join('+')+')'+(pct===20?' — défaut':'');
-      return '<option value="'+pct+'"'+(tm.staffing===pct?' selected':'')+'>'+label+'</option>';
+    var wdSel=tm.wdays&&tm.wdays.length?tm.wdays:[1,2]; /* défaut lun+mar */
+    var wdChks=['Lun','Mar','Mer','Jeu','Ven'].map(function(lb,di){
+      var dv=di+1;
+      return '<label style="display:flex;align-items:center;gap:3px;font-size:11px;cursor:pointer;white-space:nowrap">'
+        +'<input type="checkbox" class="_oppwd" data-idx="'+idx+'" data-dv="'+dv+'"'+(wdSel.indexOf(dv)>=0?' checked':'')+' style="accent-color:#84CC16;width:13px;height:13px">'+lb+'</label>';
     }).join('');
     var consOpts='<option value="">— Consultant —</option>'+allCons.map(function(cc){
       return '<option value="'+cc.id+'"'+(cc.id===tm.cid?' selected':'')+'>'+esc(cc.name)+'</option>';
@@ -2895,7 +2896,7 @@ function oppConsPickerHTML(){
     var cons=allCons.find(function(x){return x.id===tm.cid;});
     var indDays='—';
     if(cons&&cons.scr>0&&S.bizModal&&S.bizModal.item){
-      var deal=(S.bizModal.item.deal_amount||0)*(tm.taux||100)/100/Math.max(team.length,1);
+      var deal=(S.bizModal.item.deal_amount||0)/Math.max(team.length,1); /* CA distribué par poids */
       if(deal>0&&tm.tmar>=0){
         var tjm=cons.scr*113.35*1.25/(1-Math.min(tm.tmar||25,99)/100);
         indDays=Math.round(deal/tjm)+'j';
@@ -2904,8 +2905,7 @@ function oppConsPickerHTML(){
     return '<div class="opp-team-row" data-idx="'+idx+'" style="border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#f8fafc">'
       +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
       +'<select class="ic" style="flex:2;min-width:140px;font-size:12px" onchange="oppTeamUpdate('+idx+',\'cid\',this.value)"><option value="">'+consOpts+'</select>'
-      +'<div style="display:flex;align-items:center;gap:4px;flex:1"><label style="font-size:11px;color:#64748b;white-space:nowrap">Staffing</label>'
-        +'<select class="ic" style="font-size:11px" onchange="oppTeamUpdate('+idx+',\'staffing\',+this.value)">'+staffOpts+'</select></div>'
+      +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:5px 8px">'+wdChks+'</div>'
       +'<div style="display:flex;align-items:center;gap:4px"><label style="font-size:11px;color:#64748b;white-space:nowrap">Marge</label>'
         +'<input class="ic" type="number" min="0" max="100" placeholder="%" style="width:60px;font-size:12px" value="'+(tm.tmar!=null?tm.tmar:25)+'" onchange="oppTeamUpdate('+idx+',\'tmar\',+this.value)"><span style="font-size:11px;color:#64748b">%</span></div>'
       +'<span style="font-size:11px;font-weight:700;color:#1B2B3A;background:#e2e8f0;padding:2px 8px;border-radius:99px;white-space:nowrap">'+indDays+'</span>'
@@ -2951,7 +2951,7 @@ function oppTeamUpdate(idx,key,val){
 function oppTeamAdd(){
   if(!S.bizModal)return;
   S.bizModal.oppTeam=S.bizModal.oppTeam||[];
-  S.bizModal.oppTeam.push({cid:'',taux:Math.max(0,Math.round(100/Math.max(S.bizModal.oppTeam.length+1,1))),staffing:20,tmar:25});
+  S.bizModal.oppTeam.push({cid:'',wdays:[1,2],tmar:25});
   oppConsRefresh();
 }
 function oppTeamRemove(idx){
@@ -2988,6 +2988,16 @@ function bindOppConsPicker(){
       S.bizModal.consPickerSel=S.bizModal.consPickerSel||[];
       if(e.target.checked){if(S.bizModal.consPickerSel.indexOf(v)<0)S.bizModal.consPickerSel.push(v);}
       else{S.bizModal.consPickerSel=S.bizModal.consPickerSel.filter(function(x){return x!==v;});}
+      oppConsRefresh();
+    }
+    if(e.target.classList.contains('_oppwd')){
+      var idx2=+e.target.getAttribute('data-idx');
+      var dv=+e.target.getAttribute('data-dv');
+      if(!S.bizModal.oppTeam[idx2])return;
+      S.bizModal.oppTeam[idx2].wdays=S.bizModal.oppTeam[idx2].wdays||[1,2];
+      if(e.target.checked){if(S.bizModal.oppTeam[idx2].wdays.indexOf(dv)<0)S.bizModal.oppTeam[idx2].wdays.push(dv);}
+      else{S.bizModal.oppTeam[idx2].wdays=S.bizModal.oppTeam[idx2].wdays.filter(function(x){return x!==dv;});}
+      S.bizModal.oppTeam[idx2].wdays.sort();
       oppConsRefresh();
     }
   };
@@ -3906,11 +3916,10 @@ function tModal(){
       +'<label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:500"><input type="radio" name="mbt" value="at"'+(bt!=='forfait'?' checked':'')+' style="accent-color:#84CC16"> Assistance technique</label>'
       +'<label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:500"><input type="radio" name="mbt" value="forfait"'+(bt==='forfait'?' checked':'')+' style="accent-color:#84CC16"> Forfait</label>'
       +'</div><p class="fh">AT : CA = jours travaill\u00e9s \u00d7 TJM \u00b7 Forfait : montant fixe + marge cible</p></div></div>'
-      +'<div class="cs2" id="ft-fields" style="display:'+(bt==='forfait'?'block':'none')+'"><div class="g2">'
-      +'<div class="fd"><label class="fl">Montant du deal \u2014 CA (\u20ac) *</label><input class="ic" id="mdeal" type="number" min="0" value="'+esc(it&&it.deal?String(it.deal):'')+'" placeholder="120000"></div>'
-      +'<div class="fd"><label class="fl">Marge recherch\u00e9e (%) *</label><input class="ic" id="mtmar" type="number" min="0" max="100" value="'+((it&&it.tmar!=null&&it.tmar!=='')?esc(String(it.tmar)):'')+'" placeholder="30"><p class="fh">Sert \u00e0 calculer les jours restants \u00e0 travailler</p></div>'
-      /* Multi-consultant team pour forfait */
       +(bt==='forfait'?
+        '<div class="cs2" id="ft-fields"><div class="g2">'
+        +'<div class="fd"><label class="fl">Montant du deal \u2014 CA (\u20ac) *</label><input class="ic" id="mdeal" type="number" min="0" value="'+esc(it&&it.deal?String(it.deal):'')+'" placeholder="120000"></div>'
+        +'<div class="fd"><label class="fl">Marge recherch\u00e9e (%) *</label><input class="ic" id="mtmar" type="number" min="0" max="100" value="'+((it&&it.tmar!=null&&it.tmar!=='')?esc(String(it.tmar)):'')+'" placeholder="30"><p class="fh">Sert \u00e0 calculer les jours restants \u00e0 travailler</p></div>'
         +'<div class="fd cs2"><label class="fl">Consultants sur le forfait</label>'
         +'<div id="miss-team" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">'
         +((it&&it.team&&it.team.length?it.team:S.modal&&S.modal.team&&S.modal.team.length?S.modal.team:[{cid:defCid,taux:100}]).map(function(tm,idx){
@@ -3918,14 +3927,13 @@ function tModal(){
           var cOpts=tCons.map(function(c){return '<option value="'+c.id+'"'+(c.id===tm.cid?' selected':'')+'>'+esc(c.name)+'</option>';}).join('');
           return '<div class="miss-team-row" style="display:flex;gap:8px;align-items:center">'
             +'<select class="ic" style="flex:2" data-team-cid="'+idx+'"><option value="">— Consultant —</option>'+cOpts+'</select>'
-            +'<div style="display:flex;align-items:center;gap:4px;flex:1"><input class="ic" type="number" min="1" max="100" placeholder="%" style="width:60px" value="'+(tm.taux||100)+'" data-team-taux="'+idx+'"><span style="color:#64748b;font-size:12px">%</span></div>'
             +'<button onclick="this.closest(\'.miss-team-row\').remove()" style="background:#fee2e2;color:#dc2626;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-weight:700">✕</button>'
             +'</div>';
         }).join(''))
         +'</div>'
         +'<button onclick="addMissTeamRow()" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:7px;padding:5px 12px;cursor:pointer;font-size:12px;font-weight:700">+ Ajouter un consultant</button>'
-        +'</div></div>'
-        :'')
+        +'</div></div></div>' /* closes fd cs2 + g2 + cs2 ft-fields */
+        :'<input type="hidden" id="mdeal"><input type="hidden" id="mtmar">')
       +'<div class="cs2"><div class="fd"><label class="fl">Jours travaillés</label>'
       +'<div id="mcal-wrap">'+mCalHTML()+'</div></div></div>'
       +'<div class="fd"><label class="fl">Localisation</label><input class="ic" id="mlo" value="'+esc(it?it.loc:'')+'" placeholder="Paris (75009)"></div>'
@@ -4095,11 +4103,11 @@ function bind(){
       else if(ra==='biz-new'){
         var types={pipeline:'opp',comptes:'acc',contacts:'ct',activites:'act'};
         var t=types[S.bizTab||'pipeline']||'opp';
-        S.bizModal={type:t,item:null,btype:'at',consPickerSel:[],oppTeam:[{cid:'',taux:100,staffing:20,tmar:25}]};render();
+        S.bizModal={type:t,item:null,btype:'at',consPickerSel:[],oppTeam:[{cid:'',taux:100,wdays:[1,2],tmar:25}]};render();
       }
       else if(ra==='biz-edit-acc'){var a=S.bizAccounts.find(function(x){return x.id===rid;});S.bizModal={type:'acc',item:a};render();}
       else if(ra==='biz-edit-ct'){var c=S.bizContacts.find(function(x){return x.id===rid;});S.bizModal={type:'ct',item:c};render();}
-      else if(ra==='biz-edit-opp'){var o=S.bizOpps.find(function(x){return x.id===rid;});S.bizModal={type:'opp',item:o,btype:(o&&o.btype)||'at',consPickerSel:(o&&o.consultant_ids)||[],oppTeam:(o&&o.opp_team&&o.opp_team.length?o.opp_team:(o&&o.consultant_ids||[]).map(function(cid){return {cid:cid,taux:Math.round(100/Math.max((o.consultant_ids||[]).length,1)),staffing:20,tmar:25};})||[])||[{cid:'',taux:100,staffing:20,tmar:25}]};render();}
+      else if(ra==='biz-edit-opp'){var o=S.bizOpps.find(function(x){return x.id===rid;});S.bizModal={type:'opp',item:o,btype:(o&&o.btype)||'at',consPickerSel:(o&&o.consultant_ids)||[],oppTeam:(o&&o.opp_team&&o.opp_team.length?o.opp_team:(o&&o.consultant_ids||[]).map(function(cid){return {cid:cid,taux:Math.round(100/Math.max((o.consultant_ids||[]).length,1)),wdays:[1,2],tmar:25};})||[])||[{cid:'',taux:100,wdays:[1,2],tmar:25}]};render();}
       else if(ra==='biz-edit-act'){var k=S.bizActivities.find(function(x){return x.id===rid;});S.bizModal={type:'act',item:k};render();}
       else if(ra==='biz-del'){var tbl=el.getAttribute('data-table')||'';bizDelItem(tbl,rid);}
       else if(ra==='biz-opp-mission'){bizOppToMission(rid);}
@@ -4672,7 +4680,7 @@ function bind(){
       }
       else if(a==='biz-edit-acc'){var _a=S.bizAccounts.find(function(x){return x.id===id;});S.bizModal={type:'acc',item:_a};render();}
       else if(a==='biz-edit-ct'){var _ct=S.bizContacts.find(function(x){return x.id===id;});S.bizModal={type:'ct',item:_ct};render();}
-      else if(a==='biz-edit-opp'){var _o=S.bizOpps.find(function(x){return x.id===id;});S.bizModal={type:'opp',item:_o,btype:(_o&&_o.btype)||'at',consPickerSel:(_o&&_o.consultant_ids)||[],oppTeam:(_o&&_o.opp_team&&_o.opp_team.length?_o.opp_team:(_o&&_o.consultant_ids||[]).map(function(cid){return {cid:cid,taux:Math.round(100/Math.max((_o.consultant_ids||[]).length,1)),staffing:20,tmar:25};})||[])||[{cid:'',taux:100,staffing:20,tmar:25}]};render();}
+      else if(a==='biz-edit-opp'){var _o=S.bizOpps.find(function(x){return x.id===id;});S.bizModal={type:'opp',item:_o,btype:(_o&&_o.btype)||'at',consPickerSel:(_o&&_o.consultant_ids)||[],oppTeam:(_o&&_o.opp_team&&_o.opp_team.length?_o.opp_team:(_o&&_o.consultant_ids||[]).map(function(cid){return {cid:cid,taux:Math.round(100/Math.max((_o.consultant_ids||[]).length,1)),wdays:[1,2],tmar:25};})||[])||[{cid:'',taux:100,wdays:[1,2],tmar:25}]};render();}
       else if(a==='biz-edit-act'){var _k=S.bizActivities.find(function(x){return x.id===id;});S.bizModal={type:'act',item:_k};render();}
       else if(a==='biz-del'){var _tbl=b.getAttribute('data-table')||'';bizDelItem(_tbl,id);}
       else if(a==='biz-opp-mission'){bizOppToMission(id);}
