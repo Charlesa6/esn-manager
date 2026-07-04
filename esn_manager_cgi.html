@@ -456,7 +456,8 @@ var S={
   impSelFY:'all',
   missImp:null,
   recSel:null,recF:{status:'all',q:'',loc:[],rec:'all'},recAddMeet:false,recAddCgi:false,recAddCv:false,
-  recEditMeetId:null,recEditCgiId:null
+  recEditMeetId:null,recEditCgiId:null,
+  activityLog:[]
 };
 var H=fyHols(CFY);
 
@@ -3246,7 +3247,7 @@ var ONBOARDING_STEPS={
 function tHelp(){
   var role=S.role||'utilisateur';
   var myFeatures=HELP_FEATURES.filter(function(f){return f.roles.indexOf(role)>=0;});
-  var logRows=(S.activityLog||[]).slice(0,20);
+  /* logs: visible uniquement dans Supabase (audit) */
   return '<div class="vw">'
     +'<div class="ph"><div class="pt">\u2753 Aide &amp; Fonctionnalit\u00e9s</div>'
     +'<div class="ps">Guide complet pour le r\u00f4le '+rLabel(role)+'</div></div>'
@@ -3263,20 +3264,7 @@ function tHelp(){
         +'</div>';
     }).join('')
     +'</div>'
-    /* Logs d'activité */
-    +(logRows.length?
-      '<h3 style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:12px">\uD83D\uDCCB Historique des actions</h3>'
-      +'<div class="card" style="padding:0"><div class="ov" style="max-height:320px;overflow-y:auto">'
-      +'<table><thead><tr><th>Date</th><th>Utilisateur</th><th>Action</th><th>D\u00e9tails</th></tr></thead><tbody>'
-      +logRows.map(function(l){
-        var dt=l.created_at?new Date(l.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
-        return '<tr><td style="font-size:11px;white-space:nowrap;color:#94a3b8">'+esc(dt)+'</td>'
-          +'<td style="font-size:12px">'+esc(l.user_name||l.user_email||'?')+'</td>'
-          +'<td><span style="font-size:11px;background:#f1f5f9;padding:2px 8px;border-radius:99px">'+esc(l.action||'')+'</span></td>'
-          +'<td style="font-size:12px;color:#64748b">'+esc((l.details||'').substring(0,60))+'</td></tr>';
-      }).join('')
-      +'</tbody></table></div></div>'
-      :'<div class="emp">Aucune action enregistr\u00e9e pour le moment.</div>')
+
     /* Bouton relancer onboarding */
     +'<div style="margin-top:20px"><button class="bsec" onclick="restartOnboarding()">\uD83C\uDF93 Revoir le guide de d\u00e9marrage</button></div>'
     +'</div>';
@@ -4046,7 +4034,7 @@ function tModal(){
       : '<div class="fd"><label class="fl">'+rLabel('gestionnaire')+'</label><input class="ic" id="mdir" list="esn-dir-list" value="'+esc(it?(it.dir||''):'')+'" placeholder="Nom du directeur"><datalist id="esn-dir-list">'+_rl.map(function(r){return '<option value="'+esc(r)+'">';}).join('')+'</datalist><p class="fh">Directeur unique du consultant (d\u00e9finit l\'\u00e9quipe, filtrable c\u00f4t\u00e9 gestionnaire)</p></div>';
     body='<div class="g2">'
       +'<div class="fd"><label class="fl">Nom complet *</label><input class="ic" id="mn" value="'+esc(it?it.name:'')+'" placeholder="Pr\u00e9nom Nom"></div>'
-      +'<div class="fd"><label class="fl">Poste *</label><input class="ic" id="mti" value="'+esc(it?it.title:'')+'" placeholder="ex\u00a0: Consultant Senior"></div>'
+      +'<div class="fd"><label class="fl">Grade</label><select class="ic" id="mti"><option value="">— Grade —</option>'+['Consultant Junior','Consultant Confirmé','Consultant Sénior','Manager','Business Manager'].map(function(g){return '<option value="'+g+'"'+(it&&it.title===g?' selected':'')+'>'+esc(g)+'</option>';}).join('')+'</select></div>'
       +'<div class="fd"><label class="fl">SCR journalier (\u20ac) *</label><input class="ic" id="ms" type="number" min="0" value="'+esc(it?String(it.scr):'')+'" placeholder="450"><p class="fh">Salary Cost Revenue - co\u00fbt journalier</p></div>'
       +'<div class="fd"><label class="fl">Grade</label><select class="ic" id="mgrade"><option value="">— Sélectionner —</option><option value="junior"'+(it&&it.grade==="junior"?' selected':'')+'>Consultant Junior</option><option value="confirme"'+(it&&it.grade==="confirme"?' selected':'')+'>Consultant Confirmé</option><option value="senior"'+(it&&it.grade==="senior"?' selected':'')+'>Consultant Sénior</option><option value="manager"'+(it&&it.grade==="manager"?' selected':'')+'>Manager</option><option value="sales_grade"'+(it&&it.grade==="sales_grade"?' selected':'')+'>Business Manager</option></select></div>'+'<div class="fd"><label class="fl">Type de contrat</label><select class="ic" id="mcontract">'
       +'<option value="salarie"'+(it&&it.contract==='salarie'?' selected':(!it?' selected':''))+'>\uD83D\uDC54 Salari\u00e9</option>'
@@ -5057,7 +5045,6 @@ async function loadSB(){
     /* Charger les données CRM Business */
     await loadBiz();
     await loadActivityLog();
-    checkOnboarding();
     return true;
   }catch(e){console.warn('Supabase load error:',e);return false;}
 }
