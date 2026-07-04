@@ -596,25 +596,29 @@ footer{background:var(--dark);padding:48px 24px 32px}
           </div>
 
           <div>
-            <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:8px">Licences souhaitées</label>
-            <div style="display:flex;flex-wrap:wrap;gap:8px">
-              <select name="licences" multiple required style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;outline:none;height:180px">
-                <optgroup label="Licences">
-                  <option value="Super Admin">Super Admin — pilotage global</option>
-                  <option value="Admin">Admin — vision multi-équipes</option>
-                  <option value="Gestionnaire">Gestionnaire — gestion équipe</option>
-                  <option value="Utilisateur">Utilisateur — suivi personnel</option>
-                  <option value="Recruteur">Recruteur — pipeline candidats</option>
-                  <option value="Sales">Sales — CRM Business</option>
-                </optgroup>
-                <optgroup label="Modules optionnels">
-                  <option value="[Module Recrutement]">Module Recrutement (pour Admin/Gest./Utilisateur)</option>
-                  <option value="[Module Business]">Module Business CRM (pour Admin/Gest./Utilisateur)</option>
-                </optgroup>
-              </select>
-              <p style="font-size:11px;color:#94a3b8;margin-top:4px">Ctrl/Cmd pour sélectionner plusieurs</p>
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_rec" style="accent-color:#84CC16"> Recruteur</label>
+            <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:8px">Licences &amp; modules souhaités</label>
+            <!-- Picker pill style -->
+            <div id="lic-chips" style="min-height:28px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:6px">
+              <span style="font-size:12px;color:#94a3b8;align-self:center">Aucune sélection</span>
             </div>
+            <div style="border:1px solid #e2e8f0;border-radius:10px;padding:8px;background:#f8fafc">
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;padding:2px 4px 6px">Licences</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px" id="lic-opts-lic">
+                <button type="button" class="lic-pill" data-val="Super Admin" onclick="toggleLicPill(this)" style="padding:5px 12px;border-radius:99px;border:1px solid #e2e8f0;background:#fff;font-size:12px;font-weight:600;color:#374151;cursor:pointer;transition:all .12s">Super Admin</button>
+                <button type="button" class="lic-pill" data-val="Admin" onclick="toggleLicPill(this)" style="padding:5px 12px;border-radius:99px;border:1px solid #e2e8f0;background:#fff;font-size:12px;font-weight:600;color:#374151;cursor:pointer;transition:all .12s">Admin</button>
+                <button type="button" class="lic-pill" data-val="Gestionnaire" onclick="toggleLicPill(this)" style="padding:5px 12px;border-radius:99px;border:1px solid #e2e8f0;background:#fff;font-size:12px;font-weight:600;color:#374151;cursor:pointer;transition:all .12s">Gestionnaire</button>
+                <button type="button" class="lic-pill" data-val="Utilisateur" onclick="toggleLicPill(this)" style="padding:5px 12px;border-radius:99px;border:1px solid #e2e8f0;background:#fff;font-size:12px;font-weight:600;color:#374151;cursor:pointer;transition:all .12s">Utilisateur</button>
+                <button type="button" class="lic-pill" data-val="Recruteur" onclick="toggleLicPill(this)" style="padding:5px 12px;border-radius:99px;border:1px solid #e2e8f0;background:#fff;font-size:12px;font-weight:600;color:#374151;cursor:pointer;transition:all .12s">Recruteur</button>
+                <button type="button" class="lic-pill" data-val="Sales" onclick="toggleLicPill(this)" style="padding:5px 12px;border-radius:99px;border:1px solid #e2e8f0;background:#fff;font-size:12px;font-weight:600;color:#374151;cursor:pointer;transition:all .12s">Sales</button>
+              </div>
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;padding:2px 4px 6px;border-top:1px solid #e2e8f0;margin-top:2px">Modules optionnels</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <button type="button" class="lic-pill" data-val="[Module Recrutement]" onclick="toggleLicPill(this)" style="padding:5px 12px;border-radius:99px;border:1px solid #e2e8f0;background:#fff;font-size:12px;font-weight:600;color:#374151;cursor:pointer;transition:all .12s">Module Recrutement</button>
+                <button type="button" class="lic-pill" data-val="[Module Business]" onclick="toggleLicPill(this)" style="padding:5px 12px;border-radius:99px;border:1px solid #e2e8f0;background:#fff;font-size:12px;font-weight:600;color:#374151;cursor:pointer;transition:all .12s">Module Business</button>
+              </div>
+            </div>
+            <!-- Hidden input pour la soumission -->
+            <input type="hidden" name="licences_selected" id="lic-hidden" value="">
           </div>
 
           <div>
@@ -647,8 +651,34 @@ footer{background:var(--dark);padding:48px 24px 32px}
 </section>
 
 <script>
+function toggleLicPill(btn){
+  btn.classList.toggle('lic-active');
+  var active=btn.classList.contains('lic-active');
+  btn.style.background=active?'#1B2B3A':'#fff';
+  btn.style.color=active?'#84CC16':'#374151';
+  btn.style.borderColor=active?'#1B2B3A':'#e2e8f0';
+  updateLicChips();
+}
+function updateLicChips(){
+  var pills=document.querySelectorAll('.lic-pill.lic-active');
+  var vals=Array.from(pills).map(function(p){return p.getAttribute('data-val');});
+  document.getElementById('lic-hidden').value=vals.join('||');
+  var chips=document.getElementById('lic-chips');
+  if(!chips)return;
+  if(!vals.length){
+    chips.innerHTML='<span style="font-size:12px;color:#94a3b8;align-self:center">Aucune sélection</span>';
+    return;
+  }
+  chips.innerHTML=vals.map(function(v){
+    return '<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;background:#1B2B3A;color:#84CC16">'+v+'</span>';
+  }).join('');
+}
+
 function submitForm(e){
   e.preventDefault();
+  if(!document.getElementById('lic-hidden').value){
+    alert('Veuillez sélectionner au moins une licence ou un module.');return;
+  }
   var f=e.target;
   var data={
     prenom:f.prenom.value,nom:f.nom.value,
@@ -656,7 +686,7 @@ function submitForm(e){
     poste:f.poste.value,nb:f.nb_consultants.value,
     outil:f.outil_actuel.value,message:f.message.value,
     licences:[
-      ...Array.from(f.licences.selectedOptions).map(function(o){return o.value;}),
+      ...(document.getElementById('lic-hidden').value?document.getElementById('lic-hidden').value.split('||'):[]),
       f.licence_rec.checked?'Recruteur':''
     ].filter(Boolean).join(', ')
   };

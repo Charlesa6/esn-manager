@@ -2357,7 +2357,27 @@ async function bizApproveRequest(id,approved,motif){
 }
 async function sbUpsertAcc(a){if(!sb||!SB_CID)return;return sb.from('crm_accounts').upsert(Object.assign({},a,{company_id:SB_CID}),{onConflict:'id'});}
 async function sbUpsertCt(c){if(!sb||!SB_CID)return;return sb.from('crm_contacts').upsert(Object.assign({},c,{company_id:SB_CID}),{onConflict:'id'});}
-async function sbUpsertOpp(o){if(!sb||!SB_CID)return;return sb.from('crm_opportunities').upsert(Object.assign({},o,{company_id:SB_CID}),{onConflict:'id'});}
+async function sbUpsertOpp(o){
+  if(!sb||!SB_CID)return;
+  var payload={
+    id:o.id,company_id:SB_CID,
+    name:o.name,account_id:o.account_id||null,contact_id:o.contact_id||null,
+    status:o.status||'identification',
+    btype:o.btype||'at',
+    tjm_cible:o.tjm_cible||null,jours_estimes:o.jours_estimes||null,
+    deal_amount:o.deal_amount||null,
+    date_start:o.date_start||null,date_end:o.date_end||null,
+    duree_mois:o.duree_mois||null,probability:o.probability||20,
+    date_closing:o.date_closing||null,assigned_to:o.assigned_to||null,
+    motif_perte:o.motif_perte||null,
+    consultant_ids:o.consultant_ids||[],
+    notes:o.notes||null,
+    owner_email:o.owner_email||null,owner_name:o.owner_name||null,
+    owner_role:o.owner_role||null,owner_dir:o.owner_dir||null,owner_vp:o.owner_vp||null,
+    linked_mission_id:o.linked_mission_id||null
+  };
+  return sb.from('crm_opportunities').upsert(payload,{onConflict:'id'});
+}
 async function sbUpsertAct(k){if(!sb||!SB_CID)return;return sb.from('crm_activities').upsert(Object.assign({},k,{company_id:SB_CID}),{onConflict:'id'});}
 async function sbDelBiz(table,id){if(!sb||!SB_CID)return;return sb.from(table).delete().eq('id',id).eq('company_id',SB_CID);}
 
@@ -2418,7 +2438,7 @@ function bizSaveOpp(){
     date_closing:gv('biz-opp-closing')||null,
     assigned_to:gv('biz-opp-assign'),
     motif_perte:gv('biz-opp-motif')||null,
-    consultant_ids:(function(){var sel=document.getElementById('biz-opp-cons');if(!sel)return it?(it.consultant_ids||[]):[];return Array.from(sel.selectedOptions).map(function(o){return o.value;});})(),
+    consultant_ids:(S.bizModal&&S.bizModal.consPickerSel)||it.consultant_ids||[],
     notes:gv('biz-opp-notes'),
     owner_email:it?(it.owner_email||S._userEmail||''):S._userEmail||'',
     owner_name:it?(it.owner_name||S.profileFirstName||''):S.profileFirstName||'',
@@ -2793,6 +2813,39 @@ function tBizKpis(){
 }
 
 /* ── Modals ── */
+
+function oppConsPickerHTML(){
+  var sel=(S.bizModal&&S.bizModal.consPickerSel)||[];
+  var selSet=new Set(sel);
+  var chips=sel.map(function(cid){
+    var cc=S.cons.find(function(x){return x.id===cid;})||{name:cid};
+    return '<span class="_opp-chip" data-rm="'+cid+'" style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px 3px 10px;border-radius:99px;font-size:11px;font-weight:700;background:#dbeafe;color:#1e40af;margin:0 5px 5px 0;cursor:pointer">'+esc(cc.name)+' <span style="font-weight:900;opacity:.65">×</span></span>';
+  }).join('')||'<span style="font-size:12px;color:#94a3b8">Aucun consultant sélectionné</span>';
+  var checks=S.cons.filter(function(c){return c.grade!=='sales_grade';}).map(function(cc){
+    return '<label style="display:flex;align-items:center;gap:7px;padding:4px 6px;font-size:12px;color:#334155;cursor:pointer;border-radius:5px">'
+      +'<input type="checkbox" class="_oppck" data-v="'+cc.id+'"'+(selSet.has(cc.id)?' checked':'')+' style="accent-color:#84CC16">'+esc(cc.name)+'</label>';
+  }).join('');
+  return '<div id="opp-cons-chips" style="margin-bottom:8px">'+chips+'</div>'
+    +'<div style="max-height:120px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;padding:6px;background:#fff">'+checks+'</div>';
+}
+function oppConsRefresh(){var w=document.getElementById('opp-cons-wrap');if(w){w.innerHTML=oppConsPickerHTML();bindOppConsPicker();}}
+function bindOppConsPicker(){
+  var wrap=document.getElementById('opp-cons-wrap');if(!wrap)return;
+  wrap.onclick=function(e){
+    var chip=e.target.closest('._opp-chip');
+    if(chip){var v=chip.getAttribute('data-rm');S.bizModal.consPickerSel=(S.bizModal.consPickerSel||[]).filter(function(x){return x!==v;});oppConsRefresh();}
+  };
+  wrap.onchange=function(e){
+    if(e.target.classList.contains('_oppck')){
+      var v=e.target.getAttribute('data-v');
+      S.bizModal.consPickerSel=S.bizModal.consPickerSel||[];
+      if(e.target.checked){if(S.bizModal.consPickerSel.indexOf(v)<0)S.bizModal.consPickerSel.push(v);}
+      else{S.bizModal.consPickerSel=S.bizModal.consPickerSel.filter(function(x){return x!==v;});}
+      oppConsRefresh();
+    }
+  };
+}
+
 function tBizModal(){
   var m=S.bizModal;if(!m)return '';
   var body='';
@@ -2871,8 +2924,7 @@ function tBizModal(){
       +'<div class="fd"><label class="fl">Date closing estim\u00e9e</label><input class="ic" type="date" id="biz-opp-closing" value="'+(it.date_closing||'')+'"></div>'
       +'<div class="fd"><label class="fl">Assign\u00e9 \u00e0</label><input class="ic" id="biz-opp-assign" value="'+esc(it.assigned_to||'')+'" placeholder="Commercial responsable"></div>'
       /* Consultant(s) pr\u00e9sent\u00e9(s) */
-      +'<div class="fd cs2"><label class="fl">Consultant(s) pr\u00e9sent\u00e9(s)</label><select class="ic" id="biz-opp-cons" multiple style="height:80px">'+consOpts+'</select>'
-      +'<p class="fh">Ctrl/Cmd pour s\u00e9lectionner plusieurs</p></div>'
+      +'<div class="fd cs2"><label class="fl">Consultant(s) pr\u00e9sent\u00e9(s)</label><div id="opp-cons-wrap">'+oppConsPickerHTML()+'</div></div>'
       +(it.status==='perdu'?'<div class="fd cs2"><label class="fl">Motif de perte</label><input class="ic" id="biz-opp-motif" value="'+esc(it.motif_perte||'')+'"></div>':'<input type="hidden" id="biz-opp-motif">')
       +'<div class="fd cs2"><label class="fl">Notes</label><textarea class="ic" id="biz-opp-notes" rows="2">'+esc(it.notes||'')+'</textarea></div>'
       +'</div>';
@@ -3896,11 +3948,11 @@ function bind(){
       else if(ra==='biz-new'){
         var types={pipeline:'opp',comptes:'acc',contacts:'ct',activites:'act'};
         var t=types[S.bizTab||'pipeline']||'opp';
-        S.bizModal={type:t,item:null};render();
+        S.bizModal={type:t,item:null,btype:'at',consPickerSel:[]};render();
       }
       else if(ra==='biz-edit-acc'){var a=S.bizAccounts.find(function(x){return x.id===rid;});S.bizModal={type:'acc',item:a};render();}
       else if(ra==='biz-edit-ct'){var c=S.bizContacts.find(function(x){return x.id===rid;});S.bizModal={type:'ct',item:c};render();}
-      else if(ra==='biz-edit-opp'){var o=S.bizOpps.find(function(x){return x.id===rid;});S.bizModal={type:'opp',item:o};render();}
+      else if(ra==='biz-edit-opp'){var o=S.bizOpps.find(function(x){return x.id===rid;});S.bizModal={type:'opp',item:o,btype:(o&&o.btype)||'at',consPickerSel:(o&&o.consultant_ids)||[]};render();}
       else if(ra==='biz-edit-act'){var k=S.bizActivities.find(function(x){return x.id===rid;});S.bizModal={type:'act',item:k};render();}
       else if(ra==='biz-del'){var tbl=el.getAttribute('data-table')||'';bizDelItem(tbl,rid);}
       else if(ra==='biz-opp-mission'){bizOppToMission(rid);}
@@ -3933,6 +3985,7 @@ function bind(){
   /* Biz sub-tabs */
   var biztabs=document.querySelectorAll('[data-biz-tab]');
   for(var bi=0;bi<biztabs.length;bi++){(function(b){b.onclick=function(){S.bizTab=b.getAttribute('data-biz-tab');render();};})(biztabs[bi]);}
+  bindOppConsPicker(); /* picker consultants opportunité */
   /* Biz pipeline filters */
   var bfst=document.getElementById('biz-fst');
   if(bfst)bfst.onchange=function(){S.bizFilter.status=this.value;render();};
@@ -4468,11 +4521,11 @@ function bind(){
       else if(a==='biz-new'){
         var types={pipeline:'opp',comptes:'acc',contacts:'ct',activites:'act'};
         var t=types[S.bizTab||'pipeline']||'opp';
-        S.bizModal={type:t,item:null};render();
+        S.bizModal={type:t,item:null,btype:'at',consPickerSel:[]};render();
       }
       else if(a==='biz-edit-acc'){var _a=S.bizAccounts.find(function(x){return x.id===id;});S.bizModal={type:'acc',item:_a};render();}
       else if(a==='biz-edit-ct'){var _ct=S.bizContacts.find(function(x){return x.id===id;});S.bizModal={type:'ct',item:_ct};render();}
-      else if(a==='biz-edit-opp'){var _o=S.bizOpps.find(function(x){return x.id===id;});S.bizModal={type:'opp',item:_o};render();}
+      else if(a==='biz-edit-opp'){var _o=S.bizOpps.find(function(x){return x.id===id;});S.bizModal={type:'opp',item:_o,btype:(_o&&_o.btype)||'at',consPickerSel:(_o&&_o.consultant_ids)||[]};render();}
       else if(a==='biz-edit-act'){var _k=S.bizActivities.find(function(x){return x.id===id;});S.bizModal={type:'act',item:_k};render();}
       else if(a==='biz-del'){var _tbl=b.getAttribute('data-table')||'';bizDelItem(_tbl,id);}
       else if(a==='biz-opp-mission'){bizOppToMission(id);}
