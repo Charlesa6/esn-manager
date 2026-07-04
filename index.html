@@ -299,7 +299,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
   <div class="container">
     <p class="section-eyebrow anim-fade">Fonctionnalités</p>
     <h2 class="section-title anim-up delay-1">Tout ce dont votre ESN a besoin</h2>
-    <p class="section-sub">De la gestion des consultants au pipeline de recrutement, Konsilys couvre l'ensemble du cycle de vie de vos équipes.</p>
+    <p class="section-sub">De la gestion des consultants au CRM Business, Konsilys couvre tout le cycle de vie de vos équipes — avec une structure de licences claire et modulaire.</p>
     <div class="features-grid">
       <div class="feat-card anim-up delay-1">
         <div class="feat-icon">📊</div>
@@ -333,10 +333,15 @@ footer{background:var(--dark);padding:48px 24px 32px}
       </div>
       <div class="feat-card anim-up delay-7">
         <div class="feat-icon">🎓</div>
-        <div class="feat-title">Recrutement</div>
-        <div class="feat-desc">Pipeline en 9 statuts. Du premier contact au recrutement — le consultant est créé automatiquement.</div>
+        <div class="feat-title">Recrutement <span style="font-size:10px;background:#84CC16;color:#1B2B3A;padding:1px 6px;border-radius:99px;font-weight:800;vertical-align:middle">MODULE</span></div>
+        <div class="feat-desc">Pipeline 8 statuts personnalisables. Recruteur assigné par candidat. Conversion automatique en Utilisateur. Module optionnel.</div>
       </div>
       <div class="feat-card anim-up delay-8">
+        <div class="feat-icon">💼</div>
+        <div class="feat-title">Business CRM <span style="font-size:10px;background:#84CC16;color:#1B2B3A;padding:1px 6px;border-radius:99px;font-weight:800;vertical-align:middle">MODULE</span></div>
+        <div class="feat-desc">CRM Comptes, Contacts, Pipeline d'opportunités, KPIs commerciaux. Opportunité gagnée → Mission créée automatiquement. Module optionnel.</div>
+      </div>
+      <div class="feat-card anim-up delay-9">
         <div class="feat-icon">✅</div>
         <div class="feat-title">Workflow d'approbation</div>
         <div class="feat-desc">Les consultants soumettent, les directeurs valident. Notification instantanée à chaque étape.</div>
@@ -364,12 +369,12 @@ footer{background:var(--dark);padding:48px 24px 32px}
       <div class="anim-up delay-2">
         <div class="step-num">2</div>
         <div class="step-title">Invitez vos équipes</div>
-        <div class="step-desc">Depuis "Gestion des accès", invitez directement vos Admins, Directeurs et Consultants par email — sans code de licence.</div>
+        <div class="step-desc">Depuis "Gestion des accès", invitez directement vos Admins, Gestionnaires, Utilisateurs, Recruteurs et Sales par email — sans code de licence.</div>
       </div>
       <div class="anim-up delay-3">
         <div class="step-num">3</div>
         <div class="step-title">Pilotez en temps réel</div>
-        <div class="step-desc">Accédez à vos KPIs, gérez les missions et le planning, suivez le pipeline de recrutement. Tout se synchronise automatiquement.</div>
+        <div class="step-desc">KPIs, missions, planning, recrutement (si module), business CRM (si module). Tout se synchronise en temps réel.</div>
       </div>
     </div>
   </div>
@@ -378,33 +383,36 @@ footer{background:var(--dark);padding:48px 24px 32px}
 <!-- LICENCES & TARIFS -->
 <section class="licences" id="licences">
   <div class="container">
-    <p class="section-eyebrow">Licences</p>
+    <p class="section-eyebrow">Licences & Modules</p>
     <h2 class="section-title">Un accès adapté à chaque rôle</h2>
-    <p class="section-sub" style="margin-bottom:40px">5 niveaux d'accès pour couvrir toute votre organisation, du Super Admin à l'Utilisateur.</p>
-    <div class="licence-grid">
+    <p class="section-sub" style="margin-bottom:32px">6 licences dédiées + 2 modules optionnels pour étendre toute votre organisation.</p>
+
+    <!-- Licences de base -->
+    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px">Licences de base</p>
+    <div class="licence-grid" style="grid-template-columns:repeat(4,1fr)">
 
       <div class="licence-card anim-up delay-1">
-        <div class="lic-name">Recruteur</div>
+        <div class="lic-name">Super Admin</div>
         <div class="lic-price">Sur devis</div>
         <div class="lic-period">par mois</div>
         <ul class="lic-features">
-          <li>Accès pipeline candidats</li>
-          <li>Suivi statuts (9 étapes)</li>
-          <li>Ajout de candidats</li>
-          <li>Filtres par recruteur</li>
+          <li>Pilotage global de l'organisation</li>
+          <li>KPIs hiérarchiques 3 niveaux</li>
+          <li>Gestion des accès & invitations</li>
+          <li>Paramètres (devise, FY, rôles…)</li>
         </ul>
         <a href="mailto:contact@konsilys.fr" class="lic-cta">Nous contacter</a>
       </div>
 
-      <div class="licence-card anim-up delay-2">
-        <div class="lic-name">Utilisateur</div>
+      <div class="licence-card featured anim-up delay-2">
+        <div class="lic-name">Admin</div>
         <div class="lic-price">Sur devis</div>
         <div class="lic-period">par mois</div>
         <ul class="lic-features">
-          <li>Suivi de ses missions</li>
-          <li>Soumission de demandes</li>
-          <li>Approbations en temps réel</li>
-          <li>Planning personnel</li>
+          <li>Vision multi-Gestionnaires</li>
+          <li>KPIs agrégés par équipe</li>
+          <li>Dashboard & missions complètes</li>
+          <li>Invite ses Gestionnaires</li>
         </ul>
         <a href="mailto:contact@konsilys.fr" class="lic-cta">Nous contacter</a>
       </div>
@@ -414,46 +422,106 @@ footer{background:var(--dark);padding:48px 24px 32px}
         <div class="lic-price">Sur devis</div>
         <div class="lic-period">par mois</div>
         <ul class="lic-features">
-          <li>Gestion de son équipe</li>
-          <li>KPIs & missions</li>
-          <li>Validation des demandes</li>
-          <li>Recrutement</li>
-        </ul>
-        <a href="mailto:contact@konsilys.fr" class="lic-cta">Nous contacter</a>
-      </div>
-
-      <div class="licence-card featured anim-up delay-3">
-        <div class="lic-name">Admin</div>
-        <div class="lic-price">Sur devis</div>
-        <div class="lic-period">par mois</div>
-        <ul class="lic-features">
-          <li>Vision multi-Gestionnaires</li>
-          <li>KPIs agrégés équipes</li>
-          <li>Dashboard complet</li>
-          <li>Invite ses Gestionnaires</li>
+          <li>Gestion complète de son équipe</li>
+          <li>KPIs, missions & planning</li>
+          <li>Validation des approbations</li>
+          <li>Invite ses Utilisateurs</li>
         </ul>
         <a href="mailto:contact@konsilys.fr" class="lic-cta">Nous contacter</a>
       </div>
 
       <div class="licence-card anim-up delay-4">
-        <div class="lic-name">Super Admin</div>
+        <div class="lic-name">Utilisateur</div>
         <div class="lic-price">Sur devis</div>
         <div class="lic-period">par mois</div>
         <ul class="lic-features">
-          <li>Vue 3 niveaux VP→Dir→Cons</li>
-          <li>KPIs VP hiérarchiques</li>
-          <li>Gestion VP & recruteurs</li>
-          <li>Pilotage global ESN</li>
+          <li>Suivi de ses missions</li>
+          <li>Soumission de demandes</li>
+          <li>Approbations en temps réel</li>
+          <li>Planning & absences personnels</li>
         </ul>
         <a href="mailto:contact@konsilys.fr" class="lic-cta">Nous contacter</a>
       </div>
 
     </div>
-    <p style="text-align:center;font-size:13px;color:var(--muted);margin-top:24px">Les tarifs seront communiqués lors du lancement commercial. <a href="mailto:contact@konsilys.fr" style="color:var(--navy);font-weight:700;text-decoration:underline">Contactez-nous</a> pour une démonstration ou un devis.</p>
+
+    <!-- Licences dédiées -->
+    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:28px 0 12px">Licences dédiées</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+      <div class="licence-card anim-up delay-5" style="border:2px solid #0F766E">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div class="lic-name" style="margin:0">Recruteur</div>
+          <span style="background:#0F766E;color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px">DÉDIÉ</span>
+        </div>
+        <div class="lic-price">Sur devis</div>
+        <div class="lic-period">par mois · accès Recrutement + Activité + Absences</div>
+        <ul class="lic-features">
+          <li>Pipeline candidats 8 statuts</li>
+          <li>Recruteur assigné par candidat</li>
+          <li>Filtrage & suivi par recruteur</li>
+          <li>Conversion automatique → Utilisateur</li>
+        </ul>
+        <a href="mailto:contact@konsilys.fr?subject=Licence Recruteur" class="lic-cta" style="background:#0F766E;color:#fff">Nous contacter</a>
+      </div>
+
+      <div class="licence-card anim-up delay-6" style="border:2px solid #2D6A4F">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div class="lic-name" style="margin:0">Sales</div>
+          <span style="background:#2D6A4F;color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px">DÉDIÉ</span>
+        </div>
+        <div class="lic-price">Sur devis</div>
+        <div class="lic-period">par mois · accès Business + Activité + Absences</div>
+        <ul class="lic-features">
+          <li>CRM Comptes, Contacts, Pipeline</li>
+          <li>Suivi activités commerciales</li>
+          <li>Opportunité gagnée → Mission auto</li>
+          <li>Workflow d'approbation équipe</li>
+        </ul>
+        <a href="mailto:contact@konsilys.fr?subject=Licence Sales" class="lic-cta" style="background:#2D6A4F;color:#fff">Nous contacter</a>
+      </div>
+
+    </div>
+
+    <!-- Modules optionnels -->
+    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:28px 0 12px">Modules optionnels — étendent les licences de base</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+      <div style="background:var(--navy);border-radius:14px;padding:22px;border:1px solid rgba(132,204,22,.3)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:15px;font-weight:800;color:#84CC16">Module Recrutement</div>
+          <span style="background:rgba(132,204,22,.15);color:#84CC16;font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px">MODULE</span>
+        </div>
+        <div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:12px">Débloque l'onglet Recrutement pour Admin, Gestionnaire et Utilisateur</div>
+        <ul class="lic-features" style="margin-bottom:14px">
+          <li>8 statuts personnalisables</li>
+          <li>Visibilité hiérarchique (Admin → Gestionnaire → Recruteur)</li>
+          <li>Statuts renommables dans les Paramètres</li>
+        </ul>
+        <a href="mailto:contact@konsilys.fr?subject=Module Recrutement" class="lic-cta">Activer ce module</a>
+      </div>
+
+      <div style="background:var(--navy);border-radius:14px;padding:22px;border:1px solid rgba(132,204,22,.3)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:15px;font-weight:800;color:#84CC16">Module Business CRM</div>
+          <span style="background:rgba(132,204,22,.15);color:#84CC16;font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px">MODULE</span>
+        </div>
+        <div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:12px">Débloque l'onglet Business pour Admin, Gestionnaire et Utilisateur</div>
+        <ul class="lic-features" style="margin-bottom:14px">
+          <li>CRM Comptes, Contacts, Pipeline d'opportunités</li>
+          <li>KPIs commerciaux & entonnoir de vente</li>
+          <li>Visibilité hiérarchique (Admin → Gestionnaire → Sales)</li>
+        </ul>
+        <a href="mailto:contact@konsilys.fr?subject=Module Business CRM" class="lic-cta">Activer ce module</a>
+      </div>
+
+    </div>
+
+    <p style="text-align:center;font-size:13px;color:var(--muted);margin-top:24px">Tarification sur devis · <a href="mailto:contact@konsilys.fr" style="color:var(--navy);font-weight:700;text-decoration:underline">contact@konsilys.fr</a> · Activation des modules sous 24h</p>
   </div>
 </section>
 
-<!-- TARIFS / FORMULAIRE DE QUALIFICATION -->
+
 <section id="tarifs" style="background:#fff;padding:80px 24px">
   <div class="container">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start">

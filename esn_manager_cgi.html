@@ -34,11 +34,11 @@ body.sb-col #sb-open{display:flex}
 .syr{padding:0 12px 12px;border-bottom:1px solid #243447}
 .syr-lbl{color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
 .syr select{width:100%;background:#243447;color:#f8fafc;border:1px solid #334155;border-radius:8px;padding:6px 10px;font-size:12px;outline:none}
-.snv{flex:1;padding:10px 8px;overflow-y:auto}
-.nb{width:100%;display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:8px;border:none;background:transparent;color:#64748b;font-size:13px;font-weight:600;text-align:left;transition:all .12s;margin-bottom:1px}
+.snv{flex:1;padding:4px 6px;overflow-y:hidden;display:flex;flex-direction:column;gap:1px}
+.nb{width:100%;display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:7px;border:none;background:transparent;color:#64748b;font-size:12px;font-weight:600;text-align:left;transition:all .12s;margin-bottom:0}
 .nb:hover{background:#243447;color:#f8fafc}
 .nb.act{background:#84CC16;color:#1B2B3A}
-.nbi{font-size:15px;flex-shrink:0}
+.nbi{font-size:13px;flex-shrink:0}
 .nbb{margin-left:auto;background:#ef4444;color:#fff;border-radius:99px;font-size:10px;font-weight:800;padding:1px 7px}
 .sft{padding:12px 16px;border-top:1px solid #243447;font-size:11px;color:#334155}
 /* cards */
@@ -2854,7 +2854,7 @@ function tBizModal(){
       +'</div>';
   }
 
-  return '<div class="mo"><div class="mob" style="max-width:680px;width:100%">'
+  return '<div class="mov"><div class="mob" style="max-width:680px;width:100%">'
     +'<div class="moh"><div class="mot">'+title+'</div>'
     +'<button class="moc" onclick="S.bizModal=null;render()">✕</button></div>'
     +'<div class="mody" style="padding:20px">'+body
@@ -3731,7 +3731,8 @@ function tModal(){
    RENDER
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function render(){
-  if(S._ks)S._ks._valid=false; /* invalider cache KS */
+  var _scrollY=window.scrollY||0; /* sauvegarder position scroll */
+  if(S._ks)S._ks._valid=false;
   if(!S.demo)saveLocal(); /* sauvegarde automatique — désactivée en mode démo */
   /* ═══ filtrage par rôle / directeur : on bascule sur la vue filtrée le temps du rendu ═══ */
   S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
@@ -3756,6 +3757,7 @@ function render(){
   /* on restaure les données maîtres (les handlers de bind() mutent l'ensemble complet) */
   S.cons=S._all.cons;S.miss=S._all.miss;S.lvs=S._all.lvs;
   bind();
+  window.scrollTo({top:_scrollY,behavior:'instant'}); /* restaurer scroll */
 }
 
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
