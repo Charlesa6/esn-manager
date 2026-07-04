@@ -440,9 +440,9 @@ var S={
   consInvites:[], /* codes d'accès générés pour les consultants */
   adminCode:null, /* dernier code généré (affiché dans Admin) */
   year:CFY,quarter:null,modal:null,fmc:'all',fms:'all',fmt:'all',flc:'all',precs:{},
-  role:'admin',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,kpiDirOpen:{},invites:[],svpInvites:[],recruteurInvites:[],vpDirMap:{},vpName:'',profileFirstName:'',profileLastName:'',profileTitle:'',fvp:[],settings:{currency:'EUR',currencySymbol:'€',fyStartMonth:10,fyStartDay:1,roleLabels:{}},kpiVPOpen:{},kpiDirDirOpen:{},actCid:'',actMonth:'',_all:null,
+  role:'admin',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,kpiDirOpen:{},invites:[],svpInvites:[],recruteurInvites:[],vpDirMap:{},vpName:'',profileFirstName:'',profileLastName:'',profileTitle:'',fvp:[],settings:{currency:'EUR',currencySymbol:'€',fyStartMonth:10,fyStartDay:1,roleLabels:{},hasBusinessModule:false,hasRecrutementModule:false},kpiVPOpen:{},kpiDirDirOpen:{},actCid:'',actMonth:'',_all:null,
   /* CRM Business */
-  bizTab:'pipeline',bizAccounts:[],bizContacts:[],bizOpps:[],bizActivities:[],bizModal:null,bizFilter:{status:'all',account:''},
+  bizTab:'pipeline',bizAccounts:[],bizContacts:[],bizOpps:[],bizActivities:[],bizApprovals:[],bizModal:null,bizFilter:{status:'all',account:''},
   sbSt:'\uD83D\uDFE2 Sauvegarde locale active',
   sbSync:false,
   imp:null,
@@ -463,7 +463,7 @@ function loadDemoData(){
   S.role='admin';
   S.year=2026;
   S.quarter=null;
-  S.tab=S.role==='utilisateur'?'activite':S.role==='recruteur'?'recrutement':'kpis';
+  S.tab=S.role==='utilisateur'?'activite':S.role==='recruteur'?'recrutement':S.role==='sales'?'business':'kpis';
   S.cons=[
     {id:'d1',name:'Sophie Martin',   title:'Consultante Senior',scr:520,email:'s.martin@demo.fr',   dir:'Thomas Bernard',arrive:'2024-10-01',depart:null},
     {id:'d2',name:'Lucas Dupont',    title:'Architecte Cloud',  scr:610,email:'l.dupont@demo.fr',   dir:'Thomas Bernard',arrive:'2024-10-01',depart:null},
@@ -746,7 +746,18 @@ function genRecs(goal){
 function tSB(){
   var NAV;
   if(S.role==='recruteur'){
-    NAV=[{id:'recrutement',ic:'\uD83C\uDFAF',lb:'Recrutement'}];
+    NAV=[
+      {id:'recrutement',ic:'\uD83C\uDFAF',lb:'Recrutement'},
+      {id:'activite',   ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'},
+      {id:'leaves',     ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'}
+    ];
+  }else if(S.role==='sales'){
+    /* Licence Sales : Business + Activité + Absences */
+    NAV=[
+      {id:'business',   ic:'\uD83D\uDCBC',lb:'Business'},
+      {id:'activite',   ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'},
+      {id:'leaves',     ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'}
+    ];
   }else if(S.role==='utilisateur'){
     NAV=[
       {id:'activite',   ic:'\uD83D\uDCC5',lb:'Activit\u00e9'},
@@ -2052,14 +2063,14 @@ function tSettings(){
 
     /* ── Noms des rôles ── */
     +'<div class="card" style="padding:24px;margin-bottom:16px">'
-    +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">🏷️ Noms des r\u00f4les</h3>'
+    +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px"> Noms des r\u00f4les</h3>'
     +'<p style="font-size:12px;color:#94a3b8;margin-bottom:16px">Personnalisez les labels affich\u00e9s. Laisser vide pour garder les noms par d\u00e9faut.</p>'
     +'<div class="g2">'+roleFlds+'</div>'
     +'</div>'
 
     /* ── Labels statuts recrutement ── */
     +'<div class="card" style="padding:24px;margin-bottom:16px">'
-    +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:6px">🎓 Statuts du pipeline recrutement</h3>'
+    +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:6px"> Statuts du pipeline recrutement</h3>'
     +'<p style="font-size:12px;color:#94a3b8;margin-bottom:14px">Renommez, ajoutez ou supprimez des statuts. Le dernier statut est toujours le statut "Recruté".</p>'
     /* Liste des statuts actuels */
     +'<div id="rec-status-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">'
@@ -2084,6 +2095,21 @@ function tSettings(){
     +'</div></div>'
 
     /* ── Bouton sauvegarder ── */
+    +'<div class="card" style="padding:24px;margin-bottom:16px">'
+    +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">📌 Modules &amp; Add-ons</h3>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    +[{k:'hasBusinessModule',lb:'Module Business',desc:'Onglet Business pour Admin/Gestionnaire/Utilisateur + Licence Sales'},
+      {k:'hasRecrutementModule',lb:'Add-on Recruteur',desc:'Comptes recruteur, pipeline candidats'}].map(function(m){
+        var on=!!(st[m.k]);
+        return '<div style="border:1px solid '+(on?'#bbf7d0':'#e2e8f0')+';border-radius:10px;padding:12px 14px;background:'+(on?'#f0fdf4':'#f8fafc')+'">'
+          +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
+          +'<span>'+(on?'🟢':'⚪')+'</span>'
+          +'<span style="font-weight:700;font-size:13px;color:#0f172a">'+m.lb+'</span>'
+          +'<span style="margin-left:auto;font-size:10px;font-weight:700;color:'+(on?'#15803d':'#94a3b8')+'">'+(on?'ACTIF':'INACTIF')+'</span></div>'
+          +'<div style="font-size:11px;color:#94a3b8">'+m.desc+'</div>'
+          +(!on?'<a href="mailto:contact@konsilys.fr" style="font-size:11px;color:#1B2B3A;font-weight:700;margin-top:4px;display:block">Activer ce module →</a>':'')
+          +'</div>';
+      }).join('')+'</div></div>'
     +'<button class="bp" onclick="saveSettings()" style="min-width:180px">💾 Enregistrer les paramètres</button>'
     +'<div id="set-msg" style="font-size:13px;margin-top:12px;display:none"></div>'
     +'</div>';
@@ -2154,6 +2180,26 @@ function saveSettings(){
   }
 }
 
+function tSalesInvitePaywall(){
+  return '<div style="background:#f8fafc;border:2px dashed #e2e8f0;border-radius:10px;padding:16px;margin-bottom:12px">'
+    +'<div style="display:flex;align-items:center;gap:10px">'
+    +'<span style="font-size:24px">&#x1F4BC;</span>'
+    +'<div style="flex:1"><div style="font-weight:700;color:#1B2B3A;font-size:13px">Licence Sales — Module Business requis</div>'
+    +'<div style="font-size:12px;color:#64748b">Activez le module Business pour inviter des Sales.</div></div>'
+    +'<a href="mailto:contact@konsilys.fr?subject=Module Business" style="background:#84CC16;color:#1B2B3A;padding:8px 14px;border-radius:8px;font-weight:800;font-size:12px;text-decoration:none">Activer</a>'
+    +'</div></div>';
+}
+function tRecruteurPaywall(){
+  return '<div style="background:#f8fafc;border:2px dashed #e2e8f0;border-radius:14px;padding:24px;margin-bottom:16px">'
+    +'<div style="display:flex;align-items:center;gap:14px">'
+    +'<div style="font-size:36px">🎯</div>'
+    +'<div style="flex:1">'
+    +'<div style="font-weight:800;color:#1B2B3A;font-size:15px">Add-on Recruteur — non activé</div>'
+    +'<div style="font-size:13px;color:#64748b;margin-top:4px">Pipeline candidats, 8 statuts personnalisables, suivi par recruteur, conversion automatique en Utilisateur.</div>'
+    +'</div>'
+    +'<a href="mailto:contact@konsilys.fr?subject=Activation add-on Recruteur" style="background:#84CC16;color:#1B2B3A;padding:10px 20px;border-radius:8px;font-weight:800;font-size:13px;text-decoration:none;white-space:nowrap">Activer →</a>'
+    +'</div></div>';
+}
 function tSVPAcces(){
   if(S.role!=='super_admin')return '<div class="emp">Accès réservé au Sénior VP.</div>';
   var sbOn=!!(sb&&SB_CID);
@@ -2176,7 +2222,7 @@ function tSVPAcces(){
     +'<div class="card ov" style="margin-bottom:16px"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">'+rLabel('admin')+'s invit\u00e9s</div>'
     +'<table><thead><tr><th>Email</th><th>Nom</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
     +'<tbody>'+vpRows+(vpRows?'':'<tr><td colspan="4" class="emp">Aucun '+rLabel('admin')+'  invit\u00e9.</td></tr>')+'</tbody></table></div>'
-    +'<div class="card" style="padding:20px;margin-bottom:16px"><h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">\uD83C\uDFAF Inviter un Recruteur</h3>'
+    +(S.settings&&S.settings.hasRecrutementModule?'<div class="card" style="padding:20px;margin-bottom:16px"><h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">Inviter un Recruteur</h3>':tRecruteurPaywall())
     +(sbOn?'':'<div class="ac acs" style="margin-bottom:14px"><div style="font-size:12px">Connectez Supabase pour inviter des Recruteurs.</div></div>')
     +'<div class="g2"><div class="fd"><label class="fl">Email *</label><input class="ic" id="svp-rec-email" type="email" placeholder="prenom.nom@exemple.com"></div>'
     +'<div class="fd"><label class="fl">Nom *</label><input class="ic" id="svp-rec-name" placeholder="ex : Thomas Bernard"></div></div>'
@@ -2245,6 +2291,53 @@ async function loadBiz(){
     if(rk.data)S.bizActivities=rk.data;
   }catch(e){console.warn('CRM load:',e);}
 }
+function visibleOpps(){
+  var all=S.bizOpps,me=S._userEmail||'';
+  /* Super Admin : voit TOUTES les opportunités */
+  if(S.role==='super_admin')return all;
+  /* Admin : voit ses opps + celles de ses Gestionnaires + tout le dessous */
+  if(S.role==='admin'){
+    var myVpName=S.vpName||me;
+    return all.filter(function(o){
+      if(!o.owner_email)return true;
+      if(o.owner_email===me)return true;
+      if(o.owner_vp===myVpName)return true; /* Gestionnaires sous cet Admin */
+      return false;
+    });
+  }
+  /* Gestionnaire : ses opps + opps des Sales/Utilisateurs de son équipe */
+  if(S.role==='gestionnaire'){
+    var myTeamEmails=((S._all&&S._all.cons)||S.cons).map(function(c){return c.email||'';}).filter(Boolean);
+    return all.filter(function(o){
+      if(!o.owner_email)return true;
+      if(o.owner_email===me)return true;
+      if(myTeamEmails.indexOf(o.owner_email)>=0)return true;
+      if(o.owner_dir===S.dirName)return true; /* Sales rattachés à ce Gestionnaire */
+      return false;
+    });
+  }
+  /* Sales / Utilisateur : uniquement leurs propres opportunités */
+  return all.filter(function(o){return !o.owner_email||o.owner_email===me;});
+}
+function pendingBizApprovals(){
+  if(S.role==='utilisateur')return [];
+  if(S.role==='gestionnaire'){
+    var myEmails=((S._all&&S._all.cons)||S.cons).map(function(c){return c.email||'';});
+    return S.bizApprovals.filter(function(a){return a.status==='pending'&&myEmails.indexOf(a.submitted_by_email)>=0;});
+  }
+  return S.bizApprovals.filter(function(a){return a.status==='pending';});
+}
+async function bizApproveRequest(id,approved,motif){
+  var ap=S.bizApprovals.find(function(x){return x.id===id;});if(!ap)return;
+  if(approved){var o=ap.data;var ex=S.bizOpps.find(function(x){return x.id===o.id;});
+    if(ex){S.bizOpps=S.bizOpps.map(function(x){return x.id===o.id?o:x;});}
+    else{S.bizOpps=S.bizOpps.concat([o]);}sbUpsertOpp(o);}
+  S.bizApprovals=S.bizApprovals.map(function(x){
+    return x.id===id?Object.assign({},x,{status:approved?'approved':'rejected',reviewed_by:S._userEmail,motif_rejet:motif||null}):x;
+  });
+  if(sb&&SB_CID){await sb.from('crm_approvals').update({status:approved?'approved':'rejected',reviewed_by:S._userEmail||'',motif_rejet:motif||null}).eq('id',id);}
+  render();
+}
 async function sbUpsertAcc(a){if(!sb||!SB_CID)return;return sb.from('crm_accounts').upsert(Object.assign({},a,{company_id:SB_CID}),{onConflict:'id'});}
 async function sbUpsertCt(c){if(!sb||!SB_CID)return;return sb.from('crm_contacts').upsert(Object.assign({},c,{company_id:SB_CID}),{onConflict:'id'});}
 async function sbUpsertOpp(o){if(!sb||!SB_CID)return;return sb.from('crm_opportunities').upsert(Object.assign({},o,{company_id:SB_CID}),{onConflict:'id'});}
@@ -2307,12 +2400,22 @@ function bizSaveOpp(){
     motif_perte:gv('biz-opp-motif')||null,
     consultant_ids:it?(it.consultant_ids||[]):[],
     notes:gv('biz-opp-notes'),
+    owner_email:it?(it.owner_email||S._userEmail||''):S._userEmail||'',
+    owner_name:it?(it.owner_name||S.profileFirstName||''):S.profileFirstName||'',
+    owner_role:it?(it.owner_role||S.role):S.role,
+    owner_dir:it?(it.owner_dir||S.dirName||''):S.dirName||'', /* Gestionnaire du créateur */
+    owner_vp:it?(it.owner_vp||S.vpName||''):S.vpName||'',   /* Admin du créateur */
   };
   if(!o.name){alert('Nom requis');return;}
+  if(S.role==='utilisateur'){
+    var ap={id:uid2(),action:it?'update':'create',entity_id:o.id,data:o,status:'pending',submitted_by_email:S._userEmail||'',submitted_by_name:S.profileFirstName||''};
+    S.bizApprovals=S.bizApprovals.concat([ap]);
+    if(sb&&SB_CID)sb.from('crm_approvals').insert(Object.assign({},ap,{company_id:SB_CID})).then(function(){});
+    S.bizModal=null;alert('Demande soumise pour approbation a votre gestionnaire.');render();return;
+  }
   if(it){S.bizOpps=S.bizOpps.map(function(x){return x.id===it.id?o:x;});}
   else{S.bizOpps=S.bizOpps.concat([o]);}
-  sbUpsertOpp(o);
-  S.bizModal=null;render();
+  sbUpsertOpp(o);S.bizModal=null;render();
 }
 function bizSaveAct(){
   var it=S.bizModal&&S.bizModal.item;
@@ -2376,7 +2479,68 @@ function bizOppToMission(oppId){
 /* ═══════════════════════════════════════════════════════════
    TEMPLATE PRINCIPAL — tBusiness()
 ═══════════════════════════════════════════════════════════ */
+function tBizApprovals(){
+  if(S.role==='utilisateur'){
+    var myApps=S.bizApprovals.filter(function(a){return a.submitted_by_email===S._userEmail;});
+    if(!myApps.length)return '<div class="emp">Aucune demande en cours.</div>';
+    return '<div class="ov"><table><thead><tr><th>Opportunit\u00e9</th><th>Action</th><th>Statut</th><th>Motif rejet</th></tr></thead><tbody>'
+      +myApps.map(function(a){
+        var st=a.status==='pending'?'En attente':a.status==='approved'?'Approuv\u00e9':'Refus\u00e9';
+        var bg=a.status==='pending'?'#fef3c7':a.status==='approved'?'#d1fae5':'#fee2e2';
+        var fg=a.status==='pending'?'#92400e':a.status==='approved'?'#065f46':'#b91c1c';
+        return '<tr><td style="font-weight:600">'+(a.data&&a.data.name?esc(a.data.name):'?')+'</td>'
+          +'<td style="font-size:12px">'+(a.action==='create'?'Cr\u00e9ation':'Modification')+'</td>'
+          +'<td><span style="padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;background:'+bg+';color:'+fg+'">'+st+'</span></td>'
+          +'<td style="font-size:12px;color:#dc2626">'+esc(a.motif_rejet||'')+'</td></tr>';
+      }).join('')+'</tbody></table></div>';
+  }
+  var pending=pendingBizApprovals();
+  var done=S.bizApprovals.filter(function(a){return a.status!=='pending';}).slice(0,20);
+  var pHtml=pending.length?'<div class="card" style="padding:20px;margin-bottom:16px">'
+    +'<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:12px">\uD83D\uDD14 En attente ('+pending.length+')</div>'
+    +pending.map(function(a){
+      var ca=(a.data&&a.data.tjm_cible&&a.data.jours_estimes)?a.data.tjm_cible*a.data.jours_estimes:0;
+      return '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px">'
+        +'<div style="flex:1">'
+        +'<div style="font-weight:700;color:#0f172a">'+esc(a.data&&a.data.name?a.data.name:'Opportunit\u00e9')+'</div>'
+        +'<div style="font-size:12px;color:#64748b;margin-top:2px">Par '+esc(a.submitted_by_name||a.submitted_by_email||'?')
+          +' \u00b7 '+(a.action==='create'?'Nouvelle opportunit\u00e9':'Modification')+'</div>'
+        +(ca>0?'<div style="font-size:12px;font-weight:700;color:#1B2B3A;margin-top:4px">CA potentiel : '+fEur(ca)+'</div>':'')
+        +'</div>'
+        +'<div style="display:flex;gap:8px;flex-shrink:0">'
+        +'<button class="bp" style="background:#16a34a;font-size:12px;padding:7px 14px" onclick="bizApproveRequest(\''+a.id+'\',true,null)">\u2713 Approuver</button>'
+        +'<button class="bp" style="background:#dc2626;font-size:12px;padding:7px 14px" onclick="var m=prompt(\'Motif de refus :\');bizApproveRequest(\''+a.id+'\',false,m)">\u2717 Refuser</button>'
+        +'</div></div>';
+    }).join('')+'</div>':'<div style="background:#f0fdf4;border-radius:10px;padding:14px 16px;margin-bottom:16px;font-size:13px;color:#15803d">\u2713 Aucune demande en attente.</div>';
+  var dHtml=done.length?'<div class="card" style="padding:20px"><div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:12px">Historique</div>'
+    +'<div class="ov"><table><thead><tr><th>Opportunit\u00e9</th><th>Demand\u00e9 par</th><th>Statut</th><th>Trait\u00e9 par</th></tr></thead><tbody>'
+    +done.map(function(a){
+      var st=a.status==='approved'?'Approuv\u00e9':'Refus\u00e9';var bg=a.status==='approved'?'#d1fae5':'#fee2e2';var fg=a.status==='approved'?'#065f46':'#b91c1c';
+      return '<tr><td style="font-weight:600">'+(a.data&&a.data.name?esc(a.data.name):'?')+'</td>'
+        +'<td style="font-size:12px">'+esc(a.submitted_by_name||'')+'</td>'
+        +'<td><span style="padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;background:'+bg+';color:'+fg+'">'+st+'</span></td>'
+        +'<td style="font-size:12px;color:#64748b">'+esc(a.reviewed_by||'')+'</td></tr>';
+    }).join('')+'</tbody></table></div></div>':'';
+  return pHtml+dHtml;
+}
+
+function tBusinessPaywall(){
+  return '<div class="vw"><div style="max-width:560px;margin:60px auto;text-align:center">'
+    +'<div style="font-size:48px;margin-bottom:16px">💼</div>'
+    +'<div style="font-size:26px;font-weight:900;color:#1B2B3A;margin-bottom:10px">Module Business CRM</div>'
+    +'<div style="font-size:15px;color:#64748b;margin-bottom:28px;line-height:1.6">Gérez vos comptes clients, votre pipeline et vos activités commerciales dans Konsilys.</div>'
+    +'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:24px;margin-bottom:24px;text-align:left">'
+    +'<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:12px">Ce module inclut :</div>'
+    +['CRM Comptes & Contacts','Pipeline opportunités avec probabilités','Suivi activités commerciales','KPIs Business & entonnoir de vente','Workflow d’approbation','Mission créée auto à la signature'].map(function(f){return '<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:#84CC16;font-weight:800">✓</span><span style="font-size:13px;color:#374151">'+f+'</span></div>';}).join('')
+    +'</div>'
+    +'<a href="mailto:contact@konsilys.fr?subject=Activation module Business CRM" style="display:inline-block;background:#1B2B3A;color:#fff;padding:14px 32px;border-radius:10px;font-weight:800;font-size:15px;text-decoration:none">Contacter pour activer →</a>'
+    +'<div style="font-size:12px;color:#94a3b8;margin-top:12px">contact@konsilys.fr · Activation sous 24h</div>'
+    +'</div></div>';
+}
 function tBusiness(){
+  /* Sales a toujours accès au Business ; les autres ont besoin du module */
+  /* Sales a toujours accès ; TOUS les autres (y compris Super Admin) ont besoin du module */
+  if(S.role!=='sales'&&!(S.settings&&S.settings.hasBusinessModule))return tBusinessPaywall();
   var subTabs=[
     {id:'pipeline',  lb:'📋 Pipeline',    n:S.bizOpps.filter(function(o){return o.status!=='gagne'&&o.status!=='perdu';}).length},
     {id:'comptes',   lb:'🏢 Comptes',     n:S.bizAccounts.length},
@@ -2396,8 +2560,9 @@ function tBusiness(){
     case 'comptes':   content=tBizComptes();break;
     case 'contacts':  content=tBizContacts();break;
     case 'activites': content=tBizActivites();break;
-    case 'kpis_biz':  content=tBizKpis();break;
-    default:          content=tBizPipeline();
+    case 'kpis_biz':    content=tBizKpis();break;
+    case 'approvals':   content=tBizApprovals();break;
+    default:            content=tBizPipeline();
   }
 
   var modal=S.bizModal?tBizModal():'';
@@ -2420,16 +2585,16 @@ function tBusiness(){
 function tBizPipeline(){
   var fst=S.bizFilter.status||'all';
   var facc=S.bizFilter.account||'';
-  var opps=S.bizOpps.filter(function(o){
+  var opps=visibleOpps().filter(function(o){
     if(fst!=='all'&&o.status!==fst)return false;
     if(facc&&o.account_id!==facc)return false;
     return true;
   });
   /* KPI mini-bar */
-  var active=S.bizOpps.filter(function(o){return o.status!=='gagne'&&o.status!=='perdu';});
+  var active=visibleOpps().filter(function(o){return o.status!=='gagne'&&o.status!=='perdu';});
   var pipeline_val=active.reduce(function(s,o){return s+caPot(o)*(o.probability||0)/100;},0);
   var total_pot=active.reduce(function(s,o){return s+caPot(o);},0);
-  var won=S.bizOpps.filter(function(o){return o.status==='gagne';});
+  var won=visibleOpps().filter(function(o){return o.status==='gagne';});
   var ca_won=won.reduce(function(s,o){return s+caPot(o);},0);
 
   var kbar='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px">'
@@ -2946,7 +3111,23 @@ function tActivite(){
 /* ════════════════════════════════════════════════════════════
    RECRUTEMENT — pipeline partagé, visible par toute l'entreprise
    ════════════════════════════════════════════════════════════ */
+function tRecrutementPaywall(){
+  return '<div class="vw"><div style="max-width:560px;margin:60px auto;text-align:center">'
+    +'<div style="font-size:48px;margin-bottom:16px">&#x1F3AF;</div>'
+    +'<div style="font-size:26px;font-weight:900;color:#1B2B3A;margin-bottom:10px">Module Recrutement</div>'
+    +'<div style="font-size:15px;color:#64748b;margin-bottom:28px;line-height:1.6">Gérez votre pipeline de candidats avec 8 statuts, suivi par recruteur et conversion automatique en Utilisateur.</div>'
+    +'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:24px;margin-bottom:24px;text-align:left">'
+    +'<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:12px">Ce module inclut :</div>'
+    +['Pipeline candidats 8 statuts personnalisables','Recruteur assigné par candidat','Filtre & suivi par recruteur','Statuts renommables dans les Paramètres','Conversion automatique Recruté → Utilisateur'].map(function(f){return '<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:#84CC16;font-weight:800">✓</span><span style="font-size:13px;color:#374151">'+f+'</span></div>';}).join('')
+    +'</div>'
+    +'<a href="mailto:contact@konsilys.fr?subject=Activation module Recrutement" style="display:inline-block;background:#1B2B3A;color:#fff;padding:14px 32px;border-radius:10px;font-weight:800;font-size:15px;text-decoration:none">Contacter pour activer →</a>'
+    +'<div style="font-size:12px;color:#94a3b8;margin-top:12px">contact@konsilys.fr · Activation sous 24h</div>'
+    +'</div></div>';
+}
 function tRecrut(){
+  /* Recruteur et Sales ont toujours accès ; les autres doivent avoir le module */
+  /* Recruteur a toujours accès ; TOUS les autres (y compris Super Admin) ont besoin du module */
+  if(S.role!=='recruteur'&&!(S.settings&&S.settings.hasRecrutementModule))return tRecrutementPaywall();
   if(S.recSel){
     var cand=S.cands.find(function(c){return c.id===S.recSel;});
     if(cand)return tCandDetail(cand);
@@ -2960,7 +3141,17 @@ function recListBody(){
   var stF=S.recF.status||'all';
   var locF=S.recF.loc||[];
   var recF=S.recF.rec||'all';
-  var list=S.cands.filter(function(c){
+  /* Filtrage hiérarchique des candidats selon le rôle */
+  var visibleCands=S.cands.filter(function(cd){
+    if(S.role==='super_admin')return true; /* voit tout (si module payé) */
+    if(S.role==='recruteur'){return !cd.recruiter||cd.recruiter===(S.profileFirstName+' '+(S.profileLastName||'')).trim()||cd.recruiter===S._userEmail;}
+    if(S.role==='gestionnaire'){
+      var myRecEmails=((S.recruteurInvites)||[]).map(function(r){return r.recruteur_name||r.email||'';});
+      return !cd.recruiter||myRecEmails.indexOf(cd.recruiter)>=0||cd.recruiter===S.dirName;
+    }
+    return true; /* admin, sales, utilisateur voient tout si module payé */
+  });
+  var list=visibleCands.filter(function(c){
     if(stF!=='all'&&c.status!==stF)return false;
     if(locF.length&&!(c.locations||[]).some(function(l){return locF.indexOf(l)>=0;}))return false;
     if(recF!=='all'&&(c.recruiter||'')!==recF)return false;
@@ -4580,7 +4771,7 @@ async function initApp(){
       var pr=await sb.from('profiles').select('*').eq('id',uid2).single();
       if(pr.data&&pr.data.company_id){
         SB_CID=pr.data.company_id;
-        S.role=pr.data.role==='gestionnaire'?'gestionnaire':pr.data.role==='utilisateur'?'utilisateur':pr.data.role==='super_admin'?'super_admin':pr.data.role==='recruteur'?'recruteur':'admin';
+        S.role=pr.data.role==='gestionnaire'?'gestionnaire':pr.data.role==='utilisateur'?'utilisateur':pr.data.role==='super_admin'?'super_admin':pr.data.role==='recruteur'?'recruteur':pr.data.role==='sales'?'sales':'admin';
           /* Nom du VP pour l'étiqueter dans directeur_invites */
           if(S.role==='admin'&&pr.data.first_name){S.vpName=(pr.data.first_name+' '+(pr.data.last_name||'')).trim();}
           S.profileFirstName=pr.data.first_name||'';
