@@ -441,6 +441,8 @@ var S={
   adminCode:null, /* dernier code généré (affiché dans Admin) */
   year:CFY,quarter:null,modal:null,fmc:'all',fms:'all',fmt:'all',flc:'all',precs:{},
   role:'admin',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,kpiDirOpen:{},invites:[],svpInvites:[],recruteurInvites:[],vpDirMap:{},vpName:'',profileFirstName:'',profileLastName:'',profileTitle:'',fvp:[],settings:{currency:'EUR',currencySymbol:'€',fyStartMonth:10,fyStartDay:1,roleLabels:{}},kpiVPOpen:{},kpiDirDirOpen:{},actCid:'',actMonth:'',_all:null,
+  /* CRM Business */
+  bizTab:'pipeline',bizAccounts:[],bizContacts:[],bizOpps:[],bizActivities:[],bizModal:null,bizFilter:{status:'all',account:''},
   sbSt:'\uD83D\uDFE2 Sauvegarde locale active',
   sbSync:false,
   imp:null,
@@ -746,13 +748,13 @@ function tSB(){
   if(S.role==='recruteur'){
     NAV=[{id:'recrutement',ic:'\uD83C\uDFAF',lb:'Recrutement'}];
   }else if(S.role==='utilisateur'){
-    /* Vue consultant : onglets réduits uniquement sur ses données */
     NAV=[
       {id:'activite',   ic:'\uD83D\uDCC5',lb:'Activit\u00e9'},
       {id:'missions',   ic:'\uD83D\uDCCB',lb:'Missions'},
       {id:'planning',   ic:'\uD83D\uDCC5',lb:'Planning'},
       {id:'leaves',     ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
-      {id:'approvals',  ic:'\uD83D\uDD14',lb:'Approbations'}
+      {id:'approvals',  ic:'\uD83D\uDD14',lb:'Approbations'},
+      {id:'business',   ic:'\uD83D\uDCBC',lb:'Business'}
     ];
   }else{
     NAV=[
@@ -763,12 +765,13 @@ function tSB(){
       {id:'missions',  ic:'\uD83D\uDCCB',lb:'Missions'},
       {id:'planning',  ic:'\uD83D\uDCC5',lb:'Planning'},
       {id:'leaves',    ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
+      {id:'business',  ic:'\uD83D\uDCBC',lb:'Business'},
       {id:'param',     ic:'\uD83D\uDCA1',lb:'Pr\u00e9conisations'}
     ];
     if(S.role==='admin')NAV.push({id:'directeurs',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
     if(S.role==='gestionnaire')NAV.push({id:'admin',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
     if(S.role==='super_admin')NAV.push({id:'svp_acces',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
-    if(S.role==='super_admin')NAV.push({id:'svp_settings',ic:'⚙️',lb:'Param\u00e8tres'});
+    if(S.role==='super_admin')NAV.push({id:'svp_settings',ic:'\u2699',lb:'Param\u00e8tres'});
     NAV.splice(4,0,{id:'activite',ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'});
   }
   var alC=S.role==='gestionnaire'?(S.approvals||[]).filter(function(r){return r.status==='pending'&&r.dirName===S.dirName;}).length:0;
@@ -2185,6 +2188,518 @@ function tSVPAcces(){
     +'</div>';
 }
 
+
+/* ══════════════════════════════════════════════════════════════════
+   MODULE CRM BUSINESS — Comptes · Contacts · Pipeline · Activités
+══════════════════════════════════════════════════════════════════ */
+
+/* ── Constantes CRM ── */
+var OPP_STATUS=[
+  {id:'identification',lb:'Identification', bg:'#f0f9ff',fg:'#0369a1'},
+  {id:'qualification',  lb:'Qualification',  bg:'#fef3c7',fg:'#92400e'},
+  {id:'proposition',    lb:'Proposition',    bg:'#ede9fe',fg:'#5b21b6'},
+  {id:'negociation',    lb:'Négociation',    bg:'#fff7ed',fg:'#c2410c'},
+  {id:'gagne',          lb:'Gagné ✓',        bg:'#d1fae5',fg:'#065f46'},
+  {id:'perdu',          lb:'Perdu ✗',        bg:'#fee2e2',fg:'#b91c1c'},
+];
+var ACT_TYPES=[
+  {id:'appel',   lb:'📞 Appel'},
+  {id:'email',   lb:'📧 Email'},
+  {id:'reunion', lb:'🤝 Réunion'},
+  {id:'relance', lb:'🔔 Relance'},
+  {id:'demo',    lb:'💻 Démo'},
+];
+var ACCOUNT_STATUS=[
+  {id:'prospect',        lb:'Prospect'},
+  {id:'client_actif',    lb:'Client actif'},
+  {id:'client_inactif',  lb:'Client inactif'},
+];
+var CONTACT_ROLES=[
+  {id:'decideur',      lb:'Décideur'},
+  {id:'prescripteur',  lb:'Prescripteur'},
+  {id:'utilisateur',   lb:'Utilisateur'},
+];
+var SECTORS_BIZ=['Banque/Finance','Assurance','Industrie','Énergie','Retail','Santé','Télécom','Media','Transport','Administration','Conseil','Technologie','Immobilier','Autre'];
+
+/* ── Helpers CRM ── */
+function oppStLb(id){var s=OPP_STATUS.find(function(x){return x.id===id;});return s?s.lb:id;}
+function oppStStyle(id){var s=OPP_STATUS.find(function(x){return x.id===id;});return s?'background:'+s.bg+';color:'+s.fg+';':'';}
+function accName(id){var a=S.bizAccounts.find(function(x){return x.id===id;});return a?a.name:'';}
+function ctName(id){var c=S.bizContacts.find(function(x){return x.id===id;});return c?(c.first_name+' '+c.last_name).trim():'';}
+function caPot(opp){return (opp.tjm_cible||0)*(opp.jours_estimes||0);}
+function uid2(){return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return(c==='x'?r:r&0x3|0x8).toString(16);});}
+
+/* ── Supabase CRM CRUD ── */
+async function loadBiz(){
+  if(!sb||!SB_CID)return;
+  try{
+    var [ra,rc,ro,rk]=await Promise.all([
+      sb.from('crm_accounts').select('*').eq('company_id',SB_CID).order('name'),
+      sb.from('crm_contacts').select('*').eq('company_id',SB_CID).order('last_name'),
+      sb.from('crm_opportunities').select('*').eq('company_id',SB_CID).order('created_at',{ascending:false}),
+      sb.from('crm_activities').select('*').eq('company_id',SB_CID).order('created_at',{ascending:false}),
+    ]);
+    if(ra.data)S.bizAccounts=ra.data;
+    if(rc.data)S.bizContacts=rc.data;
+    if(ro.data)S.bizOpps=ro.data;
+    if(rk.data)S.bizActivities=rk.data;
+  }catch(e){console.warn('CRM load:',e);}
+}
+async function sbUpsertAcc(a){if(!sb||!SB_CID)return;return sb.from('crm_accounts').upsert(Object.assign({},a,{company_id:SB_CID}),{onConflict:'id'});}
+async function sbUpsertCt(c){if(!sb||!SB_CID)return;return sb.from('crm_contacts').upsert(Object.assign({},c,{company_id:SB_CID}),{onConflict:'id'});}
+async function sbUpsertOpp(o){if(!sb||!SB_CID)return;return sb.from('crm_opportunities').upsert(Object.assign({},o,{company_id:SB_CID}),{onConflict:'id'});}
+async function sbUpsertAct(k){if(!sb||!SB_CID)return;return sb.from('crm_activities').upsert(Object.assign({},k,{company_id:SB_CID}),{onConflict:'id'});}
+async function sbDelBiz(table,id){if(!sb||!SB_CID)return;return sb.from(table).delete().eq('id',id).eq('company_id',SB_CID);}
+
+/* ── Actions CRM ── */
+function bizSaveAcc(){
+  var it=S.bizModal&&S.bizModal.item;
+  var a={
+    id:it?it.id:uid2(),
+    name:gv('biz-acc-name'),
+    status:gv('biz-acc-status')||'prospect',
+    sector:gv('biz-acc-sector'),
+    size:gv('biz-acc-size'),
+    website:gv('biz-acc-website'),
+    siret:gv('biz-acc-siret'),
+    address:gv('biz-acc-address'),
+    notes:gv('biz-acc-notes'),
+  };
+  if(!a.name){alert('Nom requis');return;}
+  if(it){S.bizAccounts=S.bizAccounts.map(function(x){return x.id===it.id?a:x;});}
+  else{S.bizAccounts=S.bizAccounts.concat([a]);}
+  sbUpsertAcc(a);
+  S.bizModal=null;render();
+}
+function bizSaveCt(){
+  var it=S.bizModal&&S.bizModal.item;
+  var ct={
+    id:it?it.id:uid2(),
+    account_id:gv('biz-ct-acc'),
+    first_name:gv('biz-ct-fn'),
+    last_name:gv('biz-ct-ln'),
+    email:gv('biz-ct-email'),
+    phone:gv('biz-ct-phone'),
+    role_type:gv('biz-ct-role')||'decideur',
+    position:gv('biz-ct-position'),
+    notes:gv('biz-ct-notes'),
+  };
+  if(!ct.first_name&&!ct.last_name){alert('Nom requis');return;}
+  if(it){S.bizContacts=S.bizContacts.map(function(x){return x.id===it.id?ct:x;});}
+  else{S.bizContacts=S.bizContacts.concat([ct]);}
+  sbUpsertCt(ct);
+  S.bizModal=null;render();
+}
+function bizSaveOpp(){
+  var it=S.bizModal&&S.bizModal.item;
+  var o={
+    id:it?it.id:uid2(),
+    name:gv('biz-opp-name'),
+    account_id:gv('biz-opp-acc'),
+    contact_id:gv('biz-opp-ct')||null,
+    status:gv('biz-opp-status')||'identification',
+    tjm_cible:+gv('biz-opp-tjm')||0,
+    jours_estimes:+gv('biz-opp-jours')||0,
+    duree_mois:+gv('biz-opp-duree')||0,
+    probability:+gv('biz-opp-prob')||20,
+    date_closing:gv('biz-opp-closing')||null,
+    assigned_to:gv('biz-opp-assign'),
+    motif_perte:gv('biz-opp-motif')||null,
+    consultant_ids:it?(it.consultant_ids||[]):[],
+    notes:gv('biz-opp-notes'),
+  };
+  if(!o.name){alert('Nom requis');return;}
+  if(it){S.bizOpps=S.bizOpps.map(function(x){return x.id===it.id?o:x;});}
+  else{S.bizOpps=S.bizOpps.concat([o]);}
+  sbUpsertOpp(o);
+  S.bizModal=null;render();
+}
+function bizSaveAct(){
+  var it=S.bizModal&&S.bizModal.item;
+  var k={
+    id:it?it.id:uid2(),
+    type:gv('biz-act-type')||'appel',
+    title:gv('biz-act-title'),
+    account_id:gv('biz-act-acc')||null,
+    opportunity_id:gv('biz-act-opp')||null,
+    contact_id:gv('biz-act-ct')||null,
+    date_realised:gv('biz-act-date')||new Date().toISOString().slice(0,10),
+    status:gv('biz-act-status')||'realise',
+    next_action:gv('biz-act-next'),
+    next_action_date:gv('biz-act-next-date')||null,
+    assigned_to:gv('biz-act-assign'),
+    notes:gv('biz-act-notes'),
+  };
+  if(!k.title){alert('Titre requis');return;}
+  if(it){S.bizActivities=S.bizActivities.map(function(x){return x.id===it.id?k:x;});}
+  else{S.bizActivities=S.bizActivities.concat([k]);}
+  sbUpsertAct(k);
+  S.bizModal=null;render();
+}
+function bizDelItem(table,id,arr){
+  if(!confirm('Supprimer cet élément ?'))return;
+  if(table==='crm_accounts')S.bizAccounts=S.bizAccounts.filter(function(x){return x.id!==id;});
+  if(table==='crm_contacts')S.bizContacts=S.bizContacts.filter(function(x){return x.id!==id;});
+  if(table==='crm_opportunities')S.bizOpps=S.bizOpps.filter(function(x){return x.id!==id;});
+  if(table==='crm_activities')S.bizActivities=S.bizActivities.filter(function(x){return x.id!==id;});
+  sbDelBiz(table,id);render();
+}
+/* Opportunité gagnée → créer mission */
+function bizOppToMission(oppId){
+  var o=S.bizOpps.find(function(x){return x.id===oppId;});
+  if(!o)return;
+  var acc=S.bizAccounts.find(function(x){return x.id===o.account_id;})||{};
+  var mission={
+    id:uid2(),
+    name:o.name+(acc.name?' — '+acc.name:''),
+    type:'at',
+    client:acc.name||'',
+    tjm:o.tjm_cible||0,
+    days:o.jours_estimes||0,
+    start:new Date().toISOString().slice(0,10),
+    end:null,
+    status:'active',
+    notes:o.notes||'',
+    biz_opp_id:o.id,
+  };
+  S.miss=S.miss.concat([mission]);
+  /* Mettre à jour l'opportunité avec le lien mission */
+  S.bizOpps=S.bizOpps.map(function(x){return x.id===oppId?Object.assign({},x,{linked_mission_id:mission.id}):x;});
+  sbUpsertOpp(S.bizOpps.find(function(x){return x.id===oppId;}));
+  if(sb&&SB_CID){sb.from('missions').insert(Object.assign({},mission,{company_id:SB_CID})).then(function(){});}
+  S.bizModal=null;
+  S.tab='missions';
+  alert('Mission créée : '+mission.name+'\nRetrouvez-la dans l\'onglet Missions.');
+  render();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TEMPLATE PRINCIPAL — tBusiness()
+═══════════════════════════════════════════════════════════ */
+function tBusiness(){
+  var subTabs=[
+    {id:'pipeline',  lb:'📋 Pipeline',    n:S.bizOpps.filter(function(o){return o.status!=='gagne'&&o.status!=='perdu';}).length},
+    {id:'comptes',   lb:'🏢 Comptes',     n:S.bizAccounts.length},
+    {id:'contacts',  lb:'👤 Contacts',    n:S.bizContacts.length},
+    {id:'activites', lb:'📅 Activités',   n:S.bizActivities.length},
+    {id:'kpis_biz',  lb:'📊 KPIs',        n:null},
+  ];
+  var subNav='<div style="display:flex;gap:4px;margin-bottom:20px;background:#f1f5f9;padding:4px;border-radius:10px;flex-wrap:wrap">'
+    +subTabs.map(function(t){
+      var act=S.bizTab===t.id;
+      return '<button data-biz-tab="'+t.id+'" style="flex:1;min-width:80px;padding:8px 14px;border:none;border-radius:7px;font-family:Nunito,sans-serif;font-size:13px;font-weight:700;cursor:pointer;background:'+(act?'#fff':'transparent')+';color:'+(act?'#1B2B3A':'#64748b')+';box-shadow:'+(act?'0 1px 4px rgba(0,0,0,.1)':'')+'">'
+        +t.lb+(t.n!=null?' <span style="background:'+(act?'#84CC16':'#cbd5e1')+';color:'+(act?'#1B2B3A':'#475569')+';border-radius:99px;padding:1px 7px;font-size:11px">'+t.n+'</span>':'')+'</button>';
+    }).join('')+'</div>';
+
+  var content='';
+  switch(S.bizTab){
+    case 'comptes':   content=tBizComptes();break;
+    case 'contacts':  content=tBizContacts();break;
+    case 'activites': content=tBizActivites();break;
+    case 'kpis_biz':  content=tBizKpis();break;
+    default:          content=tBizPipeline();
+  }
+
+  var modal=S.bizModal?tBizModal():'';
+
+  return '<div class="vw">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
+    +'<div><div class="pt">Business</div><div class="ps">CRM — Comptes · Contacts · Pipeline · Activités</div></div>'
+    +addBtn()+'</div>'
+    +subNav+content+modal+'</div>';
+
+  function addBtn(){
+    var labels={pipeline:'+ Opportunité',comptes:'+ Compte',contacts:'+ Contact',activites:'+ Activité',kpis_biz:''};
+    var lb=labels[S.bizTab||'pipeline']||'';
+    if(!lb)return '';
+    return '<button class="bp" data-act="biz-new" style="white-space:nowrap">'+lb+'</button>';
+  }
+}
+
+/* ── Pipeline (liste) ── */
+function tBizPipeline(){
+  var fst=S.bizFilter.status||'all';
+  var facc=S.bizFilter.account||'';
+  var opps=S.bizOpps.filter(function(o){
+    if(fst!=='all'&&o.status!==fst)return false;
+    if(facc&&o.account_id!==facc)return false;
+    return true;
+  });
+  /* KPI mini-bar */
+  var active=S.bizOpps.filter(function(o){return o.status!=='gagne'&&o.status!=='perdu';});
+  var pipeline_val=active.reduce(function(s,o){return s+caPot(o)*(o.probability||0)/100;},0);
+  var total_pot=active.reduce(function(s,o){return s+caPot(o);},0);
+  var won=S.bizOpps.filter(function(o){return o.status==='gagne';});
+  var ca_won=won.reduce(function(s,o){return s+caPot(o);},0);
+
+  var kbar='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px">'
+    +kbCard('Pipeline pondéré',fEur(pipeline_val),'Probabilité × CA potentiel','#1B2B3A')
+    +kbCard('CA potentiel total',fEur(total_pot),active.length+' opportunités actives','#243447')
+    +kbCard('CA gagné',fEur(ca_won),won.length+' opportunités gagnées','#065f46')
+    +kbCard('Taux de conv.',S.bizOpps.length?Math.round(won.length/S.bizOpps.length*100)+'%':'—','Total opportunités','#5b21b6')
+    +'</div>';
+
+  /* Filtres */
+  var accOpts='<option value="">Tous les comptes</option>'+S.bizAccounts.map(function(a){return '<option value="'+a.id+'"'+(facc===a.id?' selected':'')+'>'+esc(a.name)+'</option>';}).join('');
+  var stOpts='<option value="all">Tous statuts</option>'+OPP_STATUS.map(function(s){return '<option value="'+s.id+'"'+(fst===s.id?' selected':'')+'>'+s.lb+'</option>';}).join('');
+  var filters='<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">'
+    +'<select class="ic" id="biz-fst" style="min-width:160px;font-size:13px">'+stOpts+'</select>'
+    +'<select class="ic" id="biz-facc" style="min-width:180px;font-size:13px">'+accOpts+'</select>'
+    +'</div>';
+
+  if(!opps.length)return kbar+filters+'<div class="emp">Aucune opportunité'+( fst!=='all'||facc?' avec ces filtres':'')+'</div>';
+
+  var thead='<thead><tr>'
+    +'<th>Opportunité</th><th>Compte</th><th>Contact</th>'
+    +'<th class="tc">TJM</th><th class="tc">Jours</th><th class="tc">CA pot.</th>'
+    +'<th class="tc">Proba</th><th>Statut</th><th>Closing</th><th>Assigné</th>'
+    +'<th class="tr">Actions</th></tr></thead>';
+  var tbody=opps.map(function(o){
+    var won=o.status==='gagne',lost=o.status==='perdu';
+    var ca=caPot(o);
+    return '<tr style="opacity:'+(lost?0.6:1)+'">'
+      +'<td><div style="font-weight:700;color:#0f172a">'+esc(o.name)+'</div>'+(o.notes?'<div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">'+esc(o.notes.slice(0,50))+'</div>':'')+'</td>'
+      +'<td><span style="font-size:12px;background:#f1f5f9;padding:2px 8px;border-radius:99px">'+esc(accName(o.account_id))+'</span></td>'
+      +'<td style="font-size:12px;color:#64748b">'+esc(ctName(o.contact_id))+'</td>'
+      +'<td class="tc" style="font-size:13px;font-weight:700">'+(o.tjm_cible?fEur(o.tjm_cible):'—')+'</td>'
+      +'<td class="tc" style="font-size:13px">'+(o.jours_estimes||'—')+'</td>'
+      +'<td class="tc" style="font-size:13px;font-weight:800;color:#1B2B3A">'+(ca>0?fEur(ca):'—')+'</td>'
+      +'<td class="tc"><div style="display:flex;align-items:center;gap:4px;justify-content:center">'
+        +'<div style="height:4px;width:40px;background:#e2e8f0;border-radius:2px"><div style="height:100%;width:'+(o.probability||0)+'%;background:'+(o.probability>=70?'#16a34a':o.probability>=40?'#d97706':'#dc2626')+';border-radius:2px"></div></div>'
+        +'<span style="font-size:11px;font-weight:700">'+(o.probability||0)+'%</span></div></td>'
+      +'<td><span style="padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700;'+oppStStyle(o.status)+'">'+oppStLb(o.status)+'</span></td>'
+      +'<td style="font-size:12px;color:#64748b">'+(o.date_closing?o.date_closing.slice(0,10):'—')+'</td>'
+      +'<td style="font-size:12px;color:#64748b">'+esc(o.assigned_to||'')+'</td>'
+      +'<td class="tr" style="white-space:nowrap">'
+      +(won&&!o.linked_mission_id?'<button class="lr" style="background:#d1fae5;color:#065f46;border-color:#bbf7d0;margin-right:4px" data-act="biz-opp-mission" data-id="'+o.id+'">→ Mission</button>':'')
+      +'<button class="lr" data-act="biz-edit-opp" data-id="'+o.id+'" style="margin-right:4px">✏️</button>'
+      +'<button class="lr" data-act="biz-del" data-table="crm_opportunities" data-id="'+o.id+'">✕</button>'
+      +'</td></tr>';
+  }).join('');
+
+  return kbar+filters+'<div class="ov"><table>'+thead+'<tbody>'+tbody+'</tbody></table></div>';
+}
+
+function kbCard(l,v,s,bg){
+  return '<div style="background:'+bg+';border-radius:12px;padding:14px 16px">'
+    +'<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">'+l+'</div>'
+    +'<div style="font-size:20px;font-weight:900;color:#fff">'+v+'</div>'
+    +'<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:2px">'+s+'</div>'
+    +'</div>';
+}
+
+/* ── Comptes ── */
+function tBizComptes(){
+  if(!S.bizAccounts.length)return '<div class="emp">Aucun compte. Cliquez "+ Compte" pour commencer.</div>';
+  var thead='<thead><tr><th>Compte</th><th>Statut</th><th>Secteur</th><th>Taille</th><th class="tc">Opportunités</th><th class="tc">CA potentiel</th><th class="tr">Actions</th></tr></thead>';
+  var tbody=S.bizAccounts.map(function(a){
+    var opps=S.bizOpps.filter(function(o){return o.account_id===a.id;});
+    var ca=opps.reduce(function(s,o){return s+caPot(o);},0);
+    var st=ACCOUNT_STATUS.find(function(x){return x.id===a.status;})||{lb:a.status||'Prospect'};
+    var stbg=a.status==='client_actif'?'#d1fae5':a.status==='client_inactif'?'#f1f5f9':'#fef3c7';
+    var stfg=a.status==='client_actif'?'#065f46':a.status==='client_inactif'?'#475569':'#92400e';
+    return '<tr>'
+      +'<td><div style="font-weight:700;color:#0f172a">'+esc(a.name)+'</div>'+(a.website?'<div style="font-size:10px;color:#94a3b8">'+esc(a.website)+'</div>':'')+'</td>'
+      +'<td><span style="padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;background:'+stbg+';color:'+stfg+'">'+st.lb+'</span></td>'
+      +'<td style="font-size:12px;color:#64748b">'+esc(a.sector||'—')+'</td>'
+      +'<td style="font-size:12px;color:#64748b">'+esc(a.size||'—')+'</td>'
+      +'<td class="tc" style="font-size:13px;font-weight:700">'+opps.length+'</td>'
+      +'<td class="tc" style="font-size:13px;font-weight:700">'+(ca>0?fEur(ca):'—')+'</td>'
+      +'<td class="tr"><button class="lr" data-act="biz-edit-acc" data-id="'+a.id+'" style="margin-right:4px">✏️</button>'
+      +'<button class="lr" data-act="biz-del" data-table="crm_accounts" data-id="'+a.id+'">✕</button></td></tr>';
+  }).join('');
+  return '<div class="ov"><table>'+thead+'<tbody>'+tbody+'</tbody></table></div>';
+}
+
+/* ── Contacts ── */
+function tBizContacts(){
+  if(!S.bizContacts.length)return '<div class="emp">Aucun contact. Cliquez "+ Contact" pour commencer.</div>';
+  var thead='<thead><tr><th>Nom</th><th>Rôle</th><th>Poste</th><th>Compte</th><th>Email</th><th>Téléphone</th><th class="tr">Actions</th></tr></thead>';
+  var tbody=S.bizContacts.map(function(ct){
+    var rl=CONTACT_ROLES.find(function(x){return x.id===ct.role_type;})||{lb:ct.role_type||''};
+    var rlbg=ct.role_type==='decideur'?'#eff6ff':ct.role_type==='prescripteur'?'#fef3c7':'#f0fdf4';
+    var rlfg=ct.role_type==='decideur'?'#1e40af':ct.role_type==='prescripteur'?'#92400e':'#15803d';
+    return '<tr>'
+      +'<td><div style="font-weight:700;color:#0f172a">'+esc((ct.first_name||'')+' '+(ct.last_name||''))+'</div></td>'
+      +'<td><span style="padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;background:'+rlbg+';color:'+rlfg+'">'+rl.lb+'</span></td>'
+      +'<td style="font-size:12px;color:#64748b">'+esc(ct.position||'—')+'</td>'
+      +'<td style="font-size:12px">'+esc(accName(ct.account_id))+'</td>'
+      +'<td style="font-size:12px"><a href="mailto:'+esc(ct.email||'')+'" style="color:#1B2B3A">'+esc(ct.email||'—')+'</a></td>'
+      +'<td style="font-size:12px">'+esc(ct.phone||'—')+'</td>'
+      +'<td class="tr"><button class="lr" data-act="biz-edit-ct" data-id="'+ct.id+'" style="margin-right:4px">✏️</button>'
+      +'<button class="lr" data-act="biz-del" data-table="crm_contacts" data-id="'+ct.id+'">✕</button></td></tr>';
+  }).join('');
+  return '<div class="ov"><table>'+thead+'<tbody>'+tbody+'</tbody></table></div>';
+}
+
+/* ── Activités ── */
+function tBizActivites(){
+  if(!S.bizActivities.length)return '<div class="emp">Aucune activité. Cliquez "+ Activité" pour commencer.</div>';
+  var thead='<thead><tr><th>Date</th><th>Type</th><th>Titre</th><th>Compte</th><th>Contact</th><th>Opportunité</th><th>Statut</th><th>Prochaine action</th><th class="tr">Actions</th></tr></thead>';
+  var tbody=S.bizActivities.map(function(k){
+    var tp=ACT_TYPES.find(function(x){return x.id===k.type;})||{lb:k.type||''};
+    var oppName='';if(k.opportunity_id){var o=S.bizOpps.find(function(x){return x.id===k.opportunity_id;});oppName=o?o.name:'';}
+    return '<tr>'
+      +'<td style="font-size:12px;white-space:nowrap">'+esc(k.date_realised||'')+'</td>'
+      +'<td><span style="font-size:11px;font-weight:700;background:#f1f5f9;padding:2px 8px;border-radius:99px">'+tp.lb+'</span></td>'
+      +'<td style="font-weight:600;color:#0f172a">'+esc(k.title||'')+'</td>'
+      +'<td style="font-size:12px;color:#64748b">'+esc(accName(k.account_id))+'</td>'
+      +'<td style="font-size:12px;color:#64748b">'+esc(ctName(k.contact_id))+'</td>'
+      +'<td style="font-size:12px;color:#64748b">'+esc(oppName)+'</td>'
+      +'<td><span style="font-size:11px;font-weight:700;background:'+(k.status==='realise'?'#d1fae5':'#fef3c7')+';color:'+(k.status==='realise'?'#065f46':'#92400e')+';padding:2px 8px;border-radius:99px">'+(k.status==='realise'?'Réalisé':'Planifié')+'</span></td>'
+      +'<td style="font-size:11px;color:#64748b">'+(k.next_action?esc(k.next_action)+(k.next_action_date?' ('+k.next_action_date.slice(0,10)+')':''):'—')+'</td>'
+      +'<td class="tr"><button class="lr" data-act="biz-edit-act" data-id="'+k.id+'" style="margin-right:4px">✏️</button>'
+      +'<button class="lr" data-act="biz-del" data-table="crm_activities" data-id="'+k.id+'">✕</button></td></tr>';
+  }).join('');
+  return '<div class="ov"><table>'+thead+'<tbody>'+tbody+'</tbody></table></div>';
+}
+
+/* ── KPIs Business ── */
+function tBizKpis(){
+  var byStatus={};OPP_STATUS.forEach(function(s){byStatus[s.id]={count:0,ca:0};});
+  S.bizOpps.forEach(function(o){if(byStatus[o.status]){byStatus[o.status].count++;byStatus[o.status].ca+=caPot(o);}});
+  var total=S.bizOpps.length;
+  var pipeline=S.bizOpps.filter(function(o){return o.status!=='gagne'&&o.status!=='perdu';});
+  var won=S.bizOpps.filter(function(o){return o.status==='gagne';});
+  var pipeline_pond=pipeline.reduce(function(s,o){return s+caPot(o)*(o.probability||0)/100;},0);
+
+  var funnelHtml='<div class="card" style="padding:24px;margin-bottom:16px"><div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:16px">Entonnoir de conversion</div>'
+    +OPP_STATUS.map(function(s){
+      var d=byStatus[s.id]||{count:0,ca:0};
+      var pct=total>0?d.count/total*100:0;
+      return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">'
+        +'<span style="font-weight:700">'+s.lb+'</span>'
+        +'<span style="color:#64748b">'+d.count+' opp. · '+(d.ca>0?fEur(d.ca):'—')+'</span></div>'
+        +'<div style="height:10px;background:#f1f5f9;border-radius:5px">'
+        +'<div style="height:100%;width:'+pct.toFixed(0)+'%;background:'+s.fg+';border-radius:5px"></div></div>';
+    }).join('')
+    +'</div>';
+
+  /* Top comptes par CA potentiel */
+  var accCA={};S.bizOpps.forEach(function(o){accCA[o.account_id]=(accCA[o.account_id]||0)+caPot(o);});
+  var topAcc=Object.keys(accCA).sort(function(a,b){return accCA[b]-accCA[a];}).slice(0,5);
+  var topHtml=topAcc.length?'<div class="card" style="padding:24px"><div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:14px">Top 5 comptes — CA potentiel</div>'
+    +topAcc.map(function(aid,i){
+      var name=accName(aid)||'Inconnu';
+      return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
+        +'<span style="font-size:11px;font-weight:700;color:#94a3b8;width:18px">#'+(i+1)+'</span>'
+        +'<span style="flex:1;font-weight:600;color:#0f172a">'+esc(name)+'</span>'
+        +'<span style="font-size:13px;font-weight:800;color:#1B2B3A">'+fEur(accCA[aid])+'</span></div>';
+    }).join('')+'</div>':'';
+
+  return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'
+    +'<div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">'
+    +kbCard('Pipeline pondéré',fEur(pipeline_pond),'∑ CA × probabilité','#1B2B3A')
+    +kbCard('Win Rate',total?Math.round(won.length/total*100)+'%':'—','Opportunités gagnées','#065f46')
+    +kbCard('Durée moy. pipeline',pipeline.length?Math.round(pipeline.reduce(function(s,o){return s+(o.duree_mois||0);},0)/pipeline.length)+' mois':'—','','#5b21b6')
+    +kbCard('CA gagné total',won.length?fEur(won.reduce(function(s,o){return s+caPot(o);},0)):'—','','#c2410c')
+    +'</div>'+topHtml+'</div>'
+    +'<div>'+funnelHtml+'</div></div>';
+}
+
+/* ── Modals ── */
+function tBizModal(){
+  var m=S.bizModal;if(!m)return '';
+  var body='';
+  var title='';
+  var saveAction='';
+
+  var accOpts='<option value="">— Compte —</option>'+S.bizAccounts.map(function(a){return '<option value="'+a.id+'"'+(m.item&&m.item.account_id===a.id?' selected':'')+'>'+esc(a.name)+'</option>';}).join('');
+  var ctOpts='<option value="">— Contact —</option>'+S.bizContacts.map(function(c){return '<option value="'+c.id+'"'+(m.item&&m.item.contact_id===c.id?' selected':'')+'>'+esc((c.first_name||'')+' '+(c.last_name||''))+'</option>';}).join('');
+  var oppOpts='<option value="">— Opportunité —</option>'+S.bizOpps.map(function(o){return '<option value="'+o.id+'"'+(m.item&&m.item.opportunity_id===o.id?' selected':'')+'>'+esc(o.name)+'</option>';}).join('');
+  var sectOpts=SECTORS_BIZ.map(function(s){return '<option value="'+s+'"'+(m.item&&m.item.sector===s?' selected':'')+'>'+s+'</option>';}).join('');
+
+  if(m.type==='acc'){
+    var it=m.item||{};
+    title=it.id?'Modifier le compte':'Nouveau compte';
+    saveAction='bizSaveAcc()';
+    body='<div class="g2">'
+      +'<div class="fd cs2"><label class="fl">Nom du compte *</label><input class="ic" id="biz-acc-name" value="'+esc(it.name||'')+'" placeholder="Ex: Société Générale"></div>'
+      +'<div class="fd"><label class="fl">Statut</label><select class="ic" id="biz-acc-status">'
+        +ACCOUNT_STATUS.map(function(s){return '<option value="'+s.id+'"'+(it.status===s.id?' selected':'')+'>'+s.lb+'</option>';}).join('')
+        +'</select></div>'
+      +'<div class="fd"><label class="fl">Secteur</label><select class="ic" id="biz-acc-sector"><option value="">—</option>'+sectOpts+'</select></div>'
+      +'<div class="fd"><label class="fl">Taille</label><select class="ic" id="biz-acc-size">'
+        +['TPE (<10)','PME (10-250)','ETI (250-5000)','GE (>5000)'].map(function(s){return '<option value="'+s+'"'+(it.size===s?' selected':'')+'>'+s+'</option>';}).join('')
+        +'</select></div>'
+      +'<div class="fd"><label class="fl">Site web</label><input class="ic" id="biz-acc-website" value="'+esc(it.website||'')+'" placeholder="https://..."></div>'
+      +'<div class="fd"><label class="fl">SIRET</label><input class="ic" id="biz-acc-siret" value="'+esc(it.siret||'')+'" placeholder="123 456 789"></div>'
+      +'<div class="fd cs2"><label class="fl">Adresse</label><input class="ic" id="biz-acc-address" value="'+esc(it.address||'')+'"></div>'
+      +'<div class="fd cs2"><label class="fl">Notes</label><textarea class="ic" id="biz-acc-notes" rows="2">'+esc(it.notes||'')+'</textarea></div>'
+      +'</div>';
+  }
+  else if(m.type==='ct'){
+    var it=m.item||{};
+    title=it.id?'Modifier le contact':'Nouveau contact';
+    saveAction='bizSaveCt()';
+    body='<div class="g2">'
+      +'<div class="fd"><label class="fl">Prénom *</label><input class="ic" id="biz-ct-fn" value="'+esc(it.first_name||'')+'" placeholder="Marie"></div>'
+      +'<div class="fd"><label class="fl">Nom *</label><input class="ic" id="biz-ct-ln" value="'+esc(it.last_name||'')+'" placeholder="Dupont"></div>'
+      +'<div class="fd"><label class="fl">Compte</label><select class="ic" id="biz-ct-acc">'+accOpts+'</select></div>'
+      +'<div class="fd"><label class="fl">Rôle</label><select class="ic" id="biz-ct-role">'
+        +CONTACT_ROLES.map(function(r){return '<option value="'+r.id+'"'+(it.role_type===r.id?' selected':'')+'>'+r.lb+'</option>';}).join('')
+        +'</select></div>'
+      +'<div class="fd"><label class="fl">Poste</label><input class="ic" id="biz-ct-position" value="'+esc(it.position||'')+'" placeholder="DSI, DRH..."></div>'
+      +'<div class="fd"><label class="fl">Email</label><input class="ic" type="email" id="biz-ct-email" value="'+esc(it.email||'')+'"></div>'
+      +'<div class="fd"><label class="fl">Téléphone</label><input class="ic" id="biz-ct-phone" value="'+esc(it.phone||'')+'"></div>'
+      +'<div class="fd cs2"><label class="fl">Notes</label><textarea class="ic" id="biz-ct-notes" rows="2">'+esc(it.notes||'')+'</textarea></div>'
+      +'</div>';
+  }
+  else if(m.type==='opp'){
+    var it=m.item||{};
+    title=it.id?'Modifier l\'opportunité':'Nouvelle opportunité';
+    saveAction='bizSaveOpp()';
+    var stOpts=OPP_STATUS.map(function(s){return '<option value="'+s.id+'"'+(it.status===s.id?' selected':(!it.id&&s.id==='identification'?' selected':''))+'>'+s.lb+'</option>';}).join('');
+    body='<div class="g2">'
+      +'<div class="fd cs2"><label class="fl">Nom de l\'opportunité *</label><input class="ic" id="biz-opp-name" value="'+esc(it.name||'')+'" placeholder="Ex: Refonte SI DSI BNP"></div>'
+      +'<div class="fd"><label class="fl">Compte</label><select class="ic" id="biz-opp-acc">'+accOpts+'</select></div>'
+      +'<div class="fd"><label class="fl">Contact</label><select class="ic" id="biz-opp-ct">'+ctOpts+'</select></div>'
+      +'<div class="fd"><label class="fl">Statut</label><select class="ic" id="biz-opp-status">'+stOpts+'</select></div>'
+      +'<div class="fd"><label class="fl">Probabilité (%)</label><input class="ic" type="number" id="biz-opp-prob" min="0" max="100" value="'+(it.probability!=null?it.probability:20)+'" placeholder="0-100"></div>'
+      +'<div class="fd"><label class="fl">TJM cible (€)</label><input class="ic" type="number" id="biz-opp-tjm" value="'+(it.tjm_cible||'')+'" placeholder="700"></div>'
+      +'<div class="fd"><label class="fl">Jours estimés</label><input class="ic" type="number" id="biz-opp-jours" value="'+(it.jours_estimes||'')+'" placeholder="20"></div>'
+      +'<div class="fd"><label class="fl">Durée (mois)</label><input class="ic" type="number" id="biz-opp-duree" value="'+(it.duree_mois||'')+'" placeholder="6"></div>'
+      +'<div class="fd"><label class="fl">Date closing estimée</label><input class="ic" type="date" id="biz-opp-closing" value="'+(it.date_closing||'')+'"></div>'
+      +'<div class="fd"><label class="fl">Assigné à</label><input class="ic" id="biz-opp-assign" value="'+esc(it.assigned_to||'')+'" placeholder="Nom du commercial"></div>'
+      +(it.status==='perdu'?'<div class="fd cs2"><label class="fl">Motif de perte</label><input class="ic" id="biz-opp-motif" value="'+esc(it.motif_perte||'')+'" placeholder="Prix, concurrent, budget..."></div>':'<input type="hidden" id="biz-opp-motif">')
+      +'<div class="fd cs2"><label class="fl">Notes</label><textarea class="ic" id="biz-opp-notes" rows="2">'+esc(it.notes||'')+'</textarea></div>'
+      +'</div>';
+  }
+  else if(m.type==='act'){
+    var it=m.item||{};
+    title=it.id?'Modifier l\'activité':'Nouvelle activité';
+    saveAction='bizSaveAct()';
+    var tpOpts=ACT_TYPES.map(function(t){return '<option value="'+t.id+'"'+(it.type===t.id?' selected':(!it.id&&t.id==='appel'?' selected':''))+'>'+t.lb+'</option>';}).join('');
+    body='<div class="g2">'
+      +'<div class="fd"><label class="fl">Type</label><select class="ic" id="biz-act-type">'+tpOpts+'</select></div>'
+      +'<div class="fd"><label class="fl">Statut</label><select class="ic" id="biz-act-status">'
+        +'<option value="realise"'+(it.status!=='planifie'?' selected':'')+'>Réalisé</option>'
+        +'<option value="planifie"'+(it.status==='planifie'?' selected':'')+'>Planifié</option>'
+        +'</select></div>'
+      +'<div class="fd cs2"><label class="fl">Titre *</label><input class="ic" id="biz-act-title" value="'+esc(it.title||'')+'" placeholder="Ex: Appel découverte avec DSI"></div>'
+      +'<div class="fd"><label class="fl">Compte</label><select class="ic" id="biz-act-acc">'+accOpts+'</select></div>'
+      +'<div class="fd"><label class="fl">Contact</label><select class="ic" id="biz-act-ct">'+ctOpts+'</select></div>'
+      +'<div class="fd"><label class="fl">Opportunité</label><select class="ic" id="biz-act-opp">'+oppOpts+'</select></div>'
+      +'<div class="fd"><label class="fl">Date</label><input class="ic" type="date" id="biz-act-date" value="'+(it.date_realised||new Date().toISOString().slice(0,10))+'"></div>'
+      +'<div class="fd"><label class="fl">Assigné à</label><input class="ic" id="biz-act-assign" value="'+esc(it.assigned_to||'')+'"></div>'
+      +'<div class="fd"><label class="fl">Prochaine action</label><input class="ic" id="biz-act-next" value="'+esc(it.next_action||'')+'" placeholder="Ex: Envoyer proposition"></div>'
+      +'<div class="fd"><label class="fl">Date prochaine action</label><input class="ic" type="date" id="biz-act-next-date" value="'+(it.next_action_date||'')+'"></div>'
+      +'<div class="fd cs2"><label class="fl">Notes</label><textarea class="ic" id="biz-act-notes" rows="2">'+esc(it.notes||'')+'</textarea></div>'
+      +'</div>';
+  }
+
+  return '<div class="mo"><div class="mob" style="max-width:680px;width:100%">'
+    +'<div class="moh"><div class="mot">'+title+'</div>'
+    +'<button class="moc" onclick="S.bizModal=null;render()">✕</button></div>'
+    +'<div class="mody" style="padding:20px">'+body
+    +'<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px">'
+    +'<button class="bsec" onclick="S.bizModal=null;render()">Annuler</button>'
+    +'<button class="bp" onclick="'+saveAction+'">Enregistrer</button>'
+    +'</div></div></div></div>';
+}
+
+
 function tParam(){
   var ks=buildKS();
   var totR=ks.reduce(function(s,x){return s+x.k.rev;},0);
@@ -3031,7 +3546,7 @@ function render(){
   S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
   var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;
   document.getElementById('sb').innerHTML=tSB();
-  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDirSection():S.tab==='svp_acces'?tSVPAcces():S.tab==='svp_settings'?tSettings():tParam();
+  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDirSection():S.tab==='svp_acces'?tSVPAcces():S.tab==='svp_settings'?tSettings():S.tab==='business'?tBusiness():tParam();
   var _ini=function(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();};
   var _av=S._userEmail?_ini(S._userEmail.split('@')[0].replace(/[._]/g,' ')):'?';
   var _pfBtn='<div id="prof-btn" style="position:absolute;top:12px;right:14px;z-index:50">'
@@ -3093,6 +3608,18 @@ function bind(){
       var ra=t.getAttribute('data-act'),rid=t.getAttribute('data-id');
       if(ra==='recf-st'){S.recF.status=rid;recListRefresh();}
       else if(ra==='recf-rec'){S.recF.rec=rid;recListRefresh();}
+      /* ── CRM Business handlers ── */
+      else if(ra==='biz-new'){
+        var types={pipeline:'opp',comptes:'acc',contacts:'ct',activites:'act'};
+        var t=types[S.bizTab||'pipeline']||'opp';
+        S.bizModal={type:t,item:null};render();
+      }
+      else if(ra==='biz-edit-acc'){var a=S.bizAccounts.find(function(x){return x.id===rid;});S.bizModal={type:'acc',item:a};render();}
+      else if(ra==='biz-edit-ct'){var c=S.bizContacts.find(function(x){return x.id===rid;});S.bizModal={type:'ct',item:c};render();}
+      else if(ra==='biz-edit-opp'){var o=S.bizOpps.find(function(x){return x.id===rid;});S.bizModal={type:'opp',item:o};render();}
+      else if(ra==='biz-edit-act'){var k=S.bizActivities.find(function(x){return x.id===rid;});S.bizModal={type:'act',item:k};render();}
+      else if(ra==='biz-del'){var tbl=el.getAttribute('data-table')||'';bizDelItem(tbl,rid);}
+      else if(ra==='biz-opp-mission'){bizOppToMission(rid);}
       else if(ra==='recf-loc'){
         var la=S.recF.loc||[];
         var li=la.indexOf(rid);
@@ -3119,7 +3646,14 @@ function bind(){
   };})(rcb[rk]);}
   var rclr=document.querySelector('[data-dir-clear]');
   if(rclr)rclr.onclick=function(){S.fdir=[];render();};
-  /* VP filter (senior_vp) */
+  /* Biz sub-tabs */
+  var biztabs=document.querySelectorAll('[data-biz-tab]');
+  for(var bi=0;bi<biztabs.length;bi++){(function(b){b.onclick=function(){S.bizTab=b.getAttribute('data-biz-tab');render();};})(biztabs[bi]);}
+  /* Biz pipeline filters */
+  var bfst=document.getElementById('biz-fst');
+  if(bfst)bfst.onchange=function(){S.bizFilter.status=this.value;render();};
+  var bfacc=document.getElementById('biz-facc');
+  if(bfacc)bfacc.onchange=function(){S.bizFilter.account=this.value;render();};
   var vpcb=document.querySelectorAll('[data-vp]');
   for(var vi=0;vi<vpcb.length;vi++){(function(cb){cb.onchange=function(){
     var v=cb.getAttribute('data-vp');
@@ -3819,7 +4353,9 @@ async function loadSB(){
       var rr=await sb.from('recruteur_invites').select('*').eq('company_id',SB_CID).order('created_at');
       if(rr.data)S.recruteurInvites=rr.data;
     }catch(e){console.warn('recruteur invites load:',e);}
-    return true; /* Supabase connecté même si 0 consultants (nouvelle entreprise) */
+    /* Charger les données CRM Business */
+    await loadBiz();
+    return true;
   }catch(e){console.warn('Supabase load error:',e);return false;}
 }
 
