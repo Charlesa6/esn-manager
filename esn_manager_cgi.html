@@ -570,6 +570,19 @@ function getActiveLv(cid){
     return l.cid===cid&&l.type!=='Inter-contrat'&&l.s<=TODAY&&l.e>=TODAY;
   });
 }
+/* ── Libellé d'un rôle (avec personnalisation via Paramètres SVP) ── */
+var _ROLE_DEFAULTS={
+  'senior_vp':'Sénior Vice Président',
+  'gestionnaire':'Vice Président',
+  'directeur':'Directeur',
+  'consultant':'Consultant',
+  'recruteur':'Recruteur'
+};
+function rLabel(role){
+  var custom=S.settings&&S.settings.roleLabels&&S.settings.roleLabels[role];
+  return custom||_ROLE_DEFAULTS[role]||role;
+}
+
 function buildKS(){
   /* Cache par render — évite de recalculer pour chaque template */
   if(S._ks&&S._ks._valid)return S._ks.data;
@@ -1193,7 +1206,7 @@ function tTeams(){
     +'<button class="bp" data-act="ac">+ Ajouter un consultant</button></div>'
     +filtersHtml
     +'<div class="card ov"><table style="min-width:640px">'
-    +'<thead><tr><th>Consultant</th><th>Poste</th><th>SCR/j</th><th>Mission actuelle</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
+    +'<thead><tr><th>'+rLabel('consultant')+'</th><th>Poste</th><th>SCR/j</th><th>Mission actuelle</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
     +'<tbody>'+rows+(inFY.length?'':'<tr><td colspan="6" class="emp">Aucun consultant sur ce FY.</td></tr>')
     +'</tbody></table></div></div>';
 }
@@ -1574,7 +1587,7 @@ function tKPIs(){
     +'<span style="font-size:11px;font-weight:700;background:#e2e8f0;color:#475569;padding:1px 8px;border-radius:99px;margin-right:6px">'+ks.length+' consultants</span>'
     +'<span style="font-size:11px;color:#94a3b8">&#x25be;</span></summary>'
     +'<div style="padding:0 0 4px"><table>'
-    +'<thead><tr><th>Consultant</th>'+sortTh('ca','CA')+sortTh('marge','Marge')+sortTh('tjm','TJM moy.')+sortTh('sr','Staffing')+'</tr></thead>'
+    +'<thead><tr><th>'+rLabel('consultant')+'</th>'+sortTh('ca','CA')+sortTh('marge','Marge')+sortTh('tjm','TJM moy.')+sortTh('sr','Staffing')+'</tr></thead>'
     +'<tbody>'+consKpiRows+(consKpiRows?'':'<tr><td colspan="5" class="emp">Aucune donn\u00e9e sur la p\u00e9riode</td></tr>')
     +'</tbody></table></div></details>';
 
@@ -1853,7 +1866,7 @@ function tKPIsDirSection(){
     +'<span style="font-size:11px;font-weight:700;background:#e2e8f0;color:#475569;padding:1px 8px;border-radius:99px;margin-right:6px">'+dirList.length+' directeurs</span>'
     +'<span style="font-size:11px;color:#94a3b8">&#x25be;</span></summary>'
     +'<div style="'+colDef+';padding:10px 16px;background:#f8fafc;border-top:1px solid #e2e8f0">'
-    +'<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em">Directeur</div>'
+    +'<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em">'+rLabel('directeur')+'</div>'
     +'<div style="text-align:center">'+dSortBtn('ca','CA')+'</div>'
     +'<div style="text-align:center">'+dSortBtn('marge','Marge')+'</div>'
     +'<div style="text-align:center">'+dSortBtn('tjm','TJM moy.')+'</div>'
@@ -1915,7 +1928,7 @@ function tLeaves(){
         +'<td class="tr"><button class="lb" data-act="lvc" data-id="'+c.id+'">\u2192 D\u00e9tail</button></td>'
         +'</tr>';
     }).filter(Boolean).join('');
-    bodyHtml='<table><thead><tr><th>Consultant</th><th class="tc">Cong\u00e9s &amp; RTT</th>'
+    bodyHtml='<table><thead><tr><th>'+rLabel('consultant')+'</th><th class="tc">Cong\u00e9s &amp; RTT</th>'
       +'<th class="tc">Arr\u00eats / Mat.</th><th class="tc">Total '+curLbl()+'</th><th></th></tr></thead>'
       +'<tbody>'+sumRows+(sumRows?'':'<tr><td colspan="5" class="emp">Aucune absence enregistr\u00e9e sur le '+curLbl()+'</td></tr>')
       +'</tbody></table>';
@@ -2003,7 +2016,7 @@ function tSettings(){
     {v:9,lbl:'Septembre'},{v:10,lbl:'Octobre'},{v:11,lbl:'Novembre'},{v:12,lbl:'Décembre'}
   ];
   var roleKeys=['senior_vp','gestionnaire','directeur','consultant','recruteur'];
-  var roleDefaults={'senior_vp':'Sénior Vice Président','gestionnaire':'Vice Président','directeur':'Directeur','consultant':'Consultant','recruteur':'Recruteur'};
+  var roleDefaults=JSON.parse(JSON.stringify(_ROLE_DEFAULTS)); /* utilise les defaults globaux */
   var curOpts=currencies.map(function(cr){return '<option value="'+cr.code+'"'+(st.currency===cr.code?' selected':'')+'>'+cr.lbl+'</option>';}).join('');
   var moOpts=months.map(function(m){return '<option value="'+m.v+'"'+((st.fyStartMonth||10)===m.v?' selected':'')+'>'+m.lbl+'</option>';}).join('');
   var roleFlds=roleKeys.map(function(k){return '<div class="fd"><label class="fl">'+roleDefaults[k]+'</label><input class="ic" id="rol-'+k+'" value="'+esc((st.roleLabels&&st.roleLabels[k])||'')+'\" placeholder="'+roleDefaults[k]+'"></div>';}).join('');
@@ -2072,6 +2085,7 @@ function saveSettings(){
   S.settings.roleLabels=labels;
   /* Sauvegarder en localStorage (cache local) */
   try{localStorage.setItem('esn_settings_'+SB_CID,JSON.stringify(S.settings));}catch(e){}
+  rebuildQuarters(); /* Recalculer T1/T2/T3/T4 si le FY a changé */
   var msg=document.getElementById('set-msg');
   if(msg){msg.style.display='block';msg.style.color='#94a3b8';msg.textContent='Enregistrement...';}
   /* Sauvegarder dans Supabase pour toute l\'entreprise */
@@ -2239,7 +2253,7 @@ function tDirecteurs(){
     +'<p class="fh" style="margin-top:8px">Le directeur finalise son inscription avec cet email et choisit son mot de passe ; il est alors rattaché automatiquement à votre entreprise avec un accès limité à son équipe.</p>'
     +'</div>'
     +'<div class="card ov"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">Comptes directeurs</div>'
-    +'<table><thead><tr><th>Email</th><th>Directeur</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
+    +'<table><thead><tr><th>Email</th><th>'+rLabel('directeur')+'</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
     +'<tbody>'+invRows+((S.invites&&S.invites.length)?'':'<tr><td colspan="4" class="emp">Aucun directeur invité pour le moment.</td></tr>')+'</tbody></table></div>'
     +'<div class="card ov"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">Équipes (d\'après le champ Directeur des consultants)</div>'
     +'<table><thead><tr><th>Directeur</th><th class="tc">Consultants</th></tr></thead>'
@@ -2829,8 +2843,8 @@ function tModal(){
     title=it?'Modifier le consultant':'Nouveau consultant';wide=true;
     var _rl=[];((S._all&&S._all.cons)||S.cons).forEach(function(c){var r=c.dir||'';if(r&&_rl.indexOf(r)<0)_rl.push(r);});_rl.sort();
     var dirFld=(S.role==='directeur')
-      ? '<div class="fd"><label class="fl">Directeur</label><input class="ic" id="mdir" value="'+esc(S.dirName)+'" disabled style="background:#f1f5f9;color:#64748b"><p class="fh">Consultant rattach\u00e9 automatiquement \u00e0 votre \u00e9quipe</p></div>'
-      : '<div class="fd"><label class="fl">Directeur</label><input class="ic" id="mdir" list="esn-dir-list" value="'+esc(it?(it.dir||''):'')+'" placeholder="Nom du directeur"><datalist id="esn-dir-list">'+_rl.map(function(r){return '<option value="'+esc(r)+'">';}).join('')+'</datalist><p class="fh">Directeur unique du consultant (d\u00e9finit l\'\u00e9quipe, filtrable c\u00f4t\u00e9 gestionnaire)</p></div>';
+      ? '<div class="fd"><label class="fl">'+rLabel('directeur')+'</label><input class="ic" id="mdir" value="'+esc(S.dirName)+'" disabled style="background:#f1f5f9;color:#64748b"><p class="fh">Consultant rattach\u00e9 automatiquement \u00e0 votre \u00e9quipe</p></div>'
+      : '<div class="fd"><label class="fl">'+rLabel('directeur')+'</label><input class="ic" id="mdir" list="esn-dir-list" value="'+esc(it?(it.dir||''):'')+'" placeholder="Nom du directeur"><datalist id="esn-dir-list">'+_rl.map(function(r){return '<option value="'+esc(r)+'">';}).join('')+'</datalist><p class="fh">Directeur unique du consultant (d\u00e9finit l\'\u00e9quipe, filtrable c\u00f4t\u00e9 gestionnaire)</p></div>';
     body='<div class="g2">'
       +'<div class="fd"><label class="fl">Nom complet *</label><input class="ic" id="mn" value="'+esc(it?it.name:'')+'" placeholder="Pr\u00e9nom Nom"></div>'
       +'<div class="fd"><label class="fl">Poste *</label><input class="ic" id="mti" value="'+esc(it?it.title:'')+'" placeholder="ex\u00a0: Consultant Senior"></div>'
@@ -4857,7 +4871,7 @@ function mCalHTML(){
 
 function tProfile(){
   var userEmail=S._userEmail||'';
-  var roleLabels={directeur:'Directeur',gestionnaire:'Vice Président',senior_vp:'Sénior Vice Président',consultant:'Consultant',recruteur:'Recruteur'};
+  var roleLabels={directeur:rLabel('directeur'),gestionnaire:rLabel('gestionnaire'),senior_vp:rLabel('senior_vp'),consultant:rLabel('consultant'),recruteur:rLabel('recruteur')};
   var userRole=roleLabels[S.role]||S.role;
   var fn=S.profileFirstName||'';
   var ln=S.profileLastName||'';
