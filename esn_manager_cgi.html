@@ -219,12 +219,12 @@ function fyHols(fy){
 }
 function currentFY(){
   var d=new Date();
-  var cm=d.getMonth()+1; /* mois courant 1-12 */
+  var cm=d.getMonth()+1;
   var fm=((S&&S.settings&&S.settings.fyStartMonth)||10);
-  if(fm===1)return d.getFullYear(); /* FY = année calendaire */
+  if(fm===1)return d.getFullYear();
   return cm>=fm?d.getFullYear()+1:d.getFullYear();
 }
-var CFY=currentFY();
+var CFY=currentFY(); /* recalculé après chargement des settings dans loadSB */
 var TODAY=(function(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}());
 function fyLbl(fy){return 'FY'+String(fy).slice(2);}
 function fyRange(fy){return 'oct. '+(fy-1)+' \u2192 sept. '+fy;}
@@ -2943,7 +2943,7 @@ function render(){
   S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
   var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;
   document.getElementById('sb').innerHTML=tSB();
-  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDir():S.tab==='svp_acces'?tSVPAcces():S.tab==='svp_settings'?tSettings():tParam();
+  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDirSection():S.tab==='svp_acces'?tSVPAcces():S.tab==='svp_settings'?tSettings():tParam();
   var _ini=function(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();};
   var _av=S._userEmail?_ini(S._userEmail.split('@')[0].replace(/[._]/g,' ')):'?';
   var _pfBtn='<div id="prof-btn" style="position:absolute;top:12px;right:14px;z-index:50">'
@@ -3679,6 +3679,9 @@ async function loadSB(){
         localStorage.setItem('esn_settings_'+SB_CID,JSON.stringify(S.settings));
       }
     }catch(e){/* table pas encore créée : utiliser les defaults */}
+    /* Recalculer CFY avec le bon mois de départ */
+    CFY=currentFY();
+    H=fyHols(S.year=S.year||CFY); /* réinitialiser les jours fériés avec le bon FY */
     /* un directeur ne charge que les consultants de son équipe (puis leurs missions/absences) */
     var cq=sb.from('consultants').select('*').eq('company_id',SB_CID).order('name');
     if(S.role==='directeur')cq=cq.eq('directeur',S.dirName);
