@@ -511,11 +511,10 @@ function applyRecStatuses(){
     REC_STATUS=_DEFAULT_REC_STATUS.slice();
   }
 }
-/* Label avec personnalisation Sénior VP */
-function recStLbD(id){
-  var custom=S.settings&&S.settings.recStatusLabels&&S.settings.recStatusLabels[id];
-  return custom||recStLb(id);
-}
+/* Label d'un statut — lit dans REC_STATUS courant (peut être custom) */
+function recStLb(id){var s=REC_STATUS.find(function(x){return x.id===id;});return s?s.lb:id;}
+/* Label avec renommage custom (retro-compat) — délègue à recStLb */
+function recStLbD(id){return recStLb(id);}
 function recStCol(id){var s=REC_STATUS.find(function(x){return x.id===id;});return s?[s.bg,s.fg]:['#f1f5f9','#475569'];}
 function recScr(sal){return sal>0?sal/SCR_FACTOR:0;}
 function recTjm(sal,mar){var scr=recScr(sal);return scr>0?scr/(1-(mar||25)/100):0;}
