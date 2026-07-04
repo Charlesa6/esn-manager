@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Konsilys - CGI Business Conseil</title>
+<title>Konsilys</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -199,8 +199,17 @@ var HOLS_N=['Jour de l\u2019An','Lundi de P\u00e2ques','F\u00eate du Travail','V
    FISCAL YEAR  (1 oct \u2192 30 sept)
    FY26 = 1 oct 2025 \u2192 30 sept 2026
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
-function fyStart(fy){return (fy-1)+'-10-01';}
-function fyEnd(fy){return fy+'-09-30';}
+function fyStart(fy){
+  var m=((S&&S.settings&&S.settings.fyStartMonth)||10);
+  var ms=String(m).padStart(2,'0');
+  return (m<=9?fy-1:fy-1)+'-'+ms+'-01';
+}
+function fyEnd(fy){
+  var m=((S&&S.settings&&S.settings.fyStartMonth)||10);
+  var em=m===1?12:m-1;var ems=String(em).padStart(2,'0');
+  var lastDay=new Date(m===1?fy:fy,em,0).getDate();
+  return (m<=9?fy:fy)+'-'+ems+'-'+lastDay;
+}
 function fyHols(fy){
   var h1=frHols(fy-1),h2=frHols(fy),c=new Set();
   h1.forEach(function(d){c.add(d);});
@@ -245,7 +254,11 @@ function curLbl(){return fyLbl(S.year)+(S.quarter?' \u00b7 '+curRangeLbl():'');}
 /* Mois fiscaux dans l'ordre Oct\u2192Sept, et bornes ISO d'un mois donn\u00e9 dans un FY */
 function monthLbl(month){return MOIS_ABR[month];}
 /* Liste des mois \u00e0 afficher selon la s\u00e9lection courante (ann\u00e9e enti\u00e8re ou trimestre) */
-function fEur(n){return new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n);}
+function fEur(n){
+  var cur=(S&&S.settings&&S.settings.currency)||'EUR';
+  try{return new Intl.NumberFormat('fr-FR',{style:'currency',currency:cur,maximumFractionDigits:0}).format(n);}
+  catch(e){return n.toFixed(0)+' '+((S&&S.settings&&S.settings.currencySymbol)||'€');}
+}
 function fDt(s){return s?pD(s).toLocaleDateString('fr-FR'):'Sans \u00e9ch\u00e9ance';}
 function uid(){return Math.random().toString(36).slice(2,9);}
 function fromT(n){var d=new Date();d.setDate(d.getDate()+n);return fD(d);}
@@ -315,10 +328,10 @@ function kpi(c,miss,lvs,y,H,rangeOverride){
       var deal=+m.deal||0;
       var totD=m.ed?missWD(m,m.sd,m.ed,lvs):0;          /* jours travaill\u00e9s sur toute la mission */
       r=(m.ed&&totD>0)?deal*(d/totD):(m.ed?0:deal);     /* CA au prorata des jours ; sans date de fin \u2192 deal entier */
-      mar=r>0?(r-d*c.scr*EMPLOYER_FACTOR)/r*100:0;
+      mar=r>0?(r-d*c.scr*(c.contract==='freelance'?1:EMPLOYER_FACTOR))/r*100:0;
     }else{
       r=d*m.tjm;
-      mar=m.tjm>0?(m.tjm-c.scr*EMPLOYER_FACTOR)/m.tjm*100:0;
+      mar=m.tjm>0?(m.tjm-c.scr*(c.contract==='freelance'?1:EMPLOYER_FACTOR))/m.tjm*100:0;
     }
     bill+=d;rev+=r;
     return Object.assign({},m,{days:d,rev:r,mar:mar});
@@ -403,7 +416,7 @@ var S={
   consInvites:[], /* codes d'accès générés pour les consultants */
   adminCode:null, /* dernier code généré (affiché dans Admin) */
   year:CFY,quarter:null,modal:null,fmc:'all',fms:'all',fmt:'all',flc:'all',precs:{},
-  role:'gestionnaire',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,kpiDirOpen:{},invites:[],svpInvites:[],recruteurInvites:[],vpDirMap:{},vpName:'',profileFirstName:'',profileLastName:'',profileTitle:'',fvp:[],kpiVPOpen:{},kpiDirDirOpen:{},actCid:'',actMonth:'',_all:null,
+  role:'gestionnaire',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,kpiDirOpen:{},invites:[],svpInvites:[],recruteurInvites:[],vpDirMap:{},vpName:'',profileFirstName:'',profileLastName:'',profileTitle:'',fvp:[],settings:{currency:'EUR',currencySymbol:'€',fyStartMonth:10,fyStartDay:1,roleLabels:{}},kpiVPOpen:{},kpiDirDirOpen:{},actCid:'',actMonth:'',_all:null,
   sbSt:'\uD83D\uDFE2 Sauvegarde locale active',
   sbSync:false,
   imp:null,
@@ -468,6 +481,11 @@ var REC_STATUS=[
   {id:'recrute',   lb:'Recrut\u00e9(e) \u2713',         bg:'#d1fae5',fg:'#065f46'}
 ];
 function recStLb(id){var s=REC_STATUS.find(function(x){return x.id===id;});return s?s.lb:id;}
+/* Label avec personnalisation Sénior VP */
+function recStLbD(id){
+  var custom=S.settings&&S.settings.recStatusLabels&&S.settings.recStatusLabels[id];
+  return custom||recStLb(id);
+}
 function recStCol(id){var s=REC_STATUS.find(function(x){return x.id===id;});return s?[s.bg,s.fg]:['#f1f5f9','#475569'];}
 function recScr(sal){return sal>0?sal/SCR_FACTOR:0;}
 function recTjm(sal,mar){var scr=recScr(sal);return scr>0?scr/(1-(mar||25)/100):0;}
@@ -701,6 +719,7 @@ function tSB(){
     if(S.role==='gestionnaire')NAV.push({id:'directeurs',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
     if(S.role==='directeur')NAV.push({id:'admin',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
     if(S.role==='senior_vp')NAV.push({id:'svp_acces',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
+    if(S.role==='senior_vp')NAV.push({id:'svp_settings',ic:'⚙️',lb:'Param\u00e8tres'});
     NAV.splice(4,0,{id:'activite',ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'});
   }
   var alC=S.role==='directeur'?(S.approvals||[]).filter(function(r){return r.status==='pending'&&r.dirName===S.dirName;}).length:0;
@@ -751,7 +770,7 @@ function tSB(){
         :'<div style="font-size:11px;color:#475569">Aucun directeur défini</div>')
       +'</div>';
   }
-  return '<div class="sbl" style="display:flex;align-items:flex-start;justify-content:space-between"><div style="display:flex;align-items:center;gap:10px">'+'<div style="display:flex;align-items:flex-end;gap:3px;height:28px">'+'<div style="width:5px;border-radius:2px;height:45%;background:#f8fafc"></div>'+'<div style="width:5px;border-radius:2px;height:68%;background:#f8fafc"></div>'+'<div style="width:5px;border-radius:2px;height:100%;background:#84CC16"></div>'+'</div>'+'<div><div class="sbn" style="font-family:\'Nunito\',sans-serif;letter-spacing:-0.3px">Konsilys</div><div class="sbs">CGI Business Conseil</div></div></div>'
+  return '<div class="sbl" style="display:flex;align-items:flex-start;justify-content:space-between"><div style="display:flex;align-items:center;gap:10px">'+'<div style="display:flex;align-items:flex-end;gap:3px;height:28px">'+'<div style="width:5px;border-radius:2px;height:45%;background:#f8fafc"></div>'+'<div style="width:5px;border-radius:2px;height:68%;background:#f8fafc"></div>'+'<div style="width:5px;border-radius:2px;height:100%;background:#84CC16"></div>'+'</div>'+'<div><div class="sbn" style="font-family:\'Nunito\',sans-serif;letter-spacing:-0.3px">Konsilys</div></div></div>'
     +'<button onclick="toggleSB()" style="background:none;border:none;color:#475569;cursor:pointer;font-size:16px;padding:2px 0 0;line-height:1;flex-shrink:0" aria-label="R\u00e9duire">&#8592;</button></div>'
     +'<div class="syr"><div class="syr-lbl">Exercice fiscal</div><select id="yrs">'+fyOpts+'</select>'
     +'<div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap">'
@@ -1116,7 +1135,7 @@ function tTeams(){
         ?'<span style="font-size:10px;background:#bbf7d0;color:#15803d;padding:2px 8px;border-radius:4px;margin-left:6px;font-weight:700">\uD83D\uDCC5 Arrive le '+fDt(c.arrive)+'</span>'
         :'';
     return '<tr style="'+rs+'"><td><div style="display:flex;align-items:center;gap:10px">'+av(c.name,32)
-      +'<div><div style="font-weight:600;font-size:13px;'+ns+'">'+esc(c.name)+tag+'</div>'
+      +'<div><div style="font-weight:600;font-size:13px;'+ns+'">'+esc(c.name)+tag+(c.contract==='freelance'?'<span style="font-size:10px;font-weight:800;background:#ede9fe;color:#7c3aed;padding:1px 6px;border-radius:99px">Freelance</span>':'')+'</div>'
       +'<div style="font-size:11px;color:#94a3b8">'+esc(c.email)+'</div></div></div></td>'
       +'<td>'+esc(c.title)+'</td>'
       +'<td style="font-weight:700;'+(gone?'color:#cbd5e1':'')+'">'+fEur(c.scr)+'</td>'
@@ -1371,7 +1390,7 @@ function tKPIs(){
      SCR × 113.35 = salaire brut employé · × 1.25 = coût réel employeur · proratisé sur la période */
   var fyTotalWD=wDays(fyStart(S.year),fyEnd(S.year),H);
   var totSalary=fyTotalWD>0
-    ?ks.reduce(function(s,x){return s+x.c.scr*SCR_FACTOR*EMPLOYER_FACTOR*(x.k.tWD/fyTotalWD);},0)
+    ?ks.reduce(function(s,x){return s+(x.c.contract==='freelance'?x.c.scr*x.k.bill:x.c.scr*SCR_FACTOR*EMPLOYER_FACTOR*(x.k.tWD/fyTotalWD));},0)
     :0;
   var netC=totR-totSalary;
   var top3=clientRev(ks).slice(0,3);
@@ -1930,6 +1949,114 @@ function tLeaves(){
 /* ══════════════════════════════════════════════════════════════
    TEMPLATE - SVP ACCÈS (Sénior VP : invite VP + Recruteurs)
 ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   TEMPLATE - PARAMÈTRES (Sénior VP uniquement)
+══════════════════════════════════════════════════════════════ */
+function tSettings(){
+  if(S.role!=='senior_vp')return '<div class="emp">Accès réservé au Sénior VP.</div>';
+  var st=S.settings||{};
+  var currencies=[
+    {code:'EUR',sym:'\u20ac',lbl:'Euro (€)'},
+    {code:'USD',sym:'$',lbl:'Dollar US ($)'},
+    {code:'GBP',sym:'£',lbl:'Livre sterling (£)'},
+    {code:'CHF',sym:'CHF',lbl:'Franc suisse (CHF)'},
+    {code:'CAD',sym:'CA$',lbl:'Dollar canadien (CA$)'},
+    {code:'MAD',sym:'DH',lbl:'Dirham marocain (DH)'},
+  ];
+  var months=[
+    {v:1,lbl:'Janvier'},{v:2,lbl:'Février'},{v:3,lbl:'Mars'},{v:4,lbl:'Avril'},
+    {v:5,lbl:'Mai'},{v:6,lbl:'Juin'},{v:7,lbl:'Juillet'},{v:8,lbl:'Août'},
+    {v:9,lbl:'Septembre'},{v:10,lbl:'Octobre'},{v:11,lbl:'Novembre'},{v:12,lbl:'Décembre'}
+  ];
+  var roleKeys=['senior_vp','gestionnaire','directeur','consultant','recruteur'];
+  var roleDefaults={'senior_vp':'Sénior Vice Président','gestionnaire':'Vice Président','directeur':'Directeur','consultant':'Consultant','recruteur':'Recruteur'};
+  var curOpts=currencies.map(function(cr){return '<option value="'+cr.code+'"'+(st.currency===cr.code?' selected':'')+'>'+cr.lbl+'</option>';}).join('');
+  var moOpts=months.map(function(m){return '<option value="'+m.v+'"'+((st.fyStartMonth||10)===m.v?' selected':'')+'>'+m.lbl+'</option>';}).join('');
+  var roleFlds=roleKeys.map(function(k){return '<div class="fd"><label class="fl">'+roleDefaults[k]+'</label><input class="ic" id="rol-'+k+'" value="'+esc((st.roleLabels&&st.roleLabels[k])||'')+'\" placeholder="'+roleDefaults[k]+'"></div>';}).join('');
+
+  return '<div class="vw">'
+    +'<div style="margin-bottom:20px"><div class="pt">Param\u00e8tres Konsilys</div>'
+    +'<div class="ps">Configurez les pr\u00e9f\u00e9rences de votre organisation</div></div>'
+
+    /* ── Devise ── */
+    +'<div class="card" style="padding:24px;margin-bottom:16px">'
+    +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">💱 Devise</h3>'
+    +'<div class="fd"><label class="fl">Devise affich\u00e9e</label>'
+    +'<select class="ic" id="set-currency">'+curOpts+'</select>'
+    +'<p class="fh">S\'applique \u00e0 tous les montants CA, TJM, SCR de l\'application</p></div>'
+    +'</div>'
+
+    /* ── Exercice fiscal ── */
+    +'<div class="card" style="padding:24px;margin-bottom:16px">'
+    +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">📅 Exercice fiscal</h3>'
+    +'<div class="fd"><label class="fl">Mois de d\u00e9but du FY</label>'
+    +'<select class="ic" id="set-fystart">'+moOpts+'</select>'
+    +'<p class="fh">Ex : Octobre = FY commençant en oct. (FY2026 = oct.2025 → sept.2026)</p></div>'
+    +'<div id="fy-preview" style="margin-top:10px;font-size:13px;color:#64748b;font-style:italic"></div>'
+    +'</div>'
+
+    /* ── Noms des rôles ── */
+    +'<div class="card" style="padding:24px;margin-bottom:16px">'
+    +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">🏷️ Noms des r\u00f4les</h3>'
+    +'<p style="font-size:12px;color:#94a3b8;margin-bottom:16px">Personnalisez les labels affich\u00e9s. Laisser vide pour garder les noms par d\u00e9faut.</p>'
+    +'<div class="g2">'+roleFlds+'</div>'
+    +'</div>'
+
+    /* ── Labels statuts recrutement ── */
+    +'<div class="card" style="padding:24px;margin-bottom:16px">'
+    +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:6px">🎓 Statuts du pipeline recrutement</h3>'
+    +'<p style="font-size:12px;color:#94a3b8;margin-bottom:16px">Renommez les statuts. Laisser vide pour garder le nom par défaut.</p>'
+    +'<div class="g2">'
+    +REC_STATUS.map(function(s){
+      var custom=(st.recStatusLabels&&st.recStatusLabels[s.id])||'';
+      return '<div class="fd"><label class="fl" style="display:flex;align-items:center;gap:6px">'
+        +'<span style="padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;background:'+s.bg+';color:'+s.fg+'">'+esc(s.lb)+'</span>'
+        +'</label><input class="ic" id="rec-st-'+s.id+'" value="'+esc(custom)+'" placeholder="'+esc(s.lb)+'"></div>';
+    }).join('')
+    +'</div></div>'
+
+    /* ── Bouton sauvegarder ── */
+    +'<button class="bp" onclick="saveSettings()" style="min-width:180px">💾 Enregistrer les param\u00e8tres</button>'
+    +'<div id="set-msg" style="font-size:13px;margin-top:12px;display:none"></div>'
+    +'</div>';
+}
+
+function saveSettings(){
+  var cur=document.getElementById('set-currency');
+  var fym=document.getElementById('set-fystart');
+  var currencies={EUR:'\u20ac',USD:'$',GBP:'\u00a3',CHF:'CHF',CAD:'CA$',MAD:'DH'};
+  var roleKeys=['senior_vp','gestionnaire','directeur','consultant','recruteur'];
+  var labels={};
+  roleKeys.forEach(function(k){var el=document.getElementById('rol-'+k);if(el&&el.value.trim())labels[k]=el.value.trim();});
+  /* Labels statuts recrutement */
+  var recLbls={};
+  REC_STATUS.forEach(function(s){var el=document.getElementById('rec-st-'+s.id);if(el&&el.value.trim())recLbls[s.id]=el.value.trim();});
+  S.settings.recStatusLabels=recLbls;
+  S.settings.currency=cur?cur.value:'EUR';
+  S.settings.currencySymbol=currencies[S.settings.currency]||S.settings.currency;
+  S.settings.fyStartMonth=fym?parseInt(fym.value):10;
+  S.settings.roleLabels=labels;
+  /* Sauvegarder en localStorage (cache local) */
+  try{localStorage.setItem('esn_settings_'+SB_CID,JSON.stringify(S.settings));}catch(e){}
+  var msg=document.getElementById('set-msg');
+  if(msg){msg.style.display='block';msg.style.color='#94a3b8';msg.textContent='Enregistrement...';}
+  /* Sauvegarder dans Supabase pour toute l\'entreprise */
+  if(sb&&SB_CID){
+    sb.from('company_settings').upsert({
+      company_id:SB_CID,
+      settings:S.settings,
+      updated_at:new Date().toISOString()
+    },{onConflict:'company_id'}).then(function(r){
+      if(msg){
+        if(r.error){msg.style.color='#ef4444';msg.textContent='\u26a0 Erreur Supabase : '+r.error.message+' (sauvegard\u00e9 localement)';}
+        else{msg.style.color='#16a34a';msg.textContent='\u2713 Param\u00e8tres enregistr\u00e9s pour toute l\'entreprise. Rechargez la page.';}
+      }
+    });
+  }else{
+    if(msg){msg.style.color='#16a34a';msg.textContent='\u2713 Enregistr\u00e9 localement (Supabase non connect\u00e9).';}
+  }
+}
+
 function tSVPAcces(){
   if(S.role!=='senior_vp')return '<div class="emp">Accès réservé au Sénior VP.</div>';
   var sbOn=!!(sb&&SB_CID);
@@ -1972,7 +2099,7 @@ function tParam(){
   var avgSr=_aktWD>0?ks.reduce(function(s,x){return s+x.k.sr*(x.k.tWD||0);},0)/_aktWD:0;
   var avgTJMv=totBill>0?totR/totBill:0;
   var _fyTWD=wDays(fyStart(S.year),fyEnd(S.year),H);
-  var netC=totR-(_fyTWD>0?ks.reduce(function(s,x){return s+x.c.scr*SCR_FACTOR*EMPLOYER_FACTOR*(x.k.tWD/_fyTWD);},0):0);
+  var netC=totR-(_fyTWD>0?ks.reduce(function(s,x){return s+(x.c.contract==='freelance'?x.c.scr*x.k.bill:x.c.scr*SCR_FACTOR*EMPLOYER_FACTOR*(x.k.tWD/_fyTWD));},0):0);
 
   var context='<div class="card" style="padding:20px;margin-bottom:20px">'
     +'<div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:14px">\uD83D\uDCCC Situation actuelle - '+fyLbl(S.year)+'</div>'
@@ -2251,7 +2378,7 @@ function recListBody(){
     +recPill('all','Tous')
     +recList.map(function(r){return recPill(r.recruteur_name||r.email,r.recruteur_name||r.email);}).join('')):'';
   var pills='<div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:0 0 4px">Statut</div>'
-    +pill('all','Tous',S.cands.length)+REC_STATUS.map(function(s){return pill(s.id,s.lb,counts[s.id]);}).join('');
+    +pill('all','Tous',S.cands.length)+REC_STATUS.map(function(s){return pill(s.id,recStLbD(s.id),counts[s.id]);}).join('');
 
   var locCounts={};REC_LOCATIONS.forEach(function(l){locCounts[l]=0;});
   S.cands.forEach(function(c){(c.locations||[]).forEach(function(l){if(locCounts[l]!=null)locCounts[l]++;});});
@@ -2281,7 +2408,7 @@ function recListBody(){
       +'<td class="tr">'+(c.reqSalary?c.reqSalary.toLocaleString('fr-FR')+' €':'—')+'</td>'
       +'<td class="tr">'+(scr?scr.toFixed(0)+' €/j':'—')+'</td>'
       +'<td class="tr" style="font-weight:700;color:#2563eb">'+(tjm?tjm.toFixed(0)+' €/j':'—')+'</td>'
-      +'<td><span style="padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;background:'+col[0]+';color:'+col[1]+'">'+esc(recStLb(c.status))+'</span></td>'
+      +'<td><span style="padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;background:'+col[0]+';color:'+col[1]+'">'+esc(recStLbD(c.status))+'</span></td>'
       +'<td style="font-size:11px;color:#94a3b8">'+esc(c.createdBy?c.createdBy.split('@')[0]:'—')+'</td>'
       +'</tr>';
   }).join('');
@@ -2427,7 +2554,7 @@ function tCandDetail(c){
   return '<div>'
     +'<button class="lb" data-act="recback" style="margin-bottom:14px">\u2190 Retour au pipeline</button>'
     +'<div class="ph"><div><div class="pt">'+esc(c.name)+'</div>'
-    +'<div class="ps"><span style="padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;background:'+col[0]+';color:'+col[1]+'">'+esc(recStLb(c.status))+'</span>'
+    +'<div class="ps"><span style="padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;background:'+col[0]+';color:'+col[1]+'">'+esc(recStLbD(c.status))+'</span>'
     +(c.createdBy?' · Ajouté par '+esc(c.createdBy.split('@')[0]):'')+'</div></div>'
     +'<div style="display:flex;gap:8px"><button class="bg" data-act="erec" data-id="'+c.id+'">Modifier</button>'
     +'<button class="bg" style="color:#dc2626;border-color:#fca5a5" data-act="drec" data-id="'+c.id+'">Supprimer</button></div></div>'
@@ -2597,7 +2724,7 @@ function tModal(){
 
   if(tp==='candidate'){
     title=it?'Modifier le candidat':'Nouveau candidat';wide=true;
-    var stOpts=REC_STATUS.map(function(s){return '<option value="'+s.id+'"'+(it&&it.status===s.id?' selected':'')+'>'+esc(s.lb)+'</option>';}).join('');
+    var stOpts=REC_STATUS.map(function(s){return '<option value="'+s.id+'"'+(it&&it.status===s.id?' selected':'')+'>'+esc(recStLbD(s.id))+'</option>';}).join('');
     var mar0=(it&&it.marginPct!=null)?it.marginPct:25;
     var sal0=it?(it.reqSalary||0):0;
     var scr0=recScr(sal0),tjm0=recTjm(sal0,mar0);
@@ -2674,6 +2801,10 @@ function tModal(){
       +'<div class="fd"><label class="fl">Nom complet *</label><input class="ic" id="mn" value="'+esc(it?it.name:'')+'" placeholder="Pr\u00e9nom Nom"></div>'
       +'<div class="fd"><label class="fl">Poste *</label><input class="ic" id="mti" value="'+esc(it?it.title:'')+'" placeholder="ex\u00a0: Consultant Senior"></div>'
       +'<div class="fd"><label class="fl">SCR journalier (\u20ac) *</label><input class="ic" id="ms" type="number" min="0" value="'+esc(it?String(it.scr):'')+'" placeholder="450"><p class="fh">Salary Cost Revenue - co\u00fbt journalier</p></div>'
+      +'<div class="fd"><label class="fl">Type de contrat</label><select class="ic" id="mcontract">'
+      +'<option value="salarie"'+(it&&it.contract==='salarie'?' selected':(!it?' selected':''))+'>\uD83D\uDC54 Salari\u00e9</option>'
+      +'<option value="freelance"'+(it&&it.contract==='freelance'?' selected':'')+'>\uD83D\uDD17 Freelance</option>'
+      +'</select><p class="fh">Salari\u00e9 : co\u00fbt = SCR \u00d7 113.35 \u00d7 1.25 \u00b7 Freelance : co\u00fbt = SCR \u00d7 jours</p></div>'
       +'<div class="fd"><label class="fl">Email</label><input class="ic" id="me" type="email" value="'+esc(it?it.email:'')+'" placeholder="prenom.nom@exemple.com"></div>'
       +'<div class="fd"><label class="fl">Date d\'arriv\u00e9e</label><input class="ic" id="marr" type="date" value="'+esc(it&&it.arrive?it.arrive:'')+'"><p class="fh">Laissez vide si pr\u00e9sent depuis le d\u00e9but du FY</p></div>'
       +'<div class="fd"><label class="fl">Date de d\u00e9part</label><input class="ic" id="mdep" type="date" value="'+esc(it&&it.depart?it.depart:'')+'"><p class="fh">Laissez vide si toujours en poste</p></div>'
@@ -2805,7 +2936,7 @@ function render(){
   S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
   var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;
   document.getElementById('sb').innerHTML=tSB();
-  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDir():S.tab==='svp_acces'?tSVPAcces():tParam();
+  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDir():S.tab==='svp_acces'?tSVPAcces():S.tab==='svp_settings'?tSettings():tParam();
   var _ini=function(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();};
   var _av=S._userEmail?_ini(S._userEmail.split('@')[0].replace(/[._]/g,' ')):'?';
   var _pfBtn='<div id="prof-btn" style="position:absolute;top:12px;right:14px;z-index:50">'
@@ -3011,11 +3142,12 @@ function bind(){
         var rdir=(S.role==='directeur')?S.dirName:gv('mdir');
         var expArr=(S.modal.expSel||[]).slice();
         var secArr=(S.modal.secSel||[]).slice();
+        var ctrct=gv('mcontract')||'salarie';
         if(!n||!t||!s){alert('Veuillez remplir les champs obligatoires (*).');return;}
         var it=S.modal.item;
         var nc;
-        if(it){S.cons=S.cons.map(function(c){if(c.id===it.id){nc=Object.assign({},c,{name:n,title:t,scr:s,email:em,dir:rdir,arrive:arr,depart:dep,expertise:expArr,sectors:secArr});return nc;}return c;});}
-        else{nc={id:uid(),name:n,title:t,scr:s,email:em,dir:rdir,arrive:arr,depart:dep,expertise:expArr,sectors:secArr};S.cons=S.cons.concat([nc]);}
+        if(it){S.cons=S.cons.map(function(c){if(c.id===it.id){nc=Object.assign({},c,{name:n,title:t,scr:s,email:em,dir:rdir,arrive:arr,depart:dep,expertise:expArr,sectors:secArr,contract:ctrct});return nc;}return c;});}
+        else{nc={id:uid(),name:n,title:t,scr:s,email:em,dir:rdir,arrive:arr,depart:dep,expertise:expArr,sectors:secArr,contract:ctrct};S.cons=S.cons.concat([nc]);}
         sbUpsertCons(nc);
         S.modal=null;render();
       }
@@ -3508,7 +3640,7 @@ function importJSON(file){
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    SUPABASE - helpers (synchronisation non-bloquante)
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
-function mapC(r){return{id:r.id,name:r.name,title:r.title||'',scr:r.scr||0,email:r.email||'',dir:r.directeur||'',arrive:r.arrive||null,depart:r.depart||null,expertise:r.expertise||[],sectors:r.sectors||[]};}
+function mapC(r){return{id:r.id,name:r.name,title:r.title||'',scr:r.scr||0,email:r.email||'',dir:r.directeur||'',arrive:r.arrive||null,depart:r.depart||null,expertise:r.expertise||[],sectors:r.sectors||[],contract:r.contract||'salarie'};}
 function mapM(r){return{id:r.id,cid:r.consultant_id,name:r.name,cli:r.client_name||'',tjm:r.tjm||0,sd:r.start_date,ed:r.end_date||null,loc:r.location||'',mgr:r.manager_name||'',ccn:r.client_contact_name||'',ccr:r.client_contact_role||'',pcode:r.code_projet||'',btype:r.billing_type||'at',wdays:(Array.isArray(r.work_days)?r.work_days:(r.work_days?String(r.work_days).split(',').map(Number):[1,2,3,4,5])),deal:r.deal_amount||0,tmar:(r.target_margin!=null?r.target_margin:null)};}
 function mapL(r){return{id:r.id,cid:r.consultant_id,type:r.type||'Congé payé',s:r.start_date,e:r.end_date};}
 function mapCand(r){return{
@@ -3528,6 +3660,18 @@ function mapCand(r){return{
 async function loadSB(){
   if(!sb||!SB_CID)return false;
   try{
+    /* ── Charger les paramètres de l'entreprise (pour tous les rôles) ── */
+    try{
+      /* Cache localStorage d'abord pour un affichage immédiat */
+      var _lsv=localStorage.getItem('esn_settings_'+SB_CID);
+      if(_lsv)S.settings=Object.assign(S.settings,JSON.parse(_lsv));
+      /* Puis Supabase pour avoir la version partagée à jour */
+      var csr=await sb.from('company_settings').select('settings').eq('company_id',SB_CID).single();
+      if(csr.data&&csr.data.settings){
+        S.settings=Object.assign(S.settings,csr.data.settings);
+        localStorage.setItem('esn_settings_'+SB_CID,JSON.stringify(S.settings));
+      }
+    }catch(e){/* table pas encore créée : utiliser les defaults */}
     /* un directeur ne charge que les consultants de son équipe (puis leurs missions/absences) */
     var cq=sb.from('consultants').select('*').eq('company_id',SB_CID).order('name');
     if(S.role==='directeur')cq=cq.eq('directeur',S.dirName);
