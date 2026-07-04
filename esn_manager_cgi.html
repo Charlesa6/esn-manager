@@ -2257,6 +2257,17 @@ function tSVPAcces(){
 ══════════════════════════════════════════════════════════════════ */
 
 /* ── Constantes CRM ── */
+
+/* Taux de staffing → jours travaillés sur la mission */
+var STAFFING_WDAYS={
+  20:[1,2],       /* lundi+mardi */
+  40:[1,2,3],     /* lun+mar+mer */
+  60:[1,2,3,4],   /* lun+mar+mer+jeu */
+  80:[1,2,3,4,5], /* lun to ven */
+  100:[1,2,3,4,5] /* fully staffed */
+};
+var STAFFING_OPTIONS=[20,40,60,80,100];
+
 var OPP_STATUS=[
   {id:'identification',lb:'Identification', bg:'#f0f9ff',fg:'#0369a1'},
   {id:'qualification',  lb:'Qualification',  bg:'#fef3c7',fg:'#92400e'},
@@ -2374,7 +2385,8 @@ async function sbUpsertOpp(o){
     notes:o.notes||null,
     owner_email:o.owner_email||null,owner_name:o.owner_name||null,
     owner_role:o.owner_role||null,owner_dir:o.owner_dir||null,owner_vp:o.owner_vp||null,
-    linked_mission_id:o.linked_mission_id||null
+    linked_mission_id:o.linked_mission_id||null,
+    opp_team:o.opp_team||null
   };
   return sb.from('crm_opportunities').upsert(payload,{onConflict:'id'});
 }
@@ -2438,7 +2450,7 @@ function bizSaveOpp(){
     date_closing:gv('biz-opp-closing')||null,
     assigned_to:gv('biz-opp-assign'),
     motif_perte:gv('biz-opp-motif')||null,
-    consultant_ids:(S.bizModal&&S.bizModal.consPickerSel)||it.consultant_ids||[],
+    consultant_ids:(function(){var bt=S.bizModal&&S.bizModal.btype||'at';if(bt==='forfait'){return (S.bizModal.oppTeam||[]).filter(function(t){return t.cid;}).map(function(t){return t.cid;});}return (S.bizModal&&S.bizModal.consPickerSel)||it.consultant_ids||[];})(),opp_team:(S.bizModal&&S.bizModal.btype==='forfait'?S.bizModal.oppTeam||[]:null),
     notes:gv('biz-opp-notes'),
     owner_email:it?(it.owner_email||S._userEmail||''):S._userEmail||'',
     owner_name:it?(it.owner_name||S.profileFirstName||''):S.profileFirstName||'',
@@ -2490,38 +2502,63 @@ function bizDelItem(table,id,arr){
 /* Opportunité gagnée → créer mission */
 function bizOppToMission(oppId){
   var o=S.bizOpps.find(function(x){return x.id===oppId;});
-  if(!o)return;
+  if(!o){alert('Opportunité non trouvée.');return;}
   var acc=S.bizAccounts.find(function(x){return x.id===o.account_id;})||{};
   var isFor=o.btype==='forfait';
-  var consIds=o.consultant_ids||[];
   var missions=[];
-  if(isFor&&consIds.length>1){
-    /* Forfait multi-consultants : une mission par consultant */
-    consIds.forEach(function(cid){
-      var cons=S.cons.find(function(x){return x.id===cid;})||{};
-      var m={id:uid2(),name:o.name+(acc.name?' — '+acc.name:''),btype:'forfait',
-        cid:cid,cli:acc.name||'',tjm:0,deal:(o.deal_amount||0)/consIds.length,
-        sd:o.date_start||new Date().toISOString().slice(0,10),ed:null,
-        notes:o.notes||'',biz_opp_id:o.id};
-      missions.push(m);
+  var mName=o.name+(acc.name?'\u00a0\u2014 '+acc.name:'');
+  var sd=o.date_start||new Date().toISOString().slice(0,10);
+
+  if(isFor){
+    /* Forfait : utiliser opp_team si disponible */
+    var team=o.opp_team&&o.opp_team.length?o.opp_team
+      :(o.consultant_ids||[]).map(function(cid){
+        return {cid:cid,taux:Math.round(100/Math.max((o.consultant_ids||[]).length,1)),staffing:20,tmar:25};
+      });
+    team.filter(function(t){return t.cid;}).forEach(function(tm){
+      var cons=S.cons.find(function(x){return x.id===tm.cid;})||{scr:0,name:'?'};
+      var totalTaux=team.reduce(function(s,t){return s+(t.taux||0);},0)||100;
+      var dealPortion=(o.deal_amount||0)*(tm.taux||100)/totalTaux;
+      var tmar=tm.tmar!=null?tm.tmar:25;
+      var wdays=(STAFFING_WDAYS&&STAFFING_WDAYS[tm.staffing||20])||[1,2];
+      /* TJM = SCR × 113.35 × 1.25 / (1 - marge) */
+      var tjm=cons.scr>0?Math.round(cons.scr*113.35*1.25/(1-Math.min(tmar,99)/100)):0;
+      var days=tjm>0?Math.round(dealPortion/tjm):0;
+      missions.push({
+        id:uid2(),name:mName,btype:'forfait',cid:tm.cid,cli:acc.name||'',
+        tjm:tjm,deal:dealPortion,tmar:tmar,wdays:wdays,days:days,
+        sd:sd,ed:null,notes:o.notes||''
+      });
     });
   }else{
-    /* AT ou Forfait mono-consultant */
-    var cid1=consIds[0]||null;
-    missions.push({id:uid2(),name:o.name+(acc.name?' — '+acc.name:''),
-      btype:o.btype||'at',cid:cid1,cli:acc.name||'',
-      tjm:o.tjm_cible||0,days:o.jours_estimes||0,deal:o.deal_amount||0,
-      sd:o.date_start||new Date().toISOString().slice(0,10),
-      ed:o.date_end||null,notes:o.notes||'',biz_opp_id:o.id});
+    /* AT */
+    var cid1=(o.consultant_ids||[])[0]||null;
+    missions.push({
+      id:uid2(),name:mName,btype:'at',cid:cid1,cli:acc.name||'',
+      tjm:o.tjm_cible||0,days:o.jours_estimes||0,deal:0,
+      sd:sd,ed:o.date_end||null,notes:o.notes||''
+    });
   }
+
+  if(!missions.length){alert('Aucun consultant associé à cette opportunité. Ajoutez au moins un consultant avant de créer la mission.');return;}
   S.miss=S.miss.concat(missions);
   var firstId=missions[0].id;
-  S.bizOpps=S.bizOpps.map(function(x){return x.id===oppId?Object.assign({},x,{linked_mission_id:firstId}):x;});
+  S.bizOpps=S.bizOpps.map(function(x){return x.id===oppId?Object.assign({},x,{linked_mission_id:firstId,status:'gagne'}):x;});
   sbUpsertOpp(S.bizOpps.find(function(x){return x.id===oppId;}));
-  if(sb&&SB_CID){missions.forEach(function(m){sb.from('missions').insert(Object.assign({company_id:SB_CID,consultant_id:m.cid,name:m.name,client_name:m.cli,tjm:m.tjm||0,start_date:m.sd,end_date:m.ed||null,billing_type:m.btype,deal_amount:m.deal||null},m)).then(function(){});});}
-  S.bizModal=null;
-  S.tab='missions';
-  alert(missions.length+' mission(s) créée(s) dans l\'onglet Missions.');
+  if(sb&&SB_CID){
+    missions.forEach(function(m){
+      sb.from('missions').insert({
+        id:m.id,company_id:SB_CID,consultant_id:m.cid,
+        name:m.name,client_name:m.cli,
+        tjm:m.tjm||0,start_date:m.sd,end_date:m.ed||null,
+        billing_type:m.btype||'at',deal_amount:m.deal||null,
+        target_margin:m.tmar!=null?m.tmar:null,
+        work_days:m.wdays||[1,2,3,4,5]
+      }).then(function(r){if(r&&r.error)console.warn('Mission insert error:',r.error.message);});
+    });
+  }
+  S.bizModal=null;S.tab='missions';
+  alert(missions.length+' mission'+(missions.length>1?'s':'')+' créée'+(missions.length>1?'s':'')+' dans l\'onglet Missions.');
   render();
 }
 
@@ -2814,20 +2851,124 @@ function tBizKpis(){
 
 /* ── Modals ── */
 
+/* oppTeam = [{cid, taux, staffing, tmar}] stocké dans S.bizModal.oppTeam */
 function oppConsPickerHTML(){
-  var sel=(S.bizModal&&S.bizModal.consPickerSel)||[];
-  var selSet=new Set(sel);
-  var chips=sel.map(function(cid){
-    var cc=S.cons.find(function(x){return x.id===cid;})||{name:cid};
-    return '<span class="_opp-chip" data-rm="'+cid+'" style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px 3px 10px;border-radius:99px;font-size:11px;font-weight:700;background:#dbeafe;color:#1e40af;margin:0 5px 5px 0;cursor:pointer">'+esc(cc.name)+' <span style="font-weight:900;opacity:.65">×</span></span>';
-  }).join('')||'<span style="font-size:12px;color:#94a3b8">Aucun consultant sélectionné</span>';
-  var checks=S.cons.filter(function(c){return c.grade!=='sales_grade';}).map(function(cc){
-    return '<label style="display:flex;align-items:center;gap:7px;padding:4px 6px;font-size:12px;color:#334155;cursor:pointer;border-radius:5px">'
-      +'<input type="checkbox" class="_oppck" data-v="'+cc.id+'"'+(selSet.has(cc.id)?' checked':'')+' style="accent-color:#84CC16">'+esc(cc.name)+'</label>';
+  var bt=S.bizModal&&S.bizModal.btype||'at';
+  var team=S.bizModal&&S.bizModal.oppTeam||[];
+  
+  if(bt==='at'){
+    /* AT : sélection simple d'un consultant */
+    var sel=(S.bizModal&&S.bizModal.consPickerSel)||[];
+    var selSet=new Set(sel);
+    var chips=sel.map(function(cid){
+      var cc=S.cons.find(function(x){return x.id===cid;})||{name:cid};
+      return '<span class="_opp-chip" data-rm="'+cid+'" style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px 3px 10px;border-radius:99px;font-size:11px;font-weight:700;background:#dbeafe;color:#1e40af;margin:0 5px 5px 0;cursor:pointer">'+esc(cc.name)+' <span style="font-weight:900;opacity:.65">×</span></span>';
+    }).join('')||'<span style="font-size:12px;color:#94a3b8">Aucun consultant sélectionné</span>';
+    var checks=S.cons.filter(function(c){return c.grade!=='sales_grade';}).map(function(cc){
+      return '<label style="display:flex;align-items:center;gap:7px;padding:4px 6px;font-size:12px;color:#334155;cursor:pointer;border-radius:5px">'
+        +'<input type="checkbox" class="_oppck" data-v="'+cc.id+'"'+(selSet.has(cc.id)?' checked':'')+' style="accent-color:#84CC16">'+esc(cc.name)+'</label>';
+    }).join('');
+    return '<div id="opp-cons-chips" style="margin-bottom:8px">'+chips+'</div>'
+      +'<div style="max-height:120px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;padding:6px;background:#fff">'+checks+'</div>';
+  }
+  
+  /* FORFAIT : builder avec staffing + marge par consultant */
+  var allCons=S.cons.filter(function(c){return c.grade!=='sales_grade';});
+  var rows=team.map(function(tm,idx){
+    var staffOpts=STAFFING_OPTIONS.map(function(pct){
+      var days=STAFFING_WDAYS[pct];
+      var label=pct+'% ('+['Lun','Mar','Mer','Jeu','Ven'].slice(0,days.length).join('+')+')'+(pct===20?' — défaut':'');
+      return '<option value="'+pct+'"'+(tm.staffing===pct?' selected':'')+'>'+label+'</option>';
+    }).join('');
+    var consOpts='<option value="">— Consultant —</option>'+allCons.map(function(cc){
+      return '<option value="'+cc.id+'"'+(cc.id===tm.cid?' selected':'')+'>'+esc(cc.name)+'</option>';
+    }).join('')+'<option value="__new__">✚ Nouveau consultant...</option>';
+    /* Calcul indicatif nb jours */
+    var cons=allCons.find(function(x){return x.id===tm.cid;});
+    var indDays='—';
+    if(cons&&cons.scr>0&&S.bizModal&&S.bizModal.item){
+      var deal=(S.bizModal.item.deal_amount||0)*(tm.taux||100)/100/Math.max(team.length,1);
+      if(deal>0&&tm.tmar>=0){
+        var tjm=cons.scr*113.35*1.25/(1-Math.min(tm.tmar||25,99)/100);
+        indDays=Math.round(deal/tjm)+'j';
+      }
+    }
+    return '<div class="opp-team-row" data-idx="'+idx+'" style="border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#f8fafc">'
+      +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+      +'<select class="ic" style="flex:2;min-width:140px;font-size:12px" onchange="oppTeamUpdate('+idx+',\'cid\',this.value)"><option value="">'+consOpts+'</select>'
+      +'<div style="display:flex;align-items:center;gap:4px;flex:1"><label style="font-size:11px;color:#64748b;white-space:nowrap">Staffing</label>'
+        +'<select class="ic" style="font-size:11px" onchange="oppTeamUpdate('+idx+',\'staffing\',+this.value)">'+staffOpts+'</select></div>'
+      +'<div style="display:flex;align-items:center;gap:4px"><label style="font-size:11px;color:#64748b;white-space:nowrap">Marge</label>'
+        +'<input class="ic" type="number" min="0" max="100" placeholder="%" style="width:60px;font-size:12px" value="'+(tm.tmar!=null?tm.tmar:25)+'" onchange="oppTeamUpdate('+idx+',\'tmar\',+this.value)"><span style="font-size:11px;color:#64748b">%</span></div>'
+      +'<div style="display:flex;align-items:center;gap:4px"><label style="font-size:11px;color:#64748b;white-space:nowrap">CA</label>'
+        +'<input class="ic" type="number" min="0" max="100" placeholder="%" style="width:55px;font-size:12px" value="'+(tm.taux||100)+'" onchange="oppTeamUpdate('+idx+',\'taux\',+this.value)"><span style="font-size:11px;color:#64748b">%</span></div>'
+      +'<span style="font-size:11px;font-weight:700;color:#1B2B3A;background:#e2e8f0;padding:2px 8px;border-radius:99px;white-space:nowrap">'+indDays+'</span>'
+      +'<button type="button" onclick="oppTeamRemove('+idx+')" style="background:#fee2e2;color:#dc2626;border:none;border-radius:6px;padding:4px 9px;cursor:pointer;font-weight:700;font-size:13px">✕</button>'
+      +'</div>'
+      /* Mini-form nouveau consultant */
+      +'<div id="opp-new-cons-'+idx+'" style="display:none;margin-top:10px;background:#f0fdf4;border-radius:6px;padding:10px;border:1px solid #bbf7d0">'
+        +'<div style="font-size:11px;font-weight:700;color:#15803d;margin-bottom:8px">✚ Nouveau consultant</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr 100px;gap:8px">'
+          +'<input class="ic" placeholder="Nom complet *" id="opp-nc-name-'+idx+'" style="font-size:12px">'
+          +'<input class="ic" placeholder="Poste *" id="opp-nc-title-'+idx+'" style="font-size:12px">'
+          +'<input class="ic" type="number" placeholder="SCR €" id="opp-nc-scr-'+idx+'" style="font-size:12px">'
+        +'</div>'
+        +'<div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end">'
+          +'<button type="button" onclick="oppNewConsCancel('+idx+')" style="background:#f1f5f9;color:#374151;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">Annuler</button>'
+          +'<button type="button" onclick="oppNewConsSave('+idx+')" style="background:#15803d;color:#fff;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px;font-weight:700">Créer &amp; ajouter</button>'
+        +'</div>'
+      +'</div>'
+      +'</div>';
   }).join('');
-  return '<div id="opp-cons-chips" style="margin-bottom:8px">'+chips+'</div>'
-    +'<div style="max-height:120px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;padding:6px;background:#fff">'+checks+'</div>';
+
+  return rows
+    +'<div style="display:flex;gap:8px;margin-top:6px">'
+    +'<button type="button" onclick="oppTeamAdd()" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:7px;padding:6px 14px;cursor:pointer;font-size:12px;font-weight:700">+ Ajouter un consultant</button>'
+    +(team.length>1?'<span style="font-size:11px;color:#94a3b8;align-self:center">Total CA : '+(team.reduce(function(s,t){return s+(t.taux||0);},0))+'% — idéalement 100%</span>':'')
+    +'</div>';
 }
+
+function oppTeamUpdate(idx,key,val){
+  if(!S.bizModal)return;
+  S.bizModal.oppTeam=S.bizModal.oppTeam||[];
+  if(!S.bizModal.oppTeam[idx])return;
+  /* Si "nouveau consultant" sélectionné : montrer le mini-form */
+  if(key==='cid'&&val==='__new__'){
+    S.bizModal.oppTeam[idx].cid='';
+    var nf=document.getElementById('opp-new-cons-'+idx);
+    if(nf)nf.style.display='block';
+    return;
+  }
+  S.bizModal.oppTeam[idx][key]=val;
+  oppConsRefresh();
+}
+function oppTeamAdd(){
+  if(!S.bizModal)return;
+  S.bizModal.oppTeam=S.bizModal.oppTeam||[];
+  S.bizModal.oppTeam.push({cid:'',taux:Math.max(0,Math.round(100/Math.max(S.bizModal.oppTeam.length+1,1))),staffing:20,tmar:25});
+  oppConsRefresh();
+}
+function oppTeamRemove(idx){
+  if(!S.bizModal)return;
+  S.bizModal.oppTeam=(S.bizModal.oppTeam||[]).filter(function(_,i){return i!==idx;});
+  oppConsRefresh();
+}
+function oppNewConsCancel(idx){
+  var nf=document.getElementById('opp-new-cons-'+idx);if(nf)nf.style.display='none';
+}
+function oppNewConsSave(idx){
+  var nameEl=document.getElementById('opp-nc-name-'+idx);
+  var titleEl=document.getElementById('opp-nc-title-'+idx);
+  var scrEl=document.getElementById('opp-nc-scr-'+idx);
+  var n=nameEl&&nameEl.value.trim();var t=titleEl&&titleEl.value.trim();var scr=+(scrEl&&scrEl.value)||0;
+  if(!n||!t){alert('Nom et poste requis.');return;}
+  var newC={id:uid(),name:n,title:t,scr:scr,email:'',dir:S.dirName||'',arrive:null,depart:null,expertise:[],sectors:[],contract:'salarie',grade:''};
+  S.cons=S.cons.concat([newC]);
+  sbUpsertCons(newC);
+  if(S.bizModal&&S.bizModal.oppTeam&&S.bizModal.oppTeam[idx]){S.bizModal.oppTeam[idx].cid=newC.id;}
+  oppConsRefresh();
+}
+
 function oppConsRefresh(){var w=document.getElementById('opp-cons-wrap');if(w){w.innerHTML=oppConsPickerHTML();bindOppConsPicker();}}
 function bindOppConsPicker(){
   var wrap=document.getElementById('opp-cons-wrap');if(!wrap)return;
@@ -3948,11 +4089,11 @@ function bind(){
       else if(ra==='biz-new'){
         var types={pipeline:'opp',comptes:'acc',contacts:'ct',activites:'act'};
         var t=types[S.bizTab||'pipeline']||'opp';
-        S.bizModal={type:t,item:null,btype:'at',consPickerSel:[]};render();
+        S.bizModal={type:t,item:null,btype:'at',consPickerSel:[],oppTeam:[{cid:'',taux:100,staffing:20,tmar:25}]};render();
       }
       else if(ra==='biz-edit-acc'){var a=S.bizAccounts.find(function(x){return x.id===rid;});S.bizModal={type:'acc',item:a};render();}
       else if(ra==='biz-edit-ct'){var c=S.bizContacts.find(function(x){return x.id===rid;});S.bizModal={type:'ct',item:c};render();}
-      else if(ra==='biz-edit-opp'){var o=S.bizOpps.find(function(x){return x.id===rid;});S.bizModal={type:'opp',item:o,btype:(o&&o.btype)||'at',consPickerSel:(o&&o.consultant_ids)||[]};render();}
+      else if(ra==='biz-edit-opp'){var o=S.bizOpps.find(function(x){return x.id===rid;});S.bizModal={type:'opp',item:o,btype:(o&&o.btype)||'at',consPickerSel:(o&&o.consultant_ids)||[],oppTeam:(o&&o.opp_team&&o.opp_team.length?o.opp_team:(o&&o.consultant_ids||[]).map(function(cid){return {cid:cid,taux:Math.round(100/Math.max((o.consultant_ids||[]).length,1)),staffing:20,tmar:25};})||[])||[{cid:'',taux:100,staffing:20,tmar:25}]};render();}
       else if(ra==='biz-edit-act'){var k=S.bizActivities.find(function(x){return x.id===rid;});S.bizModal={type:'act',item:k};render();}
       else if(ra==='biz-del'){var tbl=el.getAttribute('data-table')||'';bizDelItem(tbl,rid);}
       else if(ra==='biz-opp-mission'){bizOppToMission(rid);}
@@ -4525,7 +4666,7 @@ function bind(){
       }
       else if(a==='biz-edit-acc'){var _a=S.bizAccounts.find(function(x){return x.id===id;});S.bizModal={type:'acc',item:_a};render();}
       else if(a==='biz-edit-ct'){var _ct=S.bizContacts.find(function(x){return x.id===id;});S.bizModal={type:'ct',item:_ct};render();}
-      else if(a==='biz-edit-opp'){var _o=S.bizOpps.find(function(x){return x.id===id;});S.bizModal={type:'opp',item:_o,btype:(_o&&_o.btype)||'at',consPickerSel:(_o&&_o.consultant_ids)||[]};render();}
+      else if(a==='biz-edit-opp'){var _o=S.bizOpps.find(function(x){return x.id===id;});S.bizModal={type:'opp',item:_o,btype:(_o&&_o.btype)||'at',consPickerSel:(_o&&_o.consultant_ids)||[],oppTeam:(_o&&_o.opp_team&&_o.opp_team.length?_o.opp_team:(_o&&_o.consultant_ids||[]).map(function(cid){return {cid:cid,taux:Math.round(100/Math.max((_o.consultant_ids||[]).length,1)),staffing:20,tmar:25};})||[])||[{cid:'',taux:100,staffing:20,tmar:25}]};render();}
       else if(a==='biz-edit-act'){var _k=S.bizActivities.find(function(x){return x.id===id;});S.bizModal={type:'act',item:_k};render();}
       else if(a==='biz-del'){var _tbl=b.getAttribute('data-table')||'';bizDelItem(_tbl,id);}
       else if(a==='biz-opp-mission'){bizOppToMission(id);}
