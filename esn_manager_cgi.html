@@ -756,14 +756,16 @@ function tSB(){
     NAV=[
       {id:'recrutement',ic:'\uD83C\uDFAF',lb:'Recrutement'},
       {id:'activite',   ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'},
-      {id:'leaves',     ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'}
+      {id:'leaves',     ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
+      {id:'help',      ic:'\u2753',lb:'Aide'}
     ];
   }else if(S.role==='sales'){
     /* Licence Business Manager : Business + Activité + Absences */
     NAV=[
       {id:'business',   ic:'\uD83D\uDCBC',lb:'Business'},
       {id:'activite',   ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'},
-      {id:'leaves',     ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'}
+      {id:'leaves',     ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
+      {id:'help',      ic:'\u2753',lb:'Aide'}
     ];
   }else if(S.role==='utilisateur'){
     NAV=[
@@ -772,7 +774,8 @@ function tSB(){
       {id:'planning',   ic:'\uD83D\uDCC5',lb:'Planning'},
       {id:'leaves',     ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
       {id:'approvals',  ic:'\uD83D\uDD14',lb:'Approbations'},
-      {id:'business',   ic:'\uD83D\uDCBC',lb:'Business'}
+      {id:'business',   ic:'\uD83D\uDCBC',lb:'Business'},
+      {id:'help',      ic:'\u2753',lb:'Aide'}
     ];
   }else{
     NAV=[
@@ -784,7 +787,8 @@ function tSB(){
       {id:'planning',  ic:'\uD83D\uDCC5',lb:'Planning'},
       {id:'leaves',    ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
       {id:'business',  ic:'\uD83D\uDCBC',lb:'Business'},
-      {id:'param',     ic:'\uD83D\uDCA1',lb:'Pr\u00e9conisations'}
+      {id:'param',     ic:'\uD83D\uDCA1',lb:'Pr\u00e9conisations'},
+      {id:'help',      ic:'\u2753',lb:'Aide'}
     ];
     if(S.role==='admin')NAV.push({id:'directeurs',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
     if(S.role==='gestionnaire')NAV.push({id:'admin',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
@@ -2929,9 +2933,38 @@ function oppConsPickerHTML(){
   }).join('');
 
   return rows
+    /* ── Synthèse par consultant ── */
+    +(team.filter(function(t){return t.cid;}).length>0?(function(){
+      var totalDeal=S.bizModal&&S.bizModal.item&&S.bizModal.item.deal_amount||0;
+      var allC=S.cons;
+      var teamActive=team.filter(function(t){return t.cid;});
+      var weights=teamActive.map(function(tm){
+        var cc=allC.find(function(x){return x.id===tm.cid;})||{scr:1,name:'?'};
+        return (cc.scr||1)*((tm.wdays&&tm.wdays.length?tm.wdays:[1,2]).length);
+      });
+      var totalW=weights.reduce(function(s,w){return s+w;},0)||1;
+      var lines=teamActive.map(function(tm,i){
+        var cc=allC.find(function(x){return x.id===tm.cid;})||{scr:1,name:tm.cid};
+        var pct=Math.round(weights[i]/totalW*100);
+        var dealPortion=totalDeal*weights[i]/totalW;
+        var tmar=tm.tmar!=null?tm.tmar:25;
+        var tjm=cc.scr>0?Math.round(cc.scr*113.35*1.25/(1-Math.min(tmar,99)/100)):0;
+        var days=tjm>0?Math.round(dealPortion/tjm):0;
+        var wdayLabel=(tm.wdays&&tm.wdays.length?tm.wdays:[1,2]).map(function(d){return['Lun','Mar','Mer','Jeu','Ven'][d-1];}).join('+');
+        return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:7px;background:'+(i%2===0?'#f0fdf4':'#eff6ff')+';font-size:12px">'
+          +'<span style="font-weight:700;color:#0f172a;flex:1">'+esc(cc.name)+'</span>'
+          +'<span style="background:#1B2B3A;color:#84CC16;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:800">'+pct+'% du deal</span>'
+          +(totalDeal>0?'<span style="color:#64748b">'+fEur(Math.round(dealPortion))+'</span>':'')
+          +'<span style="color:#64748b">'+days+'j</span>'
+          +'<span style="color:#94a3b8;font-size:11px">'+wdayLabel+'</span>'
+          +'</div>';
+      }).join('');
+      return '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:10px">'
+        +'<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Synthèse</div>'
+        +lines+'</div>';
+    }()):'')
     +'<div style="display:flex;gap:8px;margin-top:6px">'
     +'<button type="button" onclick="oppTeamAdd()" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:7px;padding:6px 14px;cursor:pointer;font-size:12px;font-weight:700">+ Ajouter un consultant</button>'
-    +'<span style="font-size:11px;color:#94a3b8;align-self:center">CA distribué selon SCR × staffing</span>'
     +'</div>';
 }
 
@@ -3121,6 +3154,132 @@ function tBizModal(){
     +'<button class="bsec" onclick="S.bizModal=null;render()">Annuler</button>'
     +'<button class="bp" onclick="'+saveAction+'">Enregistrer</button>'
     +'</div></div></div></div>';
+}
+
+
+
+
+/* ════════════════════════════════════════════════════════════
+   LOGS D'ACTIVITÉ
+════════════════════════════════════════════════════════════ */
+function logActivity(action,entityType,entityId,details){
+  if(!S.activityLog)S.activityLog=[];
+  var entry={id:uid(),user_email:S._userEmail||'',user_name:(S.profileFirstName||'')+(S.profileLastName?' '+S.profileLastName:''),user_role:rLabel(S.role||''),action:action,entity_type:entityType||'',entity_id:entityId||'',details:details||'',created_at:new Date().toISOString()};
+  S.activityLog.unshift(entry);
+  if(S.activityLog.length>200)S.activityLog.pop();
+  if(sb&&SB_CID){sb.from('activity_logs').insert(Object.assign({},entry,{company_id:SB_CID})).then(function(){});}
+}
+async function loadActivityLog(){
+  if(!S.activityLog)S.activityLog=[];
+  if(!sb||!SB_CID)return;
+  try{var r=await sb.from('activity_logs').select('*').eq('company_id',SB_CID).order('created_at',{ascending:false}).limit(100);if(r.data)S.activityLog=r.data;}catch(e){console.warn('activity_log:',e);}
+}
+function markOnboardingDone(){localStorage.setItem('konsilys_ob_'+S._userEmail,'1');S.modal=null;render();}
+function restartOnboarding(){localStorage.removeItem('konsilys_ob_'+S._userEmail);S.modal={type:'onboarding',step:0};render();}
+function checkOnboarding(){var key='konsilys_ob_'+S._userEmail;if(!S._userEmail||localStorage.getItem(key))return;S.modal={type:'onboarding',step:0};render();}
+
+/* ════════════════════════════════════════════════════════════
+   ONGLET AIDE + ONBOARDING
+════════════════════════════════════════════════════════════ */
+var HELP_FEATURES=[
+  {icon:'\uD83D\uDCC8',title:'KPIs & Pilotage',roles:['super_admin','admin','gestionnaire'],
+   desc:'Staffing moyen, CA total, TJM moyen et contribution nette. Filtrable par exercice fiscal et trimestre configurable. Alertes automatiques sur les consultants sous 80%.'},
+  {icon:'\uD83D\uDCCA',title:'Tableau de bord',roles:['super_admin','admin','gestionnaire','utilisateur'],
+   desc:'Vue synthétique : consultants en inter-contrat, fins de mission imminentes, arrivées, retours de congé, approbations en attente.'},
+  {icon:'\uD83D\uDC65',title:'\u00c9quipe',roles:['super_admin','admin','gestionnaire'],
+   desc:'Gestion des fiches collaborateurs : poste, SCR, grade, contrat (salari\u00e9/freelance), expertises, secteurs, dates arriv\u00e9e/d\u00e9part.'},
+  {icon:'\uD83D\uDCCB',title:'Missions',roles:['super_admin','admin','gestionnaire','utilisateur'],
+   desc:'Cr\u00e9ation de missions AT (TJM\u00d7jours) et Forfait (montant fixe). Calcul automatique du co\u00fbt employeur, de la marge et de la contribution nette.'},
+  {icon:'\uD83D\uDCC5',title:'Planning',roles:['super_admin','admin','gestionnaire','utilisateur','recruteur','sales'],
+   desc:'Vue Gantt mensuelle des missions et absences. Mois de d\u00e9marrage dynamique selon l\'exercice fiscal configur\u00e9.'},
+  {icon:'\uD83C\uDFD6\uFE0F',title:'Absences',roles:['super_admin','admin','gestionnaire','utilisateur','recruteur','sales'],
+   desc:'9 types d\'absences g\u00e9r\u00e9s. Les Utilisateurs soumettent pour approbation. Les Business Managers soumettent pour validation Super Admin.'},
+  {icon:'\uD83C\uDFAF',title:'Recrutement',roles:['super_admin','admin','gestionnaire','utilisateur','recruteur'],
+   desc:'MODULE OPTIONNEL. Pipeline 8 statuts personnalisables, recruteur assign\u00e9, filtre par recruteur, conversion automatique en Utilisateur.'},
+  {icon:'\uD83D\uDCBC',title:'Business D\u00e9veloppement',roles:['super_admin','admin','gestionnaire','utilisateur','sales'],
+   desc:'MODULE OPTIONNEL. CRM comptes & contacts, pipeline opportunit\u00e9s, activit\u00e9s commerciales, KPIs. Opportunit\u00e9 gagn\u00e9e → mission cr\u00e9\u00e9e automatiquement.'},
+  {icon:'\uD83D\uDD14',title:'Approbations',roles:['super_admin','admin','gestionnaire','utilisateur','recruteur','sales'],
+   desc:'Workflow : les Utilisateurs soumettent modifications de missions/absences, le Gestionnaire valide. Les Business Managers soumettent au Super Admin.'},
+  {icon:'\uD83D\uDCA1',title:'Pr\u00e9conisations',roles:['super_admin','admin','gestionnaire'],
+   desc:'Recommandations automatiqu\u00e9es bas\u00e9es sur les KPIs : diversification client, taux d\'utilisation, r\u00e9vision tarifaire, anticipation inter-contrats.'},
+  {icon:'\u2699',title:'Param\u00e8tres',roles:['super_admin'],
+   desc:'Configuration entreprise : devise (EUR/USD/GBP...), exercice fiscal, noms des r\u00f4les personnalisables, statuts recrutement, modules activ\u00e9s.'},
+];
+var ONBOARDING_STEPS={
+  'super_admin':[
+    {icon:'\uD83D\uDC4B',title:'Bienvenue, Super Admin !',desc:'Vous avez le contr\u00f4le total de Konsilys pour votre organisation. Voici les premi\u00e8res \u00e9tapes cl\u00e9s.'},
+    {icon:'\u2699',title:'Configurez votre espace',desc:'Commencez par les Param\u00e8tres (\u274F sidebar) : d\u00e9finissez votre devise, le mois de d\u00e9marrage de votre exercice fiscal, et personnalisez les noms des r\u00f4les si besoin.'},
+    {icon:'\uD83D\uDD11',title:'Invitez votre \u00e9quipe',desc:'Dans Gestion des acc\u00e8s, invitez vos Admins et Recruteurs par email. Ils s\'inscrivent sur konsilys.fr et sont rattach\u00e9s automatiquement.'},
+    {icon:'\uD83D\uDC65',title:'Ajoutez vos collaborateurs',desc:'Dans l\'onglet \u00c9quipe, ajoutez chaque consultant avec son SCR journalier. Le syst\u00e8me calcule automatiquement les co\u00fbts et marges.'},
+    {icon:'\uD83C\uDF89',title:'Vous \u00eates pr\u00eat !',desc:'Explorez les KPIs, le Dashboard et les Pr\u00e9conisations. Tout se met \u00e0 jour automatiquement au fil des saisies.'},
+  ],
+  'admin':[
+    {icon:'\uD83D\uDC4B',title:'Bienvenue, Admin !',desc:'Vous supervisez plusieurs \u00e9quipes de Gestionnaires. Voici comment d\u00e9marrer.'},
+    {icon:'\uD83D\uDD11',title:'Invitez vos Gestionnaires',desc:'Dans Gestion des acc\u00e8s, invitez vos Gestionnaires par email. Ils g\u00e8rent ensuite leurs \u00e9quipes de fa\u00e7on autonome.'},
+    {icon:'\uD83D\uDCC8',title:'Suivez les KPIs globaux',desc:'Le tableau de bord vous donne une vue agr\u00e9g\u00e9e de toutes les \u00e9quipes sous votre p\u00e9rim\u00e8tre.'},
+    {icon:'\uD83C\uDF89',title:'Vous \u00eates pr\u00eat !',desc:'Explorez les KPIs par Gestionnaire et le planning global.'},
+  ],
+  'gestionnaire':[
+    {icon:'\uD83D\uDC4B',title:'Bienvenue, Gestionnaire !',desc:'Vous g\u00e9rez une \u00e9quipe de consultants. Voici les premi\u00e8res actions.'},
+    {icon:'\uD83D\uDC65',title:'Ajoutez votre \u00e9quipe',desc:'Dans l\'onglet \u00c9quipe, ajoutez vos consultants avec leur SCR et leurs expertises.'},
+    {icon:'\uD83D\uDCCB',title:'Saisissez les missions',desc:'Pour chaque consultant en mission, cr\u00e9ez la mission avec le TJM et les dates. Le CA et la marge se calculent automatiquement.'},
+    {icon:'\uD83D\uDD14',title:'Validez les demandes',desc:'Vos consultants soumettent des modifications depuis leur espace. Approuvez ou refusez depuis le Dashboard.'},
+    {icon:'\uD83C\uDF89',title:'Vous \u00eates pr\u00eat !',desc:'Consultez les KPIs en temps r\u00e9el et les pr\u00e9conisations personnalis\u00e9es.'},
+  ],
+  'utilisateur':[
+    {icon:'\uD83D\uDC4B',title:'Bienvenue !',desc:'Votre espace vous permet de suivre vos missions et de g\u00e9rer vos absences.'},
+    {icon:'\uD83D\uDCCB',title:'Vos missions',desc:'Retrouvez toutes vos missions en cours dans l\'onglet Missions. Vos TJM et contributions sont pr\u00e9-remplis par votre Gestionnaire.'},
+    {icon:'\uD83C\uDFD6\uFE0F',title:'Absences & cong\u00e9s',desc:'D\u00e9clarez vos absences dans l\'onglet Absences. Elles sont soumises \u00e0 votre Gestionnaire pour validation.'},
+    {icon:'\uD83C\uDF89',title:'Vous \u00eates pr\u00eat !',desc:''},
+  ],
+  'recruteur':[
+    {icon:'\uD83D\uDC4B',title:'Bienvenue, Recruteur !',desc:'Votre espace est d\u00e9di\u00e9 au pipeline de recrutement.'},
+    {icon:'\uD83C\uDFAF',title:'G\u00e9rez les candidats',desc:'Ajoutez les candidats, suivez leur progression dans les 8 statuts, et assignez-vous comme recruteur responsable.'},
+    {icon:'\uD83C\uDF89',title:'Vous \u00eates pr\u00eat !',desc:'Une fois recrut\u00e9, le candidat peut \u00eatre converti en Utilisateur directement depuis sa fiche.'},
+  ],
+  'sales':[
+    {icon:'\uD83D\uDC4B',title:'Bienvenue, Business Manager !',desc:'Votre espace est centr\u00e9 sur le d\u00e9veloppement commercial.'},
+    {icon:'\uD83D\uDCBC',title:'G\u00e9rez votre pipeline',desc:'Ajoutez vos opportunit\u00e9s, suivez les statuts (Identification → Qualification → Proposition → Gagnée), assignez des consultants.'},
+    {icon:'\uD83C\uDF89',title:'Vous \u00eates pr\u00eat !',desc:'Quand une opportunit\u00e9 passe en Gagn\u00e9e, cliquez "→ Mission" pour cr\u00e9er automatiquement la mission.'},
+  ],
+};
+function tHelp(){
+  var role=S.role||'utilisateur';
+  var myFeatures=HELP_FEATURES.filter(function(f){return f.roles.indexOf(role)>=0;});
+  var logRows=(S.activityLog||[]).slice(0,20);
+  return '<div class="vw">'
+    +'<div class="ph"><div class="pt">\u2753 Aide &amp; Fonctionnalit\u00e9s</div>'
+    +'<div class="ps">Guide complet pour le r\u00f4le '+rLabel(role)+'</div></div>'
+    /* Fonctionnalités disponibles */
+    +'<h3 style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:12px">Vos fonctionnalit\u00e9s</h3>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:28px">'
+    +myFeatures.map(function(f){
+      var isModule=f.title.includes('Recrutement')||f.title.includes('Business D\u00e9veloppement');
+      return '<div class="card" style="padding:18px;position:relative">'
+        +(isModule?'<span style="position:absolute;top:10px;right:10px;background:#84CC16;color:#1B2B3A;font-size:9px;font-weight:800;padding:1px 6px;border-radius:99px">MODULE</span>':'')
+        +'<div style="font-size:24px;margin-bottom:8px">'+f.icon+'</div>'
+        +'<div style="font-weight:800;color:#0f172a;font-size:13px;margin-bottom:6px">'+f.title+'</div>'
+        +'<div style="font-size:12px;color:#64748b;line-height:1.5">'+f.desc+'</div>'
+        +'</div>';
+    }).join('')
+    +'</div>'
+    /* Logs d'activité */
+    +(logRows.length?
+      '<h3 style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:12px">\uD83D\uDCCB Historique des actions</h3>'
+      +'<div class="card" style="padding:0"><div class="ov" style="max-height:320px;overflow-y:auto">'
+      +'<table><thead><tr><th>Date</th><th>Utilisateur</th><th>Action</th><th>D\u00e9tails</th></tr></thead><tbody>'
+      +logRows.map(function(l){
+        var dt=l.created_at?new Date(l.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+        return '<tr><td style="font-size:11px;white-space:nowrap;color:#94a3b8">'+esc(dt)+'</td>'
+          +'<td style="font-size:12px">'+esc(l.user_name||l.user_email||'?')+'</td>'
+          +'<td><span style="font-size:11px;background:#f1f5f9;padding:2px 8px;border-radius:99px">'+esc(l.action||'')+'</span></td>'
+          +'<td style="font-size:12px;color:#64748b">'+esc((l.details||'').substring(0,60))+'</td></tr>';
+      }).join('')
+      +'</tbody></table></div></div>'
+      :'<div class="emp">Aucune action enregistr\u00e9e pour le moment.</div>')
+    /* Bouton relancer onboarding */
+    +'<div style="margin-top:20px"><button class="bsec" onclick="restartOnboarding()">\uD83C\uDF93 Revoir le guide de d\u00e9marrage</button></div>'
+    +'</div>';
 }
 
 
@@ -3860,8 +4019,8 @@ function tModal(){
       +'<input class="ic" type="date" id="rc-start" value="'+(it&&it.recruitStart?it.recruitStart:'')+'">'
       +'</div>'
 
-      +'<div class="fd"><label class="fl">Poste *</label>'
-      +'<input class="ic" id="rc-poste" placeholder="ex\u00a0: Consultant Senior" value="'+(it&&it.recruitPoste?esc(it.recruitPoste):'')+'">'
+      +'<div class="fd"><label class="fl">Grade *</label>'
+      +'<select class="ic" id="rc-poste"><option value="">-- Sélectionner --</option>'+['Consultant Junior','Consultant Confirmé','Consultant Sénior','Manager','Business Manager'].map(function(g){return '<option value="'+g+'"'+(it&&it.recruitPoste===g?' selected':'')+'>'+g+'</option>';}).join('')+'</select>'
       +'</div>'
 
       +'<div class="fd cs2"><label class="fl">'+rLabel('gestionnaire')+'</label>'
@@ -3945,6 +4104,32 @@ function tModal(){
       +'<div class="fd"><label class="fl">Contact client - Poste</label><input class="ic" id="mcr" value="'+esc(it?it.ccr:'')+'" placeholder="ex\u00a0: DSI, DAF, CDO"></div></div>'
       +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="sm">'+(it?'Enregistrer':'Ajouter')+'</button></div>';
   }
+
+  if(tp==='onboarding'){
+    var steps=(ONBOARDING_STEPS[S.role]||ONBOARDING_STEPS.utilisateur);
+    var step=(m.step||0);
+    var st=steps[step]||steps[0];
+    var isLast=step===steps.length-1;
+    title=st.icon+' '+st.title;
+    body='<div style="text-align:center;padding:10px 0">'
+      +'<div style="font-size:52px;margin-bottom:12px">'+st.icon+'</div>'
+      +'<div style="font-size:15px;color:#374151;line-height:1.6;margin-bottom:16px">'+st.desc+'</div>'
+      /* Progress dots */
+      +'<div style="display:flex;justify-content:center;gap:6px;margin-bottom:20px">'
+      +steps.map(function(_,i){return '<div style="width:8px;height:8px;border-radius:50%;background:'+(i===step?'#1B2B3A':'#e2e8f0')+'"></div>';}).join('')
+      +'</div></div>';
+    saveAction=null;
+    return '<div class="mov"><div class="mob" style="max-width:480px">'
+      +'<div class="moh"><div class="mot">'+title+'</div></div>'
+      +'<div class="mody">'+body
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">'
+      +(step>0?'<button class="bsec" onclick="S.modal.step='+(step-1)+';render()">\u2190 Pr\u00e9c\u00e9dent</button>':'<span></span>')
+      +(isLast
+        ?'<button class="bp" onclick="markOnboardingDone()">\uD83C\uDF89 Commencer !</button>'
+        :'<button class="bp" onclick="S.modal.step='+(step+1)+';render()">Suivant \u2192</button>')
+      +'</div></div></div></div>';
+  }
+
   if(tp==='leave'){
     title=it?"Modifier l'absence":"Nouvelle absence / cong\u00e9";
     var dt=(it&&it.type)||'Cong\u00e9 pay\u00e9';
@@ -4040,7 +4225,7 @@ function render(){
   S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
   var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;
   document.getElementById('sb').innerHTML=tSB();
-  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDirSection():S.tab==='svp_acces'?tSVPAcces():S.tab==='svp_settings'?tSettings():S.tab==='business'?tBusiness():tParam();
+  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDirSection():S.tab==='svp_acces'?tSVPAcces():S.tab==='svp_settings'?tSettings():S.tab==='business'?tBusiness():S.tab==='help'?tHelp():tParam();
   var _ini=function(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();};
   var _av=S._userEmail?_ini(S._userEmail.split('@')[0].replace(/[._]/g,' ')):'?';
   var _pfBtn=''; /* Profil déplacé dans la sidebar gauche */
@@ -4087,11 +4272,11 @@ function bind(){
   if(rq){
     rq.oninput=function(){
       S.recF.q=this.value;
-      recListRefresh(); /* met à jour uniquement la liste — l'input n'est jamais recréé, le focus reste intact */
+      recListRefresh(); /* met à jour uniquement la liste — l'input n\'est jamais recréé, le focus reste intact */
     };
   }
   /* délégation : les clics sur les pastilles de statut/localisation (recréées à chaque recListRefresh)
-     sont capturés sur le conteneur stable, qui lui n'est jamais détruit pendant la frappe */
+     sont capturés sur le conteneur stable, qui lui n\'est jamais détruit pendant la frappe */
   var rlw=el('rec-list-wrap');
   if(rlw){
     rlw.onclick=function(e){
@@ -4459,7 +4644,7 @@ function bind(){
         var cdM=S.cands.find(function(c){return c.id===id;});
         if(!cdM)return;
         if(fb){
-          /* édition d'une rencontre existante */
+          /* édition d\'une rencontre existante */
           var existing=(cdM.feedbacks||[]).find(function(f){return f.id===fb;});
           if(!existing)return;
           existing.client=mtCli;existing.contact=mtCon;existing.date=mtDate;existing.text=mtTxt||'';
@@ -4519,7 +4704,7 @@ function bind(){
         var cdG=S.cands.find(function(c){return c.id===id;});
         if(!cdG)return;
         if(fb){
-          /* édition d'une rencontre CGI existante */
+          /* édition d\'une rencontre CGI existante */
           var existingG=(cdG.cgiMeetings||[]).find(function(f){return f.id===fb;});
           if(!existingG)return;
           existingG.person=cgPerson;existingG.date=cgDate;existingG.text=cgTxt||'';
@@ -4809,7 +4994,7 @@ async function loadSB(){
   try{
     /* ── Charger les paramètres de l'entreprise (pour tous les rôles) ── */
     try{
-      /* Cache localStorage d'abord pour un affichage immédiat */
+      /* Cache localStorage d\'abord pour un affichage immédiat */
       var _lsv=localStorage.getItem('esn_settings_'+SB_CID);
       if(_lsv)S.settings=Object.assign(S.settings,JSON.parse(_lsv));
       /* Puis Supabase pour avoir la version partagée à jour */
@@ -4871,6 +5056,8 @@ async function loadSB(){
     }catch(e){console.warn('recruteur invites load:',e);}
     /* Charger les données CRM Business */
     await loadBiz();
+    await loadActivityLog();
+    checkOnboarding();
     return true;
   }catch(e){console.warn('Supabase load error:',e);return false;}
 }
@@ -5539,7 +5726,7 @@ function applyApproval(req){
   }
 }
 
-/* Supabase : upsert d'une approbation */
+/* Supabase : upsert d\'une approbation */
 async function sbUpsertApproval(req){
   if(!sb||!SB_CID){console.warn('[Approval] SB_CID manquant');return;}
   var res=await sb.from('approvals').upsert({
