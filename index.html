@@ -380,7 +380,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
   <div class="container">
     <p class="section-eyebrow">Licences</p>
     <h2 class="section-title">Un accès adapté à chaque rôle</h2>
-    <p class="section-sub" style="margin-bottom:40px">5 niveaux d'accès pour couvrir toute votre organisation, du Super Admin au Consultant.</p>
+    <p class="section-sub" style="margin-bottom:40px">5 niveaux d'accès pour couvrir toute votre organisation, du Super Admin à l'Utilisateur.</p>
     <div class="licence-grid">
 
       <div class="licence-card anim-up delay-1">
@@ -544,7 +544,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
               <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_svp" style="accent-color:#84CC16"> Super Admin</label>
               <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_vp" style="accent-color:#84CC16"> Admin</label>
               <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_dir" style="accent-color:#84CC16"> Gestionnaire</label>
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_cons" style="accent-color:#84CC16"> 👤 Consultant</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_cons" style="accent-color:#84CC16"> Utilisateur</label>
               <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" name="licence_rec" style="accent-color:#84CC16"> Recruteur</label>
             </div>
           </div>
@@ -591,7 +591,7 @@ function submitForm(e){
       f.licence_svp.checked?'Super Admin':'',
       f.licence_vp.checked?'Admin':'',
       f.licence_dir.checked?'Directeur':'',
-      f.licence_cons.checked?'Consultant':'',
+      f.licence_cons.checked?'Utilisateur':'',
       f.licence_rec.checked?'Recruteur':''
     ].filter(Boolean).join(', ')
   };
@@ -601,7 +601,7 @@ function submitForm(e){
     +'Email : '+data.email+'%0A'
     +'Entreprise : '+data.entreprise+'%0A'
     +'Poste : '+data.poste+'%0A'
-    +'Consultants : '+data.nb+'%0A'
+    +'Utilisateurs : '+data.nb+'%0A'
     +'Licences : '+(data.licences||'Non précisé')+'%0A'
     +'Outil actuel : '+data.outil+'%0A'
     +'Message : '+data.message;
