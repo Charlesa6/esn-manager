@@ -794,7 +794,7 @@ function tSB(){
       return '<label style="display:flex;align-items:center;gap:7px;padding:2px;color:#cbd5e1;font-size:12px;cursor:pointer">'
         +'<input type="checkbox" data-vp="'+esc(vp)+'"'+(on?' checked':'')+' style="accent-color:#84CC16;flex-shrink:0">'+esc(vp)+'</label>';
     }).join('');
-    dirBlock='<div class="syr"><div class="syr-lbl">Vice Président'+(_vNone?'':' ('+S.fvp.length+')')+'</div>'
+    dirBlock='<div class="syr"><div class="syr-lbl">'+rLabel('gestionnaire')+(_vNone?'':' ('+S.fvp.length+')')+'</div>'
       +(_vps.length?_vItems+(_vNone
           ?'<div style="font-size:10px;color:#475569;margin-top:3px">Tous affichés</div>'
           :'<div data-vp-clear style="font-size:10px;color:#60a5fa;margin-top:3px;cursor:pointer;text-decoration:underline">Tout afficher</div>')
@@ -807,7 +807,7 @@ function tSB(){
       return '<label style="display:flex;align-items:center;gap:7px;padding:2px;color:#cbd5e1;font-size:12px;cursor:pointer">'
         +'<input type="checkbox" data-dir="'+esc(r)+'"'+(on?' checked':'')+' style="accent-color:#84CC16;flex-shrink:0">'+esc(r)+'</label>';
     }).join('');
-    dirBlock='<div class="syr"><div class="syr-lbl">Directeur'+(_none?'':' ('+S.fdir.length+')')+'</div>'
+    dirBlock='<div class="syr"><div class="syr-lbl">'+rLabel('directeur')+(_none?'':' ('+S.fdir.length+')')+'</div>'
       +(_dirs.length?_items+(_none
           ?'<div style="font-size:10px;color:#475569;margin-top:3px">Tous affichés</div>'
           :'<div data-dir-clear style="font-size:10px;color:#60a5fa;margin-top:3px;cursor:pointer;text-decoration:underline">Tout afficher</div>')
@@ -1224,7 +1224,7 @@ function tMiss(){
     var isFf=m.btype==='forfait';
     var WJ=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
     var wdLbl=(m.wdays&&m.wdays.length&&m.wdays.length<5)?m.wdays.slice().sort().map(function(x){return WJ[x];}).join(' '):'Tous (L\u2192V)';
-    var flds=[['Client',m.cli],['Consultant',c?c.name:'\u2014'],['Type',isFf?'Forfait':'Assistance technique']];
+    var flds=[['Client',m.cli],[rLabel('consultant'),c?c.name:'\u2014'],['Type',isFf?'Forfait':'Assistance technique']];
     if(isFf){flds.push(['CA deal',fEur((+m.deal)||0)]);flds.push(['Marge cible',(m.tmar!=null?m.tmar:0)+'%']);}
     else if(S.role!=='consultant'){flds.push(['TJM',fEur(m.tjm)]);}  /* TJM masqué pour les consultants */
     flds.push(['D\u00e9but',fDt(m.sd)]);flds.push(['Fin',fDt(m.ed)]);flds.push(['Jours/sem.',wdLbl]);
@@ -1270,7 +1270,7 @@ function tMiss(){
         +'Choisir un fichier<input type="file" id="miss-imp-fi" accept=".xlsx,.xls,.csv" style="display:none"></label>'
         +'</div></div>';
     }
-    var MFLDS=[['cons','Consultant *','Doit correspondre \u00e0 un consultant existant'],['name','Nom de la mission *','Libell\u00e9 de la mission'],['pcode','Code projet','Code PSA/SAP'],['cli','Client *','Soci\u00e9t\u00e9 cliente'],['tjm','TJM','TJM en \u20ac \u2014 vide si Forfait'],['sd','Date d\u00e9but *','AAAA-MM-JJ'],['ed','Date fin','Vide si mission ouverte'],['btype','Type facturation *','Valeur : AT ou Forfait'],['deal','Budget forfait (\u20ac)','Montant total \u2014 vide si AT'],['wdays','Jours/sem. *','5=L-V, 4=L-J, 3=L-Me ou codes L,M,Me,J,V'],['loc','Lieu','Ex : Paris'],['mgr','Responsable','Manager de mission'],['ccn','Contact client (Nom)','Nom du contact'],['ccr','Contact client (R\u00f4le)','Poste du contact']];
+    var MFLDS=[[rLabel('consultant')+' *','Consultant *','Doit correspondre \u00e0 un consultant existant'],['name','Nom de la mission *','Libell\u00e9 de la mission'],['pcode','Code projet','Code PSA/SAP'],['cli','Client *','Soci\u00e9t\u00e9 cliente'],['tjm','TJM','TJM en \u20ac \u2014 vide si Forfait'],['sd','Date d\u00e9but *','AAAA-MM-JJ'],['ed','Date fin','Vide si mission ouverte'],['btype','Type facturation *','Valeur : AT ou Forfait'],['deal','Budget forfait (\u20ac)','Montant total \u2014 vide si AT'],['wdays','Jours/sem. *','5=L-V, 4=L-J, 3=L-Me ou codes L,M,Me,J,V'],['loc','Lieu','Ex : Paris'],['mgr','Responsable','Manager de mission'],['ccn','Contact client (Nom)','Nom du contact'],['ccr','Contact client (R\u00f4le)','Poste du contact']];
     var opts2='<option value="">-- Ignorer --</option>'+mi.headers.map(function(h,i){return '<option value="'+i+'">'+(i+1)+'. '+esc(h)+'</option>';}).join('');
     var form2=MFLDS.map(function(f){var s2='<select class="ic" id="mim-'+f[0]+'">'+opts2.replace(new RegExp('value="'+mi.map[f[0]]+'"'),'value="'+mi.map[f[0]]+'" selected')+'</select>';return '<div class="fd" style="margin-bottom:9px"><label class="fl">'+f[1]+'</label>'+s2+'<p style="font-size:11px;color:#94a3b8;margin-top:3px">'+f[2]+'</p></div>';}).join('');
     var prev2=mi.raw.slice(0,3).map(function(row){return '<tr>'+mi.headers.map(function(h,i){return '<td style="padding:4px 8px;font-size:11px;border-bottom:1px solid #f1f5f9;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(String(row[i]||''))+'</td>';}).join('')+'</tr>';}).join('');
@@ -1747,7 +1747,7 @@ function tKPIsSVPSection(){
     +'<span style="font-size:11px;font-weight:700;background:#e2e8f0;color:#475569;padding:1px 8px;border-radius:99px;margin-right:6px">'+vpList.length+' VP</span>'
     +'<span style="font-size:11px;color:#94a3b8">&#x25be;</span></summary>'
     +'<div style="'+colDef+';padding:10px 16px;background:#f8fafc;border-top:1px solid #e2e8f0">'
-    +'<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em">Vice Pr\u00e9sident</div>'
+    +'<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em">'+rLabel('gestionnaire')+'</div>'
     +'<div style="text-align:center">'+sortBtn('ca','CA')+'</div>'
     +'<div style="text-align:center">'+sortBtn('marge','Marge')+'</div>'
     +'<div style="text-align:center">'+sortBtn('tjm','TJM moy.')+'</div>'
@@ -1862,7 +1862,7 @@ function tKPIsDirSection(){
 
   return '<details style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;overflow:hidden"'+(dSort?' open':'')+'>'
     +'<summary style="display:flex;align-items:center;gap:8px;padding:14px 18px;cursor:pointer;font-size:14px;font-weight:800;color:#0f172a;list-style:none;user-select:none" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'
-    +'\uD83D\uDCCA<span style="flex:1;margin-left:8px">KPIs par Directeur</span>'
+    +'\uD83D\uDCCA<span style="flex:1;margin-left:8px">KPIs par '+rLabel('directeur')+'</span>'
     +'<span style="font-size:11px;font-weight:700;background:#e2e8f0;color:#475569;padding:1px 8px;border-radius:99px;margin-right:6px">'+dirList.length+' directeurs</span>'
     +'<span style="font-size:11px;color:#94a3b8">&#x25be;</span></summary>'
     +'<div style="'+colDef+';padding:10px 16px;background:#f8fafc;border-top:1px solid #e2e8f0">'
@@ -2117,16 +2117,16 @@ function tSVPAcces(){
     return '<tr><td>'+esc(iv.email)+'</td><td style="font-weight:600">'+esc(iv.recruteur_name||'')+'</td><td>'+st+'</td><td class="tr"><button class="lr" data-act="svp-del-rec" data-id="'+esc(iv.id)+'">Suppr.</button></td></tr>';
   }).join('');
   return '<div class="vw">'
-    +'<div style="margin-bottom:20px"><div class="pt">Gestion des acc\u00e8s</div><div class="ps">Invitez vos Vice Pr\u00e9sidents et Recruteurs</div></div>'
-    +'<div class="card" style="padding:20px;margin-bottom:16px"><h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">\uD83D\uDC54 Inviter un Vice Pr\u00e9sident</h3>'
-    +(sbOn?'':'<div class="ac acs" style="margin-bottom:14px"><div style="font-size:12px">Connectez Supabase pour inviter des Vice Pr\u00e9sidents.</div></div>')
+    +'<div style="margin-bottom:20px"><div class="pt">Gestion des acc\u00e8s</div><div class="ps">'+rLabel('gestionnaire')+'s et '+rLabel('recruteur')+'s</div></div>'
+    +'<div class="card" style="padding:20px;margin-bottom:16px"><h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">\uD83D\uDC54 Inviter un '+rLabel('gestionnaire')+'</h3>'
+    +(sbOn?'':'<div class="ac acs" style="margin-bottom:14px"><div style="font-size:12px">Connectez Supabase pour inviter des '+rLabel('gestionnaire')+'s.</div></div>')
     +'<div class="g2"><div class="fd"><label class="fl">Email *</label><input class="ic" id="svp-vp-email" type="email" placeholder="prenom.nom@exemple.com"></div>'
     +'<div class="fd"><label class="fl">Nom *</label><input class="ic" id="svp-vp-name" placeholder="ex : Marie Laurent"></div></div>'
-    +'<button class="bp" data-act="svp-add-vp"'+(sbOn?'':' disabled style="opacity:.5"')+'>+ Inviter ce Vice Pr\u00e9sident</button>'
-    +'<p class="fh" style="margin-top:8px">Le Vice Pr\u00e9sident s\'inscrit sur konsilys.fr avec son email — rattach\u00e9 automatiquement \u00e0 votre organisation.</p></div>'
-    +'<div class="card ov" style="margin-bottom:16px"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">Vice Pr\u00e9sidents invit\u00e9s</div>'
+    +'<button class="bp" data-act="svp-add-vp"'+(sbOn?'':' disabled style="opacity:.5"')+'>+ Inviter ce '+rLabel('gestionnaire')+'</button>'
+    +'<p class="fh" style="margin-top:8px">Le '+rLabel('gestionnaire')+' s\'inscrit sur konsilys.fr avec son email — rattach\u00e9 automatiquement \u00e0 votre organisation.</p></div>'
+    +'<div class="card ov" style="margin-bottom:16px"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">'+rLabel('gestionnaire')+'s invit\u00e9s</div>'
     +'<table><thead><tr><th>Email</th><th>Nom</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
-    +'<tbody>'+vpRows+(vpRows?'':'<tr><td colspan="4" class="emp">Aucun Vice Pr\u00e9sident invit\u00e9.</td></tr>')+'</tbody></table></div>'
+    +'<tbody>'+vpRows+(vpRows?'':'<tr><td colspan="4" class="emp">Aucun '+rLabel('gestionnaire')+'  invit\u00e9.</td></tr>')+'</tbody></table></div>'
     +'<div class="card" style="padding:20px;margin-bottom:16px"><h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">\uD83C\uDFAF Inviter un Recruteur</h3>'
     +(sbOn?'':'<div class="ac acs" style="margin-bottom:14px"><div style="font-size:12px">Connectez Supabase pour inviter des Recruteurs.</div></div>')
     +'<div class="g2"><div class="fd"><label class="fl">Email *</label><input class="ic" id="svp-rec-email" type="email" placeholder="prenom.nom@exemple.com"></div>'
@@ -2241,7 +2241,7 @@ function tDirecteurs(){
       +'<td class="tr"><button class="lr" data-act="inv-del" data-id="'+esc(iv.id)+'">Suppr.</button></td></tr>';
   }).join('');
   return '<div class="vw">'
-    +'<div><div class="pt">Directeurs & accès</div><div class="ps">Gérez les comptes directeurs · le Vice Président voit toutes les équipes de ses directeurs</div></div>'
+    +'<div><div class="pt">Directeurs & accès</div><div class="ps">Gérez les comptes directeurs · le '+rLabel('gestionnaire')+'  voit toutes les équipes</div></div>'
     +'<div class="card" style="padding:20px">'
     +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">Inviter un directeur</h3>'
     +(sbOn?'':'<div class="ac acs" style="margin-bottom:14px"><div style="font-size:12px">Connectez Supabase (voir esn_login.html) pour créer des comptes. En mode démo, cette section est en prévisualisation seule.</div></div>')
@@ -2824,7 +2824,7 @@ function tModal(){
       +'<input class="ic" id="rc-poste" placeholder="ex\u00a0: Consultant Senior" value="'+(it&&it.recruitPoste?esc(it.recruitPoste):'')+'">'
       +'</div>'
 
-      +'<div class="fd cs2"><label class="fl">Directeur *</label>'
+      +'<div class="fd cs2"><label class="fl">'+rLabel('directeur')+'</label>'
       +'<input class="ic" id="rc-dir" list="rc-dir-list" placeholder="Nom du directeur" value="'+(it&&it.recruitDir?esc(it.recruitDir):'')+'">'
       +'<datalist id="rc-dir-list">'+(function(){
         var dirs=[];
@@ -2895,7 +2895,7 @@ function tModal(){
     title=it?"Modifier l'absence":"Nouvelle absence / cong\u00e9";
     var dt=(it&&it.type)||'Cong\u00e9 pay\u00e9';
     var lo=LTYPES.map(function(t){return '<option value="'+t+'"'+(t===dt?' selected':'')+'>'+esc(t)+'</option>';}).join('');
-    body='<div class="fd"><label class="fl">Consultant *</label><select class="ic" id="mlc">'+co+'</select></div>'
+    body='<div class="fd"><label class="fl">'+rLabel('consultant')+'</label><select class="ic" id="mlc">'+co+'</select></div>'
       +'<div class="fd"><label class="fl">Type *</label><select class="ic" id="mlt">'+lo+'</select></div>'
       +'<div class="g2"><div class="fd"><label class="fl">Du *</label><input class="ic" id="mls" type="date" value="'+esc(it?it.s:'')+'"></div>'
       +'<div class="fd"><label class="fl">Au *</label><input class="ic" id="mle" type="date" value="'+esc(it?it.e:'')+'"></div></div>'
@@ -3539,7 +3539,7 @@ function bind(){
         });
       }
       else if(a==='svp-del-vp'){
-        if(confirm('Supprimer cette invitation Vice Pr\u00e9sident ?')){sbSVPDelVP(id).then(function(){loadSVPInvites().then(render);});}
+        if(confirm('Supprimer cette invitation '+rLabel('gestionnaire')+' ?')){sbSVPDelVP(id).then(function(){loadSVPInvites().then(render);});}
       }
       else if(a==='svp-add-rec'){
         var em3=(document.getElementById('svp-rec-email')||{}).value||'';
