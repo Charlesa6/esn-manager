@@ -2908,8 +2908,6 @@ function oppConsPickerHTML(){
         +'<select class="ic" style="font-size:11px" onchange="oppTeamUpdate('+idx+',\'staffing\',+this.value)">'+staffOpts+'</select></div>'
       +'<div style="display:flex;align-items:center;gap:4px"><label style="font-size:11px;color:#64748b;white-space:nowrap">Marge</label>'
         +'<input class="ic" type="number" min="0" max="100" placeholder="%" style="width:60px;font-size:12px" value="'+(tm.tmar!=null?tm.tmar:25)+'" onchange="oppTeamUpdate('+idx+',\'tmar\',+this.value)"><span style="font-size:11px;color:#64748b">%</span></div>'
-      +'<div style="display:flex;align-items:center;gap:4px"><label style="font-size:11px;color:#64748b;white-space:nowrap">CA</label>'
-        +'<input class="ic" type="number" min="0" max="100" placeholder="%" style="width:55px;font-size:12px" value="'+(tm.taux||100)+'" onchange="oppTeamUpdate('+idx+',\'taux\',+this.value)"><span style="font-size:11px;color:#64748b">%</span></div>'
       +'<span style="font-size:11px;font-weight:700;color:#1B2B3A;background:#e2e8f0;padding:2px 8px;border-radius:99px;white-space:nowrap">'+indDays+'</span>'
       +'<button type="button" onclick="oppTeamRemove('+idx+')" style="background:#fee2e2;color:#dc2626;border:none;border-radius:6px;padding:4px 9px;cursor:pointer;font-weight:700;font-size:13px">✕</button>'
       +'</div>'
