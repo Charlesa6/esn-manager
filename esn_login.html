@@ -168,6 +168,21 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
 </style>
 </head>
 <body>
+<script>
+/* ── Bandeau Dev ── */
+(function(){
+  var isD = window.location.hostname !== 'konsilys.fr'
+         && window.location.hostname !== 'konsilys.com'
+         && window.location.hostname !== 'www.konsilys.fr';
+  if(!isD) return;
+  var b = document.createElement('div');
+  b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;'
+    + 'background:#f59e0b;color:#1B2B3A;text-align:center;'
+    + 'font-size:11px;font-weight:800;padding:4px;letter-spacing:.05em;font-family:sans-serif';
+  b.textContent = '⚠ ENVIRONNEMENT DE DÉVELOPPEMENT — dev.konsilys.fr';
+  document.body.insertBefore(b, document.body.firstChild);
+})();
+</script>
 
 <!-- LEFT -->
 <div class="left">
@@ -338,6 +353,7 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
 <script>
 'use strict';
 
+/* ── Détection automatique Dev / Prod ── */
 var _IS_DEV = window.location.hostname !== 'konsilys.fr'
            && window.location.hostname !== 'konsilys.com'
            && window.location.hostname !== 'www.konsilys.fr';
@@ -352,7 +368,7 @@ var SUPABASE_KEY = _IS_DEV
 var sb = (SUPABASE_URL && SUPABASE_KEY && SUPABASE_URL.indexOf('supabase.co') > 0)
   ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
-/* Pré-remplir l'email sauvegard é */
+/* Pré-remplir l'email sauvegardé */
 document.addEventListener('DOMContentLoaded', function() {
   var saved = localStorage.getItem('esn_saved_emails');
   if (saved) {
