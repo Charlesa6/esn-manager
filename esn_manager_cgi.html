@@ -12,7 +12,6 @@ body{font-family:'Nunito',sans-serif;background:#f1f5f9;color:#334155;font-size:
 input,select,button{font-family:inherit;font-size:inherit}
 button{cursor:pointer}
 #app{display:flex;height:100vh;overflow:hidden}
-<<<<<<< HEAD
 #sb{width:210px;background:#0f172a;display:flex;flex-direction:column;flex-shrink:0;transition:width .22s cubic-bezier(.4,0,.2,1);overflow:hidden}
 #mc{flex:1;overflow-y:auto;background:#f1f5f9}
 /* Sidebar collapsible */
@@ -152,19 +151,6 @@ details summary::-webkit-details-marker{display:none}
 </style>
 </head>
 <body>
-<<<<<<< HEAD
-=======
-  <script>
-if (window._IS_DEV) {
-  var b = document.createElement('div');
-  b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;'
-    + 'background:#f59e0b;color:#1B2B3A;text-align:center;'
-    + 'font-size:11px;font-weight:800;padding:4px;letter-spacing:.05em';
-  b.textContent = '⚠ ENVIRONNEMENT DE DÉVELOPPEMENT';
-  document.body.prepend(b);
-}
-</script>
->>>>>>> c64f3e1d9d526f459cedc5c663b274b07c890349
 <button id="sb-open" onclick="toggleSB()" aria-label="Ouvrir le menu">&#9776;</button>
 <div id="sb-backdrop" onclick="toggleSB()"></div>
 <div id="app">
@@ -352,15 +338,8 @@ function av(name,sz){
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    KPI - MARGE = (TJM \u2212 SCR) / TJM × 100
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
-<<<<<<< HEAD
 function kpi(c,miss,lvs,y,H){
   var ys=fyStart(y),ye=fyEnd(y);
-=======
-function kpi(c,miss,lvs,y,H,rangeOverride){
-  var ys,ye;
-  if(rangeOverride){ys=rangeOverride[0];ye=rangeOverride[1];}
-  else{ys=fyStart(y);ye=fyEnd(y);}
->>>>>>> c64f3e1d9d526f459cedc5c663b274b07c890349
   /* Borner sur la période d'activité réelle du consultant dans le FY */
   var cs=(c.arrive&&c.arrive>ys)?c.arrive:ys;
   var ce=(c.depart&&c.depart<ye)?c.depart:ye;
@@ -368,16 +347,10 @@ function kpi(c,miss,lvs,y,H,rangeOverride){
   var lds=lvSet(c.id,lvs,H,cs,ce);
   var lvD=lds.size,avD=tWD-lvD,bill=0,rev=0;
 
-<<<<<<< HEAD
   /* Absences qui comptent dans le staffing : arrêts + congés légitimes */
   var COUNTED=['Maladie','Congé maternité','Congé payé','RTT'];
   var sickSet=new Set();
   lvs.filter(function(l){return l.cid===c.id&&COUNTED.indexOf(l.type)>=0;}).forEach(function(l){
-=======
-  /* Toutes les absences comptent dans le staffing (sauf Inter-contrat) */
-  var sickSet=new Set();
-  lvs.filter(function(l){return l.cid===c.id&&l.type!=='Inter-contrat';}).forEach(function(l){
->>>>>>> c64f3e1d9d526f459cedc5c663b274b07c890349
     var a=l.s<cs?cs:l.s,b=l.e>ce?ce:l.e;
     while(a<=b){if(isWD(a,H))sickSet.add(a);a=nxt(a);}
   });
@@ -410,13 +383,8 @@ function kpi(c,miss,lvs,y,H,rangeOverride){
     return Object.assign({},m,{days:d,rev:r,mar:mar});
   });
   var sr=tWD>0?(bill+sickD)/tWD*100:0,avgT=bill>0?rev/bill:0;
-<<<<<<< HEAD
   var om=bill>0&&avgT>0?(avgT-c.scr)/avgT*100:null; /* \u2190 nouvelle formule */
   return{tWD:tWD,lvD:lvD,avD:avD,sickD:sickD,bill:bill,rev:rev,sr:sr,avgT:avgT,om:om,pm:pm};
-=======
-  var om=bill>0&&avgT>0?(avgT-c.scr*EMPLOYER_FACTOR)/avgT*100:null; /* \u2190 nouvelle formule */
-  return{tWD:tWD,lvD:lvD,avD:avD,sickD:sickD,bill:bill,rev:rev,sr:sr,avgT:avgT,om:om,pm:pm,cs:cs,ce:ce};
->>>>>>> c64f3e1d9d526f459cedc5c663b274b07c890349
 }
 
 /* \u2550\u2550\u2550 JOURS TRAVAILL\u00c9S sur une p\u00e9riode quelconque (jours coch\u00e9s, hors f\u00e9ri\u00e9s/cong\u00e9s) \u2550\u2550\u2550 */
@@ -501,16 +469,8 @@ var S={
   sbSync:false,
   imp:null,
   impHistory:[],
-<<<<<<< HEAD
   impView:'pl',
   impSelFY:'all'
-=======
-  impSelFY:'all',
-  missImp:null,
-  recSel:null,recF:{status:'all',q:'',loc:[],rec:'all'},recAddMeet:false,recAddCgi:false,recAddCv:false,
-  recEditMeetId:null,recEditCgiId:null,
-  activityLog:[]
->>>>>>> c64f3e1d9d526f459cedc5c663b274b07c890349
 };
 var H=fyHols(CFY);
 
@@ -637,32 +597,7 @@ function getActiveLv(cid){
     return l.cid===cid&&l.type!=='Inter-contrat'&&l.s<=TODAY&&l.e>=TODAY;
   });
 }
-<<<<<<< HEAD
 function buildKS(){return S.cons.map(function(c){return{c:c,k:kpi(c,S.miss,S.lvs,S.year,H)};});}
-=======
-/* ── Libellé d'un rôle (avec personnalisation via Paramètres SVP) ── */
-var _ROLE_DEFAULTS={
-  'super_admin':'Super Admin',
-  'admin':'Admin',
-  'gestionnaire':'Gestionnaire',
-  'utilisateur':'Utilisateur',
-  'recruteur':'Recruteur',
-  'sales':'Business Manager'
-};
-function rLabel(role){
-  var custom=S.settings&&S.settings.roleLabels&&S.settings.roleLabels[role];
-  return custom||_ROLE_DEFAULTS[role]||role;
-}
-
-function buildKS(){
-  /* Cache par render — évite de recalculer pour chaque template */
-  if(S._ks&&S._ks._valid)return S._ks.data;
-  var _rng=S.quarter?curRange(S.year):null;
-  var data=S.cons.map(function(c){return{c:c,k:kpi(c,S.miss,S.lvs,S.year,H,_rng)};});
-  S._ks={data:data,_valid:true};
-  return data;
-}
->>>>>>> c64f3e1d9d526f459cedc5c663b274b07c890349
 function clientRev(ks){
   var map={};
   ks.forEach(function(x){x.k.pm.forEach(function(m){if(m.days>0){map[m.cli]=(map[m.cli]||0)+m.rev;}});});
@@ -812,7 +747,6 @@ function genRecs(goal){
    TEMPLATES - SIDEBAR
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function tSB(){
-<<<<<<< HEAD
   var NAV=[
     {id:'dashboard',ic:'\uD83D\uDCCA',lb:'Dashboard'},
     {id:'teams',    ic:'\uD83D\uDC65',lb:'Équipe'},
@@ -826,55 +760,6 @@ function tSB(){
   if(S.role==='gestionnaire')NAV.push({id:'directeurs',ic:'🛡️',lb:'Directeurs'});
   NAV.splice(4,0,{id:'activite',ic:'🗓️',lb:'Activité'});
   var alC=S.miss.filter(function(m){var s=mSt(m);return s==='critical'||s==='soon';}).length;
-=======
-  var NAV;
-  if(S.role==='recruteur'){
-    NAV=[
-      {id:'recrutement',ic:'\uD83C\uDFAF',lb:'Recrutement'},
-      {id:'activite',   ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'},
-      {id:'leaves',     ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
-      {id:'help',      ic:'\u2753',lb:'Aide'}
-    ];
-  }else if(S.role==='sales'){
-    /* Licence Business Manager : Business + Activité + Absences */
-    NAV=[
-      {id:'business',   ic:'\uD83D\uDCBC',lb:'Business'},
-      {id:'activite',   ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'},
-      {id:'leaves',     ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
-      {id:'help',      ic:'\u2753',lb:'Aide'}
-    ];
-  }else if(S.role==='utilisateur'){
-    NAV=[
-      {id:'activite',   ic:'\uD83D\uDCC5',lb:'Activit\u00e9'},
-      {id:'missions',   ic:'\uD83D\uDCCB',lb:'Missions'},
-      {id:'planning',   ic:'\uD83D\uDCC5',lb:'Planning'},
-      {id:'leaves',     ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
-      {id:'approvals',  ic:'\uD83D\uDD14',lb:'Approbations'},
-      {id:'business',   ic:'\uD83D\uDCBC',lb:'Business'},
-      {id:'help',      ic:'\u2753',lb:'Aide'}
-    ];
-  }else{
-    NAV=[
-      {id:'kpis',      ic:'\uD83D\uDCC8',lb:'KPIs'},
-      {id:'dashboard', ic:'\uD83D\uDCCA',lb:'Dashboard'},
-      {id:'teams',     ic:'\uD83D\uDC65',lb:'\u00c9quipe'},
-      {id:'recrutement',ic:'\uD83C\uDFAF',lb:'Recrutement'},
-      {id:'missions',  ic:'\uD83D\uDCCB',lb:'Missions'},
-      {id:'planning',  ic:'\uD83D\uDCC5',lb:'Planning'},
-      {id:'leaves',    ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
-      {id:'business',  ic:'\uD83D\uDCBC',lb:'Business'},
-      {id:'approvals',  ic:'\uD83D\uDD14',lb:'Approbations'},
-      {id:'param',     ic:'\uD83D\uDCA1',lb:'Pr\u00e9conisations'},
-      {id:'help',      ic:'\u2753',lb:'Aide'}
-    ];
-    if(S.role==='admin')NAV.push({id:'directeurs',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
-    if(S.role==='gestionnaire')NAV.push({id:'admin',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
-    if(S.role==='super_admin')NAV.push({id:'svp_acces',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
-    if(S.role==='super_admin')NAV.push({id:'svp_settings',ic:'\u2699',lb:'Param\u00e8tres'});
-    NAV.splice(4,0,{id:'activite',ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'});
-  }
-  var alC=(function(){if(S.role==='gestionnaire')return (S.approvals||[]).filter(function(r){return r.status==='pending'&&r.dirName===S.dirName;}).length+(S.lvs.filter(function(lv){return lv.approval_role==='gestionnaire'&&lv.approved===false;}).length);if(S.role==='admin')return S.lvs.filter(function(lv){return lv.approval_role==='admin'&&lv.approved===false;}).length;if(S.role==='super_admin')return S.lvs.filter(function(lv){return lv.approval_role==='super_admin'&&lv.approved===false;}).length;return 0;})();
->>>>>>> c64f3e1d9d526f459cedc5c663b274b07c890349
   var fyOpts=[CFY-2,CFY-1,CFY,CFY+1].map(function(fy){return '<option value="'+fy+'"'+(fy===S.year?' selected':'')+'>'+fyLbl(fy)+'</option>';}).join('');
   var nav=NAV.map(function(n){
     return '<button class="nb'+(S.tab===n.id?' act':'')+'" data-nav="'+n.id+'">'
@@ -922,28 +807,9 @@ function tSB(){
         :'<div style="font-size:11px;color:#475569">Aucun directeur défini</div>')
       +'</div>';
   }
-<<<<<<< HEAD
   return '<div class="sbl" style="display:flex;align-items:flex-start;justify-content:space-between"><div><div class="sbn">ESN Manager</div><div class="sbs">CGI Business Conseil</div></div>'
     +'<button onclick="toggleSB()" style="background:none;border:none;color:#475569;cursor:pointer;font-size:16px;padding:2px 0 0;line-height:1;flex-shrink:0" aria-label="R\u00e9duire">&#8592;</button></div>'
     +'<div class="syr"><div class="syr-lbl">Exercice fiscal</div><select id="yrs">'+fyOpts+'</select></div>'
-=======
-  return '<div class="sbl" style="display:flex;align-items:flex-start;justify-content:space-between"><div style="display:flex;align-items:center;gap:10px">'+'<div style="display:flex;align-items:flex-end;gap:3px;height:28px">'+'<div style="width:5px;border-radius:2px;height:45%;background:#f8fafc"></div>'+'<div style="width:5px;border-radius:2px;height:68%;background:#f8fafc"></div>'+'<div style="width:5px;border-radius:2px;height:100%;background:#84CC16"></div>'+'</div>'+'<div><div class="sbn" style="font-family:\'Nunito\',sans-serif;letter-spacing:-0.3px">Konsilys</div></div></div>'
-    +'<button onclick="toggleSB()" style="background:none;border:none;color:#475569;cursor:pointer;font-size:16px;padding:2px 0 0;line-height:1;flex-shrink:0" aria-label="R\u00e9duire">&#8592;</button></div>'
-    /* ── Profil utilisateur juste sous le logo ── */
-    +'<button data-nav="profile" style="width:100%;display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;border:none;background:rgba(255,255,255,.06);cursor:pointer;text-align:left;margin:8px 0">'
-    +'<div style="width:26px;height:26px;border-radius:50%;background:#84CC16;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#1B2B3A;flex-shrink:0">'+(S.profileFirstName?S.profileFirstName[0].toUpperCase():'?')+'</div>'
-    +'<div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:700;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(S.profileFirstName||S._userEmail||'Profil')+'</div>'
-    +'<div style="font-size:10px;color:#475569">'+rLabel(S.role)+'</div></div>'
-    +'<span style="font-size:10px;color:#475569">&#x270E;</span></button>'
-    +'<div class="syr"><div class="syr-lbl">Exercice fiscal</div><select id="yrs">'+fyOpts+'</select>'
-    +'<div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap">'
-    +'<button data-act="qsel" data-id="" style="flex:1;min-width:54px;padding:5px 4px;border-radius:6px;font-size:10px;font-weight:700;border:1px solid '+(!S.quarter?'#2563eb':'#334155')+';background:'+(!S.quarter?'#2563eb':'transparent')+';color:'+(!S.quarter?'#fff':'#94a3b8')+';cursor:pointer">Ann\u00e9e</button>'
-    +QUARTERS.map(function(q){
-      var active=S.quarter===q.id;
-      return '<button data-act="qsel" data-id="'+q.id+'" title="'+esc(q.lbFull)+'" style="flex:1;min-width:38px;padding:5px 4px;border-radius:6px;font-size:10px;font-weight:700;border:1px solid '+(active?'#2563eb':'#334155')+';background:'+(active?'#2563eb':'transparent')+';color:'+(active?'#fff':'#94a3b8')+';cursor:pointer">'+q.lb+'</button>';
-    }).join('')
-    +'</div></div>'
->>>>>>> c64f3e1d9d526f459cedc5c663b274b07c890349
     +dirBlock
     +'<nav class="snv">'+nav+'</nav>'
     +'<div class="sft">'
@@ -955,7 +821,6 @@ function tSB(){
    TEMPLATE - DASHBOARD
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function tDash(){
-<<<<<<< HEAD
   var ks=buildKS();
   var als=S.miss.filter(function(m){
     var s=mSt(m);
@@ -968,10 +833,6 @@ function tDash(){
   var totR=ks.reduce(function(s,x){return s+x.k.rev;},0);
   var avgSr=ks.reduce(function(s,x){return s+x.k.sr;},0)/(ks.length||1);
   var actCnt=S.miss.filter(function(m){var s=mSt(m);return s==='active'||s==='critical'||s==='soon';}).length;
-=======
-  var Hy=fyHols(S.year);
-  var dateStr=pD(TODAY).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
->>>>>>> c64f3e1d9d526f459cedc5c663b274b07c890349
 
   /* ── Helpers ── */
   function daysSince(d){return Math.round((pD(TODAY)-pD(d))/86400000);}
@@ -1022,7 +883,6 @@ function tDash(){
     }).join('');
   }
 
-<<<<<<< HEAD
   var synR=ks.filter(function(x){return !isGone(x.c);}).map(function(x){
     var am=getAct(x.c.id);var st=am?mSt(am):'none';
     return '<div style="display:flex;align-items:center;gap:14px;padding:10px 8px;border-bottom:1px solid #f8fafc">'
@@ -1033,128 +893,6 @@ function tDash(){
       +'<div><div style="font-size:13px;font-weight:800;color:#0f172a">'+x.k.sr.toFixed(0)+'%</div><div style="font-size:10px;color:#94a3b8">staffing</div></div>'
       +'<div><div style="font-size:13px;font-weight:800;color:#0f172a">'+fEur(x.k.rev)+'</div><div style="font-size:10px;color:#94a3b8">CA</div></div>'
       +'<div><div style="font-size:13px;font-weight:800;color:'+(x.k.om!=null?(x.k.om>=0?'#15803d':'#b91c1c'):'#94a3b8')+'">'+(x.k.om!=null?x.k.om.toFixed(0)+'%':'\u2014')+'</div><div style="font-size:10px;color:#94a3b8">marge</div></div>'
-=======
-  /* ══ 2. PROCHAINES MISSIONS QUI DÉMARRENT ══ */
-  var startRows='';
-  var startMiss=S.miss
-    .filter(function(m){return m.sd>TODAY;})
-    .map(function(m){
-      var c=S.cons.find(function(c){return c.id===m.cid;})||{name:'?',title:''};
-      return {m:m,c:c,j:daysUntil(m.sd)};
-    })
-    .sort(function(a,b){return a.j-b.j;})
-    .slice(0,5);
-  if(startMiss.length){
-    startRows=startMiss.map(function(x){
-      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:8px;background:'+urgentBg(x.j)+';border:1px solid '+urgentBd(x.j)+';margin-bottom:8px">'
-        +'<div style="display:flex;align-items:center;gap:10px">'+av(x.c.name,32)
-        +'<div><div style="font-weight:700;font-size:13px;color:#0f172a">'+esc(x.c.name)+'</div>'
-        +'<div style="font-size:11px;color:#64748b">'+esc(x.m.client||x.m.cli||'')+' \u00b7 TJM '+fEur(x.m.tjm)+'</div></div></div>'
-        +'<div style="text-align:right">'
-        +'<div style="font-size:18px;font-weight:900;color:'+urgentCol(x.j)+'">J\u2212'+x.j+'</div>'
-        +'<div style="font-size:10px;color:#94a3b8">'+fDt(x.m.sd)+'</div></div></div>';
-    }).join('');
-  }
-
-  /* ══ 3. PROCHAINES MISSIONS QUI SE TERMINENT ══ */
-  var endRows='';
-  var endMiss=S.miss
-    .filter(function(m){return m.sd<=TODAY&&m.ed&&m.ed>=TODAY;})
-    .map(function(m){
-      var c=S.cons.find(function(c){return c.id===m.cid;})||{name:'?',title:''};
-      return {m:m,c:c,j:daysUntil(m.ed)};
-    })
-    .sort(function(a,b){return a.j-b.j;})
-    .slice(0,5);
-  if(endMiss.length){
-    endRows=endMiss.map(function(x){
-      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:8px;background:'+urgentBg(x.j)+';border:1px solid '+urgentBd(x.j)+';margin-bottom:8px">'
-        +'<div style="display:flex;align-items:center;gap:10px">'+av(x.c.name,32)
-        +'<div><div style="font-weight:700;font-size:13px;color:#0f172a">'+esc(x.c.name)+'</div>'
-        +'<div style="font-size:11px;color:#64748b">'+esc(x.m.client||x.m.cli||'')+'</div></div></div>'
-        +'<div style="text-align:right">'
-        +'<div style="font-size:18px;font-weight:900;color:'+urgentCol(x.j)+'">J\u2212'+x.j+'</div>'
-        +'<div style="font-size:10px;color:#94a3b8">'+fDt(x.m.ed)+'</div></div></div>';
-    }).join('');
-  }
-
-  /* ══ 4. PROCHAINS RETOURS DE CONGÉS / MALADIE ══
-     Personnes actuellement en congé (aujourd'hui compris), retour à venir */
-  var retourRows='';
-  var retours=[];
-  S.cons.filter(function(c){return !isGone(c);}).forEach(function(c){
-    var lvNow=leaveOnDay(c.id,TODAY);
-    if(lvNow&&lvNow.type!=='Inter-contrat'&&lvNow.type!=='Mission interne'){
-      var retDate=nxt(lvNow.e); /* lendemain de fin = jour de retour */
-      retours.push({c:c,lv:lvNow,ret:retDate,j:daysUntil(lvNow.e)});
-    }
-  });
-  retours.sort(function(a,b){return a.j-b.j;});
-  if(retours.length){
-    retourRows=retours.map(function(x){
-      var typeCol={'Maladie':'#b91c1c','Congé maternité':'#9d174d','Congé sans solde':'#475569'}[x.lv.type]||'#b45309';
-      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:8px;background:#fffbeb;border:1px solid #fde68a;margin-bottom:8px">'
-        +'<div style="display:flex;align-items:center;gap:10px">'+av(x.c.name,32)
-        +'<div><div style="font-weight:700;font-size:13px;color:#0f172a">'+esc(x.c.name)+'</div>'
-        +'<div style="display:flex;align-items:center;gap:6px;margin-top:2px">'
-        +'<span style="font-size:11px;font-weight:700;color:'+typeCol+';background:#ffe4e6;padding:1px 8px;border-radius:99px">'+esc(x.lv.type)+'</span>'
-        +'<span style="font-size:11px;color:#94a3b8">retour le '+fDt(x.ret)+'</span></div></div></div>'
-        +'<div style="text-align:right">'
-        +'<div style="font-size:18px;font-weight:900;color:#b45309">J\u2212'+x.j+'</div>'
-        +'<div style="font-size:10px;color:#94a3b8">fin d\'absence</div></div></div>';
-    }).join('');
-  }
-
-  /* ── Compteur IC et approbations ── */
-  var icCount=icCons.length;
-  /* Absences Recruteur/Business Manager en attente */
-  var pendingLvAppr=S.lvs.filter(function(lv){return lv.approval_role&&lv.approved===false;});
-  var myPendingLvAppr=S.role==='super_admin'?pendingLvAppr.filter(function(lv){return lv.approval_role==='super_admin';}):
-    S.role==='gestionnaire'?pendingLvAppr.filter(function(lv){return lv.approval_role==='gestionnaire';}):
-    [];
-  var pendingAppr=(S.approvals||[]).filter(function(r){
-    return r.status==='pending'&&(S.role!=='gestionnaire'||r.dirName===S.dirName);
-  });
-  var approvedAppr=(S.approvals||[]).filter(function(r){
-    return r.status==='approved'&&(S.role!=='gestionnaire'||r.dirName===S.dirName);
-  });
-  var rejectedAppr=(S.approvals||[]).filter(function(r){
-    return r.status==='rejected'&&(S.role!=='gestionnaire'||r.dirName===S.dirName);
-  });
-  var pCount=pendingAppr.length;
-
-  /* Futurs arrivants = consultants dont l'arrivée est > aujourd'hui ET dans la période sélectionnée */
-  var futursArrivants=S.cons.filter(function(c){
-    return c.arrive&&c.arrive>TODAY&&!isGone(c);
-  }).sort(function(a,b){return a.arrive.localeCompare(b.arrive);});
-  var futurCount=futursArrivants.length;
-
-  /* Lien candidat → consultant pour expertise/secteur */
-  function getCandForCons(cid){
-    return S.cands.find(function(cd){return cd.consId===cid||cd.id===cid;});
-  }
-
-  /* ── Section approbations complète (bas de page) ── */
-  function apprRow(r,showReject){
-    var dt=r.createdAt?new Date(r.createdAt).toLocaleDateString('fr-FR'):'';
-    var isP=r.status==='pending',isA=r.status==='approved',isR=r.status==='rejected';
-    var bg=isA?'#f0fdf4':isR?'#fff1f2':'#fffbeb';
-    var bd=isA?'#bbf7d0':isR?'#fecdd3':'#fde68a';
-    return '<div style="background:'+bg+';border:1px solid '+bd+';border-radius:10px;padding:12px 16px;margin-bottom:8px">'
-      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">'
-      +'<div style="flex:1">'
-      +'<div style="font-size:13px;font-weight:700;color:#0f172a">'+esc(r.consName||'')+' \u2014 '+esc(APPROVAL_LABELS[r.type]||r.type)+'</div>'
-      +'<div style="font-size:12px;color:#64748b;margin-top:2px">'+esc(r.applyDesc||'')+'</div>'
-      +'<div style="font-size:11px;color:#94a3b8;margin-top:2px">'+dt+'</div>'
-      +(isR&&r.rejectionReason?'<div style="margin-top:6px;font-size:12px;color:#b91c1c;font-style:italic">\u26a0 Motif\u00a0: '+esc(r.rejectionReason)+'</div>':'')
-      +'</div>'
-      +(isP&&showReject
-        ?'<div style="display:flex;gap:8px;flex-shrink:0">'
-          +'<button class="bp" style="padding:5px 12px;font-size:12px" data-act="appr-ok" data-id="'+r.id+'">Approuver</button>'
-          +'<button class="bg" style="padding:5px 12px;font-size:12px;color:#b91c1c;border-color:#fecdd3" data-act="appr-ko" data-id="'+r.id+'">Refuser</button>'
-          +'</div>'
-        :'<div style="font-size:18px">'+(isA?'\u2705':isR?'\u274c':'\u23f3')+'</div>')
->>>>>>> c64f3e1d9d526f459cedc5c663b274b07c890349
       +'</div></div>';
   }
 
@@ -1466,14 +1204,7 @@ function tPlan(){
   var fyS=pD(fyStart(S.year)),fyE=pD(fyEnd(S.year));
   var ysT=fyS.getTime(),yeT=fyE.getTime(),dur=yeT-ysT;
   var nowP=((new Date().getTime()-ysT)/dur)*100;
-<<<<<<< HEAD
   var fyMonths=['Oct','Nov','D\u00e9c','Jan','F\u00e9v','Mar','Avr','Mai','Jun','Jul','Ao\u00fb','Sep'];
-=======
-  /* Mois planification dynamiques selon fyStartMonth */
-  var ALL_MONTHS=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
-  var _fm=((S.settings&&S.settings.fyStartMonth)||10)-1;
-  var fyMonths=ALL_MONTHS.slice(_fm).concat(ALL_MONTHS.slice(0,_fm));
->>>>>>> c64f3e1d9d526f459cedc5c663b274b07c890349
   var COL={active:'#22c55e',critical:'#ef4444',soon:'#f59e0b',future:'#22c55e',ended:'#d1d5db'};
   var LVC={'Maladie':'#1d4ed8','Cong\u00e9 maternit\u00e9':'#1d4ed8','Cong\u00e9 pay\u00e9':'#fbbf24','RTT':'#a78bfa','Formation':'#34d399','Cong\u00e9 sans solde':'#cbd5e1','Mission interne':'#60a5fa','Autre':'#d1d5db'};
 
@@ -1497,98 +1228,26 @@ function tPlan(){
     }).join('');
 
     var lvBars=cl.map(function(l){
-<<<<<<< HEAD
       var s=Math.max(pD(l.s).getTime(),ysT);
       var e=Math.min(pD(l.e).getTime(),yeT);
       if(s>yeT||e<ysT)return '';
       var left=Math.max(0,(s-ysT)/dur*100);
       var wid=Math.max(0.4,Math.min(100-left,(e-s)/dur*100));
-=======
-      /* Ne pas afficher visuellement les absences de moins de 3 jours ouvrés */
-      if(wDays(l.s,l.e,H)<3)return '';
-      var ls=Math.max(pD(l.s).getTime(),ysT);
-      var le=Math.min(pD(l.e).getTime(),yeT);
-      if(ls>yeT||le<ysT)return '';
-      var left=Math.max(0,(ls-ysT)/dur*100);
-      var wid=Math.max(0.4,Math.min(100-left,(le-ls)/dur*100));
->>>>>>> c64f3e1d9d526f459cedc5c663b274b07c890349
       var col=LVC[l.type]||'#d1d5db';
       var tip=esc(l.type+' : du '+fDt(l.s)+' au '+fDt(l.e));
       return '<div class="gbar" style="left:'+left+'%;width:'+wid+'%;background:'+col+';opacity:.88;z-index:5;" title="'+tip+'"><span>'+esc(l.type)+'</span></div>';
     }).join('');
 
-<<<<<<< HEAD
-=======
-    /* ── Périodes inter-contrat : ni mission ni absence ── */
-    function tsToISO(ts){var d=new Date(ts);return fD(d);}
-
-    /* Borne de d\u00e9but IC = max(fyS, date d'arriv\u00e9e du consultant) */
-    var arriveTs=c.arrive&&c.arrive>=fyStart(S.year)?pD(c.arrive).getTime():ysT;
-
-    var covered=[];
-    cm.forEach(function(m){
-      var ms=Math.max(pD(m.sd).getTime(),arriveTs);
-      var me=Math.min(m.ed?pD(m.ed).getTime():yeT,yeT);
-      if(ms<=me)covered.push([ms,me]);
-    });
-    cl.forEach(function(l){
-      var ls2=Math.max(pD(l.s).getTime(),arriveTs);
-      var le2=Math.min(pD(l.e).getTime(),yeT);
-      if(ls2<=le2)covered.push([ls2,le2]);
-    });
-    covered.sort(function(a,b){return a[0]-b[0];});
-    var merged=[];
-    covered.forEach(function(iv){
-      if(!merged.length||iv[0]>merged[merged.length-1][1]+86400001)
-        merged.push([iv[0],iv[1]]);
-      else merged[merged.length-1][1]=Math.max(merged[merged.length-1][1],iv[1]);
-    });
-    /* Les IC ne commencent qu'à partir de la date d'arrivée */
-    var icGaps=[],cur=arriveTs;
-    merged.forEach(function(iv){
-      if(iv[0]>cur+86400001)icGaps.push([cur,iv[0]-86400000]);
-      if(iv[1]+86400000>cur)cur=iv[1]+86400000;
-    });
-    if(cur<yeT)icGaps.push([cur,yeT]);
-    var icBars=icGaps.map(function(g){
-      var wd=wDays(tsToISO(g[0]),tsToISO(g[1]),H);
-      if(wd<=0)return '';
-      var left=Math.max(0,(g[0]-ysT)/dur*100);
-      var wid=Math.max(0.4,Math.min(100-left,(g[1]-g[0])/dur*100));
-      return '<div class="gbar" style="left:'+left+'%;width:'+wid+'%;background:#fca5a5;opacity:.55;z-index:1;" title="Inter-contrat : '+wd+' j ouvr\u00e9s">'
-        +(wid>2.5?'<span style="color:#7f1d1d;font-weight:700;font-size:10px">IC '+wd+'j</span>':'')+'</div>';
-    }).join('');
-
-    /* ── Marqueur d'arrivée (si dans le FY) ── */
-    var arriveMarker='';
-    if(c.arrive&&c.arrive>fyStart(S.year)&&c.arrive<=fyEnd(S.year)){
-      var arrLeft=(pD(c.arrive).getTime()-ysT)/dur*100;
-      if(arrLeft>=0&&arrLeft<=100){
-        arriveMarker='<div style="position:absolute;top:0;bottom:0;width:2px;background:#f59e0b;z-index:12;left:'+arrLeft+'%">'
-          +'<div style="position:absolute;top:1px;left:3px;background:#f59e0b;color:#fff;font-size:9px;font-weight:800;padding:1px 4px;border-radius:3px;white-space:nowrap">'
-          +'\u25B6 '+fDt(c.arrive)+'</div></div>';
-      }
-    }
-
->>>>>>> c64f3e1d9d526f459cedc5c663b274b07c890349
     return '<div class="grw" style="background:'+(ci%2===0?'#fff':'#f8fafc')+'">'
       +'<div class="glb">'+av(c.name,28)+'<div style="min-width:0">'
       +'<div style="font-size:12px;font-weight:600;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.name.split(' ')[0])+'</div>'
       +'<div style="font-size:10px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.title.split(' ')[0])+'</div>'
-<<<<<<< HEAD
       +'</div></div><div class="gtr">'+grid+todayLine+bars+lvBars+'</div></div>';
-=======
-      +'</div></div><div class="gtr">'+grid+todayLine+arriveMarker+icBars+bars+lvBars+'</div></div>';
->>>>>>> c64f3e1d9d526f459cedc5c663b274b07c890349
   }).join('');
 
   var mths=fyMonths.map(function(m){return '<div class="gm">'+m+'</div>';}).join('');
   var lgd=[
-<<<<<<< HEAD
     ['#22c55e','En mission'],['#ef4444','Fin &lt;14j'],['#f59e0b','Fin &lt;30j'],['#d1d5db','Termin\u00e9e'],['#fbbf24','Cong\u00e9s pay\u00e9s'],['#1d4ed8','Arr\u00eat / Maternit\u00e9'],['#a78bfa','RTT'],['#34d399','Formation'],['#60a5fa','Mission interne']].map(function(x){return '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#64748b"><div style="width:12px;height:12px;border-radius:3px;background:'+x[0]+'"></div>'+x[1]+'</div>';}).join('');
-=======
-    ['#22c55e','En mission'],['#ef4444','Fin &lt;14j'],['#f59e0b','Fin &lt;30j'],['#d1d5db','Termin\u00e9e'],['#fbbf24','Cong\u00e9s pay\u00e9s'],['#1d4ed8','Arr\u00eat / Maternit\u00e9'],['#a78bfa','RTT'],['#34d399','Formation'],['#60a5fa','Mission interne'],['#fca5a5','Inter-contrat'],['#f59e0b','▶ Date d\'arrivée']].map(function(x){return '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#64748b"><div style="width:12px;height:12px;border-radius:3px;background:'+x[0]+'"></div>'+x[1]+'</div>';}).join('');
->>>>>>> c64f3e1d9d526f459cedc5c663b274b07c890349
 
   return '<div><div class="ph"><div><div class="pt">Planning '+fyLbl(S.year)+'</div>'
     +'<div class="ps">'+fyRange(S.year)+' \u00b7 ligne bleue = aujourd\'hui</div></div>'
@@ -1780,12 +1439,8 @@ function tKPIs(){
     +'</tbody></table></div></details>';
 
   return '<div class="vw">'
-<<<<<<< HEAD
     +'<div style="margin-bottom:24px"><div class="pt">KPIs &mdash; '+fyLbl(S.year)+'</div>'
     +'<div class="ps">Marge = (TJM &minus; SCR) / TJM &times; 100 &middot; Staffing = (Facturables + Congés + Maladie/Maternité) / Jours ouvrés FY × 100</div></div>'
-=======
-    +'<div style="margin-bottom:24px"><div class="pt">KPIs &mdash; '+fyLbl(S.year)+(S.quarter?' \u00b7 '+curRangeLbl():'')+'</div></div>'
->>>>>>> c64f3e1d9d526f459cedc5c663b274b07c890349
     +hero
     +'<div style="display:grid;grid-template-columns:3fr 200px;gap:16px;margin-bottom:16px">'
     +'<div class="card" style="padding:20px">'
@@ -4717,7 +4372,6 @@ function tModal(){
   if(tp==='utilisateur'){
     title=it?'Modifier le membre':'Ajouter un membre';wide=true;
     var _rl=[];((S._all&&S._all.cons)||S.cons).forEach(function(c){var r=c.dir||'';if(r&&_rl.indexOf(r)<0)_rl.push(r);});_rl.sort();
-<<<<<<< HEAD
     var dirFld=(S.role==='directeur')
       ? '<div class="fd"><label class="fl">Directeur</label><input class="ic" id="mdir" value="'+esc(S.dirName)+'" disabled style="background:#f1f5f9;color:#64748b"><p class="fh">Consultant rattach\u00e9 automatiquement \u00e0 votre \u00e9quipe</p></div>'
       : '<div class="fd"><label class="fl">Directeur</label><input class="ic" id="mdir" list="esn-dir-list" value="'+esc(it?(it.dir||''):'')+'" placeholder="Nom du directeur"><datalist id="esn-dir-list">'+_rl.map(function(r){return '<option value="'+esc(r)+'">';}).join('')+'</datalist><p class="fh">Directeur unique du consultant (d\u00e9finit l\'\u00e9quipe, filtrable c\u00f4t\u00e9 gestionnaire)</p></div>';
@@ -5011,7 +4665,6 @@ function render(){
   S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
   var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;
   document.getElementById('sb').innerHTML=tSB();
-<<<<<<< HEAD
   var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='imputations'?tImpute():S.tab==='activite'?tActivite():S.tab==='directeurs'?tDirecteurs():tParam();
   document.getElementById('mc').innerHTML='<div class="inn">'+v+'</div>';
   document.getElementById('md').innerHTML=tModal();
@@ -5238,7 +4891,6 @@ function bind(){
       else if(a==='sc'){
         var n=gv('mn'),t=gv('mti'),s=+gv('ms'),em=gv('me');
         var arr=gv('marr')||null,dep=gv('mdep')||null;
-<<<<<<< HEAD
         var rdir=(S.role==='directeur')?S.dirName:gv('mdir'); /* un directeur ne crée que dans son équipe */
         if(!n||!t||!s){alert('Veuillez remplir les champs obligatoires (*).');return;}
         var it=S.modal.item;
@@ -5271,7 +4923,6 @@ function bind(){
         var manualDays2=(wmode2==='man'&&S.modal&&S.modal.manualDays)?S.modal.manualDays.slice():[];
         var deal=+gv('mdeal')||0,tmar=(gv('mtmar')===''?null:+gv('mtmar'));var missTeam=readMissTeam();
         if(!cid||!mn||!cl||!sd){alert('Veuillez remplir les champs obligatoires (*).');return;}
-<<<<<<< HEAD
         if(bt==='forfait'){
           if(!deal||tmar==null){alert('Pour un forfait : indiquez le montant du deal (CA) et la marge recherchée.');return;}
         }else if(!tj){alert('Pour une mission en Assistance technique : indiquez le TJM.');return;}
@@ -5709,7 +5360,6 @@ function bind(){
   var impFile=el('imp-file');
   if(impFile)impFile.onchange=function(){importJSON(this.files[0]);this.value='';};
   /* logout & sync */
-<<<<<<< HEAD
   /* Imputations : file input + drag-and-drop */
   var impFi=el('imp-fi');
   if(impFi)impFi.onchange=function(){if(this.files[0])handleImpFile(this.files[0]);this.value='';};
@@ -5799,7 +5449,6 @@ function importJSON(file){
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    SUPABASE - helpers (synchronisation non-bloquante)
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
-<<<<<<< HEAD
 function mapC(r){return{id:r.id,name:r.name,title:r.title||'',scr:r.scr||0,email:r.email||'',dir:r.directeur||'',arrive:r.arrive||null,depart:r.depart||null};}
 function mapM(r){return{id:r.id,cid:r.consultant_id,name:r.name,cli:r.client_name||'',tjm:r.tjm||0,sd:r.start_date,ed:r.end_date||null,loc:r.location||'',mgr:r.manager_name||'',ccn:r.client_contact_name||'',ccr:r.client_contact_role||'',pcode:r.code_projet||'',btype:r.billing_type||'at',wdays:(Array.isArray(r.work_days)?r.work_days:(r.work_days?String(r.work_days).split(',').map(Number):[1,2,3,4,5])),deal:r.deal_amount||0,tmar:(r.target_margin!=null?r.target_margin:null)};}
 =======
@@ -5897,7 +5546,6 @@ async function loadSB(){
 
 async function sbUpsertCons(c){
   if(!sb||!SB_CID)return;
-<<<<<<< HEAD
   var res=await sb.from('consultants').upsert({id:c.id,company_id:SB_CID,name:c.name,title:c.title,scr:c.scr,email:c.email,directeur:c.dir||null,arrive:c.arrive||null,depart:c.depart||null});
   if(res.error)throw new Error(c.name+': '+res.error.message);
 }
@@ -7140,7 +6788,6 @@ async function doLogout(){
   window.location.href="/login";
 }
 
-<<<<<<< HEAD
 /* \u2500\u25
 /* ======================================================
    IMPUTATIONS - Import Excel et consolidation
