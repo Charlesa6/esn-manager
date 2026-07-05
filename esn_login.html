@@ -343,7 +343,7 @@ var _IS_DEV = window.location.hostname !== 'konsilys.fr'
            && window.location.hostname !== 'www.konsilys.fr';
 
 var SUPABASE_URL = _IS_DEV
-  ? 'https://zylivcmkaidckyqgalcm.supabase.co/rest/v1/'
+  ? 'https://zylivcmkaidckyqgalcm.supabase.co'
   : 'https://rwmstlesxnglpblrurqj.supabase.co';
 
 var SUPABASE_KEY = _IS_DEV
@@ -352,7 +352,7 @@ var SUPABASE_KEY = _IS_DEV
 var sb = (SUPABASE_URL && SUPABASE_KEY && SUPABASE_URL.indexOf('supabase.co') > 0)
   ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
-/* Pré-remplir l'email sauvegardé */
+/* Pré-remplir l'email sauvegard é */
 document.addEventListener('DOMContentLoaded', function() {
   var saved = localStorage.getItem('esn_saved_emails');
   if (saved) {
