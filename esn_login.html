@@ -700,6 +700,46 @@ async function doSignup() {
       return;
     }
 
+    /* ── 1b. Vérifier si l'email est une invitation unifiée (Admin, Gestionnaire, Recruteur, Sales) ── */
+    var unifiedInvite = null;
+    try {
+      var ui = await sb.from('invites')
+        .select('*').eq('email', em).eq('used', false).maybeSingle();
+      unifiedInvite = (ui && ui.data) ? ui.data : null;
+    } catch(e) { console.warn('unifiedInvite check:', e); }
+
+    if (unifiedInvite) {
+      var invRole = unifiedInvite.role || 'gestionnaire';
+      var invCompanyId = unifiedInvite.company_id;
+      var invApprovalRole = unifiedInvite.invited_by_role || 'super_admin';
+
+      var resInv = await sb.auth.signUp({
+        email: em, password: pw,
+        options: { data: { first_name: fn, last_name: ln, role: invRole, company_id: invCompanyId } }
+      });
+      loading('b-signup','sp-signup','lb-signup', false);
+      if (resInv.error) { showBanner('err', errMsg(resInv.error)); return; }
+      if (resInv.data && resInv.data.user) {
+        try {
+          await sb.from('profiles').upsert({
+            id: resInv.data.user.id,
+            company_id: invCompanyId,
+            role: invRole,
+            leave_approval_role: invApprovalRole,
+            first_name: fn,
+            last_name: ln
+          }, { onConflict: 'id' });
+        } catch(e) { console.warn('profile upsert (invite):', e); }
+        /* Marquer l'invitation comme utilisée */
+        try { await sb.from('invites').update({ used: true }).eq('id', unifiedInvite.id); } catch(e) {}
+      }
+      if (resInv.data.user && !resInv.data.session) {
+        showSuccess('Compte ' + invRole + ' créé\u00a0!',
+          'V\u00e9rifiez votre email ' + em + ' pour confirmer.', true);
+      } else { window.location.href = '/app'; }
+      return;
+    }
+
     /* ── 1. Vérifier si l'email est une invitation consultant ── */
     var consInvite = null;
     try {
