@@ -801,7 +801,7 @@ function tSB(){
     if(S.role==='super_admin')NAV.push({id:'svp_settings',ic:'\u2699',lb:'Param\u00e8tres'});
     NAV.splice(4,0,{id:'activite',ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'});
   }
-  var alC=(function(){if(S.role==='gestionnaire')return (S.approvals||[]).filter(function(r){return r.status==='pending'&&r.dirName===S.dirName;}).length+(S.lvs.filter(function(lv){return lv.approval_role==='gestionnaire'&&lv.approved===false;}).length);if(S.role==='admin')return S.lvs.filter(function(lv){return lv.approval_role==='admin'&&lv.approved===false;}).length;if(S.role==='super_admin')return S.lvs.filter(function(lv){return (lv.approval_role==='super_admin'||lv.approval_role==='admin')&&lv.approved===false;}).length;return 0;})();
+  var alC=(function(){if(S.role==='gestionnaire')return (S.approvals||[]).filter(function(r){return r.status==='pending'&&r.dirName===S.dirName;}).length+(S.lvs.filter(function(lv){return lv.approval_role==='gestionnaire'&&lv.approved===false;}).length);if(S.role==='admin')return S.lvs.filter(function(lv){return lv.approval_role==='admin'&&lv.approved===false;}).length;if(S.role==='super_admin')return S.lvs.filter(function(lv){return lv.approval_role==='super_admin'&&lv.approved===false;}).length;return 0;})();
   var fyOpts=[CFY-2,CFY-1,CFY,CFY+1].map(function(fy){return '<option value="'+fy+'"'+(fy===S.year?' selected':'')+'>'+fyLbl(fy)+'</option>';}).join('');
   var nav=NAV.map(function(n){
     return '<button class="nb'+(S.tab===n.id?' act':'')+'" data-nav="'+n.id+'">'
@@ -3259,7 +3259,7 @@ var HELP_FEATURES=[
     desc:'Gestion de tous les types d\'absences avec workflow d\'approbation selon le r\u00f4le.',
     details:[
       '\uD83D\uDDC2\uFE0F <strong>9 types d\'absences</strong> : Cong\u00e9 pay\u00e9, Maladie, Cong\u00e9 maternit\u00e9/paternit\u00e9, Sans solde, Forma\u00adtion, Mission interne, Inter-contrat, RTT, Cong\u00e9 exceptionnel. Mission interne et Inter-contrat sont marqu\u00e9s "non factur\u00e9" dans les KPIs.',
-      '\uD83D\uDD04 <strong>Workflows diff\u00e9renci\u00e9s</strong> : Utilisateur → soumet au Gestionnaire. Recruteur → soumet au Gestionnaire. Business Manager → soumet au Super Admin. Les autres r\u00f4les valident directement.',
+      '\uD83D\uDD04 <strong>Workflows diff\u00e9renci\u00e9s</strong> : Utilisateur → soumet au Gestionnaire. Recruteur → soumet au Super Admin. Business Manager → soumet au Gestionnaire. Les autres r\u00f4les valident directement.',
       '\uD83D\uDCCA <strong>Impact KPIs</strong> : les absences sont d\u00e9duites automatiquement du taux de staffing et des jours facturables.',
       '\uD83D\uDC40 <strong>Visibilit\u00e9</strong> : un Gestionnaire voit toutes les absences de son \u00e9quipe. Un Utilisateur ne voit que les siennes. Elles s\'affichent sur le Planning en rouge.',
       '\uD83D\uDD12 <strong>S\u00e9curit\u00e9</strong> : impossible de cr\u00e9er une absence sur une p\u00e9riode d\u00e9j\u00e0 couverte par une autre. Le syst\u00e8me d\u00e9tecte les chevauchements.',
@@ -4719,39 +4719,46 @@ function tModal(){
 
 
   if(tp==='salary_detail'){
-    /* Calcul depuis buildKS() — période sélectionnée, sans onclick HTML injecté */
-    var _ks2=buildKS();
+    /* Calcul simplifié : SCR × 113.35 × 1.25 / (trimestre ? 4 : 1) */
     var _periodLabel=S.quarter?('Q'+S.quarter+' '+fyLbl(S.year)):fyLbl(S.year);
+    var _costFactor=S.quarter?0.25:1; /* diviser par 4 si trimestre */
     title='\uD83D\uDCB0 Co\u00fbt salarial \u2014 '+_periodLabel;
     wide=true;
-    var _totSal2=_ks2.reduce(function(s,x){return s+x.k.cost;},0);
-    var _recBMSal=_ks2.filter(function(x){return x.c.grade==='sales_grade'||x.c.role==='recruteur';}).reduce(function(s,x){return s+x.k.cost;},0);
-    var _rows=_ks2.slice().sort(function(a,b){return b.k.cost-a.k.cost;}).map(function(x){
-      var cc=x.c;var isRec=cc.role==='recruteur';var isBM=cc.grade==='sales_grade';
+    var _cons2=S.cons.slice().sort(function(a,b){
+      return ((b.scr||0)*113.35*1.25*_costFactor)-((a.scr||0)*113.35*1.25*_costFactor);
+    });
+    var _totSal2=_cons2.reduce(function(s,cc){return s+(cc.scr||0)*113.35*1.25*_costFactor;},0);
+    var _recSal=_cons2.filter(function(cc){return cc.role==='recruteur';}).reduce(function(s,cc){return s+(cc.scr||0)*113.35*1.25*_costFactor;},0);
+    var _bmSal=_cons2.filter(function(cc){return cc.grade==='sales_grade';}).reduce(function(s,cc){return s+(cc.scr||0)*113.35*1.25*_costFactor;},0);
+    var _rows=_cons2.map(function(cc){
+      var isRec=cc.role==='recruteur';var isBM=cc.grade==='sales_grade';
+      var cost=(cc.scr||0)*113.35*1.25*_costFactor;
       var color=isRec?'#0F766E':isBM?'#1e40af':'#374151';
       var rowBg=isRec?'#f0fdf4':isBM?'#eff6ff':'transparent';
-      var badge=isRec?'<span style="font-size:9px;background:#d1fae5;color:#065f46;padding:1px 6px;border-radius:99px;font-weight:700">Recruteur</span>':isBM?'<span style="font-size:9px;background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:99px;font-weight:700">Business Manager</span>':'';
+      var badge=isRec
+        ?'<span style="font-size:9px;background:#d1fae5;color:#065f46;padding:1px 6px;border-radius:99px;font-weight:700">Recruteur</span>'
+        :isBM?'<span style="font-size:9px;background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:99px;font-weight:700">Business Manager</span>'
+        :'';
       return '<tr style="background:'+rowBg+'">'
         +'<td style="font-weight:600;color:'+color+'">'+esc(cc.name)+'</td>'
         +'<td>'+badge+'</td>'
         +'<td style="font-size:11px;color:#64748b">'+(cc.contract==='freelance'?'Freelance':'Salari\u00e9')+'</td>'
-        +'<td style="font-size:12px;color:#64748b">'+fEur(Math.round(cc.scr||0))+'/j</td>'
-        +'<td style="font-weight:700;color:'+color+'">'+fEur(Math.round(x.k.cost))+'</td>'
-        +'<td style="font-size:11px;color:#94a3b8">'+x.k.tWD+'j</td>'
+        +'<td style="font-weight:700;color:'+color+'">'+fEur(Math.round(cost))+'</td>'
         +'</tr>';
     }).join('');
     body='<div class="ov" style="max-height:55vh;overflow-y:auto">'
-      +'<table><thead><tr><th>Nom</th><th></th><th>Contrat</th><th>SCR/j</th><th>Co\u00fbt p\u00e9riode</th><th>Jours</th></tr></thead><tbody>'
+      +'<table><thead><tr><th>Nom</th><th></th><th>Contrat</th><th>Co\u00fbt '+_periodLabel+'</th></tr></thead><tbody>'
       +_rows
       +'</tbody></table></div>'
       +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding:12px;background:#f8fafc;border-radius:8px">'
-      +'<div style="font-size:13px;font-weight:700;color:#0f172a">Total co\u00fbt \u00e9quipe \u2014 '+_periodLabel+'</div>'
+      +'<div style="font-size:13px;font-weight:700;color:#0f172a">Total \u00e9quipe \u2014 '+_periodLabel+'</div>'
       +'<div style="font-size:16px;font-weight:900;color:#1B2B3A">'+fEur(Math.round(_totSal2))+'</div>'
       +'</div>'
-      +(_recBMSal>0?'<div style="margin-top:8px;padding:10px 12px;background:#f0fdf4;border-radius:8px;font-size:12px;display:flex;justify-content:space-between">'
-        +'<span style="color:#64748b">dont Recruteurs &amp; Business Managers :</span>'
-        +'<strong style="color:#0F766E">'+fEur(Math.round(_recBMSal))+'</strong></div>':'')
-      +'<div style="margin-top:10px;font-size:11px;color:#94a3b8">Co\u00fbt = SCR \u00d7 113,35 \u00d7 1,25 \u00d7 (jours pr\u00e9sents / jours FY). Freelance : SCR \u00d7 jours factur\u00e9s.</div>';
+      +((_recSal>0||_bmSal>0)?'<div style="margin-top:8px;padding:10px 12px;background:#f0fdf4;border-radius:8px;font-size:12px;display:flex;gap:16px">'
+        +(_recSal>0?'<div><span style="color:#0F766E;font-weight:700">Recruteurs : '+fEur(Math.round(_recSal))+'</span></div>':'')
+        +(_bmSal>0?'<div><span style="color:#1e40af;font-weight:700">Business Managers : '+fEur(Math.round(_bmSal))+'</span></div>':'')
+        +'</div>':'')
+      +'<div style="margin-top:10px;font-size:11px;color:#94a3b8">Formule : SCR \u00d7 113,35 \u00d7 1,25'+(S.quarter?' \u00f7 4 (trimestre)':'')+'</div>';
     return '<div class="mov" id="mov"><div class="mbox '+(wide?'mw':'mn')+'">'
       +'<div class="moh"><div class="mot">'+title+'</div><button class="moc" data-act="mc">\u2715</button></div>'
       +'<div class="mody">'+body
@@ -5144,16 +5151,16 @@ function bind(){
           var descA=(it?'Modification':'Ajout')+' d\'absence Admin — '+esc(lt)+' du '+fDt(ls)+' au '+fDt(le);
           var plA=it?Object.assign({},it,{cid:lci,type:lt,s:ls,e:le}):{id:uid(),cid:lci,type:lt,s:ls,e:le};
           submitApproval(it?'leave_edit':'leave_add',Object.assign({},plA,{approval_role:'super_admin'}),descA);
-        /* ── Recruteur → approbation Gestionnaire ── */
+        /* ── Recruteur → approbation Super Admin ── */
         }else if(S.role==='recruteur'){
           var desc2=(it?'Modification':'Ajout')+' d\u2019absence Recruteur — '+esc(lt)+' du '+fDt(ls)+' au '+fDt(le);
           var pl2=it?Object.assign({},it,{cid:lci,type:lt,s:ls,e:le}):{id:uid(),cid:lci,type:lt,s:ls,e:le};
-          submitApproval(it?'leave_edit':'leave_add',Object.assign({},pl2,{approval_role:'gestionnaire'}),desc2);
-        /* ── Business Manager (licence) → approbation Super Admin ── */
+          submitApproval(it?'leave_edit':'leave_add',Object.assign({},pl2,{approval_role:'super_admin',user_role:'recruteur'}),desc2);
+        /* ── Business Manager → approbation Gestionnaire ── */
         }else if(S.role==='sales'){
           var desc3=(it?'Modification':'Ajout')+' d\u2019absence Business Manager — '+esc(lt)+' du '+fDt(ls)+' au '+fDt(le);
           var pl3=it?Object.assign({},it,{cid:lci,type:lt,s:ls,e:le}):{id:uid(),cid:lci,type:lt,s:ls,e:le};
-          submitApproval(it?'leave_edit':'leave_add',Object.assign({},pl3,{approval_role:'super_admin'}),desc3);
+          submitApproval(it?'leave_edit':'leave_add',Object.assign({},pl3,{approval_role:'gestionnaire',user_role:'sales'}),desc3);
         }else{
           var nl;
           if(it){S.lvs=S.lvs.map(function(l){if(l.id===it.id){nl=Object.assign({},l,{cid:lci,type:lt,s:ls,e:le});return nl;}return l;});}
@@ -6383,7 +6390,7 @@ async function sbUpsertApproval(req){
 /* ─── Vue Approbations pour le CONSULTANT ─── */
 function tApprovals(){
   /* Déterminer les approval_roles que je peux valider */
-  var myApprovalRoles=S.role==='super_admin'?['super_admin','admin']:S.role==='admin'?['admin']:S.role==='gestionnaire'?['gestionnaire']:[];
+  var myApprovalRoles=S.role==='super_admin'?['super_admin']:S.role==='admin'?['admin']:S.role==='gestionnaire'?['gestionnaire']:[];
   var isValidator=myApprovalRoles.length>0;
 
   if(isValidator){
