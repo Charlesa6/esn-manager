@@ -621,7 +621,7 @@ function clientRev(ks){
 function visibleConsIds(){
   var base=(S._all&&S._all.cons)||S.cons;
   if(S.role==='gestionnaire'){base=base.filter(function(c){return c.managerId===S._userId || (!c.managerId && (c.dir||'')===S.dirName) || c.id===S.consId;});}
-  else if(S.role==='utilisateur'){base=base.filter(function(c){return c.id===S.consId;});}
+  else if(S.role==='utilisateur'||S.role==='sales'||S.role==='recruteur'){base=base.filter(function(c){return c.id===S.consId||c.email===S._userEmail;});}
   else if(S.role==='super_admin'&&S.fvp&&S.fvp.length){
     /* Filtrer par VP : on cherche les directeurs appartenant aux VPs sélectionnés */
     var allowedDirs=[];
