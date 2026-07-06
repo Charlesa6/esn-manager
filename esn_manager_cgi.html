@@ -144,23 +144,7 @@ details summary::-webkit-details-marker{display:none}
 </style>
 </head>
 <body>
-<script>
-/* ── Bandeau Dev visible uniquement sur dev.konsilys.fr ── */
-(function(){
-  var isD = window.location.hostname !== 'konsilys.fr'
-         && window.location.hostname !== 'konsilys.com'
-         && window.location.hostname !== 'www.konsilys.fr';
-  if(!isD) return;
-  var b = document.createElement('div');
-  b.id = 'dev-banner';
-  b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;'
-    + 'background:#f59e0b;color:#1B2B3A;text-align:center;'
-    + 'font-size:11px;font-weight:800;padding:4px;letter-spacing:.05em;'
-    + 'font-family:sans-serif';
-  b.textContent = '⚠ ENVIRONNEMENT DE DÉVELOPPEMENT — dev.konsilys.fr';
-  document.body.insertBefore(b, document.body.firstChild);
-})();
-</script>
+
 <button id="sb-open" onclick="toggleSB()" aria-label="Ouvrir le menu">&#9776;</button>
 <div id="sb-backdrop" onclick="toggleSB()"></div>
 <div id="app">
@@ -176,18 +160,8 @@ details summary::-webkit-details-marker{display:none}
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    SUPABASE CONFIG - copiez les mêmes valeurs que dans esn_login.html
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
-/* ── Détection automatique Dev / Prod ── */
-var _IS_DEV = window.location.hostname !== 'konsilys.fr'
-           && window.location.hostname !== 'konsilys.com'
-           && window.location.hostname !== 'www.konsilys.fr';
-
-var SUPABASE_URL = _IS_DEV
-  ? 'https://zylivcmkaidckyqgalcm.supabase.co'
-  : 'https://rwmstlesxnglpblrurqj.supabase.co';
-
-var SUPABASE_KEY = _IS_DEV
-  ? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp5bGl2Y21rYWlkY2t5cWdhbGNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyMTYwMjYsImV4cCI6MjA5ODc5MjAyNn0.34xOd-cjMjeaczS1_g52aE2PdW6nkkhLMDT3DhN4Eb4'
-  : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3bXN0bGVzeG5nbHBibHJ1cnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MjcyNTMsImV4cCI6MjA5NzEwMzI1M30.9SrsA1sYjdsqdPCnZ_sc2iTl01NKXsl7gAu2Y_VYgSQ';
+var SUPABASE_URL = 'https://rwmstlesxnglpblrurqj.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3bXN0bGVzeG5nbHBibHJ1cnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MjcyNTMsImV4cCI6MjA5NzEwMzI1M30.9SrsA1sYjdsqdPCnZ_sc2iTl01NKXsl7gAu2Y_VYgSQ';
 var sb = (SUPABASE_URL && SUPABASE_KEY && SUPABASE_URL.indexOf('supabase.co') > 0)
   ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 var SB_CID = null; // company_id de l'utilisateur connecté (rempli après auth)
