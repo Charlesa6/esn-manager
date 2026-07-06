@@ -4044,7 +4044,8 @@ function tActivite(){
   var firstDow=(new Date(year,mon-1,1).getDay()+6)%7;
   var dim=new Date(year,mon,0).getDate();
   var MNAMES=['Janvier','F\u00e9vrier','Mars','Avril','Mai','Juin','Juillet','Ao\u00fbt','Septembre','Octobre','Novembre','D\u00e9cembre'];
-  var co=S.cons.map(function(x){return '<option value="'+x.id+'"'+(x.id===cid?' selected':'')+'>'+esc(x.name)+(x.id===S.consId?' (moi)':'')+'</option>';}).join('');
+  var consSortedM=S.cons.slice().sort(function(a,b){if(a.id===S.consId)return -1;if(b.id===S.consId)return 1;return 0;});
+  var co=consSortedM.map(function(x){var lbl=(x.id===S.consId)?('\u2605 Moi \u2014 '+x.name):x.name;return '<option value="'+x.id+'"'+(x.id===cid?' selected':'')+'>'+esc(lbl)+'</option>';}).join('');
   var cells='',billed=0,leaveD=0,internD=0;
   for(var i=0;i<firstDow;i++)cells+='<div style="background:#f8fafc;border-radius:8px;min-height:62px"></div>';
   for(var d=1;d<=dim;d++){
@@ -4821,9 +4822,15 @@ function tModal(){
     title=it?"Modifier l'absence":"Nouvelle absence / cong\u00e9";
     var dt=(it&&it.type)||'Cong\u00e9 pay\u00e9';
     var lo=LTYPES.map(function(t){return '<option value="'+t+'"'+(t===dt?' selected':'')+'>'+esc(t)+'</option>';}).join('');
-    /* Admin / Gestionnaire : leur propre fiche pré-sélectionnée (demande pour soi par défaut) */
-    var selfCid=(it&&it.cid)||(((S.role==='admin'||S.role==='gestionnaire')&&S.consId)?S.consId:'');
-    var coLeave=S.cons.map(function(x){return '<option value="'+x.id+'"'+(x.id===selfCid?' selected':'')+'>'+esc(x.name)+(x.id===S.consId?' (moi)':'')+'</option>';}).join('');
+    /* Admin / Gestionnaire : leur propre fiche remontée en tête + pré-sélectionnée */
+    var selfCid=(it&&it.cid)||(S.consId||'');
+    var consSorted=S.cons.slice().sort(function(a,b){
+      if(a.id===S.consId)return -1; if(b.id===S.consId)return 1; return 0;
+    });
+    var coLeave=consSorted.map(function(x){
+      var label=(x.id===S.consId)?('\u2605 Moi \u2014 '+x.name):x.name;
+      return '<option value="'+x.id+'"'+(x.id===selfCid?' selected':'')+'>'+esc(label)+'</option>';
+    }).join('');
     body='<div class="fd"><label class="fl">'+rLabel('utilisateur')+'</label><select class="ic" id="mlc">'+coLeave+'</select></div>'
       +'<div class="fd"><label class="fl">Type *</label><select class="ic" id="mlt">'+lo+'</select></div>'
       +'<div class="g2"><div class="fd"><label class="fl">Du *</label><input class="ic" id="mls" type="date" value="'+esc(it?it.s:'')+'"></div>'
