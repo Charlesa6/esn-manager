@@ -5480,17 +5480,6 @@ function bind(){
         if(cvEntry&&cvEntry.filePath)downloadCandFile(cvEntry.filePath,cvEntry.fileName);
       }
       /* inviter / supprimer un directeur */
-      else if(a==='inv-add'){
-        var iem=gv('inv-email'),inm=gv('inv-name');
-        if(!iem||!inm){alert('Email et nom du directeur requis.');return;}
-        sbInvite(iem,inm).then(function(r){
-          if(r&&r.error){alert('Erreur : '+(r.error.message||r.error));return;}
-          loadInvites().then(render);
-        });
-      }
-      else if(a==='inv-del'){
-        if(confirm('Supprimer ce directeur / cette invitation ?')){sbDelInvite(id).then(function(){loadInvites().then(render);});}
-      }
       else if(a==='svp-add-vp'){
         var em2=(document.getElementById('svp-vp-email')||{}).value||'';
         var nm2=(document.getElementById('svp-vp-name')||{}).value||'';
