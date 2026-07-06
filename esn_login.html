@@ -516,6 +516,18 @@ async function doLogin() {
     return;
   }
   saveEmail(em);
+  /* ── Invitation en attente (compte créé avec confirmation email) ──
+     La session existe maintenant : on finalise l'acceptation côté serveur. */
+  try {
+    var pendingTok = localStorage.getItem('konsilys_pending_invite');
+    if (pendingTok) {
+      var pn = {};
+      try { pn = JSON.parse(localStorage.getItem('konsilys_pending_names') || '{}'); } catch(e) {}
+      await sb.rpc('accept_invite', { invite_token: pendingTok, p_first_name: pn.fn || '', p_last_name: pn.ln || '' });
+      localStorage.removeItem('konsilys_pending_invite');
+      localStorage.removeItem('konsilys_pending_names');
+    }
+  } catch(e) { console.warn('accept_invite (signin):', e); }
   window.location.href = '/app';
 }
 
@@ -708,45 +720,23 @@ async function doSignup() {
       loading('b-signup','sp-signup','lb-signup', false);
       if (resInv.error) { showBanner('err', errMsg(resInv.error)); return; }
       if (resInv.data && resInv.data.user) {
-        /* ── Organigramme robuste : hiérarchie par IDENTIFIANT ──
-           manager_id = id du profil de l'inviteur (lien incassable)
-           cons_id    = id de la fiche équipe créée (lien profil ↔ données)
-           Le champ texte 'directeur' est conservé en parallèle (compat existant). */
+        /* ── Acceptation SERVEUR (accept_invite) ──
+           Si la confirmation d'email est activée, il n'y a PAS de session ici :
+           toute écriture directe serait bloquée par la RLS (auth.uid() = null).
+           → On mémorise le token, et accept_invite (SECURITY DEFINER) fait tout
+             côté serveur dès qu'une session existe : profil + fiche équipe +
+             manager_id + cons_id + marquage de l'invitation. */
+        try { localStorage.setItem('konsilys_pending_invite', unifiedInvite.token); } catch(e) {}
+        try { localStorage.setItem('konsilys_pending_names', JSON.stringify({fn:fn, ln:ln})); } catch(e) {}
 
-        /* 1. Créer le profil D'ABORD (la RLS de consultants dépend du company_id du profil) */
-        try {
-          await sb.from('profiles').upsert({
-            id: resInv.data.user.id,
-            company_id: invCompanyId,
-            role: invRole,
-            leave_approval_role: invApprovalRole,
-            manager_id: unifiedInvite.invited_by_id || null,
-            first_name: fn,
-            last_name: ln
-          }, { onConflict: 'id' });
-        } catch(e) { console.warn('profile upsert (invite):', e); }
-
-        /* 2. Créer la fiche équipe, puis relier son id au profil (cons_id) */
-        try {
-          var roleTitleMap = { admin:'Admin', gestionnaire:'Gestionnaire', recruteur:'Recruteur', sales:'Business Manager' };
-          if (roleTitleMap[invRole]) {
-            var consIns = await sb.from('consultants').insert({
-              company_id: invCompanyId,
-              name: (fn + ' ' + ln).trim(),
-              title: roleTitleMap[invRole],
-              email: em,
-              directeur: unifiedInvite.invited_by_name || unifiedInvite.invited_by || '',
-              scr: 0,
-              contract: 'salarie'
-            }).select().single();
-            if (consIns && consIns.data && consIns.data.id) {
-              await sb.from('profiles').update({ cons_id: consIns.data.id }).eq('id', resInv.data.user.id);
-            }
-          }
-        } catch(e) { console.warn('consultant insert (organigramme):', e); }
-
-        /* 3. Marquer l'invitation comme utilisée (RPC SECURITY DEFINER) */
-        try { await sb.rpc('use_invite', { invite_token: unifiedInvite.token }); } catch(e) { console.warn('use_invite:', e); }
+        if (resInv.data.session) {
+          /* Session immédiate (confirmation email désactivée) : accepter tout de suite */
+          try {
+            await sb.rpc('accept_invite', { invite_token: unifiedInvite.token, p_first_name: fn, p_last_name: ln });
+            localStorage.removeItem('konsilys_pending_invite');
+            localStorage.removeItem('konsilys_pending_names');
+          } catch(e) { console.warn('accept_invite (signup):', e); }
+        }
       }
       if (resInv.data.user && !resInv.data.session) {
         showSuccess('Compte ' + invRole + ' créé\u00a0!',
