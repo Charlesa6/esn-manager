@@ -700,13 +700,25 @@ async function doSignup() {
       return;
     }
 
-    /* ── 1b. Vérifier si l'email est une invitation unifiée (Admin, Gestionnaire, Recruteur, Sales) ── */
+    /* ── 1b. Invitation unifiée par TOKEN (?invite=TOKEN dans l'URL) ──
+       La lecture directe de la table invites est bloquée par RLS pour un anonyme.
+       On passe par une fonction SECURITY DEFINER qui ne retourne que la ligne du token exact. */
     var unifiedInvite = null;
     try {
-      var ui = await sb.from('invites')
-        .select('*').eq('email', em).eq('used', false).maybeSingle();
-      unifiedInvite = (ui && ui.data) ? ui.data : null;
-    } catch(e) { console.warn('unifiedInvite check:', e); }
+      var inviteToken = new URLSearchParams(window.location.search).get('invite');
+      if (inviteToken) {
+        var ui = await sb.rpc('get_invite_by_token', { invite_token: inviteToken });
+        if (ui && ui.data && ui.data.length) {
+          unifiedInvite = ui.data[0];
+          /* Sécurité : l'email saisi doit correspondre à l'email invité */
+          if (unifiedInvite.email && unifiedInvite.email.toLowerCase() !== em.toLowerCase()) {
+            loading('b-signup','sp-signup','lb-signup', false);
+            showBanner('err', 'Cette invitation est destinée à ' + unifiedInvite.email + '. Utilisez cet email pour créer votre compte.');
+            return;
+          }
+        }
+      }
+    } catch(e) { console.warn('unifiedInvite token check:', e); }
 
     if (unifiedInvite) {
       var invRole = unifiedInvite.role || 'gestionnaire';
@@ -730,8 +742,26 @@ async function doSignup() {
             last_name: ln
           }, { onConflict: 'id' });
         } catch(e) { console.warn('profile upsert (invite):', e); }
-        /* Marquer l'invitation comme utilisée */
-        try { await sb.from('invites').update({ used: true }).eq('id', unifiedInvite.id); } catch(e) {}
+
+        /* ── Organigramme : créer la fiche membre dans l'équipe ──
+           Le membre apparaît dans l'onglet Équipe, rattaché à son inviteur (dir). */
+        try {
+          var roleTitleMap = { admin:'Admin', gestionnaire:'Gestionnaire', recruteur:'Recruteur', sales:'Business Manager' };
+          if (roleTitleMap[invRole]) {
+            await sb.from('consultants').insert({
+              company_id: invCompanyId,
+              name: (fn + ' ' + ln).trim(),
+              title: roleTitleMap[invRole],
+              email: em,
+              directeur: unifiedInvite.invited_by_name || unifiedInvite.invited_by || '',
+              scr: 0,
+              contract: 'salarie'
+            });
+          }
+        } catch(e) { console.warn('consultant insert (organigramme):', e); }
+
+        /* Marquer l'invitation comme utilisée (RPC SECURITY DEFINER) */
+        try { await sb.rpc('use_invite', { invite_token: unifiedInvite.token }); } catch(e) { console.warn('use_invite:', e); }
       }
       if (resInv.data.user && !resInv.data.session) {
         showSuccess('Compte ' + invRole + ' créé\u00a0!',

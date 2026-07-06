@@ -708,7 +708,7 @@ function genRecs(goal){
     var end30=S.miss.filter(function(m){var s=mSt(m);return(s==='critical'||s==='soon')&&m.ed;});
     if(end30.length>0)recs.push({
       title:'S\u00e9curiser le renouvellement des missions en fin de vie',
-      detail:end30.length+' mission(s) se terminent dans moins de 30\u00a0jours\u00a0: '+end30.map(function(m){return m.name+' chez '+m.cli+' (J\u2212'+dL(m.ed)+')';}).join(', ')+'. Engagez les discussions de prolongation maintenant - un renouvellement co\u00fbte 10\u00d7 moins cher qu\u2019un nouveau client.'
+      detail:end30.length+' mission(s) se terminent dans moins de 30\u00a0jours\u00a0: '+end30.map(function(m){return esc(m.name)+' chez '+esc(m.cli)+' (J\u2212'+dL(m.ed)+')';}).join(', ')+'. Engagez les discussions de prolongation maintenant - un renouvellement co\u00fbte 10\u00d7 moins cher qu\u2019un nouveau client.'
     });
     if(recs.length<5)recs.push({
       title:'Upsell\u00a0: \u00e9tendre le p\u00e9rim\u00e8tre chez vos clients actuels',
@@ -730,7 +730,7 @@ function genRecs(goal){
     var end30b=S.miss.filter(function(m){var s=mSt(m);return(s==='critical'||s==='soon')&&m.ed;});
     if(end30b.length>0)recs.push({
       title:'Lancer le staffing post-mission maintenant, pas \u00e0 J-0',
-      detail:end30b.length+' mission(s) se terminent bient\u00f4t\u00a0: '+end30b.map(function(m){var c=S.cons.find(function(c){return c.id===m.cid;});return(c?c.name:'')+' chez '+m.cli+' (J\u2212'+dL(m.ed)+')';}).join(', ')+'. Objectif\u00a0: z\u00e9ro jour d\u2019inter-contrat. Le recasement doit \u00eatre confirm\u00e9 avant la fin de la mission en cours.'
+      detail:end30b.length+' mission(s) se terminent bient\u00f4t\u00a0: '+end30b.map(function(m){var c=S.cons.find(function(c){return c.id===m.cid;});return(c?esc(c.name):'')+' chez '+esc(m.cli)+' (J\u2212'+dL(m.ed)+')';}).join(', ')+'. Objectif\u00a0: z\u00e9ro jour d\u2019inter-contrat. Le recasement doit \u00eatre confirm\u00e9 avant la fin de la mission en cours.'
     });
     var highLv=ks.filter(function(x){return x.k.lvD>15;});
     if(highLv.length>0)recs.push({
@@ -761,7 +761,7 @@ function genRecs(goal){
     ks.forEach(function(x){x.k.pm.forEach(function(m){if(m.days>0&&m.mar<25)lowMarM.push({n:m.name,cli:m.cli,mar:m.mar,tjm:m.tjm});});});
     if(lowMarM.length>0)recs.push({
       title:'Ren\u00e9gocier les missions \u00e0 marge inf\u00e9rieure \u00e0 25\u00a0%',
-      detail:'Missions en dessous de 25\u00a0% de marge [(TJM\u2212SCR)/TJM]\u00a0: '+lowMarM.map(function(m){return m.n+' chez '+m.cli+' ('+m.mar.toFixed(0)+'%\u00a0\u2014\u00a0TJM\u00a0'+fEur(m.tjm)+')';}).join(', ')+'. Visez un minimum de 30\u00a0% pour couvrir vos frais de structure.'
+      detail:'Missions en dessous de 25\u00a0% de marge [(TJM\u2212SCR)/TJM]\u00a0: '+lowMarM.map(function(m){return esc(m.n)+' chez '+esc(m.cli)+' ('+m.mar.toFixed(0)+'%\u00a0\u2014\u00a0TJM\u00a0'+fEur(m.tjm)+')';}).join(', ')+'. Visez un minimum de 30\u00a0% pour couvrir vos frais de structure.'
     });
     recs.push({
       title:'Int\u00e9grer une clause de revalorisation annuelle dans tous les contrats',
@@ -4645,17 +4645,14 @@ function tModal(){
     title=it?'Modifier le membre':'Ajouter un membre';wide=true;
     var _rl=[];((S._all&&S._all.cons)||S.cons).forEach(function(c){var r=c.dir||'';if(r&&_rl.indexOf(r)<0)_rl.push(r);});_rl.sort();
     /* Grades disponibles selon le rôle du créateur */
-    var availGrades=S.role==='super_admin'
-      ?['Consultant Junior','Consultant Confirmé','Consultant Sénior','Manager','Business Manager','[Admin]','[Gestionnaire]','[Recruteur]']
-      :S.role==='admin'
-      ?['Consultant Junior','Consultant Confirmé','Consultant Sénior','Manager','Business Manager','[Gestionnaire]']
-      :['Consultant Junior','Consultant Confirmé','Consultant Sénior','Manager','Business Manager'];
+    var availGrades=['Consultant Junior','Consultant Confirmé','Consultant Sénior','Manager','Business Manager'];
+    /* Les comptes à rôle (Admin/Gestionnaire/Recruteur/Sales) se créent via Gestion des accès — une seule porte d'entrée */
     var dirFld=(S.role==='gestionnaire')
       ? '<div class="fd"><label class="fl">'+rLabel('gestionnaire')+'</label><input class="ic" id="mdir" value="'+esc(S.dirName)+'" disabled style="background:#f1f5f9;color:#64748b"><p class="fh">Membre rattach\u00e9 automatiquement \u00e0 votre \u00e9quipe</p></div>'
       : '<div class="fd"><label class="fl">'+rLabel('gestionnaire')+'</label><input class="ic" id="mdir" list="esn-dir-list" value="'+esc(it?(it.dir||''):'')+'" placeholder="Nom du responsable"><datalist id="esn-dir-list">'+_rl.map(function(r){return '<option value="'+esc(r)+'">';}).join('')+'</datalist><p class="fh">Responsable direct du membre</p></div>';
     body='<div class="g2">'
       +'<div class="fd"><label class="fl">Nom complet *</label><input class="ic" id="mn" value="'+esc(it?it.name:'')+'" placeholder="Prénom Nom"></div>'
-      +'<div class="fd"><label class="fl">Grade / Rôle *</label><select class="ic" id="mti"><option value="">— Sélectionner —</option>'+availGrades.map(function(g){var isRole=g.startsWith('[');var lbl=isRole?g.slice(1,-1):g;return '<option value="'+g+'"'+(it&&it.title===g?' selected':'')+'>'+esc(isRole?'🔑 '+lbl:lbl)+'</option>';}).join('')+'</select><p class="fh">'+(S.role==='super_admin'?'Les rôles 🔑 créent un accès avec des droits élargis.':S.role==='admin'?'Le rôle 🔑 Gestionnaire gère une équipe de consultants.':'Grade du consultant dans l\'organisation.')+'</p></div>'
+      +'<div class="fd"><label class="fl">Grade / Rôle *</label><select class="ic" id="mti"><option value="">— Sélectionner —</option>'+availGrades.map(function(g){return '<option value="'+g+'"'+(it&&it.title===g?' selected':'')+'>'+esc(g)+'</option>';}).join('')+'</select><p class="fh">'+'Grade du consultant. Pour créer un compte Admin, Gestionnaire, Recruteur ou Business Manager : utilisez Gestion des accès.'+'</p></div>'
       +'<div class="fd"><label class="fl">SCR journalier (€)</label><input class="ic" id="ms" type="number" min="0" value="'+esc(it?String(it.scr):'')+'" placeholder="450"><p class="fh">Coût journalier (calculé automatiquement si salaire annuel connu)</p></div>'
       +'<div class="fd"><label class="fl">Type de contrat</label><select class="ic" id="mcontract">'
       +'<option value="salarie"'+(it&&it.contract==='salarie'?' selected':(!it?' selected':''))+'>\uD83D\uDC54 Salari\u00e9</option>'
@@ -4780,6 +4777,21 @@ function tModal(){
   }
 
 
+  if(tp==='invite_link'){
+    title='\u2709\uFE0F Invitation cr\u00e9\u00e9e';
+    var _lnk=m.link||'';
+    body='<div style="text-align:center;padding:8px 0">'
+      +'<div style="font-size:34px;margin-bottom:10px">\u2705</div>'
+      +'<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:6px">Invitation '+esc(rLabel(m.role||''))+' pour '+esc(m.email||'')+'</div>'
+      +'<div style="font-size:12px;color:#64748b;margin-bottom:14px">Transmettez ce lien \u00e0 la personne invit\u00e9e. Elle cr\u00e9era son compte avec le bon r\u00f4le, rattach\u00e9 \u00e0 votre organisation.</div>'
+      +'<div style="display:flex;gap:8px;align-items:center;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px">'
+      +'<input class="ic" id="inv-link-field" value="'+esc(_lnk)+'" readonly style="flex:1;font-size:11px;background:transparent;border:none">'
+      +'<button class="bp" style="font-size:11px;padding:6px 12px;white-space:nowrap" onclick="var f=document.getElementById(\'inv-link-field\');f.select();document.execCommand(\'copy\');this.textContent=\'\u2713 Copi\u00e9\'">Copier</button>'
+      +'</div></div>';
+    return '<div class="mov" id="mov"><div class="mbox mn">'
+      +'<div class="moh"><div class="mot">'+title+'</div><button class="moc" data-act="mc">\u2715</button></div>'
+      +'<div class="mody">'+body+'<div class="br"><button class="bg" data-act="mc">Fermer</button></div></div></div></div>';
+  }
   if(tp==='salary_detail'){
     /* Calcul simplifié : SCR × 113.35 × 1.25 / (trimestre ? 4 : 1) */
     var _periodLabel=S.quarter?('Q'+S.quarter+' '+fyLbl(S.year)):fyLbl(S.year);
@@ -5585,19 +5597,24 @@ function bind(){
         var invEmail=gv('inv-email')||'';var invRole=gv('inv-role')||'utilisateur';
         if(!invEmail){alert('Email requis.');return;}
         if(!sb||!SB_CID){alert('Connexion Supabase requise.');return;}
+        var invByName=((S.profileFirstName||'')+' '+(S.profileLastName||'')).trim()||S._userEmail||'';
         sb.from('invites').insert({
           company_id:SB_CID,
           email:invEmail.toLowerCase().trim(),
           role:invRole,
           invited_by:S._userEmail||'',
-          invited_by_role:S.role
-        }).then(function(r){
-          if(r&&r.error){alert('Erreur: '+r.error.message);}
-          else{
-            /* Recharger les invites */
-            sb.from('invites').select('*').eq('company_id',SB_CID).order('created_at',{ascending:false})
-              .then(function(ri){if(ri.data)S.allInvites=ri.data;render();});
-          }
+          invited_by_role:S.role,
+          invited_by_name:invByName
+        }).select().then(function(r){
+          if(r&&r.error){alert('Erreur: '+r.error.message);return;}
+          var created=(r.data&&r.data[0])||null;
+          sb.from('invites').select('*').eq('company_id',SB_CID).order('created_at',{ascending:false})
+            .then(function(ri){if(ri.data)S.allInvites=ri.data;
+              if(created&&created.token){
+                var invLink=window.location.origin+'/esn_login.html?invite='+created.token;
+                S.modal={type:'invite_link',link:invLink,email:invEmail,role:invRole};
+              }
+              render();});
         });
       }
       else if(a==='inv-del'){
@@ -6127,6 +6144,32 @@ function dateToFY(dateStr){
 function fyLabelToYear(lbl){
   /* 'FY26' -> 2026 */
   return parseInt('20'+lbl.substring(2));
+}
+
+
+/* ══════ Fichiers candidats — Supabase Storage (bucket: candidate-files) ══════ */
+async function uploadCandFile(file,candId,kind){
+  if(!sb||!SB_CID)throw new Error('Supabase non connect\u00e9');
+  if(!file)throw new Error('Aucun fichier');
+  if(file.size>10*1024*1024)throw new Error('Fichier trop volumineux (max 10 Mo)');
+  var safeName=String(file.name||'fichier').replace(/[^a-zA-Z0-9._-]/g,'_').slice(0,80);
+  var path=SB_CID+'/'+candId+'/'+kind+'_'+Date.now()+'_'+safeName;
+  var r=await sb.storage.from('candidate-files').upload(path,file,{upsert:false});
+  if(r.error)throw new Error('Upload \u00e9chou\u00e9 : '+r.error.message);
+  return path;
+}
+function downloadCandFile(path,name){
+  if(!sb){alert('Supabase non connect\u00e9');return;}
+  sb.storage.from('candidate-files').createSignedUrl(path,3600).then(function(r){
+    if(r.error||!r.data||!r.data.signedUrl){alert('T\u00e9l\u00e9chargement impossible : '+(r.error?r.error.message:'lien indisponible'));return;}
+    var a=document.createElement('a');
+    a.href=r.data.signedUrl;a.download=name||'fichier';a.target='_blank';a.rel='noopener';
+    document.body.appendChild(a);a.click();a.remove();
+  });
+}
+function deleteCandFile(path){
+  if(!sb||!path)return Promise.resolve();
+  return sb.storage.from('candidate-files').remove([path]);
 }
 
 function loadXLSX(cb){
@@ -6680,6 +6723,42 @@ async function fetchExcelValues(token,fileUrl,sheetName){
   if(!res2.ok)throw new Error('Feuille "'+(sheetName||'1\u00e8re')+'\" illisible (HTTP '+res2.status+').');
   var data=await res2.json();
   return data.values||[];
+}
+
+
+/* ══════ Import Excel local des absences (r\u00e9utilise parseLeaveMatrix) ══════ */
+function importStaffingXLS(file){
+  if(!file)return;
+  loadXLSX(function(){
+    var reader=new FileReader();
+    reader.onload=function(e){
+      try{
+        var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:false});
+        var ws=wb.Sheets[wb.SheetNames[0]];
+        if(!ws)throw new Error('Aucune feuille trouv\u00e9e dans le fichier.');
+        var rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
+        var newLeaves=parseLeaveMatrix(rows);
+        var added=0;
+        newLeaves.forEach(function(lv){
+          var exists=S.lvs.find(function(x){return x.cid===lv.cid&&x.type===lv.type&&x.s===lv.s&&x.e===lv.e;});
+          if(!exists){
+            var entry=Object.assign({id:uid()},lv);
+            S.lvs.push(entry);
+            if(sb&&SB_CID)sbUpsertLeave(entry).catch(function(err){console.warn('[XLS] SB leave:',err);});
+            added++;
+          }
+        });
+        saveLocal();
+        alert('Import Excel : '+newLeaves.length+' absences lues \u2014 '+added+' ajout\u00e9e(s).');
+        render();
+      }catch(err){
+        console.error('[XLS] Erreur import :',err);
+        alert('Erreur d\u2019import :\n'+err.message);
+      }
+    };
+    reader.onerror=function(){alert('Lecture du fichier impossible.');};
+    reader.readAsArrayBuffer(file);
+  });
 }
 
 function parseLeaveMatrix(rows){
