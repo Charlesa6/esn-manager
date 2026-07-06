@@ -6155,6 +6155,18 @@ async function initApp(){
             }
           }catch(e){console.warn('auto-réparation cons_id:',e);}
         }
+      }else if(pr.data&&['sales','recruteur'].includes(pr.data.role)&&!pr.data.manager_id){
+        /* Sales/Recruteur sans N+1 : récupérer l'inviteur depuis la table invites */
+        try{
+          var sinv=await sb.from('invites').select('invited_by_id,company_id,cons_id').eq('email',S._userEmail).maybeSingle();
+          if(sinv&&sinv.data){
+            if(sinv.data.invited_by_id){
+              S.managerId=sinv.data.invited_by_id;
+              await sb.from('profiles').update({manager_id:sinv.data.invited_by_id}).eq('id',uid2).catch(function(e){});
+            }
+            if(sinv.data.cons_id&&!S.consId){S.consId=sinv.data.cons_id;await sb.from('profiles').update({cons_id:sinv.data.cons_id}).eq('id',uid2).catch(function(e){});}
+          }
+        }catch(e){console.warn('sales manager resolve:',e);}
       }else if(pr.data&&pr.data.role==='utilisateur'){
         /* Consultant sans company_id : résoudre via le flux unifié 'invites',
            puis via l'ancien 'consultant_invites' en secours (comptes historiques). */
@@ -7237,6 +7249,12 @@ function tProfile(){
     +'<div class="fd"><label class="fl">Titre / Poste</label><input class="ic" id="prof-title" value="'+esc(titre)+'" placeholder="ex : Directeur de pôle"></div>'
     +'<div class="fd"><label class="fl">Email</label><div style="padding:9px 12px;background:#f8fafc;border-radius:8px;font-size:13px;color:#64748b;border:1px solid #e2e8f0">'+esc(userEmail||'—')+'</div></div>'
     +'<div class="fd"><label class="fl">Rôle</label><div style="padding:9px 12px;background:#f8fafc;border-radius:8px;font-size:13px;font-weight:700;color:#0f172a;border:1px solid #e2e8f0">'+esc(userRole)+'</div></div>'
+    +(function(){
+        var apprId=resolveApprover(S._userId);
+        var apprP=apprId?profById(apprId):null;
+        var apprTxt=apprP?profName(apprP)+' ('+rLabel(apprP.role)+')':'\u2014 Aucun (vos demandes s\'appliquent directement)';
+        return '<div class="fd"><label class="fl">Responsable (N+1) \u2014 approuve mes demandes</label><div style="padding:9px 12px;background:#f0fdf4;border-radius:8px;font-size:13px;font-weight:600;color:#15803d;border:1px solid #bbf7d0">'+esc(apprTxt)+'</div></div>';
+      })()
     +'</div>'
     +'<p style="font-size:11px;color:#94a3b8;margin-top:10px">Le prénom et le nom sont définis par votre organisation à l\'invitation et ne peuvent pas être modifiés ici.</p>'
     +'<div id="prof-info-msg" style="font-size:12px;margin-top:6px;display:none"></div>'
