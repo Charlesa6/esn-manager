@@ -447,7 +447,7 @@ var S={
   consInvites:[], /* codes d'accès générés pour les consultants */
   adminCode:null, /* dernier code généré (affiché dans Admin) */
   year:CFY,quarter:null,modal:null,fmc:'all',fms:'all',fmt:'all',flc:'all',precs:{},
-  role:'admin',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,kpiDirOpen:{},invites:[],svpInvites:[],recruteurInvites:[],vpDirMap:{},vpName:'',profileFirstName:'',profileLastName:'',profileTitle:'',fvp:[],settings:{currency:'EUR',currencySymbol:'€',fyStartMonth:10,fyStartDay:1,roleLabels:{},hasBusinessModule:false,hasRecrutementModule:false},kpiVPOpen:{},kpiDirDirOpen:{},actCid:'',actMonth:'',_all:null,leaveApprovalRole:'super_admin',allInvites:[],
+  role:'admin',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,kpiDirOpen:{},invites:[],svpInvites:[],recruteurInvites:[],vpDirMap:{},vpName:'',profileFirstName:'',profileLastName:'',profileTitle:'',fvp:[],settings:{currency:'EUR',currencySymbol:'€',fyStartMonth:10,fyStartDay:1,roleLabels:{},hasBusinessModule:false,hasRecrutementModule:false},kpiVPOpen:{},kpiDirDirOpen:{},actCid:'',actMonth:'',_all:null,leaveApprovalRole:'super_admin',allInvites:[],managerId:null,approvalDelegateTo:null,approvalDelegateUntil:null,orgProfiles:[],
   /* CRM Business */
   bizTab:'pipeline',bizAccounts:[],bizContacts:[],bizOpps:[],bizActivities:[],bizApprovals:[],bizModal:null,bizFilter:{status:'all',account:''},
   sbSt:'\uD83D\uDFE2 Sauvegarde locale active',
@@ -802,7 +802,13 @@ function tSB(){
     if(S.role==='super_admin')NAV.push({id:'svp_settings',ic:'\u2699',lb:'Param\u00e8tres'});
     NAV.splice(4,0,{id:'activite',ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'});
   }
-  var alC=(function(){if(S.role==='gestionnaire')return (S.approvals||[]).filter(function(r){return r.status==='pending'&&r.dirName===S.dirName;}).length+(S.lvs.filter(function(lv){return lv.approval_role==='gestionnaire'&&lv.approved===false;}).length);if(S.role==='admin')return S.lvs.filter(function(lv){return lv.approval_role==='admin'&&lv.approved===false;}).length;if(S.role==='super_admin')return S.lvs.filter(function(lv){return lv.approval_role==='super_admin'&&lv.approved===false;}).length;return 0;})();
+  var alC=(function(){
+    /* Compteur unifié par identité : demandes (approvals + leaves) dont JE suis l'approbateur */
+    function _mine(rec){var aid=rec.approver_id||rec.approverId||(rec.payload&&rec.payload.approver_id);if(aid)return aid===S._userId;if(rec.approval_role){var mr=S.role==='super_admin'?'super_admin':S.role==='admin'?'admin':S.role==='gestionnaire'?'gestionnaire':'';return rec.approval_role===mr;}if(rec.dirName!==undefined)return rec.dirName===S.dirName;return false;}
+    var a1=(S.approvals||[]).filter(function(r){return r.status==='pending'&&_mine(r);}).length;
+    var a2=(S.lvs||[]).filter(function(lv){return _mine(lv)&&lv.approved===false;}).length;
+    return a1+a2;
+  })();
   var fyOpts=[CFY-2,CFY-1,CFY,CFY+1].map(function(fy){return '<option value="'+fy+'"'+(fy===S.year?' selected':'')+'>'+fyLbl(fy)+'</option>';}).join('');
   var nav=NAV.map(function(n){
     return '<button class="nb'+(S.tab===n.id?' act':'')+'" data-nav="'+n.id+'">'
@@ -1008,13 +1014,13 @@ function tDash(){
     S.role==='gestionnaire'?pendingLvAppr.filter(function(lv){return lv.approval_role==='gestionnaire';}):
     [];
   var pendingAppr=(S.approvals||[]).filter(function(r){
-    return r.status==='pending'&&(S.role!=='gestionnaire'||r.dirName===S.dirName);
+    return r.status==='pending'&&_isMyApprovalRec(r);
   });
   var approvedAppr=(S.approvals||[]).filter(function(r){
-    return r.status==='approved'&&(S.role!=='gestionnaire'||r.dirName===S.dirName);
+    return r.status==='approved'&&_isMyApprovalRec(r);
   });
   var rejectedAppr=(S.approvals||[]).filter(function(r){
-    return r.status==='rejected'&&(S.role!=='gestionnaire'||r.dirName===S.dirName);
+    return r.status==='rejected'&&_isMyApprovalRec(r);
   });
   var pCount=pendingAppr.length;
 
@@ -5099,7 +5105,7 @@ function bind(){
         if(S.role==='utilisateur'){
           var mDel=S.miss.find(function(m){return m.id===id;});
           if(mDel&&confirm('Soumettre une demande de suppression de cette mission ?')){
-            submitApproval('miss_del',{id:id},'Suppression de mission \u2014 '+esc(mDel.cli)+' \u00b7 '+esc(mDel.name));
+            submitApproval('miss_del',{id:id,approver_id:resolveApprover(S._userId)},'Suppression de mission \u2014 '+esc(mDel.cli)+' \u00b7 '+esc(mDel.name));
           }
         }else{
           if(confirm('Supprimer cette mission ?')){S.miss=S.miss.filter(function(m){return m.id!==id;});sbDel('missions',id);render();}
@@ -5109,7 +5115,7 @@ function bind(){
         if(S.role==='utilisateur'){
           var lvDel=S.lvs.find(function(l){return l.id===id;});
           if(lvDel&&confirm('Soumettre une demande de suppression de cette absence ?')){
-            submitApproval('leave_del',{id:id},'Suppression d\u2019absence \u2014 '+esc(lvDel.type)+' du '+fDt(lvDel.s)+' au '+fDt(lvDel.e));
+            submitApproval('leave_del',{id:id,approver_id:resolveApprover(S._userId)},'Suppression d\u2019absence \u2014 '+esc(lvDel.type)+' du '+fDt(lvDel.s)+' au '+fDt(lvDel.e));
           }
         }else{
           if(confirm('Supprimer cette absence ?')){S.lvs=S.lvs.filter(function(l){return l.id!==id;});sbDel('leaves',id);render();}
@@ -5181,7 +5187,7 @@ function bind(){
         var it=S.modal.item;
         if(S.role==='utilisateur'){
           var mDesc=(it?'Modification':'Ajout')+' de mission — '+esc(cl)+' · '+esc(mn)+' début '+fDt(sd)+(ed?' fin '+fDt(ed):'');
-          var mPl=it?Object.assign({},it,d):Object.assign({id:uid()},d);
+          var mPl=it?Object.assign({},it,d,{approver_id:resolveApprover(S._userId)}):Object.assign({id:uid(),approver_id:resolveApprover(S._userId)},d);
           submitApproval(it?'miss_edit':'miss_add',mPl,mDesc);
         }else{
           var nm;
@@ -5191,44 +5197,25 @@ function bind(){
           S.modal=null;render();
         }
       }
-      /* save leave */
+      /* save leave — MODÈLE PAR IDENTITÉ (N+1) */
       else if(a==='sl'){
         var lci=gv('mlc'),lt=gv('mlt'),ls=gv('mls'),le=gv('mle');
         if(!lci||!ls||!le){alert('Veuillez remplir les champs obligatoires (*).');return;}
         var it=S.modal.item;
-        /* ── Consultant : soumettre à approbation au lieu d'appliquer directement ── */
-        if(S.role==='utilisateur'){
-          var desc=(it?'Modification':'Ajout')+' d\u2019absence — '+esc(lt)+' du '+fDt(ls)+' au '+fDt(le);
-          var pl=it
-            ?Object.assign({},it,{cid:lci,type:lt,s:ls,e:le})
-            :{id:uid(),cid:lci,type:lt,s:ls,e:le};
-          submitApproval(it?'leave_edit':'leave_add',pl,desc);
-        /* ── Gestionnaire → approbation Admin ── */
-        }else if(S.role==='gestionnaire'){
-          var descG=(it?'Modification':'Ajout')+' d\'absence Gestionnaire — '+esc(lt)+' du '+fDt(ls)+' au '+fDt(le);
-          var plG=it?Object.assign({},it,{cid:lci,type:lt,s:ls,e:le}):{id:uid(),cid:lci,type:lt,s:ls,e:le};
-          submitApproval(it?'leave_edit':'leave_add',Object.assign({},plG,{approval_role:'admin'}),descG);
-        /* ── Admin → approbation Super Admin ── */
-        }else if(S.role==='admin'){
-          var descA=(it?'Modification':'Ajout')+' d\'absence Admin — '+esc(lt)+' du '+fDt(ls)+' au '+fDt(le);
-          var plA=it?Object.assign({},it,{cid:lci,type:lt,s:ls,e:le}):{id:uid(),cid:lci,type:lt,s:ls,e:le};
-          submitApproval(it?'leave_edit':'leave_add',Object.assign({},plA,{approval_role:'super_admin'}),descA);
-        /* ── Recruteur → approbation Super Admin ── */
-        }else if(S.role==='recruteur'){
-          var desc2=(it?'Modification':'Ajout')+' d\u2019absence Recruteur — '+esc(lt)+' du '+fDt(ls)+' au '+fDt(le);
-          var pl2=it?Object.assign({},it,{cid:lci,type:lt,s:ls,e:le}):{id:uid(),cid:lci,type:lt,s:ls,e:le};
-          submitApproval(it?'leave_edit':'leave_add',Object.assign({},pl2,{approval_role:S.leaveApprovalRole||'super_admin',user_role:'recruteur'}),desc2);
-        /* ── Business Manager → approbation Gestionnaire ── */
-        }else if(S.role==='sales'){
-          var desc3=(it?'Modification':'Ajout')+' d\u2019absence Business Manager — '+esc(lt)+' du '+fDt(ls)+' au '+fDt(le);
-          var pl3=it?Object.assign({},it,{cid:lci,type:lt,s:ls,e:le}):{id:uid(),cid:lci,type:lt,s:ls,e:le};
-          submitApproval(it?'leave_edit':'leave_add',Object.assign({},pl3,{approval_role:'gestionnaire',user_role:'sales'}),desc3);
-        }else{
+        /* Qui est mon approbateur ? = mon N+1 effectif (suit délégation, remonte au N+2 si absent) */
+        var approverId=resolveApprover(S._userId);
+        var descL=(it?'Modification':'Ajout')+' d\u2019absence \u2014 '+esc(lt)+' du '+fDt(ls)+' au '+fDt(le);
+        if(!approverId){
+          /* Pas de N+1 (Super Admin tout en haut) → application directe, sans validation */
           var nl;
           if(it){S.lvs=S.lvs.map(function(l){if(l.id===it.id){nl=Object.assign({},l,{cid:lci,type:lt,s:ls,e:le});return nl;}return l;});}
           else{nl={id:uid(),cid:lci,type:lt,s:ls,e:le};S.lvs=S.lvs.concat([nl]);}
           sbUpsertLeave(nl);
           S.modal=null;render();
+        }else{
+          /* Soumettre à l'approbateur désigné (par identifiant) */
+          var plL=it?Object.assign({},it,{cid:lci,type:lt,s:ls,e:le}):{id:uid(),cid:lci,type:lt,s:ls,e:le};
+          submitApproval(it?'leave_edit':'leave_add',Object.assign({},plL,{approver_id:approverId}),descL);
         }
       }
       /* ════════════════════ RECRUTEMENT ════════════════════ */
@@ -5763,6 +5750,15 @@ async function loadSB(){
         localStorage.setItem('esn_settings_'+SB_CID,JSON.stringify(S.settings));
       }
     }catch(e){/* table pas encore créée : utiliser les defaults */}
+
+    /* ── Charger l'annuaire des profils de l'organisation ──
+       Nécessaire pour : résoudre le N+1, lister les pairs (délégation),
+       remonter au N+2 si l'approbateur est absent. */
+    try{
+      var opr=await sb.from('profiles').select('id,first_name,last_name,role,manager_id,cons_id,approval_delegate_to,approval_delegate_until').eq('company_id',SB_CID);
+      if(opr.data)S.orgProfiles=opr.data;
+    }catch(e){console.warn('orgProfiles load:',e);S.orgProfiles=[];}
+
     /* Recalculer CFY avec le bon mois de départ */
     CFY=currentFY();
     rebuildQuarters(); /* T1/T2/T3/T4 selon le nouveau mois fiscal */
@@ -6068,7 +6064,10 @@ async function initApp(){
           S.dirName=pr.data.directeur_name||_fullName||'';
         }
         S.consId=pr.data.cons_id||null;
-        S.leaveApprovalRole=pr.data.leave_approval_role||'super_admin';
+        S.managerId=pr.data.manager_id||null;              /* mon N+1 (identifiant) */
+        S.approvalDelegateTo=pr.data.approval_delegate_to||null;   /* si J'AI délégué à quelqu'un */
+        S.approvalDelegateUntil=pr.data.approval_delegate_until||null; /* date fin délégation (null=advitam) */
+        S.leaveApprovalRole=pr.data.leave_approval_role||'super_admin'; /* legacy, conservé en fallback */
         if(S.role==='utilisateur'&&S.consId)S.tab='activite';
 
         /* Aligner directeur_name en base sur le nom réel (cohérence rattachements) */
@@ -6532,6 +6531,58 @@ var APPROVAL_LABELS={
 };
 
 /* Créer et stocker une demande d'approbation au lieu d'appliquer directement */
+
+/* ══════ Hiérarchie & approbation par identité (N+1) ══════ */
+/* Profil d'un membre par id */
+function profById(pid){ return (S.orgProfiles||[]).find(function(p){return p.id===pid;})||null; }
+/* Nom lisible d'un profil */
+function profName(p){ if(!p)return ''; return ((p.first_name||'')+' '+(p.last_name||'')).trim()||'(sans nom)'; }
+
+/* Un enregistrement d'approbation (mission OU absence) m'est-il destiné ? (par identité) */
+function _isMyApprovalRec(rec){
+  var aid=rec.approver_id||rec.approverId||(rec.payload&&rec.payload.approver_id);
+  if(aid)return aid===S._userId;
+  /* Fallback legacy */
+  if(rec.approval_role){var mr=S.role==='super_admin'?'super_admin':S.role==='admin'?'admin':S.role==='gestionnaire'?'gestionnaire':'';return rec.approval_role===mr;}
+  if(rec.dirName!==undefined)return rec.dirName===S.dirName;
+  return false;
+}
+
+/* Résout l'approbateur EFFECTIF d'un demandeur (remonte au N+2 si N+1 absent,
+   suit la délégation active si l'approbateur a délégué). */
+function resolveApprover(requesterId){
+  var me=profById(requesterId); if(!me)return null;
+  var mgrId=me.manager_id;
+  /* Remonter tant que le manager n'existe plus dans l'org (parti) */
+  var guard=0;
+  while(mgrId && !profById(mgrId) && guard<10){ mgrId=null; guard++; }
+  if(!mgrId)return null; /* pas de N+1 → Super Admin, pas d'approbation */
+  /* Suivre la délégation active de l'approbateur */
+  var mgr=profById(mgrId); guard=0;
+  while(mgr && mgr.approval_delegate_to && guard<10){
+    var stillValid = !mgr.approval_delegate_until || (mgr.approval_delegate_until >= new Date().toISOString().slice(0,10));
+    if(!stillValid)break;
+    var deleg=profById(mgr.approval_delegate_to);
+    if(!deleg)break;
+    mgrId=deleg.id; mgr=deleg; guard++;
+  }
+  return mgrId;
+}
+/* Mes pairs = membres ayant le même N+1 que moi (pour déléguer) */
+function myPeers(){
+  if(!S.managerId)return [];
+  return (S.orgProfiles||[]).filter(function(p){
+    return p.manager_id===S.managerId && p.id!==S._userId;
+  });
+}
+/* Candidats à qui JE peux déléguer : mes pairs + mon N+1 */
+function delegationCandidates(){
+  var out=myPeers();
+  var mgr=profById(S.managerId);
+  if(mgr)out=out.concat([mgr]);
+  return out;
+}
+
 function submitApproval(type, payload, applyDesc){
   var myC=(S._all||S).cons.find(function(c){return c.id===S.consId;})||{};
   var req={
@@ -6540,6 +6591,8 @@ function submitApproval(type, payload, applyDesc){
     consId:S.consId,
     consName:myC.name||S._userEmail||'',
     dirName:myC.dir||'',
+    requesterId:S._userId||null,                    /* qui demande (identité) */
+    approverId:(payload&&payload.approver_id)||null, /* qui doit approuver (N+1 effectif) */
     payload:payload,
     applyDesc:applyDesc||'',
     status:'pending',
@@ -6596,12 +6649,22 @@ async function sbUpsertApproval(req){
 /* ─── Vue Approbations pour le CONSULTANT ─── */
 function tApprovals(){
   /* Déterminer les approval_roles que je peux valider */
-  var myApprovalRoles=S.role==='super_admin'?['super_admin']:S.role==='admin'?['admin']:S.role==='gestionnaire'?['gestionnaire']:[];
+  /* Modèle par identité : je vois les demandes dont JE suis l'approbateur effectif.
+     Cela inclut : les demandes routées vers moi directement, + celles déléguées à moi. */
+  var myApprovalRoles=S.role==='super_admin'?['super_admin']:S.role==='admin'?['admin']:S.role==='gestionnaire'?['gestionnaire']:[]; /* legacy fallback */
+  function _isMyApproval(rec){
+    /* Nouveau : approver_id/approverId pointe sur moi */
+    var aid=rec.approver_id||rec.approverId||(rec.payload&&rec.payload.approver_id);
+    if(aid)return aid===S._userId;
+    /* Fallback legacy : ancien routage par rôle (demandes créées avant migration) */
+    if(rec.approval_role)return myApprovalRoles.indexOf(rec.approval_role)>=0;
+    return false;
+  }
   var isValidator=myApprovalRoles.length>0;
 
   if(isValidator){
     var allLvs=(S._all&&S._all.lvs)||S.lvs;
-    var pendingLv=allLvs.filter(function(lv){return myApprovalRoles.indexOf(lv.approval_role)>=0&&lv.approved===false;});
+    var pendingLv=allLvs.filter(function(lv){return _isMyApproval(lv)&&lv.approved===false;});
     var pending=S.approvals.filter(function(r){return r.status==='pending';}).sort(function(a,b){return b.createdAt.localeCompare(a.createdAt);});
     if(!pending.length&&!pendingLv.length)return '<div class="vw"><div class="ph"><div class="pt">\uD83D\uDD14 Approbations</div><div class="ps">Demandes en attente de validation</div></div><div class="emp">Aucune demande en attente.</div></div>';
     var lvRows=pendingLv.map(function(lv){
@@ -6685,7 +6748,7 @@ function approveLv(lvId,approved){
 }
 function tDashApprovals(){
   var pending=S.approvals.filter(function(r){
-    return r.status==='pending'&&r.dirName===S.dirName;
+    return r.status==='pending'&&_isMyApprovalRec(r);
   }).sort(function(a,b){return a.createdAt.localeCompare(b.createdAt);});
   if(!pending.length)return '';
 
@@ -7121,6 +7184,27 @@ function tProfile(){
     +'</div>'
 
 
+    /* ── Délégation d'approbation (rôles approbateurs uniquement) ── */
+    +((S.role==='super_admin'||S.role==='admin'||S.role==='gestionnaire')?(function(){
+      var cand=delegationCandidates();
+      var curDeleg=S.approvalDelegateTo;
+      var curUntil=S.approvalDelegateUntil;
+      var opts='<option value="">— Personne (j\'approuve moi-même) —</option>'+cand.map(function(p){
+        return '<option value="'+p.id+'"'+(p.id===curDeleg?' selected':'')+'>'+esc(profName(p))+' \u2014 '+esc(rLabel(p.role))+'</option>';
+      }).join('');
+      return '<div class="card" style="padding:24px;margin-bottom:16px">'
+        +'<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:6px">\uD83D\uDD01 Délégation d\'approbation</div>'
+        +'<p style="font-size:12px;color:#64748b;margin:0 0 16px">Transférez temporairement ou définitivement la validation de vos demandes à un pair (même responsable que vous) ou à votre responsable.</p>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
+        +'<div class="fd"><label class="fl">Déléguer mes approbations à</label><select class="ic" id="deleg-to">'+opts+'</select></div>'
+        +'<div class="fd"><label class="fl">Jusqu\'au (vide = permanent)</label><input class="ic" id="deleg-until" type="date" value="'+esc(curUntil||'')+'"></div>'
+        +'</div>'
+        +(curDeleg?'<div style="font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;margin-top:10px">\u26a0 Vos approbations sont actuellement déléguées'+(curUntil?' jusqu\'au '+fDt(curUntil):' de façon permanente')+'.</div>':'')
+        +'<div id="deleg-msg" style="font-size:12px;margin-top:10px;display:none"></div>'
+        +'<button class="bp" style="margin-top:12px" onclick="saveDelegation()">Enregistrer la délégation</button>'
+        +'</div>';
+    })():'')
+
     /* ── Changer le mot de passe ── */
     +'<div class="card" style="padding:24px;margin-bottom:16px">'
     +'<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:16px">Changer le mot de passe</div>'
@@ -7141,6 +7225,31 @@ function tProfile(){
     +'<button onclick="doLogout()" style="background:#fff;color:#ef4444;border:1px solid #fca5a5;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer">\u2192 Se d\u00e9connecter</button>'
     +'</div>'
     +'</div>';
+}
+
+
+async function saveDelegation(){
+  var to=(document.getElementById('deleg-to')||{}).value||'';
+  var until=(document.getElementById('deleg-until')||{}).value||'';
+  var msg=document.getElementById('deleg-msg');
+  if(msg){msg.style.display='block';msg.style.color='#64748b';msg.textContent='Enregistrement...';}
+  S.approvalDelegateTo=to||null;
+  S.approvalDelegateUntil=until||null;
+  if(sb&&SB_CID){
+    try{
+      var u=await sb.auth.getUser();
+      if(u.data&&u.data.user){
+        await sb.from('profiles').update({
+          approval_delegate_to:to||null,
+          approval_delegate_until:until||null
+        }).eq('id',u.data.user.id);
+      }
+      /* Rafraîchir l'annuaire pour refléter la délégation */
+      try{var opr=await sb.from('profiles').select('id,first_name,last_name,role,manager_id,cons_id,approval_delegate_to,approval_delegate_until').eq('company_id',SB_CID);if(opr.data)S.orgProfiles=opr.data;}catch(e){}
+      if(msg){msg.style.color='#16a34a';msg.textContent=to?'\u2713 Délégation enregistrée.':'\u2713 Délégation retirée.';}
+      setTimeout(render,900);
+    }catch(e){if(msg){msg.style.color='#ef4444';msg.textContent='Erreur : '+e.message;}}
+  }
 }
 
 async function saveProfileInfo(){
