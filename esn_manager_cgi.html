@@ -6064,6 +6064,21 @@ async function initApp(){
         S.leaveApprovalRole=pr.data.leave_approval_role||'super_admin';
         if(S.role==='utilisateur'&&S.consId)S.tab='activite';
 
+        /* ── Synchronisation nom : la fiche équipe reflète TOUJOURS le profil ──
+           Le nom/prénom du profil est la source de vérité unique. Si la fiche
+           liée porte un nom différent, on la corrige silencieusement. */
+        if(S.consId){
+          try{
+            var _profName=((pr.data.first_name||'')+' '+(pr.data.last_name||'')).trim();
+            if(_profName){
+              var _fc=await sb.from('consultants').select('name').eq('id',S.consId).maybeSingle();
+              if(_fc&&_fc.data&&_fc.data.name!==_profName){
+                await sb.from('consultants').update({name:_profName}).eq('id',S.consId);
+              }
+            }
+          }catch(e){console.warn('sync nom fiche:',e);}
+        }
+
         /* ── Auto-réparation : Admin/Gestionnaire sans fiche équipe liée ──
            Les comptes créés avant la refonte n'ont pas de cons_id. On retrouve
            leur fiche par email, sinon on la crée, puis on relie le profil.
@@ -6083,10 +6098,13 @@ async function initApp(){
               }).select().single();
               if(insC&&insC.data)myCons=insC.data;
             }
-            /* 3. Relier le profil à la fiche */
+            /* 3. Relier le profil à la fiche + SYNCHRONISER le nom (le profil fait foi) */
             if(myCons&&myCons.id){
               S.consId=myCons.id;
               await sb.from('profiles').update({cons_id:myCons.id}).eq('id',uid2);
+              if(selfName && myCons.name!==selfName){
+                await sb.from('consultants').update({name:selfName}).eq('id',myCons.id);
+              }
             }
           }catch(e){console.warn('auto-réparation cons_id:',e);}
         }
@@ -7079,14 +7097,15 @@ function tProfile(){
     +'<div class="card" style="padding:24px;margin-bottom:16px">'
     +'<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:16px">Informations personnelles</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
-    +'<div class="fd"><label class="fl">Prénom</label><input class="ic" id="prof-fn" value="'+esc(fn)+'" placeholder="Votre prénom"></div>'
-    +'<div class="fd"><label class="fl">Nom</label><input class="ic" id="prof-ln" value="'+esc(ln)+'" placeholder="Votre nom"></div>'
+    +'<div class="fd"><label class="fl">Prénom</label><div style="padding:9px 12px;background:#f8fafc;border-radius:8px;font-size:13px;color:#64748b;border:1px solid #e2e8f0">'+esc(fn||'—')+'</div></div>'
+    +'<div class="fd"><label class="fl">Nom</label><div style="padding:9px 12px;background:#f8fafc;border-radius:8px;font-size:13px;color:#64748b;border:1px solid #e2e8f0">'+esc(ln||'—')+'</div></div>'
     +'<div class="fd"><label class="fl">Titre / Poste</label><input class="ic" id="prof-title" value="'+esc(titre)+'" placeholder="ex : Directeur de pôle"></div>'
     +'<div class="fd"><label class="fl">Email</label><div style="padding:9px 12px;background:#f8fafc;border-radius:8px;font-size:13px;color:#64748b;border:1px solid #e2e8f0">'+esc(userEmail||'—')+'</div></div>'
     +'<div class="fd"><label class="fl">Rôle</label><div style="padding:9px 12px;background:#f8fafc;border-radius:8px;font-size:13px;font-weight:700;color:#0f172a;border:1px solid #e2e8f0">'+esc(userRole)+'</div></div>'
     +'</div>'
-    +'<div id="prof-info-msg" style="font-size:12px;margin-top:10px;display:none"></div>'
-    +'<button class="bp" style="margin-top:14px" onclick="saveProfileInfo()">Enregistrer</button>'
+    +'<p style="font-size:11px;color:#94a3b8;margin-top:10px">Le prénom et le nom sont définis par votre organisation à l\'invitation et ne peuvent pas être modifiés ici.</p>'
+    +'<div id="prof-info-msg" style="font-size:12px;margin-top:6px;display:none"></div>'
+    +'<button class="bp" style="margin-top:10px" onclick="saveProfileInfo()">Enregistrer le titre</button>'
     +'</div>'
 
 
@@ -7113,19 +7132,18 @@ function tProfile(){
 }
 
 async function saveProfileInfo(){
-  var fn=(document.getElementById('prof-fn')||{}).value||'';
-  var ln=(document.getElementById('prof-ln')||{}).value||'';
+  /* Nom/prénom verrouillés : seul le titre est modifiable ici. */
   var title=(document.getElementById('prof-title')||{}).value||'';
   var msg=document.getElementById('prof-info-msg');
   if(msg){msg.style.display='block';msg.style.color='#64748b';msg.textContent='Enregistrement...';}
-  S.profileFirstName=fn;S.profileLastName=ln;S.profileTitle=title;
+  S.profileTitle=title;
   if(sb&&SB_CID){
     try{
       var uid=await sb.auth.getUser();
       if(uid.data&&uid.data.user){
-        await sb.from('profiles').update({first_name:fn,last_name:ln}).eq('id',uid.data.user.id);
+        await sb.from('profiles').update({title:title}).eq('id',uid.data.user.id);
       }
-      if(msg){msg.style.color='#16a34a';msg.textContent='✓ Profil mis à jour.';}
+      if(msg){msg.style.color='#16a34a';msg.textContent='✓ Titre mis à jour.';}
     }catch(e){if(msg){msg.style.color='#ef4444';msg.textContent='Erreur : '+e.message;}}
   }else{
     if(msg){msg.style.color='#16a34a';msg.textContent='✓ Profil mis à jour (mode local).';}
