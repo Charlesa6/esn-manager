@@ -5567,7 +5567,8 @@ function bind(){
           role:invRole,
           invited_by:S._userEmail||'',
           invited_by_role:S.role,
-          invited_by_name:invByName
+          invited_by_name:invByName,
+          invited_by_id:S._userId||null
         }).select().then(function(r){
           if(r&&r.error){alert('Erreur: '+r.error.message);return;}
           var created=(r.data&&r.data[0])||null;
@@ -6001,6 +6002,7 @@ async function initApp(){
 
       /* ── 2. R\u00e9cup\u00e9rer company_id + r\u00f4le ── */
       var uid2=sess.data.session.user.id;
+      S._userId=uid2;
       S._userEmail=sess.data.session.user.email||'';
       var pr=await sb.from('profiles').select('*').eq('id',uid2).single();
       if(pr.data&&pr.data.company_id){
