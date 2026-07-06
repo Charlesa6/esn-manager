@@ -519,15 +519,15 @@ async function doLogin() {
   /* ── Invitation en attente (compte créé avec confirmation email) ──
      La session existe maintenant : on finalise l'acceptation côté serveur. */
   try {
-    var pendingTok = localStorage.getItem('konsilys_pending_invite');
-    if (pendingTok) {
-      var pn = {};
-      try { pn = JSON.parse(localStorage.getItem('konsilys_pending_names') || '{}'); } catch(e) {}
-      await sb.rpc('accept_invite', { invite_token: pendingTok, p_first_name: pn.fn || '', p_last_name: pn.ln || '' });
-      localStorage.removeItem('konsilys_pending_invite');
-      localStorage.removeItem('konsilys_pending_names');
-    }
-  } catch(e) { console.warn('accept_invite (signin):', e); }
+    var pendingEmailInv = localStorage.getItem('konsilys_pending_email_invite');
+    var pn = {};
+    try { pn = JSON.parse(localStorage.getItem('konsilys_pending_names') || '{}'); } catch(e) {}
+    /* On tente toujours l'acceptation par email : la fonction serveur ne fait rien
+       si le profil est déjà rattaché, donc c'est sûr même sans flag. */
+    await sb.rpc('accept_invite_by_email', { p_first_name: pn.fn || '', p_last_name: pn.ln || '' });
+    localStorage.removeItem('konsilys_pending_email_invite');
+    localStorage.removeItem('konsilys_pending_names');
+  } catch(e) { console.warn('accept_invite_by_email (signin):', e); }
   window.location.href = '/app';
 }
 
@@ -688,30 +688,19 @@ async function doSignup() {
       return;
     }
 
-    /* ── 1b. Invitation unifiée par TOKEN (?invite=TOKEN dans l'URL) ──
-       La lecture directe de la table invites est bloquée par RLS pour un anonyme.
-       On passe par une fonction SECURITY DEFINER qui ne retourne que la ligne du token exact. */
+    /* ── 1b. Invitation unifiée par EMAIL ──
+       La fiche équipe a déjà été créée par l'inviteur. On vérifie juste si
+       l'email saisi correspond à une invitation en attente (fonction serveur
+       SECURITY DEFINER, car un anonyme ne peut pas lire la table invites). */
     var unifiedInvite = null;
     try {
-      var inviteToken = new URLSearchParams(window.location.search).get('invite');
-      if (inviteToken) {
-        var ui = await sb.rpc('get_invite_by_token', { invite_token: inviteToken });
-        if (ui && ui.data && ui.data.length) {
-          unifiedInvite = ui.data[0];
-          /* Sécurité : l'email saisi doit correspondre à l'email invité */
-          if (unifiedInvite.email && unifiedInvite.email.toLowerCase() !== em.toLowerCase()) {
-            loading('b-signup','sp-signup','lb-signup', false);
-            showBanner('err', 'Cette invitation est destinée à ' + unifiedInvite.email + '. Utilisez cet email pour créer votre compte.');
-            return;
-          }
-        }
-      }
-    } catch(e) { console.warn('unifiedInvite token check:', e); }
+      var ue = await sb.rpc('get_invite_by_email', { p_email: em });
+      if (ue && ue.data && ue.data.length) unifiedInvite = ue.data[0];
+    } catch(e) { console.warn('get_invite_by_email:', e); }
 
     if (unifiedInvite) {
       var invRole = unifiedInvite.role || 'gestionnaire';
       var invCompanyId = unifiedInvite.company_id;
-      var invApprovalRole = unifiedInvite.invited_by_role || 'super_admin';
 
       var resInv = await sb.auth.signUp({
         email: em, password: pw,
@@ -719,28 +708,24 @@ async function doSignup() {
       });
       loading('b-signup','sp-signup','lb-signup', false);
       if (resInv.error) { showBanner('err', errMsg(resInv.error)); return; }
-      if (resInv.data && resInv.data.user) {
-        /* ── Acceptation SERVEUR (accept_invite) ──
-           Si la confirmation d'email est activée, il n'y a PAS de session ici :
-           toute écriture directe serait bloquée par la RLS (auth.uid() = null).
-           → On mémorise le token, et accept_invite (SECURITY DEFINER) fait tout
-             côté serveur dès qu'une session existe : profil + fiche équipe +
-             manager_id + cons_id + marquage de l'invitation. */
-        try { localStorage.setItem('konsilys_pending_invite', unifiedInvite.token); } catch(e) {}
-        try { localStorage.setItem('konsilys_pending_names', JSON.stringify({fn:fn, ln:ln})); } catch(e) {}
 
-        if (resInv.data.session) {
-          /* Session immédiate (confirmation email désactivée) : accepter tout de suite */
-          try {
-            await sb.rpc('accept_invite', { invite_token: unifiedInvite.token, p_first_name: fn, p_last_name: ln });
-            localStorage.removeItem('konsilys_pending_invite');
-            localStorage.removeItem('konsilys_pending_names');
-          } catch(e) { console.warn('accept_invite (signup):', e); }
-        }
+      /* Le rattachement complet (profil + rôle + manager_id + cons_id + marquage
+         de l'invitation) est appliqué côté serveur par accept_invite_by_email,
+         dès qu'une session existe. On mémorise l'intention pour le 1er signin. */
+      try { localStorage.setItem('konsilys_pending_email_invite', '1'); } catch(e) {}
+      try { localStorage.setItem('konsilys_pending_names', JSON.stringify({fn:fn, ln:ln})); } catch(e) {}
+
+      if (resInv.data && resInv.data.session) {
+        try {
+          await sb.rpc('accept_invite_by_email', { p_first_name: fn, p_last_name: ln });
+          localStorage.removeItem('konsilys_pending_email_invite');
+          localStorage.removeItem('konsilys_pending_names');
+        } catch(e) { console.warn('accept_invite_by_email (signup):', e); }
       }
+
       if (resInv.data.user && !resInv.data.session) {
-        showSuccess('Compte ' + invRole + ' créé\u00a0!',
-          'V\u00e9rifiez votre email ' + em + ' pour confirmer.', true);
+        showSuccess('Compte ' + invRole + ' cr\u00e9\u00e9\u00a0!',
+          'V\u00e9rifiez votre email ' + em + ' pour confirmer, puis connectez-vous.', true);
       } else { window.location.href = '/app'; }
       return;
     }

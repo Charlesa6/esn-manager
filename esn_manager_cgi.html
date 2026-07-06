@@ -2294,6 +2294,8 @@ function tSVPAcces(){
     +'<div class="card" style="padding:20px;margin-bottom:16px">'
     +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">+ Envoyer une invitation</h3>'
     +'<div class="g2">'
+    +'<div class="fd"><label class="fl">Prénom *</label><input class="ic" id="inv-fn" placeholder="Marie"></div>'
+    +'<div class="fd"><label class="fl">Nom *</label><input class="ic" id="inv-ln" placeholder="Dupont"></div>'
     +'<div class="fd"><label class="fl">Email *</label><input class="ic" id="inv-email" type="email" placeholder="prenom.nom@exemple.com"></div>'
     +'<div class="fd"><label class="fl">Rôle *</label><select class="ic" id="inv-role">'+roleOpts+'</select></div>'
     +'</div>'
@@ -4752,16 +4754,21 @@ function tModal(){
 
 
   if(tp==='invite_link'){
-    title='\u2709\uFE0F Invitation cr\u00e9\u00e9e';
-    var _lnk=m.link||'';
+    title='\u2705 Membre ajout\u00e9 \u00e0 l\u2019organisation';
     body='<div style="text-align:center;padding:8px 0">'
-      +'<div style="font-size:34px;margin-bottom:10px">\u2705</div>'
-      +'<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:6px">Invitation '+esc(rLabel(m.role||''))+' pour '+esc(m.email||'')+'</div>'
-      +'<div style="font-size:12px;color:#64748b;margin-bottom:14px">Transmettez ce lien \u00e0 la personne invit\u00e9e. Elle cr\u00e9era son compte avec le bon r\u00f4le, rattach\u00e9 \u00e0 votre organisation.</div>'
+      +'<div style="font-size:34px;margin-bottom:10px">\uD83D\uDC4B</div>'
+      +'<div style="font-size:15px;font-weight:800;color:#0f172a;margin-bottom:4px">'+esc(m.name||'')+'</div>'
+      +'<div style="font-size:12px;font-weight:700;color:#84CC16;margin-bottom:12px">'+esc(rLabel(m.role||''))+'</div>'
+      +'<div style="font-size:12.5px;color:#374151;line-height:1.6;margin-bottom:14px">'
+      +'La fiche est d\u00e9j\u00e0 visible dans votre \u00e9quipe.<br>'
+      +'Pour activer son acc\u00e8s, la personne cr\u00e9e simplement son compte sur <strong>konsilys.fr</strong> avec l\u2019email\u00a0:'
+      +'</div>'
       +'<div style="display:flex;gap:8px;align-items:center;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px">'
-      +'<input class="ic" id="inv-link-field" value="'+esc(_lnk)+'" readonly style="flex:1;font-size:11px;background:transparent;border:none">'
-      +'<button class="bp" style="font-size:11px;padding:6px 12px;white-space:nowrap" onclick="var f=document.getElementById(\'inv-link-field\');f.select();document.execCommand(\'copy\');this.textContent=\'\u2713 Copi\u00e9\'">Copier</button>'
-      +'</div></div>';
+      +'<input class="ic" id="inv-email-field" value="'+esc(m.email||'')+'" readonly style="flex:1;font-size:12px;background:transparent;border:none;text-align:center;font-weight:600">'
+      +'<button class="bp" style="font-size:11px;padding:6px 12px;white-space:nowrap" onclick="var f=document.getElementById(\'inv-email-field\');f.select();document.execCommand(\'copy\');this.textContent=\'\u2713 Copi\u00e9\'">Copier</button>'
+      +'</div>'
+      +'<div style="font-size:11px;color:#94a3b8;margin-top:10px">Son r\u00f4le, son rattachement et ses acc\u00e8s seront appliqu\u00e9s automatiquement \u00e0 sa premi\u00e8re connexion.</div>'
+      +'</div>';
     return '<div class="mov" id="mov"><div class="mbox mn">'
       +'<div class="moh"><div class="mot">'+title+'</div><button class="moc" data-act="mc">\u2715</button></div>'
       +'<div class="mody">'+body+'<div class="br"><button class="bg" data-act="mc">Fermer</button></div></div></div></div>';
@@ -5557,34 +5564,60 @@ function bind(){
       else if(a==='open-salary-detail'){S.modal={type:'salary_detail'};render();}
       /* ── Invites unifiés ── */
       else if(a==='inv-add'){
-        var invEmail=gv('inv-email')||'';var invRole=gv('inv-role')||'utilisateur';
-        if(!invEmail){alert('Email requis.');return;}
+        var invEmail=(gv('inv-email')||'').toLowerCase().trim();
+        var invRole=gv('inv-role')||'utilisateur';
+        var invFn=(gv('inv-fn')||'').trim(), invLn=(gv('inv-ln')||'').trim();
+        if(!invFn||!invLn||!invEmail){alert('Prénom, nom et email requis.');return;}
         if(!sb||!SB_CID){alert('Connexion Supabase requise.');return;}
         var invByName=((S.profileFirstName||'')+' '+(S.profileLastName||'')).trim()||S._userEmail||'';
-        sb.from('invites').insert({
-          company_id:SB_CID,
-          email:invEmail.toLowerCase().trim(),
-          role:invRole,
-          invited_by:S._userEmail||'',
-          invited_by_role:S.role,
-          invited_by_name:invByName,
-          invited_by_id:S._userId||null
-        }).select().then(function(r){
-          if(r&&r.error){alert('Erreur: '+r.error.message);return;}
-          var created=(r.data&&r.data[0])||null;
-          sb.from('invites').select('*').eq('company_id',SB_CID).order('created_at',{ascending:false})
-            .then(function(ri){if(ri.data)S.allInvites=ri.data;
-              if(created&&created.token){
-                var invLink=window.location.origin+'/esn_login.html?invite='+created.token;
-                S.modal={type:'invite_link',link:invLink,email:invEmail,role:invRole};
-              }
-              render();});
+        var roleTitleMap={admin:'Admin',gestionnaire:'Gestionnaire',recruteur:'Recruteur',sales:'Business Manager'};
+        /* 1. Créer la fiche équipe IMMÉDIATEMENT (l'inviteur a une session → RLS OK).
+           La personne apparaît dans l'organigramme avant même son inscription. */
+        var consRow={company_id:SB_CID,name:(invFn+' '+invLn).trim(),title:roleTitleMap[invRole]||'Consultant',
+          email:invEmail,directeur:invByName,scr:0,contract:'salarie'};
+        sb.from('consultants').insert(consRow).select().single().then(function(cr){
+          if(cr&&cr.error){alert('Erreur fiche équipe: '+cr.error.message);return;}
+          var newConsId=(cr.data&&cr.data.id)||null;
+          /* 2. Créer l'invitation reliée à la fiche (cons_id) */
+          sb.from('invites').insert({
+            company_id:SB_CID,
+            email:invEmail,
+            role:invRole,
+            first_name:invFn,
+            last_name:invLn,
+            cons_id:newConsId,
+            invited_by:S._userEmail||'',
+            invited_by_role:S.role,
+            invited_by_name:invByName,
+            invited_by_id:S._userId||null
+          }).then(function(r){
+            if(r&&r.error){alert('Erreur invitation: '+r.error.message);return;}
+            /* 3. Recharger les données */
+            Promise.all([
+              sb.from('invites').select('*').eq('company_id',SB_CID).order('created_at',{ascending:false}),
+              sb.from('consultants').select('*').eq('company_id',SB_CID)
+            ]).then(function(res){
+              if(res[0].data)S.allInvites=res[0].data;
+              if(res[1].data)S.cons=res[1].data.map(mapC);
+              S._ks&&(S._ks._valid=false);
+              S.modal={type:'invite_link',email:invEmail,role:invRole,name:invFn+' '+invLn};
+              render();
+            });
+          });
         });
       }
       else if(a==='inv-del'){
-        if(!confirm('Supprimer cette invitation ?'))return;
-        sb.from('invites').delete().eq('id',id).then(function(){
+        if(!confirm('Supprimer cette invitation ? La fiche \u00e9quipe associ\u00e9e sera aussi retir\u00e9e si le compte n\u2019a pas encore \u00e9t\u00e9 activ\u00e9.'))return;
+        var invToDel=(S.allInvites||[]).find(function(iv){return iv.id===id;});
+        var delCons=(invToDel&&!invToDel.used&&invToDel.cons_id)
+          ?sb.from('consultants').delete().eq('id',invToDel.cons_id)
+          :Promise.resolve();
+        Promise.resolve(delCons).then(function(){
+          return sb.from('invites').delete().eq('id',id);
+        }).then(function(){
           S.allInvites=(S.allInvites||[]).filter(function(iv){return iv.id!==id;});
+          if(invToDel&&invToDel.cons_id)S.cons=S.cons.filter(function(cc){return cc.id!==invToDel.cons_id;});
+          S._ks&&(S._ks._valid=false);
           render();
         });
       }
