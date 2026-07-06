@@ -2262,9 +2262,9 @@ function tSVPAcces(){
 
   /* ── Formulaire d'invitation selon le rôle ── */
   var canInvite={
-    super_admin:['admin','gestionnaire','recruteur','sales'],
-    admin:['gestionnaire','recruteur','sales'],
-    gestionnaire:['sales']
+    super_admin:['admin','gestionnaire','utilisateur','recruteur','sales'],
+    admin:['gestionnaire','utilisateur','recruteur','sales'],
+    gestionnaire:['utilisateur','sales']
   }[role]||[];
 
   var roleOpts=canInvite.map(function(r){
@@ -6059,10 +6059,22 @@ async function initApp(){
           S.profileFirstName=pr.data.first_name||'';
           S.profileLastName=pr.data.last_name||'';
           S.profileTitle=pr.data.title||''; 
-        S.dirName=pr.data.directeur_name||'';
+        /* Pour un Gestionnaire/Admin, l'identité = prénom + nom du profil (source unique).
+           dirName sert d'étiquette ET de clé de rattachement de son équipe. */
+        var _fullName=((pr.data.first_name||'')+' '+(pr.data.last_name||'')).trim();
+        if((S.role==='gestionnaire'||S.role==='admin')&&_fullName){
+          S.dirName=_fullName;
+        }else{
+          S.dirName=pr.data.directeur_name||_fullName||'';
+        }
         S.consId=pr.data.cons_id||null;
         S.leaveApprovalRole=pr.data.leave_approval_role||'super_admin';
         if(S.role==='utilisateur'&&S.consId)S.tab='activite';
+
+        /* Aligner directeur_name en base sur le nom réel (cohérence rattachements) */
+        if((S.role==='gestionnaire'||S.role==='admin')&&_fullName&&pr.data.directeur_name!==_fullName){
+          try{ await sb.from('profiles').update({directeur_name:_fullName}).eq('id',uid2); }catch(e){}
+        }
 
         /* ── Synchronisation nom : la fiche équipe reflète TOUJOURS le profil ──
            Le nom/prénom du profil est la source de vérité unique. Si la fiche
