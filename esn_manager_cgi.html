@@ -4928,6 +4928,20 @@ function render(){
   S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
   var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;
   document.getElementById('sb').innerHTML=tSB();
+  /* ── Contrôle d'accès central : chaque rôle a ses onglets autorisés ── */
+  var _allowedTabs={
+    super_admin:['kpis','dashboard','teams','recrutement','missions','planning','leaves','business','approvals','svp_acces','svp_settings','param','help','profile','kpis_dir'],
+    admin:['kpis','dashboard','teams','recrutement','missions','planning','leaves','business','approvals','svp_acces','param','help','profile','kpis_dir'],
+    gestionnaire:['kpis','dashboard','teams','recrutement','missions','planning','leaves','business','approvals','svp_acces','help','profile','kpis_dir'],
+    utilisateur:['activite','missions','planning','leaves','approvals','business','help','profile'],
+    recruteur:['recrutement','activite','leaves','help','profile'],
+    sales:['business','activite','leaves','help','profile']
+  };
+  var _myTabs=_allowedTabs[S.role]||_allowedTabs.admin;
+  if(_myTabs.indexOf(S.tab)<0){
+    /* Onglet non autorisé pour ce rôle → rediriger vers son onglet d'accueil */
+    S.tab=(S.role==='sales')?'business':(S.role==='recruteur')?'recrutement':(S.role==='utilisateur')?'activite':'kpis';
+  }
   var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tSVPAcces():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDirSection():S.tab==='svp_acces'?tSVPAcces():S.tab==='svp_settings'?tSettings():S.tab==='business'?tBusiness():S.tab==='help'?tHelp():tParam();
   var _ini=function(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();};
   var _av=S._userEmail?_ini(S._userEmail.split('@')[0].replace(/[._]/g,' ')):'?';
@@ -5792,6 +5806,11 @@ async function loadSB(){
           || cc.email===S._userEmail;
       });
     }
+    /* Sales (Business Manager), Recruteur, Utilisateur : ne voient QUE leur propre fiche.
+       Ils n'ont aucune visibilité sur les consultants de l'organisation. */
+    if(S.role==='sales'||S.role==='recruteur'||S.role==='utilisateur'){
+      cons=cons.filter(function(cc){ return cc.id===S.consId || cc.email===S._userEmail; });
+    }
     var mq=sb.from('missions').select('*').eq('company_id',SB_CID);
     var lq=sb.from('leaves').select('*').eq('company_id',SB_CID);
     /* Recrutement : TOUJOURS visible pour toute l'entreprise, quel que soit le rôle
@@ -6583,6 +6602,17 @@ function _isMyApprovalRec(rec){
 function resolveApprover(requesterId){
   var me=profById(requesterId); if(!me)return null;
   var mgrId=me.manager_id;
+  /* Fallback : si pas de manager_id, le déduire de la fiche équipe (directeur → profil du gestionnaire) */
+  if(!mgrId){
+    var myCard=(S.cons||[]).find(function(cc){return cc.id===me.cons_id;});
+    var dirName=myCard?myCard.dir:null;
+    if(dirName){
+      var mgrProf=(S.orgProfiles||[]).find(function(p){
+        return ((p.first_name||'')+' '+(p.last_name||'')).trim()===dirName;
+      });
+      if(mgrProf)mgrId=mgrProf.id;
+    }
+  }
   /* Remonter tant que le manager n'existe plus dans l'org (parti) */
   var guard=0;
   while(mgrId && !profById(mgrId) && guard<10){ mgrId=null; guard++; }
