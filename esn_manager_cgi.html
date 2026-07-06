@@ -5769,7 +5769,7 @@ async function loadSB(){
        Le filtrage se fait côté client pour inclure sa propre fiche (self-service absences/missions). */
     if(S.role==='gestionnaire'){
       cons=cons.filter(function(cc){
-        return cc.dir===S.dirName || cc.id===S.consId;
+        return cc.dir===S.dirName || cc.id===S.consId || cc.email===S._userEmail;
       });
     }
     var mq=sb.from('missions').select('*').eq('company_id',SB_CID);
@@ -6056,6 +6056,33 @@ async function initApp(){
         S.consId=pr.data.cons_id||null;
         S.leaveApprovalRole=pr.data.leave_approval_role||'super_admin';
         if(S.role==='utilisateur'&&S.consId)S.tab='activite';
+
+        /* ── Auto-réparation : Admin/Gestionnaire sans fiche équipe liée ──
+           Les comptes créés avant la refonte n'ont pas de cons_id. On retrouve
+           leur fiche par email, sinon on la crée, puis on relie le profil.
+           → Ils apparaissent alors dans les sélecteurs (moi) pour absences/missions. */
+        if((S.role==='admin'||S.role==='gestionnaire')&&!S.consId){
+          try{
+            var selfName=((pr.data.first_name||'')+' '+(pr.data.last_name||'')).trim();
+            var roleTitle=(S.role==='admin')?'Admin':'Gestionnaire';
+            /* 1. Chercher une fiche existante par email */
+            var exC=await sb.from('consultants').select('*').eq('company_id',SB_CID).eq('email',S._userEmail).maybeSingle();
+            var myCons=(exC&&exC.data)?exC.data:null;
+            /* 2. Sinon la créer */
+            if(!myCons){
+              var insC=await sb.from('consultants').insert({
+                company_id:SB_CID,name:selfName||S._userEmail,title:roleTitle,
+                email:S._userEmail,directeur:selfName,scr:0,contract:'salarie'
+              }).select().single();
+              if(insC&&insC.data)myCons=insC.data;
+            }
+            /* 3. Relier le profil à la fiche */
+            if(myCons&&myCons.id){
+              S.consId=myCons.id;
+              await sb.from('profiles').update({cons_id:myCons.id}).eq('id',uid2);
+            }
+          }catch(e){console.warn('auto-réparation cons_id:',e);}
+        }
       }else if(pr.data&&pr.data.role==='utilisateur'){
         /* Consultant : company_id null dans profiles → résoudre via consultant_invites */
         try{
