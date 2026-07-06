@@ -1080,12 +1080,8 @@ function tDash(){
     +'<p style="font-size:13px;color:#64748b;margin-top:4px">'+dateStr+'</p></div>'
 
     /* Cartes résumé — Approbations EN PREMIER, cliquable */
-    +'<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">'
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">'
 
-    +(S.role==='gestionnaire'?'<a href="#approvals-section" style="background:'+(pCount>0?'#fef3c7':'#f8fafc')+';border:1px solid '+(pCount>0?'#fbbf24':'#e2e8f0')+';border-radius:12px;padding:16px 18px;text-decoration:none;cursor:pointer;display:block;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 4px 12px rgba(0,0,0,.1)\'" onmouseout="this.style.boxShadow=\'\'">'
-    +'<div style="font-size:28px;font-weight:900;color:'+(pCount>0?'#b45309':'#64748b')+'">'+pCount+'</div>'
-    +'<div style="font-size:12px;font-weight:700;color:#374151;margin-top:4px">Approbations</div>'
-    +'<div style="font-size:11px;color:#94a3b8">en attente \u2193</div></a>':'')
 
     +'<a href="#futurs-section" style="background:'+(futurCount>0?'#f0fdf4':'#f8fafc')+';border:1px solid '+(futurCount>0?'#bbf7d0':'#e2e8f0')+';border-radius:12px;padding:16px 18px;text-decoration:none;cursor:pointer;display:block;transition:box-shadow .15s" '
     +'onmouseover="this.style.boxShadow=\'0 4px 12px rgba(0,0,0,.1)\'" onmouseout="this.style.boxShadow=\'\'">'
@@ -1157,7 +1153,7 @@ function tDash(){
         +(futurRows||'<div style="font-size:13px;color:#94a3b8;padding:8px 0">Aucune arriv\u00e9e planifi\u00e9e.</div>')
         +'</div></details>';
     }())
-    +(S.role==='gestionnaire'?apprSection:'')
+
     +'</div>';
 }
 function tTeams(){
@@ -4048,7 +4044,7 @@ function tActivite(){
   var firstDow=(new Date(year,mon-1,1).getDay()+6)%7;
   var dim=new Date(year,mon,0).getDate();
   var MNAMES=['Janvier','F\u00e9vrier','Mars','Avril','Mai','Juin','Juillet','Ao\u00fbt','Septembre','Octobre','Novembre','D\u00e9cembre'];
-  var co=S.cons.map(function(x){return '<option value="'+x.id+'"'+(x.id===cid?' selected':'')+'>'+esc(x.name)+'</option>';}).join('');
+  var co=S.cons.map(function(x){return '<option value="'+x.id+'"'+(x.id===cid?' selected':'')+'>'+esc(x.name)+(x.id===S.consId?' (moi)':'')+'</option>';}).join('');
   var cells='',billed=0,leaveD=0,internD=0;
   for(var i=0;i<firstDow;i++)cells+='<div style="background:#f8fafc;border-radius:8px;min-height:62px"></div>';
   for(var d=1;d<=dim;d++){
@@ -4825,7 +4821,10 @@ function tModal(){
     title=it?"Modifier l'absence":"Nouvelle absence / cong\u00e9";
     var dt=(it&&it.type)||'Cong\u00e9 pay\u00e9';
     var lo=LTYPES.map(function(t){return '<option value="'+t+'"'+(t===dt?' selected':'')+'>'+esc(t)+'</option>';}).join('');
-    body='<div class="fd"><label class="fl">'+rLabel('utilisateur')+'</label><select class="ic" id="mlc">'+co+'</select></div>'
+    /* Admin / Gestionnaire : leur propre fiche pré-sélectionnée (demande pour soi par défaut) */
+    var selfCid=(it&&it.cid)||(((S.role==='admin'||S.role==='gestionnaire')&&S.consId)?S.consId:'');
+    var coLeave=S.cons.map(function(x){return '<option value="'+x.id+'"'+(x.id===selfCid?' selected':'')+'>'+esc(x.name)+(x.id===S.consId?' (moi)':'')+'</option>';}).join('');
+    body='<div class="fd"><label class="fl">'+rLabel('utilisateur')+'</label><select class="ic" id="mlc">'+coLeave+'</select></div>'
       +'<div class="fd"><label class="fl">Type *</label><select class="ic" id="mlt">'+lo+'</select></div>'
       +'<div class="g2"><div class="fd"><label class="fl">Du *</label><input class="ic" id="mls" type="date" value="'+esc(it?it.s:'')+'"></div>'
       +'<div class="fd"><label class="fl">Au *</label><input class="ic" id="mle" type="date" value="'+esc(it?it.e:'')+'"></div></div>'
@@ -5141,7 +5140,8 @@ function bind(){
         var expArr=(S.modal.expSel||[]).slice();
         var secArr=(S.modal.secSel||[]).slice();
         var ctrct=gv('mcontract')||'salarie';var grade=gv('mgrade')||'';
-        if(!n||!t||!s){alert('Veuillez remplir les champs obligatoires (*).');return;}
+        if(!n||!t){alert('Le nom et le grade sont obligatoires.');return;}
+        if(!s||s<0)s=0;
         var it=S.modal.item;
         var nc;
         if(it){S.cons=S.cons.map(function(c){if(c.id===it.id){nc=Object.assign({},c,{name:n,title:t,scr:s,email:em,dir:rdir,arrive:arr,depart:dep,expertise:expArr,sectors:secArr,contract:ctrct,grade:grade});return nc;}return c;});}
@@ -5763,9 +5763,15 @@ async function loadSB(){
     H=fyHols(S.year=S.year||CFY); /* réinitialiser les jours fériés avec le bon FY */
     /* un directeur ne charge que les consultants de son équipe (puis leurs missions/absences) */
     var cq=sb.from('consultants').select('*').eq('company_id',SB_CID).order('name');
-    if(S.role==='gestionnaire')cq=cq.eq('gestionnaire',S.dirName);
     var cr=await cq;
     var cons=(cr.data||[]).map(mapC);
+    /* Gestionnaire : son équipe = ceux qu'il a invités (directeur = son nom) OU sa propre fiche.
+       Le filtrage se fait côté client pour inclure sa propre fiche (self-service absences/missions). */
+    if(S.role==='gestionnaire'){
+      cons=cons.filter(function(cc){
+        return cc.dir===S.dirName || cc.id===S.consId;
+      });
+    }
     var mq=sb.from('missions').select('*').eq('company_id',SB_CID);
     var lq=sb.from('leaves').select('*').eq('company_id',SB_CID);
     /* Recrutement : TOUJOURS visible pour toute l'entreprise, quel que soit le rôle
