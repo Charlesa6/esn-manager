@@ -620,7 +620,7 @@ function clientRev(ks){
    restent dans S._all pour la sauvegarde et les mutations). */
 function visibleConsIds(){
   var base=(S._all&&S._all.cons)||S.cons;
-  if(S.role==='gestionnaire'){base=base.filter(function(c){return (c.dir||'')===S.dirName;});}
+  if(S.role==='gestionnaire'){base=base.filter(function(c){return c.managerId===S._userId || (!c.managerId && (c.dir||'')===S.dirName) || c.id===S.consId;});}
   else if(S.role==='utilisateur'){base=base.filter(function(c){return c.id===S.consId;});}
   else if(S.role==='super_admin'&&S.fvp&&S.fvp.length){
     /* Filtrer par VP : on cherche les directeurs appartenant aux VPs sélectionnés */
@@ -3916,7 +3916,7 @@ function tAdmin(){
   if(S.role!=='gestionnaire')return '<div class="emp">Acc\u00e8s r\u00e9serv\u00e9 au directeur.</div>';
   var sbOn=!!(sb&&SB_CID);
   var allC=(S._all&&S._all.cons)||S.cons;
-  var myConsList=allC.filter(function(c){return (c.dir||'')===S.dirName;});
+  var myConsList=allC.filter(function(c){return c.managerId===S._userId || (!c.managerId && (c.dir||'')===S.dirName);});
   /* Datalist des consultants de l'\u00e9quipe */
   var dlOpts=myConsList.map(function(c){return '<option value="'+esc(c.name)+'">'+esc(c.name)+'</option>';}).join('');
 
@@ -5568,7 +5568,7 @@ function bind(){
         /* 1. Créer la fiche équipe IMMÉDIATEMENT (l'inviteur a une session → RLS OK).
            La personne apparaît dans l'organigramme avant même son inscription. */
         var consRow={company_id:SB_CID,name:(invFn+' '+invLn).trim(),title:roleTitleMap[invRole]||'Consultant',
-          email:invEmail,directeur:invByName,scr:0,contract:'salarie'};
+          email:invEmail,directeur:invByName,manager_id:S._userId||null,scr:0,contract:'salarie'};
         sb.from('consultants').insert(consRow).select().single().then(function(cr){
           if(cr&&cr.error){alert('Erreur fiche équipe: '+cr.error.message);return;}
           var newConsId=(cr.data&&cr.data.id)||null;
@@ -5716,7 +5716,7 @@ function importJSON(file){
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    SUPABASE - helpers (synchronisation non-bloquante)
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
-function mapC(r){return{id:r.id,name:r.name,title:r.title||'',scr:r.scr||0,email:r.email||'',dir:r.directeur||'',arrive:r.arrive||null,depart:r.depart||null,expertise:r.expertise||[],sectors:r.sectors||[],contract:r.contract||'salarie',grade:r.grade||''};}
+function mapC(r){return{id:r.id,name:r.name,title:r.title||'',scr:r.scr||0,email:r.email||'',dir:r.directeur||'',managerId:r.manager_id||null,arrive:r.arrive||null,depart:r.depart||null,expertise:r.expertise||[],sectors:r.sectors||[],contract:r.contract||'salarie',grade:r.grade||''};}
 function mapM(r){return{id:r.id,cid:r.consultant_id,name:r.name,cli:r.client_name||'',tjm:r.tjm||0,sd:r.start_date,ed:r.end_date||null,loc:r.location||'',mgr:r.manager_name||'',ccn:r.client_contact_name||'',ccr:r.client_contact_role||'',pcode:r.code_projet||'',btype:r.billing_type||'at',wdays:(Array.isArray(r.work_days)?r.work_days:(r.work_days?String(r.work_days).split(',').map(Number):[1,2,3,4,5])),deal:r.deal_amount||0,tmar:(r.target_margin!=null?r.target_margin:null),team:r.team||[]};}
 function mapL(r){return{id:r.id,cid:r.consultant_id,type:r.type||'Congé payé',s:r.start_date,e:r.end_date};}
 function mapCand(r){return{
@@ -5768,11 +5768,28 @@ async function loadSB(){
     var cq=sb.from('consultants').select('*').eq('company_id',SB_CID).order('name');
     var cr=await cq;
     var cons=(cr.data||[]).map(mapC);
+
+    /* ── Migration douce : peupler consultants.manager_id ──
+       Fiches rattachées par nom (directeur === mon nom) sans manager_id → reçoivent mon id. */
+    if((S.role==='gestionnaire'||S.role==='admin')&&S._userId&&S.dirName){
+      try{
+        var toFix=cons.filter(function(cc){return !cc.managerId && cc.dir===S.dirName && cc.id!==S.consId;});
+        for(var _i=0;_i<toFix.length;_i++){
+          await sb.from('consultants').update({manager_id:S._userId}).eq('id',toFix[_i].id);
+          toFix[_i].managerId=S._userId;
+        }
+        if(toFix.length)console.log('[migration] '+toFix.length+' fiche(s) rattachée(s) par identifiant');
+      }catch(e){console.warn('migration manager_id:',e);}
+    }
+
     /* Gestionnaire : son équipe = ceux qu'il a invités (directeur = son nom) OU sa propre fiche.
        Le filtrage se fait côté client pour inclure sa propre fiche (self-service absences/missions). */
     if(S.role==='gestionnaire'){
       cons=cons.filter(function(cc){
-        return cc.dir===S.dirName || cc.id===S.consId || cc.email===S._userEmail;
+        return cc.managerId===S._userId
+          || (!cc.managerId && cc.dir===S.dirName)
+          || cc.id===S.consId
+          || cc.email===S._userEmail;
       });
     }
     var mq=sb.from('missions').select('*').eq('company_id',SB_CID);
@@ -6120,18 +6137,31 @@ async function initApp(){
           }catch(e){console.warn('auto-réparation cons_id:',e);}
         }
       }else if(pr.data&&pr.data.role==='utilisateur'){
-        /* Consultant : company_id null dans profiles → résoudre via consultant_invites */
+        /* Consultant sans company_id : résoudre via le flux unifié 'invites',
+           puis via l'ancien 'consultant_invites' en secours (comptes historiques). */
         try{
-          var ci=await sb.from('consultant_invites').select('*').eq('email',S._userEmail).maybeSingle();
-          if(ci&&ci.data&&ci.data.company_id){
-            SB_CID=ci.data.company_id;
+          /* 1. Nouveau flux : table invites (matching par email) */
+          var uinv=await sb.from('invites').select('*').eq('email',S._userEmail).maybeSingle();
+          if(uinv&&uinv.data&&uinv.data.company_id){
+            SB_CID=uinv.data.company_id;
             S.role='utilisateur';
-            S.dirName=ci.data.dir_name||pr.data.directeur_name||'';
-            S.consId=ci.data.cons_id||pr.data.cons_id||null;
-            sb.from('profiles').update({company_id:ci.data.company_id,directeur_name:S.dirName,cons_id:S.consId}).eq('id',uid2).catch(function(e){console.warn('profile patch:',e);});
+            S.consId=uinv.data.cons_id||pr.data.cons_id||null;
+            S.managerId=uinv.data.invited_by_id||null;
+            sb.from('profiles').update({company_id:uinv.data.company_id,cons_id:S.consId,manager_id:S.managerId}).eq('id',uid2).catch(function(e){});
             if(S.consId)S.tab='activite';
+          }else{
+            /* 2. Secours legacy : consultant_invites */
+            var ci=await sb.from('consultant_invites').select('*').eq('email',S._userEmail).maybeSingle();
+            if(ci&&ci.data&&ci.data.company_id){
+              SB_CID=ci.data.company_id;
+              S.role='utilisateur';
+              S.dirName=ci.data.dir_name||pr.data.directeur_name||'';
+              S.consId=ci.data.cons_id||pr.data.cons_id||null;
+              sb.from('profiles').update({company_id:ci.data.company_id,directeur_name:S.dirName,cons_id:S.consId}).eq('id',uid2).catch(function(e){});
+              if(S.consId)S.tab='activite';
+            }
           }
-        }catch(e){console.warn('ci lookup:',e);}
+        }catch(e){console.warn('user company resolve:',e);}
       }else{
         /* Fallback : chercher company_id directement dans companies */
         var cq=await sb.from('companies').select('id').eq('owner_id',uid2).single();
