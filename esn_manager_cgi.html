@@ -813,7 +813,7 @@ function tSB(){
   var nav=NAV.map(function(n){
     return '<button class="nb'+(S.tab===n.id?' act':'')+'" data-nav="'+n.id+'">'
       +'<span class="nbi">'+n.ic+'</span><span>'+n.lb+'</span>'
-      +(n.id==='dashboard'&&alC>0?'<span class="nbb">'+alC+'</span>':'')+'</button>';
+      +(n.id==='approvals'&&alC>0?'<span class="nbb">'+alC+'</span>':'')+'</button>';
   }).join('');
   /* ── bloc filtre directeur (gestionnaire) / libellé équipe (directeur) ── */
   var _allC=(S._all&&S._all.cons)||S.cons;
@@ -5538,7 +5538,7 @@ function bind(){
       else if(a==='day-set'){
         var dt=gv('dexc-type'),dd=S.modal.day,dcid=S.modal.cid;
         if(S.role==='utilisateur'){
-          submitApproval('leave_add',{id:uid(),cid:dcid,type:dt,s:dd,e:dd},
+          submitApproval('leave_add',{id:uid(),cid:dcid,type:dt,s:dd,e:dd,approver_id:resolveApprover(S._userId)},
             'Ajout d\u2019absence \u2014 '+esc(dt)+' le '+fDt(dd));
         }else{
           var nl={id:uid(),cid:dcid,type:dt,s:dd,e:dd};
@@ -5548,7 +5548,7 @@ function bind(){
       else if(a==='day-clear'){
         if(S.role==='utilisateur'){
           var lvClr=S.lvs.find(function(l){return l.id===id;});
-          submitApproval('leave_del',{id:id},'Suppression d\u2019absence'+(lvClr?' \u2014 '+esc(lvClr.type)+' le '+fDt(lvClr.s):''));
+          submitApproval('leave_del',{id:id,approver_id:resolveApprover(S._userId)},'Suppression d\u2019absence'+(lvClr?' \u2014 '+esc(lvClr.type)+' le '+fDt(lvClr.s):''));
         }else{
           S.lvs=S.lvs.filter(function(l){return l.id!==id;});sbDel('leaves',id);S.modal=null;render();
         }
@@ -6737,7 +6737,7 @@ function tApprovals(){
   if(isValidator){
     var allLvs=(S._all&&S._all.lvs)||S.lvs;
     var pendingLv=allLvs.filter(function(lv){return _isMyApproval(lv)&&lv.approved===false;});
-    var pending=S.approvals.filter(function(r){return r.status==='pending';}).sort(function(a,b){return b.createdAt.localeCompare(a.createdAt);});
+    var pending=S.approvals.filter(function(r){return r.status==='pending'&&_isMyApproval(r);}).sort(function(a,b){return b.createdAt.localeCompare(a.createdAt);});
     if(!pending.length&&!pendingLv.length)return '<div class="vw"><div class="ph"><div class="pt">\uD83D\uDD14 Approbations</div><div class="ps">Demandes en attente de validation</div></div><div class="emp">Aucune demande en attente.</div></div>';
     var lvRows=pendingLv.map(function(lv){
       var who=((S._all&&S._all.cons)||S.cons).find(function(c){return c.id===lv.cid;});
@@ -6752,8 +6752,21 @@ function tApprovals(){
     }).join('');
     return '<div class="vw"><div class="ph"><div class="pt">\uD83D\uDD14 Approbations</div><div class="ps">Demandes en attente de validation</div></div>'
       +(lvRows?'<div class="card" style="padding:20px;margin-bottom:16px"><div style="font-weight:700;color:#0f172a;margin-bottom:12px">\u23f3 Absences en attente ('+pendingLv.length+')</div>'+lvRows+'</div>':'')
-      +(pending.length?'<div class="card" style="padding:20px"><div style="font-weight:700;color:#0f172a;margin-bottom:12px">\u23f3 Approbations missions/\u00e9quipe ('+pending.length+')</div>'
-        +pending.map(function(r){return '<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;margin-bottom:8px;font-size:12px;color:#374151">'+esc(r.applyDesc||r.type)+'</div>';}).join('')+'</div>':'')
+      +(pending.length?'<div class="card" style="padding:20px"><div style="font-weight:700;color:#0f172a;margin-bottom:12px">\u23f3 Demandes en attente ('+pending.length+')</div>'
+        +pending.map(function(r){
+          var dt=r.createdAt?new Date(r.createdAt).toLocaleDateString('fr-FR'):'';
+          return '<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px 16px;margin-bottom:10px">'
+            +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">'
+            +'<div style="flex:1">'
+            +'<div style="font-size:13px;font-weight:700;color:#0f172a">'+esc(r.consName||'')+' \u2014 '+esc(APPROVAL_LABELS[r.type]||r.type)+'</div>'
+            +'<div style="font-size:12px;color:#64748b;margin-top:3px">'+esc(r.applyDesc||'')+'</div>'
+            +(dt?'<div style="font-size:11px;color:#94a3b8;margin-top:2px">Soumise le '+dt+'</div>':'')
+            +'</div>'
+            +'<div style="display:flex;gap:8px;flex-shrink:0">'
+            +'<button class="bp" style="padding:6px 14px;font-size:12px" data-act="appr-ok" data-id="'+r.id+'">Approuver</button>'
+            +'<button class="bg" style="padding:6px 14px;font-size:12px;color:#b91c1c;border-color:#fecdd3" data-act="appr-ko" data-id="'+r.id+'">Refuser</button>'
+            +'</div></div></div>';
+        }).join('')+'</div>':'')
       +'</div>';
   }
 
