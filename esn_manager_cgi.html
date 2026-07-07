@@ -2253,71 +2253,74 @@ function tSVPAcces(){
   if(!['super_admin','admin','gestionnaire'].includes(S.role))return '<div class="emp">Accès non autorisé.</div>';
   var sbOn=!!(sb&&SB_CID);
   var role=S.role;
+  var members=(S.orgProfiles||[]);
+  var draft=(S.seatDraft=S.seatDraft||[]);
+  var pend=(S.pendingSeats||[]);
 
-  /* ── Invites depuis la table unifiée ── */
-  var allInv=(S.allInvites||[]);
-  var invByRole=function(r){return allInv.filter(function(iv){return iv.role===r;});};
-  var invRow=function(iv){
-    var st=iv.used?'<span class="badge bgrn">\u2713 Compte cr\u00e9\u00e9</span>':'<span class="badge bamb">\u23f3 En attente</span>';
-    return '<tr><td>'+esc(iv.email)+'</td><td style="font-weight:600">'+esc(iv.role?rLabel(iv.role):'')+'</td><td>'+esc(iv.invited_by||'')+'</td><td>'+st+'</td>'
-      +'<td class="tr"><button class="lr" data-act="inv-del" data-id="'+esc(iv.id)+'">Suppr.</button></td></tr>';
-  };
-
-  /* ── Anciennes invites (vp_invites / recruteur_invites) ── */
-  var vpRows=(S.svpInvites||[]).map(function(iv){
-    var st=iv.status==='active'?'<span class="badge bgrn">\u2713</span>':'<span class="badge bamb">\u23f3</span>';
-    return '<tr><td>'+esc(iv.email)+'</td><td>'+rLabel('admin')+'</td><td>—</td><td>'+st+'</td><td class="tr"><button class="lr" data-act="svp-del-vp" data-id="'+esc(iv.id)+'">Suppr.</button></td></tr>';
-  }).join('');
-  var recRows=(S.recruteurInvites||[]).map(function(iv){
-    var st=iv.status==='active'?'<span class="badge bgrn">\u2713</span>':'<span class="badge bamb">\u23f3</span>';
-    return '<tr><td>'+esc(iv.email)+'</td><td>'+rLabel('recruteur')+'</td><td>—</td><td>'+st+'</td><td class="tr"><button class="lr" data-act="svp-del-rec" data-id="'+esc(iv.id)+'">Suppr.</button></td></tr>';
-  }).join('');
-
-  /* ── Formulaire d'invitation selon le rôle ── */
-  var canInvite={
+  /* Rôles que ce rôle peut ajouter (chacun = une licence payée). */
+  var canAdd={
     super_admin:['admin','gestionnaire','utilisateur','recruteur','sales'],
     admin:['gestionnaire','utilisateur','recruteur','sales'],
     gestionnaire:['utilisateur','sales']
   }[role]||[];
+  var addRoleOpts=canAdd.map(function(r){return '<option value="'+r+'">'+rLabel(r)+'</option>';}).join('');
 
-  var roleOpts=canInvite.map(function(r){
-    return '<option value="'+r+'">'+rLabel(r)+'</option>';
+  var PRICE_M={utilisateur:8,gestionnaire:29,admin:39,super_admin:49,sales:22,recruteur:22};
+  var draftTotal=draft.reduce(function(s,x){return s+(PRICE_M[x.role]||0);},0);
+  var draftRows=draft.map(function(x,i){
+    return '<tr><td>'+esc((x.first_name+' '+x.last_name).trim())+'</td><td>'+esc(x.email)+'</td><td>'+rLabel(x.role)+'</td>'
+      +'<td class="tr"><button class="lr" data-act="seat-del-row" data-idx="'+i+'">Retirer</button></td></tr>';
   }).join('');
 
-  /* ── Toutes les invites (unifiées + anciennes) ── */
-  var allRows=invByRole('admin').concat(invByRole('gestionnaire')).concat(invByRole('recruteur')).concat(invByRole('sales')).map(invRow).join('')+vpRows+recRows;
+  /* Hiérarchie : pour chaque membre existant, choix de son N+1 parmi les autres. */
+  var hierRows=members.map(function(p){
+    var opts='<option value="">— Aucun —</option>'+members.filter(function(q){return q.id!==p.id;}).map(function(q){
+      var nmq=((q.first_name||'')+' '+(q.last_name||'')).trim()||q.id;
+      return '<option value="'+q.id+'"'+(p.manager_id===q.id?' selected':'')+'>'+esc(nmq)+' ('+rLabel(q.role)+')</option>';
+    }).join('');
+    var nm=((p.first_name||'')+' '+(p.last_name||'')).trim()||p.id;
+    return '<tr><td>'+esc(nm)+'</td><td>'+rLabel(p.role)+'</td>'
+      +'<td><select class="ic" onchange="setNplus1(\''+p.id+'\',this.value)"'+(sbOn?'':' disabled')+'>'+opts+'</select></td></tr>';
+  }).join('');
+
+  var pendRows=pend.map(function(s){
+    var st=s.status==='provisioned'?'<span class="badge bgrn">✓ Compte créé</span>'
+      :(s.status==='error'?'<span class="badge bamb">Erreur</span>':'<span class="badge bamb">⏳ Après paiement</span>');
+    return '<tr><td>'+esc(((s.first_name||'')+' '+(s.last_name||'')).trim())+'</td><td>'+esc(s.email)+'</td><td>'+rLabel(s.role)+'</td><td>'+st+'</td></tr>';
+  }).join('');
 
   return '<div class="vw">'
-    +'<div class="ph"><div class="pt">\uD83D\uDD11 Gestion des acc\u00e8s</div>'
-    +'<div class="ps">Invitez les membres de votre organisation</div></div>'
+    +'<div class="ph"><div class="pt">🔑 Gestion des accès</div>'
+    +'<div class="ps">Ajoutez des membres (une licence chacun) et définissez la hiérarchie</div></div>'
 
-    /* Explication hiérarchie */
     +'<div class="card" style="padding:16px;margin-bottom:16px;background:#f0fdf4;border:1px solid #bbf7d0">'
-    +'<div style="font-size:12px;color:#374151;line-height:1.6">'
-    +(role==='super_admin'?'\uD83D\uDC51 <strong>Super Admin</strong> : vous pouvez inviter des Admins, Gestionnaires, Recruteurs et Business Managers dans votre organisation.':'')
-    +(role==='admin'?'\uD83D\uDC54 <strong>Admin</strong> : vous pouvez inviter des Gestionnaires, Recruteurs et Business Managers.':'')
-    +(role==='gestionnaire'?'\uD83D\uDC65 <strong>Gestionnaire</strong> : vous pouvez inviter des Business Managers dans votre organisation.':'')
-    +'</div></div>'
+    +'<div style="font-size:12px;color:#374151;line-height:1.6">Chaque membre de votre organisation possède une licence. Pour donner un accès à quelqu\'un, ajoutez-le ci-dessous puis payez sa licence : il recevra un email pour définir son mot de passe. L\'invitation ne crée plus de compte — elle sert uniquement à définir la hiérarchie (N+1).</div></div>'
 
-    /* Formulaire invitation */
+    /* A. Ajouter des membres (payant) */
     +'<div class="card" style="padding:20px;margin-bottom:16px">'
-    +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">+ Envoyer une invitation</h3>'
+    +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:6px">➕ Ajouter des membres</h3>'
+    +'<p class="fh" style="margin-bottom:14px">Renseignez la personne : après paiement de sa licence, son compte est créé et elle reçoit un lien pour définir son mot de passe.</p>'
     +'<div class="g2">'
-    +'<div class="fd"><label class="fl">Prénom *</label><input class="ic" id="inv-fn" placeholder="Marie"></div>'
-    +'<div class="fd"><label class="fl">Nom *</label><input class="ic" id="inv-ln" placeholder="Dupont"></div>'
-    +'<div class="fd"><label class="fl">Email *</label><input class="ic" id="inv-email" type="email" placeholder="prenom.nom@exemple.com"></div>'
-    +'<div class="fd"><label class="fl">Rôle *</label><select class="ic" id="inv-role">'+roleOpts+'</select></div>'
+    +'<div class="fd"><label class="fl">Prénom</label><input class="ic" id="seat-fn" placeholder="Marie"></div>'
+    +'<div class="fd"><label class="fl">Nom</label><input class="ic" id="seat-ln" placeholder="Dupont"></div>'
+    +'<div class="fd"><label class="fl">Email</label><input class="ic" id="seat-email" type="email" placeholder="prenom.nom@exemple.com"></div>'
+    +'<div class="fd"><label class="fl">Rôle (licence)</label><select class="ic" id="seat-role">'+addRoleOpts+'</select></div>'
     +'</div>'
-    +'<button class="bp" data-act="inv-add"'+(sbOn?'':' disabled style="opacity:.5"')+'>+ Envoyer l\'invitation</button>'
-    +'<p class="fh" style="margin-top:8px">L\'invit\u00e9 s\'inscrit sur konsilys.fr avec son email \u2014 rattach\u00e9 automatiquement \u00e0 votre organisation avec le r\u00f4le s\u00e9lectionn\u00e9.</p>'
+    +'<button class="bp" data-act="seat-add-row"'+(sbOn?'':' disabled style="opacity:.5"')+'>+ Ajouter à la commande</button>'
+    +(draft.length?('<div class="ov" style="margin-top:14px"><table><thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th class="tr"></th></tr></thead><tbody>'+draftRows+'</tbody></table></div>'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;flex-wrap:wrap;gap:10px">'
+      +'<div style="font-size:13px;color:#64748b">'+draft.length+' licence(s) · <strong>'+draftTotal+' € /mois</strong></div>'
+      +'<button class="bp" data-act="seats-buy">Payer et créer les comptes →</button></div>'):'')
     +'</div>'
 
-    /* Liste des invitations */
-    +'<div class="card ov">'
-    +'<div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">Invitations envoyées</div>'
-    +'<table><thead><tr><th>Email</th><th>Rôle</th><th>Invité par</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
-    +'<tbody>'+allRows+(allRows?'':'<tr><td colspan="5" class="emp">Aucune invitation envoyée.</td></tr>')+'</tbody>'
-    +'</table></div>'
+    /* B. Hiérarchie */
+    +'<div class="card ov" style="margin-bottom:16px"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">🏢 Hiérarchie (N+1)</div>'
+    +'<table><thead><tr><th>Membre</th><th>Rôle</th><th>Responsable (N+1)</th></tr></thead><tbody>'
+    +(hierRows||'<tr><td colspan="3" class="emp">Aucun membre pour le moment.</td></tr>')+'</tbody></table></div>'
+
+    /* C. Sièges en attente */
+    +(pend.length?('<div class="card ov"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">Sièges achetés</div>'
+      +'<table><thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Statut</th></tr></thead><tbody>'+pendRows+'</tbody></table></div>'):'')
     +'</div>';
 }
 
@@ -4993,7 +4996,7 @@ function bind(){
     S.tab=nv;
     /* Rafraîchir les données en temps réel sur les onglets sensibles */
     if(nv==='admin'){loadConsInvites().then(function(){render();});}
-    else if(nv==='svp_acces'){loadSVPInvites().then(function(){render();});}
+    else if(nv==='svp_acces'){loadPendingSeats().then(function(){render();});loadSVPInvites().then(function(){render();});}
     else if(nv==='dashboard'&&S.role==='gestionnaire'){loadApprovals().then(function(){render();});}
     else{render();}
   };})(nbs[i]);}
@@ -5600,48 +5603,33 @@ function bind(){
       else if(a==='import-cons-invite'){openBulkInvite();}
       else if(a==='open-salary-detail'){S.modal={type:'salary_detail'};render();}
       /* ── Invites unifiés ── */
-      else if(a==='inv-add'){
-        var invEmail=(gv('inv-email')||'').toLowerCase().trim();
-        var invRole=gv('inv-role')||'utilisateur';
-        var invFn=(gv('inv-fn')||'').trim(), invLn=(gv('inv-ln')||'').trim();
-        if(!invFn||!invLn||!invEmail){alert('Prénom, nom et email requis.');return;}
-        if(!sb||!SB_CID){alert('Connexion Supabase requise.');return;}
-        var invByName=((S.profileFirstName||'')+' '+(S.profileLastName||'')).trim()||S._userEmail||'';
-        var roleTitleMap={admin:'Admin',gestionnaire:'Gestionnaire',recruteur:'Recruteur',sales:'Business Manager'};
-        /* 1. Créer la fiche équipe IMMÉDIATEMENT (l'inviteur a une session → RLS OK).
-           La personne apparaît dans l'organigramme avant même son inscription. */
-        var consRow={company_id:SB_CID,name:(invFn+' '+invLn).trim(),title:roleTitleMap[invRole]||'Consultant',
-          email:invEmail,directeur:invByName,manager_id:S._userId||null,scr:0,contract:'salarie'};
-        sb.from('consultants').insert(consRow).select().single().then(function(cr){
-          if(cr&&cr.error){alert('Erreur fiche équipe: '+cr.error.message);return;}
-          var newConsId=(cr.data&&cr.data.id)||null;
-          /* 2. Créer l'invitation reliée à la fiche (cons_id) */
-          sb.from('invites').insert({
-            company_id:SB_CID,
-            email:invEmail,
-            role:invRole,
-            first_name:invFn,
-            last_name:invLn,
-            cons_id:newConsId,
-            invited_by:S._userEmail||'',
-            invited_by_role:S.role,
-            invited_by_name:invByName,
-            invited_by_id:S._userId||null
-          }).then(function(r){
-            if(r&&r.error){alert('Erreur invitation: '+r.error.message);return;}
-            /* 3. Recharger les données */
-            Promise.all([
-              sb.from('invites').select('*').eq('company_id',SB_CID).order('created_at',{ascending:false}),
-              sb.from('consultants').select('*').eq('company_id',SB_CID)
-            ]).then(function(res){
-              if(res[0].data)S.allInvites=res[0].data;
-              if(res[1].data)S.cons=res[1].data.map(mapC);
-              S._ks&&(S._ks._valid=false);
-              S.modal={type:'invite_link',email:invEmail,role:invRole,name:invFn+' '+invLn};
-              render();
-            });
-          });
-        });
+      else if(a==='seat-add-row'){
+        var sfn=(gv('seat-fn')||'').trim(),sln=(gv('seat-ln')||'').trim();
+        var sem=(gv('seat-email')||'').toLowerCase().trim(),srole=gv('seat-role')||'utilisateur';
+        if(!sfn||!sln||!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(sem)){alert('Prénom, nom et email valides requis.');return;}
+        S.seatDraft=S.seatDraft||[];
+        S.seatDraft.push({first_name:sfn,last_name:sln,email:sem,role:srole});
+        render();
+      }
+      else if(a==='seat-del-row'){
+        var sidx=parseInt(b.getAttribute('data-idx'),10);
+        if(!isNaN(sidx)&&S.seatDraft){S.seatDraft.splice(sidx,1);render();}
+      }
+      else if(a==='seats-buy'){
+        if(!sb||!SB_CID){alert('Connexion requise.');return;}
+        var dr=(S.seatDraft||[]);if(!dr.length){alert('Ajoutez au moins un membre.');return;}
+        var PM={utilisateur:'price_1TqUYFA6guMn7iZUAYWbMGfR',gestionnaire:'price_1TqUYNA6guMn7iZUW0TAySfr',admin:'price_1TqUYQA6guMn7iZUdOwh2sri',super_admin:'price_1TqUYTA6guMn7iZUVdiYjBhI',sales:'price_1TqUYKA6guMn7iZUBf840s9D',recruteur:'price_1TqUYHA6guMn7iZUhwKFDqQQ'};
+        var cnts={};dr.forEach(function(x){cnts[x.role]=(cnts[x.role]||0)+1;});
+        var items=Object.keys(cnts).map(function(r){return {price_id:PM[r],quantity:cnts[r]};}).filter(function(x){return x.price_id;});
+        if(!items.length){alert('Rôles invalides.');return;}
+        b.disabled=true;b.textContent='Redirection…';
+        sb.auth.getSession().then(function(ses){
+          var tok=ses&&ses.data&&ses.data.session&&ses.data.session.access_token;
+          return fetch('https://rwmstlesxnglpblrurqj.supabase.co/functions/v1/seats-checkout',{method:'POST',headers:{'content-type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({items:items,seats:dr,success_url:location.origin+'/app',cancel_url:location.origin+'/app'})});
+        }).then(function(r){return r.json();}).then(function(d){
+          if(d&&d.url){location.href=d.url;return;}
+          b.disabled=false;b.textContent='Payer et créer les comptes →';alert((d&&d.error)||'Erreur — réessayez.');
+        }).catch(function(){b.disabled=false;b.textContent='Payer et créer les comptes →';alert('Erreur réseau.');});
       }
       else if(a==='inv-del'){
         if(!confirm('Supprimer cette invitation ? La fiche \u00e9quipe associ\u00e9e sera aussi retir\u00e9e si le compte n\u2019a pas encore \u00e9t\u00e9 activ\u00e9.'))return;
@@ -5811,6 +5799,26 @@ function showPaywall(co){
       msg.textContent=(d&&d.error)||'Erreur — réessayez.';go.disabled=false;go.textContent='Finaliser mon paiement →';
     }catch(e){msg.textContent='Erreur réseau — réessayez.';go.disabled=false;go.textContent='Finaliser mon paiement →';}
   };
+}
+
+/* Définit le N+1 d'un membre (via RPC sécurisée : vérifie rôle + même entreprise). */
+function setNplus1(memberId, mgrId){
+  if(!sb)return;
+  var val=mgrId||null;
+  sb.rpc('set_member_manager',{p_member:memberId,p_manager:val}).then(function(r){
+    if(r&&r.error){alert('Hiérarchie : '+r.error.message);return;}
+    var m=(S.orgProfiles||[]).find(function(p){return p.id===memberId;});
+    if(m)m.manager_id=val;
+  });
+}
+
+/* Charge les sièges achetés (en attente/provisionnés) pour Gestion des accès. */
+async function loadPendingSeats(){
+  if(!sb||!SB_CID)return;
+  try{
+    var r=await sb.from('pending_seats').select('*').eq('company_id',SB_CID).order('created_at',{ascending:false});
+    if(r&&r.data)S.pendingSeats=r.data;
+  }catch(e){console.warn('pendingSeats load:',e);}
 }
 
 async function loadSB(){
