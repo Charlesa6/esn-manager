@@ -1254,6 +1254,7 @@ function tTeams(){
   return '<div><div class="ph"><div><div class="pt">\u00c9quipe</div><div class="ps">'+sub+'</div></div>'
     +'<div style="display:flex;gap:8px;flex-shrink:0">'
     +'<button class="bg" data-act="import-cons-open" title="Importer votre \u00e9quipe depuis un fichier Excel ou CSV">\ud83d\udce5 Importer (Excel/CSV)</button>'
+    +'<button class="bg" data-act="bulk-invite-open" title="Inviter plusieurs membres \u00e0 cr\u00e9er leur compte">\ud83d\udce8 Inviter en masse</button>'
     +'<button class="bp" data-act="ac">+ Ajouter un membre</button></div></div>'
     +filtersHtml
     +'<div class="card ov"><table style="min-width:640px">'
@@ -4924,6 +4925,11 @@ function tModal(){
     title='📥 Importer des consultants';
     body=tImportConsBody();
   }
+  if(tp==='bulk_invite'){
+    wide=true;
+    title='📨 Inviter en masse';
+    body=tBulkInviteBody();
+  }
   return '<div class="mov" id="mov"><div class="mbox '+(wide?'mw':'mn')+'">'
     +'<div class="mhd"><h3>'+esc(title)+'</h3><button class="mcl" data-act="mc">&times;</button></div>'
     +'<div class="mbd">'+body+'</div></div></div>';
@@ -5589,6 +5595,9 @@ function bind(){
       else if(a==='import-cons-preset-apply'){applyConsPreset();}
       else if(a==='import-cons-preset-save'){saveConsPreset();}
       else if(a==='import-cons-preset-del'){delConsPreset();}
+      else if(a==='bulk-invite-open'){openBulkInvite();}
+      else if(a==='bulk-invite-send'){commitBulkInvite();}
+      else if(a==='import-cons-invite'){openBulkInvite();}
       else if(a==='open-salary-detail'){S.modal={type:'salary_detail'};render();}
       /* ── Invites unifiés ── */
       else if(a==='inv-add'){
@@ -6511,6 +6520,85 @@ function delConsPreset(){
   if(S.consImp&&S.consImp.presetId===id)S.consImp.presetId=null;
   persistImportPresets();render();
 }
+/* ══════════════════════════════════
+   INVITATION EN MASSE — pré-autorise des membres à créer leur compte
+══════════════════════════════════ */
+function invitableCons(existingInv){
+  var accounts={};(S.orgProfiles||[]).forEach(function(p){if(p.cons_id)accounts[p.cons_id]=true;});
+  var invited={};(existingInv||[]).forEach(function(iv){if(iv.cons_id)invited['c'+iv.cons_id]=true;if(iv.email)invited['@'+String(iv.email).toLowerCase()]=true;});
+  var all=(S._all&&S._all.cons)||S.cons,cands=[],noEmail=0,already=0;
+  all.forEach(function(c){
+    if(accounts[c.id]){already++;return;}
+    if(!c.email||!String(c.email).trim()){noEmail++;return;}
+    if(invited['c'+c.id]||invited['@'+String(c.email).toLowerCase()]){already++;return;}
+    cands.push(c);
+  });
+  return {cands:cands,noEmail:noEmail,already:already};
+}
+function openBulkInvite(){
+  if(!sb||!SB_CID){alert('Connexion Supabase requise pour inviter.');return;}
+  S.bulkInv={loading:true,cands:[],noEmail:0,already:0,results:null};
+  S.modal={type:'bulk_invite'};render();
+  sb.from('invites').select('email,cons_id,used').eq('company_id',SB_CID).then(function(r){
+    var res=invitableCons((r&&r.data)||[]);
+    S.bulkInv={loading:false,cands:res.cands,noEmail:res.noEmail,already:res.already,results:null};
+    render();
+  });
+}
+function commitBulkInvite(){
+  var bi=S.bulkInv;if(!bi||bi.sending)return;
+  var chosen=bi.cands.filter(function(c){var el=document.getElementById('bi-'+c.id);return el&&el.checked;});
+  if(!chosen.length){alert('Sélectionnez au moins un membre à inviter.');return;}
+  var myName=((S.profileFirstName||'')+' '+(S.profileLastName||'')).trim()||S._userEmail||'';
+  var profById={};(S.orgProfiles||[]).forEach(function(p){profById[p.id]=p;});
+  var payload=chosen.map(function(c){
+    var mgrId=c.managerId||S._userId||null,mgr=mgrId&&profById[mgrId];
+    var parts=String(c.name||'').trim().split(/\s+/),fn=parts.shift()||'',ln=parts.join(' ');
+    return {company_id:SB_CID,email:String(c.email).toLowerCase().trim(),role:'utilisateur',cons_id:c.id,
+      invited_by:S._userEmail||'',invited_by_role:(mgr&&mgr.role)||S.role,
+      invited_by_name:(mgr?((mgr.first_name||'')+' '+(mgr.last_name||'')).trim():myName)||myName,
+      invited_by_id:mgrId,first_name:fn,last_name:ln};
+  });
+  bi.sending=true;render();
+  sb.from('invites').insert(payload).then(function(r){
+    bi.sending=false;
+    if(r.error){bi.results={err:r.error.message};render();return;}
+    bi.results={ok:payload.length,emails:chosen.map(function(c){return String(c.email).trim();})};
+    render();
+  });
+}
+function tBulkInviteBody(){
+  var bi=S.bulkInv||{};
+  if(bi.loading)return '<div style="text-align:center;padding:30px 0"><div style="font-size:34px">⏳</div><div style="margin-top:8px;font-size:13px;color:#64748b">Recherche des membres à inviter…</div></div>';
+  if(bi.results){
+    var rz=bi.results;
+    if(rz.err)return '<div style="padding:16px;background:#fff1f2;border:1px solid #fecdd3;border-radius:10px;color:#b91c1c;font-size:13px">✕ Erreur : '+esc(rz.err)+'</div><div class="br"><button class="bp" data-act="mc">Fermer</button></div>';
+    var subject='Votre accès Konsilys';
+    var mbody='Bonjour,\n\nVous avez été ajouté(e) à l\'espace Konsilys de votre entreprise.\nCréez votre compte ici : https://konsilys.fr/login\nUtilisez l\'adresse email sur laquelle vous recevez ce message.\n\nÀ bientôt.';
+    var href='mailto:?bcc='+encodeURIComponent((rz.emails||[]).join(','))+'&subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(mbody);
+    return '<div style="text-align:center;padding:12px 0"><div style="font-size:44px">✅</div>'
+      +'<div style="margin-top:8px;font-size:16px;font-weight:800;color:#0f172a">'+rz.ok+' invitation'+(rz.ok>1?'s':'')+' créée'+(rz.ok>1?'s':'')+'</div>'
+      +'<div style="font-size:12px;color:#64748b;margin-top:6px">Chaque personne pourra créer son compte sur konsilys.fr/login avec son email — elle sera rattachée automatiquement à votre organisation et à son N+1.</div></div>'
+      +'<div class="br"><a class="bp" href="'+esc(href)+'" style="text-decoration:none">📧 Prévenir tout le monde par email</a><button class="bg" data-act="mc">Terminer</button></div>';
+  }
+  var cands=bi.cands||[];
+  if(!cands.length){
+    return '<div style="padding:18px;background:#f8fafc;border-radius:10px;font-size:13px;color:#475569;text-align:center">Aucun membre à inviter.<br><span style="font-size:12px;color:#94a3b8">'+(bi.already||0)+' déjà invité(s)/avec compte · '+(bi.noEmail||0)+' sans email.</span></div>'
+      +'<div class="br"><button class="bg" data-act="mc">Fermer</button></div>';
+  }
+  var rows=cands.map(function(c){
+    return '<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid #f1f5f9;cursor:pointer">'
+      +'<input type="checkbox" data-bi id="bi-'+c.id+'" checked style="accent-color:#84CC16;width:16px;height:16px;flex-shrink:0">'
+      +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#0f172a">'+esc(c.name||'—')+'</div>'
+      +'<div style="font-size:11px;color:#94a3b8">'+esc(c.email||'')+(c.dir?' · N+1 : '+esc(c.dir):'')+'</div></div></label>';
+  }).join('');
+  return '<div style="font-size:13px;color:#475569;margin-bottom:10px">Sélectionnez les membres à inviter. Ils recevront le droit de créer leur compte, rattaché à votre organisation et à leur N+1.</div>'
+    +'<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#f8fafc;border-radius:8px;font-size:12px;font-weight:700;color:#334155;cursor:pointer;margin-bottom:6px">'
+    +'<input type="checkbox" checked onclick="var ch=this.checked;document.querySelectorAll(\'[data-bi]\').forEach(function(x){x.checked=ch;});" style="accent-color:#84CC16;width:16px;height:16px">Tout sélectionner ('+cands.length+')</label>'
+    +'<div style="max-height:320px;overflow:auto;border:1px solid #e2e8f0;border-radius:8px">'+rows+'</div>'
+    +((bi.already||bi.noEmail)?'<div style="font-size:11px;color:#94a3b8;margin-top:8px">Exclus : '+(bi.already||0)+' déjà invité(s)/avec compte · '+(bi.noEmail||0)+' sans email.</div>':'')
+    +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="bulk-invite-send"'+(bi.sending?' disabled style="opacity:.6"':'')+'>'+(bi.sending?'Envoi…':'📨 Créer les invitations')+'</button></div>';
+}
 function openImportCons(){S.consImp={file:'',headers:[],raw:[],map:{},rows:[],step:'upload',results:null};S.modal={type:'import_cons'};render();}
 function handleConsImpFile(file){
   if(!file)return;
@@ -6671,8 +6759,8 @@ function tImportConsBody(){
     return '<div style="text-align:center;padding:16px 0"><div style="font-size:44px">✅</div>'
       +'<div style="margin-top:8px;font-size:16px;font-weight:800;color:#0f172a">'+(rz.ok||0)+' consultant'+((rz.ok||0)>1?'s':'')+' importé'+((rz.ok||0)>1?'s':'')+'</div>'
       +'<div style="font-size:12px;color:#64748b;margin-top:6px">'+(rz.dup||0)+' doublon(s) ignoré(s) · '+(rz.invalid||0)+' invalide(s)</div>'
-      +'<div style="font-size:11px;color:#94a3b8;margin-top:8px">Les fiches apparaissent dans l\'onglet Équipe. Vous pouvez ensuite inviter certains membres à créer un compte.</div></div>'
-      +'<div class="br"><button class="bp" data-act="mc">Terminer</button></div>';
+      +'<div style="font-size:11px;color:#94a3b8;margin-top:8px">Les fiches apparaissent dans l\'onglet Équipe. Invitez maintenant les membres à créer leur compte, ou plus tard.</div></div>'
+      +'<div class="br"><button class="bg" data-act="mc">Terminer</button><button class="bp" data-act="import-cons-invite">📨 Inviter en masse</button></div>';
   }
   return '';
 }
