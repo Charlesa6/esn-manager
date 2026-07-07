@@ -154,6 +154,11 @@ section{padding:80px 24px}
 .licence-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
 @media(max-width:1000px){.licence-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:640px){.licence-grid{grid-template-columns:1fr 1fr}}
+/* Grille des 6 licences : responsive sans style inline */
+.lic6{grid-template-columns:repeat(3,1fr)}
+@media(max-width:640px){.lic6{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:440px){.lic6{grid-template-columns:1fr}}
+@media(max-width:560px){.mod-grid{grid-template-columns:1fr!important}}
 .licence-card{
   background:#fff;border-radius:14px;
   padding:24px 18px;border:1px solid var(--border);
@@ -237,9 +242,17 @@ footer{background:var(--dark);padding:48px 24px 32px}
 .cfg-in{width:100%;padding:11px 13px;border:1px solid var(--border);border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;margin-bottom:8px}
 .cfg-in:focus{outline:none;border-color:var(--navy)}
 .cfg-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.btn-connexion{white-space:nowrap}
 @media(max-width:900px){.cfg-steps{grid-template-columns:repeat(2,1fr)}}
+/* Configurateur : empile le formulaire et la carte « À payer » */
+@media(max-width:820px){
+  #cfg-wrap{grid-template-columns:1fr!important}
+  #cfg-wrap>div{position:static!important}
+  .tarifs-grid{grid-template-columns:1fr!important}
+}
 @media(max-width:640px){
   .nav-links{display:none}
+  .nav-demo{display:none}
   .hero-stats{gap:24px}
   .cfg-steps{grid-template-columns:1fr}
 }
@@ -264,7 +277,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
       <a href="mailto:contact@konsilys.fr">Contact</a>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
-      <a href="/app?demo=true" style="color:rgba(255,255,255,.75);font-size:14px;font-weight:700;padding:8px 16px;border:1px solid rgba(255,255,255,.2);border-radius:8px;transition:all .15s" onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='transparent'">Démonstration</a>
+      <a href="/app?demo=true" class="nav-demo" style="color:rgba(255,255,255,.75);font-size:14px;font-weight:700;padding:8px 16px;border:1px solid rgba(255,255,255,.2);border-radius:8px;transition:all .15s" onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='transparent'">Démonstration</a>
       <a href="/login" class="btn-connexion">Se connecter →</a>
     </div>
   </div>
@@ -380,7 +393,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
     <p class="section-sub" style="margin-bottom:32px">6 licences disponibles + 2 modules optionnels pour enrichir l'expérience de toute votre organisation.</p>
 
     <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px">6 Licences</p>
-    <div class="licence-grid" style="grid-template-columns:repeat(3,1fr)">
+    <div class="licence-grid lic6">
 
       <div class="licence-card anim-up delay-1">
         <div class="lic-name">Super Admin</div>
@@ -466,7 +479,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
 
     <!-- Modules optionnels -->
     <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:28px 0 12px">Modules optionnels — étendent les licences de base</p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div class="mod-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
 
       <div style="background:var(--navy);border-radius:14px;padding:22px;border:1px solid rgba(132,204,22,.3)">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
@@ -693,7 +706,7 @@ renderCfg();
 
 <section id="tarifs" style="background:#fff;padding:80px 24px">
   <div class="container">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start">
+    <div class="tarifs-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start">
 
       <!-- Colonne gauche : pitch -->
       <div>
@@ -777,13 +790,7 @@ renderCfg();
 
           <div>
             <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px">Outil actuel</label>
-            <select name="outil_actuel" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;outline:none;appearance:none;cursor:pointer">
-              <option value="">— Sélectionnez —</option>
-              <option value="excel">Excel / Google Sheets</option>
-              <option value="logiciel">Un logiciel RH ou ERP</option>
-              <option value="aucun">Aucun outil en place</option>
-              <option value="autre">Autre</option>
-            </select>
+            <input name="outil_actuel" placeholder="ex : Excel, Boond, un ERP, aucun…" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='#84CC16'" onblur="this.style.borderColor='#E2E8F0'">
           </div>
 
           <div>
