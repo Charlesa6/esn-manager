@@ -11,6 +11,12 @@ const ALLOWED = new Set<string>([
   "price_1TqUYVA6guMn7iZUr72z01vh", "price_1TqUYXA6guMn7iZUllYZc79I",
   "price_1TqUYYA6guMn7iZUkwyVkWpb", "price_1TqUYZA6guMn7iZUwngF93eZ",
 ]);
+// Licences Admin (mensuel + annuel) : au moins une est requise pour créer une
+// nouvelle entreprise, car c'est elle qui octroie les droits d'administration
+// à l'acheteur qui devient fondateur de l'espace.
+const ADMIN_PRICES = new Set<string>([
+  "price_1TqUYQA6guMn7iZUdOwh2sri", "price_1TqUYRA6guMn7iZU0VqsQlIt",
+]);
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -31,6 +37,16 @@ Deno.serve(async (req) => {
     const valid = (Array.isArray(items) ? items : [])
       .filter((i) => ALLOWED.has(i?.price_id) && Number(i?.quantity) > 0);
     if (!valid.length) return json({ error: "aucune ligne valide" }, 400);
+
+    // Création d'une nouvelle entreprise (pas de company_id) : imposer au moins
+    // une licence Admin. Un achat de sièges supplémentaires pour une entreprise
+    // existante (company_id fourni) n'est pas concerné.
+    if (!company_id) {
+      const hasAdmin = valid.some((i) => ADMIN_PRICES.has(i.price_id));
+      if (!hasAdmin) {
+        return json({ error: "Ajoutez au moins 1 licence Admin : elle donne les droits d'administration de votre espace ESN." }, 400);
+      }
+    }
 
     // On ne renvoie l'utilisateur que vers un domaine de confiance (évite les
     // redirections ouvertes ET les alertes SSL vers un domaine sans certificat).
