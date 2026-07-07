@@ -259,8 +259,8 @@ footer{background:var(--dark);padding:48px 24px 32px}
     <div class="nav-links">
       <a href="#fonctionnalites">Fonctionnalités</a>
       <a href="#licences">Licences</a>
-      <a href="#abonnement">Tarifs</a>
-      <a href="#tarifs">Devis</a>
+      <a href="#abonnement">S'abonner</a>
+      <a href="#tarifs">Démo</a>
       <a href="mailto:contact@konsilys.fr">Contact</a>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
@@ -351,7 +351,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
       <div class="feat-card anim-up delay-9">
         <div class="feat-icon">📥</div>
         <div class="feat-title">Import & onboarding express</div>
-        <div class="feat-desc">Importez votre équipe depuis Excel/CSV : colonnes reconnues automatiquement, préréglages réutilisables par format, invitation en masse. Opérationnel en minutes.</div>
+        <div class="feat-desc">Importez vos fiches consultants depuis Excel/CSV : colonnes reconnues automatiquement, préréglages réutilisables par format. Opérationnel en minutes.</div>
       </div>
       <div class="feat-card anim-up delay-9">
         <div class="feat-icon">🔗</div>
@@ -367,31 +367,6 @@ footer{background:var(--dark);padding:48px 24px 32px}
         <div class="feat-icon">🔒</div>
         <div class="feat-title">Sécurité & isolation</div>
         <div class="feat-desc">Chaque entreprise est isolée. Row Level Security Supabase. Données hébergées en Europe.</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- COMMENT ÇA MARCHE -->
-<section class="how" id="comment">
-  <div class="container">
-    <p class="section-eyebrow anim-fade">Mise en place</p>
-    <h2 class="section-title anim-up delay-1">Opérationnel en quelques minutes</h2>
-    <div class="steps">
-      <div class="anim-up delay-1">
-        <div class="step-num">1</div>
-        <div class="step-title">Créez votre espace</div>
-        <div class="step-desc">Inscrivez-vous en quelques secondes. Votre organisation est prête et vous en êtes l'administrateur — sans installation, sans chef de projet.</div>
-      </div>
-      <div class="anim-up delay-2">
-        <div class="step-num">2</div>
-        <div class="step-title">Importez & invitez votre équipe</div>
-        <div class="step-desc">Déposez votre export Excel/CSV (Boond, tableur RH…) : les colonnes sont reconnues automatiquement, les fiches créées et rattachées à leur N+1. Invitez ensuite tout le monde en masse.</div>
-      </div>
-      <div class="anim-up delay-3">
-        <div class="step-num">3</div>
-        <div class="step-title">Pilotez en temps réel</div>
-        <div class="step-desc">KPIs, missions, planning, absences, recrutement et CRM (modules). Tout se synchronise en temps réel pour toute votre organisation.</div>
       </div>
     </div>
   </div>
@@ -722,9 +697,9 @@ renderCfg();
 
       <!-- Colonne gauche : pitch -->
       <div>
-        <p class="section-eyebrow">Tarifs</p>
-        <h2 class="section-title" style="margin-bottom:20px">Parlons de votre organisation</h2>
-        <p style="font-size:16px;color:var(--muted);margin-bottom:32px;line-height:1.7">Chaque ESN est différente. Nous préférons comprendre votre structure avant de vous proposer un tarif adapté à votre réalité.</p>
+        <p class="section-eyebrow">Démo & accompagnement</p>
+        <h2 class="section-title" style="margin-bottom:20px">Envie de voir Konsilys en action ?</h2>
+        <p style="font-size:16px;color:var(--muted);margin-bottom:32px;line-height:1.7">Les tarifs sont publics (ci-dessus) et l'inscription est en libre-service. Pour une démonstration personnalisée, un accompagnement à la migration ou un besoin sur-mesure, écrivez-nous.</p>
 
         <div style="display:flex;flex-direction:column;gap:18px">
           <div style="display:flex;gap:14px;align-items:flex-start">
@@ -751,14 +726,14 @@ renderCfg();
         </div>
 
         <div style="margin-top:36px;padding:20px;background:var(--off);border-radius:12px;border:1px solid var(--border)">
-          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:10px">Tarification</div>
-          <p style="font-size:13px;color:var(--navy);font-weight:600;line-height:1.6">Nos tarifs sont calculés en fonction du nombre de licences et de la taille de votre organisation. Remplissez le formulaire pour recevoir une proposition adaptée.</p>
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:10px">Bon à savoir</div>
+          <p style="font-size:13px;color:var(--navy);font-weight:600;line-height:1.6">Le choix des licences et la configuration de votre espace se décident ensemble lors de la démo — inutile d'y réfléchir avant.</p>
         </div>
       </div>
 
       <!-- Colonne droite : formulaire -->
       <div style="background:var(--off);border-radius:16px;padding:32px;border:1px solid var(--border)">
-        <h3 style="font-size:18px;font-weight:800;color:var(--navy);margin-bottom:6px">Demande de devis</h3>
+        <h3 style="font-size:18px;font-weight:800;color:var(--navy);margin-bottom:6px">Demander une démo</h3>
         <p style="font-size:13px;color:var(--muted);margin-bottom:24px">Complétez ce formulaire, nous revenons vers vous sous 24h.</p>
 
         <form id="qualification-form" onsubmit="submitForm(event)" style="display:flex;flex-direction:column;gap:14px">
@@ -801,32 +776,6 @@ renderCfg();
           </div>
 
           <div>
-            <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:8px">Licences &amp; modules souhaités</label>
-            <!-- Picker pill style -->
-            <div id="lic-chips" style="min-height:28px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:6px">
-              <span style="font-size:12px;color:#94a3b8;align-self:center">Aucune sélection</span>
-            </div>
-            <div style="border:1px solid #e2e8f0;border-radius:10px;padding:8px;background:#f8fafc">
-              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;padding:2px 4px 6px">Licences</div>
-              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px" id="lic-opts-lic">
-                <button type="button" class="lic-pill" data-val="Super Admin" onclick="toggleLicPill(this)" style="padding:5px 12px;border-radius:99px;border:1px solid #e2e8f0;background:#fff;font-size:12px;font-weight:600;color:#374151;cursor:pointer;transition:all .12s">Super Admin</button>
-                <button type="button" class="lic-pill" data-val="Admin" onclick="toggleLicPill(this)" style="padding:5px 12px;border-radius:99px;border:1px solid #e2e8f0;background:#fff;font-size:12px;font-weight:600;color:#374151;cursor:pointer;transition:all .12s">Admin</button>
-                <button type="button" class="lic-pill" data-val="Gestionnaire" onclick="toggleLicPill(this)" style="padding:5px 12px;border-radius:99px;border:1px solid #e2e8f0;background:#fff;font-size:12px;font-weight:600;color:#374151;cursor:pointer;transition:all .12s">Gestionnaire</button>
-                <button type="button" class="lic-pill" data-val="Utilisateur" onclick="toggleLicPill(this)" style="padding:5px 12px;border-radius:99px;border:1px solid #e2e8f0;background:#fff;font-size:12px;font-weight:600;color:#374151;cursor:pointer;transition:all .12s">Utilisateur</button>
-                <button type="button" class="lic-pill" data-val="Recruteur" onclick="toggleLicPill(this)" style="padding:5px 12px;border-radius:99px;border:1px solid #e2e8f0;background:#fff;font-size:12px;font-weight:600;color:#374151;cursor:pointer;transition:all .12s">Recruteur</button>
-                <button type="button" class="lic-pill" data-val="Business Manager" onclick="toggleLicPill(this)" style="padding:5px 12px;border-radius:99px;border:1px solid #e2e8f0;background:#fff;font-size:12px;font-weight:600;color:#374151;cursor:pointer;transition:all .12s">Business Manager</button>
-              </div>
-              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;padding:2px 4px 6px;border-top:1px solid #e2e8f0;margin-top:2px">Modules optionnels</div>
-              <div style="display:flex;flex-wrap:wrap;gap:6px">
-                <button type="button" class="lic-pill" data-val="[Module Recrutement]" onclick="toggleLicPill(this)" style="padding:5px 12px;border-radius:99px;border:1px solid #e2e8f0;background:#fff;font-size:12px;font-weight:600;color:#374151;cursor:pointer;transition:all .12s">Module Recrutement</button>
-                <button type="button" class="lic-pill" data-val="[Business Développement]" onclick="toggleLicPill(this)" style="padding:5px 12px;border-radius:99px;border:1px solid #e2e8f0;background:#fff;font-size:12px;font-weight:600;color:#374151;cursor:pointer;transition:all .12s">Business Développement</button>
-              </div>
-            </div>
-            <!-- Hidden input pour la soumission -->
-            <input type="hidden" name="licences_selected" id="lic-hidden" value="">
-          </div>
-
-          <div>
             <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px">Outil actuel</label>
             <select name="outil_actuel" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;outline:none;appearance:none;cursor:pointer">
               <option value="">— Sélectionnez —</option>
@@ -856,53 +805,25 @@ renderCfg();
 </section>
 
 <script>
-function toggleLicPill(btn){
-  btn.classList.toggle('lic-active');
-  var active=btn.classList.contains('lic-active');
-  btn.style.background=active?'#1B2B3A':'#fff';
-  btn.style.color=active?'#84CC16':'#374151';
-  btn.style.borderColor=active?'#1B2B3A':'#e2e8f0';
-  updateLicChips();
-}
-function updateLicChips(){
-  var pills=document.querySelectorAll('.lic-pill.lic-active');
-  var vals=Array.from(pills).map(function(p){return p.getAttribute('data-val');});
-  document.getElementById('lic-hidden').value=vals.join('||');
-  var chips=document.getElementById('lic-chips');
-  if(!chips)return;
-  if(!vals.length){
-    chips.innerHTML='<span style="font-size:12px;color:#94a3b8;align-self:center">Aucune sélection</span>';
-    return;
-  }
-  chips.innerHTML=vals.map(function(v){
-    return '<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;background:#1B2B3A;color:#84CC16">'+v+'</span>';
-  }).join('');
-}
-
 function submitForm(e){
   e.preventDefault();
-  if(!document.getElementById('lic-hidden').value){
-    alert('Veuillez sélectionner au moins une licence ou un module.');return;
-  }
   var f=e.target;
   var data={
     prenom:f.prenom.value,nom:f.nom.value,
     email:f.email.value,entreprise:f.entreprise.value,
     poste:f.poste.value,nb:f.nb_consultants.value,
-    outil:f.outil_actuel.value,message:f.message.value,
-    licences:(document.getElementById('lic-hidden').value?document.getElementById('lic-hidden').value.split('||'):[]).filter(Boolean).join(', ')
+    outil:f.outil_actuel.value,message:f.message.value
   };
-  var body='Nouvelle demande de devis Konsilys%0A%0A'
+  var body='Nouvelle demande de démo Konsilys%0A%0A'
     +'Prénom : '+data.prenom+'%0A'
     +'Nom : '+data.nom+'%0A'
     +'Email : '+data.email+'%0A'
     +'Entreprise : '+data.entreprise+'%0A'
     +'Poste : '+data.poste+'%0A'
-    +'Utilisateurs : '+data.nb+'%0A'
-    +'Licences : '+(data.licences||'Non précisé')+'%0A'
+    +'Nombre de consultants : '+data.nb+'%0A'
     +'Outil actuel : '+data.outil+'%0A'
     +'Message : '+data.message;
-  window.location.href='mailto:contact@konsilys.fr?subject=Demande de devis - '+encodeURIComponent(data.entreprise)+'&body='+body;
+  window.location.href='mailto:contact@konsilys.fr?subject=Demande de démo - '+encodeURIComponent(data.entreprise)+'&body='+body;
   document.getElementById('form-success').style.display='block';
   f.reset();
 }
