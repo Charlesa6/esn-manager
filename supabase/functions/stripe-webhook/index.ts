@@ -1,8 +1,7 @@
 // Edge Function : webhook Stripe.
-// A chaque évènement de paiement :
-//   1) provisionne l'accès dans Supabase (enregistre l'abonnement + active les
-//      modules de l'entreprise),
-//   2) émet la facture correspondante depuis Qonto (API Qonto).
+// A chaque évènement de paiement, provisionne l'accès dans Supabase
+// (enregistre l'abonnement + active les modules de l'entreprise achetés).
+// La facturation est gérée par Stripe (factures automatiques) — pas de Qonto.
 // Pas de JWT : Stripe appelle sans token, on vérifie la SIGNATURE Stripe.
 import Stripe from "https://esm.sh/stripe@16.12.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4?target=deno";
@@ -19,11 +18,6 @@ const supa = createClient(
 const WH_SECRET = (Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "").trim();
 // Deno : la vérification de signature Stripe nécessite le provider SubtleCrypto.
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
-
-// Qonto (facturation)
-const QONTO_BASE = "https://thirdparty.qonto.com/v2";
-const QONTO_AUTH = `${(Deno.env.get("QONTO_LOGIN") ?? "").trim()}:${(Deno.env.get("QONTO_SECRET_KEY") ?? "").trim()}`;
-const QONTO_IBAN = (Deno.env.get("QONTO_IBAN") ?? "").trim();
 
 // price_id -> nature de la ligne
 type Ent = { kind: "licence" | "module"; ref: string; label: string };
@@ -71,8 +65,7 @@ Deno.serve(async (req) => {
           await recordSubscription(sub, companyId, s.customer_details?.email || s.customer_email || "");
           await applyModules(sub, companyId, true);
         }
-        // Facture Qonto pour cette 1re échéance
-        if (s.invoice) await safeQontoInvoice(s.invoice as string);
+        // Facturation gérée par Stripe (factures automatiques). Qonto désactivé.
         break;
       }
       case "invoice.paid": {
@@ -83,7 +76,6 @@ Deno.serve(async (req) => {
           });
           await recordSubscription(sub, sub.metadata?.company_id || "", inv.customer_email || "");
           await applyModules(sub, sub.metadata?.company_id || "", true);
-          await safeQontoInvoice(inv.id);
         }
         break;
       }
@@ -145,98 +137,4 @@ async function applyModules(sub: Stripe.Subscription, companyId: string, active:
   if (!Object.keys(patch).length) return;
   const { error } = await supa.from("companies").update(patch).eq("id", companyId);
   if (error) console.error("update company modules:", error.message);
-}
-
-// ── Facturation Qonto ──────────────────────────────────────────────
-async function noteQonto(subId: string | null, msg: string) {
-  if (!subId) return;
-  await supa.from("subscriptions").update({ qonto_last_error: msg.slice(0, 800) })
-    .eq("stripe_subscription_id", subId);
-}
-async function safeQontoInvoice(stripeInvoiceId: string) {
-  let subId: string | null = null;
-  try {
-    const inv = await stripe.invoices.retrieve(stripeInvoiceId, { expand: ["lines.data.price"] });
-    subId = (inv.subscription as string) || null;
-    if (!QONTO_IBAN || QONTO_AUTH === ":") {
-      await noteQonto(subId, "Secrets Qonto manquants (QONTO_IBAN / QONTO_LOGIN / QONTO_SECRET_KEY)");
-      return;
-    }
-    await createQontoInvoice(inv);
-    await noteQonto(subId, "OK");
-  } catch (e) {
-    // Une erreur de facturation ne doit pas casser le provisioning.
-    console.error("Qonto invoice:", (e as Error).message);
-    await noteQonto(subId, String((e as Error).message));
-  }
-}
-
-async function qonto(path: string, method: string, payload?: unknown) {
-  const res = await fetch(QONTO_BASE + path, {
-    method,
-    headers: { Authorization: QONTO_AUTH, "Content-Type": "application/json" },
-    body: payload ? JSON.stringify(payload) : undefined,
-  });
-  if (!res.ok) throw new Error(`Qonto ${method} ${path} → ${res.status} ${await res.text()}`);
-  return res.json();
-}
-
-async function getOrCreateQontoClient(inv: Stripe.Invoice): Promise<string> {
-  const cd = inv.customer_address;
-  const name = inv.customer_name || inv.customer_email || "Client";
-  const email = inv.customer_email || undefined;
-  // Réutiliser un client déjà enregistré pour cet abonnement
-  if (inv.subscription) {
-    const { data } = await supa.from("subscriptions")
-      .select("qonto_client_id").eq("stripe_subscription_id", inv.subscription).maybeSingle();
-    if (data?.qonto_client_id) return data.qonto_client_id as string;
-  }
-  // Corps À PLAT (pas d'enveloppe "client") : l'API lie la racine au client.
-  const created = await qonto("/clients", "POST", {
-    type: "company",
-    name,
-    email,
-    currency: "EUR",
-    billing_address: {
-      street_address: cd?.line1 || "N/A",
-      city: cd?.city || "N/A",
-      zip_code: cd?.postal_code || "00000",
-      province_code: cd?.state || undefined,
-      country_code: cd?.country || "FR",
-    },
-  });
-  const clientId = created?.client?.id || created?.id;
-  if (inv.subscription && clientId) {
-    await supa.from("subscriptions").update({ qonto_client_id: clientId })
-      .eq("stripe_subscription_id", inv.subscription);
-  }
-  return clientId;
-}
-
-async function createQontoInvoice(inv: Stripe.Invoice) {
-  const clientId = await getOrCreateQontoClient(inv);
-  const today = new Date().toISOString().slice(0, 10);
-  const items = (inv.lines?.data || []).map((l) => {
-    const priceId = (l.price as Stripe.Price | null)?.id || "";
-    const label = PRICE_MAP[priceId]?.label || l.description || "Abonnement Konsilys";
-    const qty = l.quantity || 1;
-    const unit = ((l.price as Stripe.Price | null)?.unit_amount ?? Math.round((l.amount || 0) / qty)) / 100;
-    return {
-      title: label,
-      quantity: String(qty),
-      unit_price: { value: unit.toFixed(2), currency: "EUR" },
-      vat_rate: "0",
-    };
-  });
-  await qonto("/client_invoices", "POST", {
-    client_id: clientId,
-    currency: "EUR",
-    issue_date: today,
-    due_date: today,
-    status: "unpaid",
-    items,
-    payment_methods: { iban: QONTO_IBAN },
-    terms_and_conditions:
-      "TVA non applicable, art. 293 B du CGI. Paiement encaissé via Stripe (réf. " + inv.id + ").",
-  });
 }
