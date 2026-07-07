@@ -381,7 +381,7 @@ document.addEventListener('DOMContentLoaded', function() {
   /* ── Retour de paiement Stripe (?checkout=success) ── */
   if (params.get('checkout') === 'success') {
     sw('signup');
-    showBanner('ok', '🎉 Paiement réussi ! Créez votre compte avec l’email utilisé lors du paiement pour activer votre licence.');
+    showBanner('ok', '🎉 Paiement réussi ! Dernière étape : créez votre compte ci-dessous avec le MÊME email que celui du paiement. Vous devenez l’administrateur de votre ESN ; vos sièges seront prêts et vous pourrez inviter votre équipe.');
     setTimeout(function(){ var fn=document.getElementById('s-fn'); if(fn)fn.focus(); }, 200);
   }
 });
@@ -643,7 +643,7 @@ async function doSignup() {
     }
 
 
-    /* ── 2. Création compte Directeur ── */
+    /* ── 2. Création compte Administrateur (fondateur de l'ESN) ── */
     if (!co) { loading('b-signup','sp-signup','lb-signup', false); setErr('s-co','e-s-co','Requis'); return; }
 
     /* Garde-fou anti-doublon : une entreprise portant ce nom existe-t-elle déjà ?
@@ -667,7 +667,7 @@ async function doSignup() {
       email: em, password: pw,
       options: { data: {
         company_name: co, first_name: fn, last_name: ln,
-        role: 'gestionnaire', company_id: newCid
+        role: 'admin', company_id: newCid
       }}
     });
     loading('b-signup','sp-signup','lb-signup', false);
@@ -682,12 +682,12 @@ async function doSignup() {
       return;
     }
 
-    /* Forcer le profil avec le bon company_id et rôle directeur */
+    /* Forcer le profil avec le bon company_id et le rôle administrateur */
     if (res2.data && res2.data.user) {
       var uid3 = res2.data.user.id;
       try {
         await sb.from('profiles').upsert({
-          id: uid3, company_id: newCid, role: 'gestionnaire', first_name: fn, last_name: ln
+          id: uid3, company_id: newCid, role: 'admin', first_name: fn, last_name: ln
         }, { onConflict: 'id' });
       } catch(e) { console.warn('profile upsert:', e); }
     }
