@@ -1220,6 +1220,9 @@ function tTeams(){
 
   function makeRow(c,gone,futur){
     var am=getAct(c.id);var st=am?mSt(am):'none';
+    /* Fiche de l'utilisateur connecté : on l'identifie pour afficher « moi ». */
+    var isMe=(S.consId&&c.id===S.consId)||(c.email&&S._userEmail&&c.email.toLowerCase()===String(S._userEmail).toLowerCase());
+    var meTag=isMe?'<span style="font-size:10px;font-weight:800;background:#dbeafe;color:#1e40af;padding:1px 7px;border-radius:99px;margin-left:6px">moi</span>':'';
     var rs=gone?'opacity:.4;background:#f8fafc;':futur?'background:#f0fdf4;':'';
     var ns=gone?'text-decoration:line-through;':'';
     var tag=gone
@@ -1228,7 +1231,7 @@ function tTeams(){
         ?'<span style="font-size:10px;background:#bbf7d0;color:#15803d;padding:2px 8px;border-radius:4px;margin-left:6px;font-weight:700">\uD83D\uDCC5 Arrive le '+fDt(c.arrive)+'</span>'
         :'';
     return '<tr style="'+rs+'"><td><div style="display:flex;align-items:center;gap:10px">'+av(c.name,32)
-      +'<div><div style="font-weight:600;font-size:13px;'+ns+'">'+esc(c.name)+tag+(c.contract==='freelance'?'<span style="font-size:10px;font-weight:800;background:#ede9fe;color:#7c3aed;padding:1px 6px;border-radius:99px">Freelance</span>':'')+'</div>'
+      +'<div><div style="font-weight:600;font-size:13px;'+ns+'">'+esc(c.name)+meTag+tag+(c.contract==='freelance'?'<span style="font-size:10px;font-weight:800;background:#ede9fe;color:#7c3aed;padding:1px 6px;border-radius:99px">Freelance</span>':'')+'</div>'
       +'<div style="font-size:11px;color:#94a3b8">'+esc(c.email)+'</div></div></div></td>'
       +'<td>'+esc(c.title)+'</td>'
       +'<td style="font-weight:700;'+(gone?'color:#cbd5e1':'')+'">'+fEur(c.scr)+'</td>'
@@ -4640,7 +4643,7 @@ function tModal(){
       : '<div class="fd"><label class="fl">'+rLabel('gestionnaire')+'</label><input class="ic" id="mdir" list="esn-dir-list" value="'+esc(it?(it.dir||''):'')+'" placeholder="Nom du responsable"><datalist id="esn-dir-list">'+_rl.map(function(r){return '<option value="'+esc(r)+'">';}).join('')+'</datalist><p class="fh">Responsable direct du membre</p></div>';
     body='<div class="g2">'
       +'<div class="fd"><label class="fl">Nom complet *</label><input class="ic" id="mn" value="'+esc(it?it.name:'')+'" placeholder="Prénom Nom"></div>'
-      +'<div class="fd"><label class="fl">Grade / Rôle *</label><select class="ic" id="mti"><option value="">— Sélectionner —</option>'+availGrades.map(function(g){return '<option value="'+g+'"'+(it&&it.title===g?' selected':'')+'>'+esc(g)+'</option>';}).join('')+'</select><p class="fh">'+'Grade du consultant. Pour créer un compte Admin, Gestionnaire, Recruteur ou Business Manager : utilisez Gestion des accès.'+'</p></div>'
+      +'<div class="fd"><label class="fl">Grade / Rôle</label><select class="ic" id="mti"><option value="">— Aucun / non applicable —</option>'+availGrades.map(function(g){return '<option value="'+g+'"'+(it&&it.title===g?' selected':'')+'>'+esc(g)+'</option>';}).join('')+'</select><p class="fh">'+'Optionnel. Les grades concernent les consultants ; un Admin peut le laisser vide. Pour créer un compte Admin/Gestionnaire/Recruteur/Business Manager : utilisez Gestion des accès.'+'</p></div>'
       +'<div class="fd"><label class="fl">SCR journalier (€)</label><input class="ic" id="ms" type="number" min="0" value="'+esc(it?String(it.scr):'')+'" placeholder="450"><p class="fh">Coût journalier (calculé automatiquement si salaire annuel connu)</p></div>'
       +'<div class="fd"><label class="fl">Type de contrat</label><select class="ic" id="mcontract">'
       +'<option value="salarie"'+(it&&it.contract==='salarie'?' selected':(!it?' selected':''))+'>\uD83D\uDC54 Salari\u00e9</option>'
@@ -5187,7 +5190,7 @@ function bind(){
         var expArr=(S.modal.expSel||[]).slice();
         var secArr=(S.modal.secSel||[]).slice();
         var ctrct=gv('mcontract')||'salarie';var grade=gv('mgrade')||'';
-        if(!n||!t){alert('Le nom et le grade sont obligatoires.');return;}
+        if(!n){alert('Le nom est obligatoire.');return;}
         if(!s||s<0)s=0;
         var it=S.modal.item;
         var nc;
