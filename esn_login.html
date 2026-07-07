@@ -639,6 +639,18 @@ async function doSignup() {
     /* ── 2. Création compte Directeur ── */
     if (!co) { loading('b-signup','sp-signup','lb-signup', false); setErr('s-co','e-s-co','Requis'); return; }
 
+    /* Garde-fou anti-doublon : une entreprise portant ce nom existe-t-elle déjà ?
+       Évite de créer un tenant séparé pour une organisation qui existe déjà
+       (les collègues doivent se rattacher par invitation, pas recréer l'espace). */
+    try {
+      var exch = await sb.rpc('company_name_exists', { p_name: co });
+      if (exch && exch.data === true) {
+        loading('b-signup','sp-signup','lb-signup', false);
+        showBanner('err', 'Une entreprise « ' + co + ' » existe déjà sur Konsilys. Pour la rejoindre, demandez à un administrateur de votre société de vous inviter. (Autre société au nom identique ? Écrivez à contact@konsilys.fr.)');
+        return;
+      }
+    } catch(e) { console.warn('company_name_exists:', e); /* échec RPC : on n\'empêche pas l\'inscription */ }
+
     /* Générer un UUID unique pour cette entreprise */
     var newCid;
     try { newCid = crypto.randomUUID(); }
