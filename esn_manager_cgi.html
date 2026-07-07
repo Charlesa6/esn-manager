@@ -1254,7 +1254,6 @@ function tTeams(){
   return '<div><div class="ph"><div><div class="pt">\u00c9quipe</div><div class="ps">'+sub+'</div></div>'
     +'<div style="display:flex;gap:8px;flex-shrink:0">'
     +'<button class="bg" data-act="import-cons-open" title="Importer votre \u00e9quipe depuis un fichier Excel ou CSV">\ud83d\udce5 Importer (Excel/CSV)</button>'
-    +'<button class="bg" data-act="bulk-invite-open" title="Inviter plusieurs membres \u00e0 cr\u00e9er leur compte">\ud83d\udce8 Inviter en masse</button>'
     +'<button class="bp" data-act="ac">+ Ajouter un membre</button></div></div>'
     +filtersHtml
     +'<div class="card ov"><table style="min-width:640px">'
@@ -5517,37 +5516,19 @@ function bind(){
       }
       /* inviter / supprimer un directeur */
       else if(a==='svp-add-vp'){
-        var em2=(document.getElementById('svp-vp-email')||{}).value||'';
-        var nm2=(document.getElementById('svp-vp-name')||{}).value||'';
-        if(!em2||!nm2){alert('Email et nom requis.');return;}
-        sbSVPInviteVP(em2,nm2).then(function(r){
-          if(r&&r.error){alert('Erreur : '+r.error.message);return;}
-          loadSVPInvites().then(render);
-        });
+        alert('La création de compte se fait désormais en payant la licence.\nAllez dans « Gestion des accès → Ajouter des membres » pour créer cet accès.');
       }
       else if(a==='svp-del-vp'){
         if(confirm('Supprimer cette invitation '+rLabel('admin')+' ?')){sbSVPDelVP(id).then(function(){loadSVPInvites().then(render);});}
       }
       else if(a==='svp-add-rec'){
-        var em3=(document.getElementById('svp-rec-email')||{}).value||'';
-        var nm3=(document.getElementById('svp-rec-name')||{}).value||'';
-        if(!em3||!nm3){alert('Email et nom requis.');return;}
-        sbSVPInviteRec(em3,nm3).then(function(r){
-          if(r&&r.error){alert('Erreur : '+r.error.message);return;}
-          loadSVPInvites().then(render);
-        });
+        alert('La création de compte se fait désormais en payant la licence.\nAllez dans « Gestion des accès → Ajouter des membres » pour créer cet accès.');
       }
       else if(a==='svp-del-rec'){
         if(confirm('Supprimer cette invitation Recruteur ?')){sbSVPDelRec(id).then(function(){loadSVPInvites().then(render);});}
       }
       else if(a==='admin-cons-add'){
-        var aEmail=gv('admin-cons-email'),aName=gv('admin-cons-name');
-        if(!aEmail||!aName){alert('Email et nom du consultant requis.');return;}
-        sbInviteCons(aEmail,aName).then(function(r){
-          if(r&&r.error){alert('Erreur\u00a0: '+(r.error.message||r.error));return;}
-          loadConsInvites().then(render);
-          if(S.role==='super_admin')loadSVPInvites().then(function(){render();});
-        });
+        alert('La cr\u00e9ation de compte se fait d\u00e9sormais en payant la licence.\nAllez dans \u00ab Gestion des acc\u00e8s \u2192 Ajouter des membres \u00bb pour cr\u00e9er cet acc\u00e8s.');
       }
       else if(a==='admin-cons-del'){
         if(confirm('Supprimer cette invitation ?')){
@@ -5598,9 +5579,9 @@ function bind(){
       else if(a==='import-cons-preset-apply'){applyConsPreset();}
       else if(a==='import-cons-preset-save'){saveConsPreset();}
       else if(a==='import-cons-preset-del'){delConsPreset();}
-      else if(a==='bulk-invite-open'){openBulkInvite();}
-      else if(a==='bulk-invite-send'){commitBulkInvite();}
-      else if(a==='import-cons-invite'){openBulkInvite();}
+      else if(a==='bulk-invite-open'||a==='bulk-invite-send'||a==='import-cons-invite'){
+        alert('La création de compte se fait désormais en payant les licences.\nAllez dans « Gestion des accès → Ajouter des membres » pour créer les accès (une licence par personne).');
+      }
       else if(a==='open-salary-detail'){S.modal={type:'salary_detail'};render();}
       /* ── Invites unifiés ── */
       else if(a==='seat-add-row'){
