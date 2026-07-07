@@ -5586,6 +5586,9 @@ function bind(){
       else if(a==='import-cons-map'){applyConsImp();}
       else if(a==='import-cons-back'){if(S.consImp){S.consImp.step='map';render();}}
       else if(a==='import-cons-commit'){commitConsImp();}
+      else if(a==='import-cons-preset-apply'){applyConsPreset();}
+      else if(a==='import-cons-preset-save'){saveConsPreset();}
+      else if(a==='import-cons-preset-del'){delConsPreset();}
       else if(a==='open-salary-detail'){S.modal={type:'salary_detail'};render();}
       /* ── Invites unifiés ── */
       else if(a==='inv-add'){
@@ -6445,6 +6448,69 @@ function autoMapCons(headers){
   inc('sectors',['secteur','sector','industrie','industry','domaine']);
   return am;
 }
+/* ── Préréglages de mapping (par nom de colonne, réutilisables / partagés entreprise) ── */
+function consPresets(){return (S.settings&&S.settings.importPresets)||[];}
+function presetToMap(preset,headers){
+  var norm=headers.map(function(h){return String(h||'').toLowerCase().trim();}),map={};
+  Object.keys(preset.fields||{}).forEach(function(f){
+    var idx=norm.indexOf(String(preset.fields[f]||'').toLowerCase().trim());
+    if(idx>=0)map[f]=idx;
+  });
+  return map;
+}
+function bestPreset(headers){
+  var norm=headers.map(function(h){return String(h||'').toLowerCase().trim();}),best=null,bestScore=0;
+  consPresets().forEach(function(p){
+    var sig=(p.headers||[]).map(function(h){return String(h||'').toLowerCase().trim();});
+    if(!sig.length)return;
+    var inter=sig.filter(function(h){return norm.indexOf(h)>=0;}).length,score=inter/sig.length;
+    if(score>bestScore&&score>=0.6){bestScore=score;best=p;}
+  });
+  return best;
+}
+function persistImportPresets(){
+  try{localStorage.setItem('esn_settings_'+SB_CID,JSON.stringify(S.settings));}catch(e){}
+  if(!sb||!SB_CID)return;
+  var _p=Object.assign({},S.settings);delete _p.hasBusinessModule;delete _p.hasRecrutementModule;
+  sb.from('company_settings').upsert({company_id:SB_CID,settings:_p,updated_at:new Date().toISOString()},{onConflict:'company_id'}).then(function(){});
+}
+function readConsMap(){
+  var cm={};CONS_IMPORT_FIELDS.forEach(function(f){var el=document.getElementById('cim-'+f.k);if(el&&el.value!=='')cm[f.k]=parseInt(el.value);});
+  return cm;
+}
+function saveConsPreset(){
+  var ci=S.consImp;if(!ci)return;
+  var cm=readConsMap();
+  if(!Object.keys(cm).length){alert('Configurez au moins une colonne avant d\'enregistrer un préréglage.');return;}
+  var name=prompt('Nom du préréglage (ex : « Export RH — Client X », « Mon Excel interne ») :','');
+  if(!name||!name.trim())return;
+  name=name.trim();
+  var fields={};Object.keys(cm).forEach(function(f){fields[f]=ci.headers[cm[f]];});
+  if(!S.settings.importPresets)S.settings.importPresets=[];
+  S.settings.importPresets=S.settings.importPresets.filter(function(p){return p.name!==name;});
+  var id='ip_'+uid();
+  S.settings.importPresets.push({id:id,name:name,fields:fields,headers:ci.headers.slice()});
+  ci.presetId=id;ci.map=cm;ci.presetAuto=false;
+  persistImportPresets();render();
+}
+function applyConsPreset(){
+  var el=document.getElementById('cons-preset-sel'),id=el&&el.value;
+  if(!id){alert('Choisissez un préréglage dans la liste.');return;}
+  var p=consPresets().find(function(x){return x.id===id;});if(!p)return;
+  var m=presetToMap(p,S.consImp.headers);
+  var missing=Object.keys(p.fields||{}).filter(function(f){return m[f]===undefined;}).length;
+  S.consImp.map=m;S.consImp.presetId=id;S.consImp.presetAuto=false;render();
+  if(missing)alert('Préréglage appliqué. '+missing+' colonne(s) du préréglage absente(s) de ce fichier — vérifiez le mapping.');
+}
+function delConsPreset(){
+  var el=document.getElementById('cons-preset-sel'),id=el&&el.value;
+  if(!id){alert('Choisissez le préréglage à supprimer.');return;}
+  var p=consPresets().find(function(x){return x.id===id;});
+  if(!p||!confirm('Supprimer le préréglage « '+p.name+' » ?'))return;
+  S.settings.importPresets=consPresets().filter(function(x){return x.id!==id;});
+  if(S.consImp&&S.consImp.presetId===id)S.consImp.presetId=null;
+  persistImportPresets();render();
+}
 function openImportCons(){S.consImp={file:'',headers:[],raw:[],map:{},rows:[],step:'upload',results:null};S.modal={type:'import_cons'};render();}
 function handleConsImpFile(file){
   if(!file)return;
@@ -6460,7 +6526,9 @@ function handleConsImpFile(file){
         var data=rows.filter(function(row){return row.some(function(c){return String(c).trim()!=='';});});
         if(data.length<2){alert('Fichier vide ou sans lignes de données.');return;}
         var headers=data[0].map(function(h){return String(h||'').replace(/\s*\*/g,'').trim();});
-        S.consImp={file:file.name,headers:headers,raw:data.slice(1),map:autoMapCons(headers),rows:[],step:'map',results:null};
+        var _am=autoMapCons(headers),_bp=bestPreset(headers);
+        if(_bp)_am=presetToMap(_bp,headers);
+        S.consImp={file:file.name,headers:headers,raw:data.slice(1),map:_am,presetId:_bp?_bp.id:null,presetAuto:!!_bp,rows:[],step:'map',results:null};
         if(!S.modal||S.modal.type!=='import_cons')S.modal={type:'import_cons'};
         render();
       }catch(err){alert('Erreur de lecture : '+err.message);}
@@ -6554,9 +6622,27 @@ function tImportConsBody(){
         +'<select class="ic" id="cim-'+f.k+'">'+opts(ci.map[f.k])+'</select>'
         +(f.hint?'<p class="fh">'+esc(f.hint)+'</p>':'')+'</div>';
     }).join('');
+    var presets=consPresets();
+    var curName=ci.presetId&&(presets.find(function(p){return p.id===ci.presetId;})||{}).name;
+    var presetBar=presets.length
+      ?'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px">'
+        +'<span style="font-size:12px;font-weight:700;color:#1e40af">📋 Préréglage :</span>'
+        +'<select class="ic" id="cons-preset-sel" style="flex:1;min-width:160px;max-width:280px">'
+        +'<option value="">— Choisir un préréglage —</option>'
+        +presets.map(function(p){return '<option value="'+esc(p.id)+'"'+(ci.presetId===p.id?' selected':'')+'>'+esc(p.name)+'</option>';}).join('')
+        +'</select>'
+        +'<button class="bg" data-act="import-cons-preset-apply" style="font-size:12px">Appliquer</button>'
+        +'<button class="bg" data-act="import-cons-preset-del" style="font-size:12px;color:#b91c1c;border-color:#fecaca">Suppr.</button>'
+        +'</div>'
+      :'';
+    var autoBanner=(ci.presetAuto&&curName)
+      ?'<div style="margin-bottom:12px;padding:9px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:12px;color:#15803d">✨ Préréglage « '+esc(curName)+' » reconnu et appliqué automatiquement. Vérifiez puis prévisualisez.</div>'
+      :'';
     return '<div style="font-size:13px;color:#475569;margin-bottom:4px">Fichier : <strong>'+esc(ci.file)+'</strong> · '+ci.raw.length+' ligne'+(ci.raw.length>1?'s':'')+'</div>'
-      +'<div style="font-size:12px;color:#64748b;margin-bottom:14px">Associez chaque champ à une colonne de votre fichier (pré-rempli automatiquement).</div>'
+      +'<div style="font-size:12px;color:#64748b;margin-bottom:14px">Associez chaque champ à une colonne de votre fichier (pré-rempli automatiquement). Enregistrez ce mapping pour réimporter ce format en un clic la prochaine fois.</div>'
+      +presetBar+autoBanner
       +'<div class="g2">'+flds+'</div>'
+      +'<div style="margin-top:10px"><button class="bg" data-act="import-cons-preset-save" style="font-size:12px">💾 Enregistrer ce mapping comme préréglage</button></div>'
       +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="import-cons-map">Prévisualiser →</button></div>';
   }
   if(st==='preview'){
