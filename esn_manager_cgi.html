@@ -6226,6 +6226,7 @@ async function initApp(){
       }
 
       /* ── 3. Charger les donn\u00e9es depuis Supabase ── */
+      try{ await sb.rpc('claim_subscription'); }catch(e){console.warn('claim_subscription:',e);}
       var ok=await loadSB();
       if(!ok){
         /* Supabase connecté mais sans données : nouvelle entreprise, pas de fallback localStorage */
