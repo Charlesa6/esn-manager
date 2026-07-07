@@ -32,10 +32,22 @@ Deno.serve(async (req) => {
       .filter((i) => ALLOWED.has(i?.price_id) && Number(i?.quantity) > 0);
     if (!valid.length) return json({ error: "aucune ligne valide" }, 400);
 
+    // On ne renvoie l'utilisateur que vers un domaine de confiance (évite les
+    // redirections ouvertes ET les alertes SSL vers un domaine sans certificat).
+    const safeBack = (u: unknown, fallback: string): string => {
+      try {
+        const p = new URL(String(u));
+        const ok = p.protocol === "https:" &&
+          (p.hostname === "konsilys.fr" || p.hostname.endsWith(".konsilys.fr") ||
+           p.hostname.endsWith(".vercel.app"));
+        return ok ? p.toString() : fallback;
+      } catch { return fallback; }
+    };
+
     const form = new URLSearchParams();
     form.set("mode", "subscription");
-    form.set("success_url", success_url || "https://konsilys.fr/login?checkout=success");
-    form.set("cancel_url", cancel_url || "https://konsilys.fr/#abonnement");
+    form.set("success_url", safeBack(success_url, "https://konsilys.fr/login?checkout=success"));
+    form.set("cancel_url", safeBack(cancel_url, "https://konsilys.fr/#abonnement"));
     form.set("billing_address_collection", "required");
     form.set("allow_promotion_codes", "true");
     form.set("tax_id_collection[enabled]", "true");

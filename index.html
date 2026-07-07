@@ -614,7 +614,8 @@ function subscribe(){
   if(!items.length){msg.style.color='#fca5a5';msg.textContent='Sélectionnez au moins une licence.';return;}
   var btn=document.getElementById('cfg-btn');btn.disabled=true;btn.textContent='Redirection…';
   msg.style.color='rgba(255,255,255,.6)';msg.textContent='';
-  fetch(SUPA_FN+'/create-checkout',{method:'POST',headers:{'content-type':'application/json','Authorization':'Bearer '+SUPA_ANON,'apikey':SUPA_ANON},body:JSON.stringify({items:items})})
+  var back={success_url:location.origin+'/login?checkout=success',cancel_url:location.origin+'/#abonnement'};
+  fetch(SUPA_FN+'/create-checkout',{method:'POST',headers:{'content-type':'application/json','Authorization':'Bearer '+SUPA_ANON,'apikey':SUPA_ANON},body:JSON.stringify({items:items,success_url:back.success_url,cancel_url:back.cancel_url})})
     .then(function(r){return r.json();})
     .then(function(d){if(d&&d.url){window.location.href=d.url;}else{btn.disabled=false;btn.textContent='S\'abonner →';msg.style.color='#fca5a5';msg.textContent=(d&&d.error)||'Erreur — réessayez ou contactez-nous.';}})
     .catch(function(){btn.disabled=false;btn.textContent='S\'abonner →';msg.style.color='#fca5a5';msg.textContent='Erreur réseau — réessayez.';});
