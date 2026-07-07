@@ -377,6 +377,13 @@ document.addEventListener('DOMContentLoaded', function() {
     /* Focus sur le prénom */
     setTimeout(function(){ var fn=document.getElementById('s-fn'); if(fn)fn.focus(); }, 200);
   }
+
+  /* ── Retour de paiement Stripe (?checkout=success) ── */
+  if (params.get('checkout') === 'success') {
+    sw('signup');
+    showBanner('ok', '🎉 Paiement réussi ! Créez votre compte avec l’email utilisé lors du paiement pour activer votre licence.');
+    setTimeout(function(){ var fn=document.getElementById('s-fn'); if(fn)fn.focus(); }, 200);
+  }
 });
 
 function saveEmail(email) {

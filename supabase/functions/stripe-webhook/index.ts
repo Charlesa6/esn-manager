@@ -7,7 +7,7 @@
 import Stripe from "https://esm.sh/stripe@16.12.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4?target=deno";
 
-const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
+const stripe = new Stripe((Deno.env.get("STRIPE_SECRET_KEY") ?? "").trim(), {
   apiVersion: "2024-06-20",
   httpClient: Stripe.createFetchHttpClient(),
 });
@@ -15,12 +15,15 @@ const supa = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
-const WH_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
+// .trim() : un secret collé avec un espace/retour-ligne parasite casse la vérif.
+const WH_SECRET = (Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "").trim();
+// Deno : la vérification de signature Stripe nécessite le provider SubtleCrypto.
+const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
 // Qonto (facturation)
 const QONTO_BASE = "https://thirdparty.qonto.com/v2";
-const QONTO_AUTH = `${Deno.env.get("QONTO_LOGIN") ?? ""}:${Deno.env.get("QONTO_SECRET_KEY") ?? ""}`;
-const QONTO_IBAN = Deno.env.get("QONTO_IBAN") ?? "";
+const QONTO_AUTH = `${(Deno.env.get("QONTO_LOGIN") ?? "").trim()}:${(Deno.env.get("QONTO_SECRET_KEY") ?? "").trim()}`;
+const QONTO_IBAN = (Deno.env.get("QONTO_IBAN") ?? "").trim();
 
 // price_id -> nature de la ligne
 type Ent = { kind: "licence" | "module"; ref: string; label: string };
@@ -48,8 +51,11 @@ Deno.serve(async (req) => {
   const body = await req.text();
   let evt: Stripe.Event;
   try {
-    evt = await stripe.webhooks.constructEventAsync(body, sig!, WH_SECRET);
+    evt = await stripe.webhooks.constructEventAsync(body, sig!, WH_SECRET, undefined, cryptoProvider);
   } catch (e) {
+    console.error("SIG_FAIL msg=", (e as Error).message,
+      "| sigHeader=", sig ? "present" : "MISSING",
+      "| secret=", WH_SECRET ? ("set:len" + WH_SECRET.length + ":" + WH_SECRET.slice(0, 6)) : "MISSING");
     return new Response("Signature invalide: " + (e as Error).message, { status: 400 });
   }
 
@@ -142,17 +148,26 @@ async function applyModules(sub: Stripe.Subscription, companyId: string, active:
 }
 
 // ── Facturation Qonto ──────────────────────────────────────────────
+async function noteQonto(subId: string | null, msg: string) {
+  if (!subId) return;
+  await supa.from("subscriptions").update({ qonto_last_error: msg.slice(0, 800) })
+    .eq("stripe_subscription_id", subId);
+}
 async function safeQontoInvoice(stripeInvoiceId: string) {
+  let subId: string | null = null;
   try {
+    const inv = await stripe.invoices.retrieve(stripeInvoiceId, { expand: ["lines.data.price"] });
+    subId = (inv.subscription as string) || null;
     if (!QONTO_IBAN || QONTO_AUTH === ":") {
-      console.warn("Qonto non configuré (secrets manquants) — facture ignorée.");
+      await noteQonto(subId, "Secrets Qonto manquants (QONTO_IBAN / QONTO_LOGIN / QONTO_SECRET_KEY)");
       return;
     }
-    const inv = await stripe.invoices.retrieve(stripeInvoiceId, { expand: ["lines.data.price"] });
     await createQontoInvoice(inv);
+    await noteQonto(subId, "OK");
   } catch (e) {
     // Une erreur de facturation ne doit pas casser le provisioning.
     console.error("Qonto invoice:", (e as Error).message);
+    await noteQonto(subId, String((e as Error).message));
   }
 }
 
@@ -176,22 +191,21 @@ async function getOrCreateQontoClient(inv: Stripe.Invoice): Promise<string> {
       .select("qonto_client_id").eq("stripe_subscription_id", inv.subscription).maybeSingle();
     if (data?.qonto_client_id) return data.qonto_client_id as string;
   }
+  // Corps À PLAT (pas d'enveloppe "client") : l'API lie la racine au client.
   const created = await qonto("/clients", "POST", {
-    client: {
-      kind: "company",
-      name,
-      email,
-      currency: "EUR",
-      locale: "FR",
-      billing_address: {
-        street_address: cd?.line1 || "N/A",
-        city: cd?.city || "N/A",
-        zip_code: cd?.postal_code || "00000",
-        country_code: cd?.country || "FR",
-      },
+    type: "company",
+    name,
+    email,
+    currency: "EUR",
+    billing_address: {
+      street_address: cd?.line1 || "N/A",
+      city: cd?.city || "N/A",
+      zip_code: cd?.postal_code || "00000",
+      province_code: cd?.state || undefined,
+      country_code: cd?.country || "FR",
     },
   });
-  const clientId = created?.client?.id;
+  const clientId = created?.client?.id || created?.id;
   if (inv.subscription && clientId) {
     await supa.from("subscriptions").update({ qonto_client_id: clientId })
       .eq("stripe_subscription_id", inv.subscription);
