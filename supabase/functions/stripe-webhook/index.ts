@@ -116,13 +116,18 @@ async function activateCompany(companyId: string) {
 // Crée les comptes des personnes pour qui l'admin a payé une licence. Chacune
 // reçoit un email avec un lien pour définir son mot de passe. Le trigger
 // handle_new_user crée le profil (rôle + entreprise) à partir des métadonnées.
+const SEAT_GRADE: Record<string, string> = { sales: "sales_grade" };
+const SEAT_TITLE: Record<string, string> = {
+  sales: "Business Manager", recruteur: "Recruteur", gestionnaire: "Gestionnaire",
+  admin: "Admin", super_admin: "Super Admin", utilisateur: "",
+};
 async function provisionSeats(companyId: string, batchId: string) {
   const { data: seats, error } = await supa.from("pending_seats")
     .select("*").eq("batch_id", batchId).eq("company_id", companyId).eq("status", "pending");
   if (error) { console.error("provisionSeats read:", error.message); return; }
   for (const seat of seats || []) {
     try {
-      const { error: invErr } = await supa.auth.admin.inviteUserByEmail(seat.email, {
+      const invite = await supa.auth.admin.inviteUserByEmail(seat.email, {
         data: {
           role: seat.role,
           company_id: companyId,
@@ -131,7 +136,29 @@ async function provisionSeats(companyId: string, batchId: string) {
         },
         redirectTo: "https://konsilys.fr/login",
       });
-      if (invErr) throw invErr;
+      if (invite.error) throw invite.error;
+      const newUserId = invite.data?.user?.id || null;
+
+      // B : fiche Équipe pour que la personne apparaisse dans l'org / les KPIs.
+      const fullName = ((seat.first_name || "") + " " + (seat.last_name || "")).trim() || seat.email;
+      const { data: fiche } = await supa.from("consultants").insert({
+        company_id: companyId,
+        name: fullName,
+        title: SEAT_TITLE[seat.role] ?? "",
+        grade: SEAT_GRADE[seat.role] ?? "",
+        email: seat.email,
+        manager_id: seat.invited_by_id || null, // A : rattaché à l'acheteur (N+1)
+        scr: 0,
+        contract: "salarie",
+      }).select("id").single();
+
+      // A + lien : profil rattaché à l'acheteur (N+1) et pointant vers sa fiche.
+      if (newUserId) {
+        await supa.from("profiles").update({
+          manager_id: seat.invited_by_id || null,
+          cons_id: fiche?.id ? String(fiche.id) : null,
+        }).eq("id", newUserId);
+      }
       await supa.from("pending_seats").update({ status: "provisioned" }).eq("id", seat.id);
     } catch (e) {
       await supa.from("pending_seats")
