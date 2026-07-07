@@ -5778,6 +5778,41 @@ function mapCand(r){return{
   recruiter:r.recruiter||''
 };}
 
+/* Écran plein affiché quand l'entreprise n'est pas encore payée (inactive).
+   Propose de finaliser le paiement en rejouant le panier mémorisé (pending_cart)
+   via seats-checkout, ou de se déconnecter. */
+function showPaywall(co){
+  var cart=(co&&co.pending_cart)||null;
+  var canFinish=!!(cart&&cart.items&&cart.items.length);
+  var html=''
+    +'<div style="position:fixed;inset:0;background:#0f1720;color:#fff;display:flex;align-items:center;justify-content:center;padding:24px;z-index:99999;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif">'
+    +'<div style="max-width:460px;text-align:center">'
+    +'<div style="font-size:40px;margin-bottom:12px">🔒</div>'
+    +'<h1 style="font-size:22px;font-weight:800;margin:0 0 10px">Paiement à finaliser</h1>'
+    +'<p style="font-size:15px;line-height:1.6;color:#cbd5e1;margin:0 0 22px">Votre espace Konsilys s\'ouvre dès que votre abonnement est réglé. '
+    +(canFinish?'Finalisez votre paiement pour activer votre accès.':'Aucun paiement en attente n\'a été trouvé pour votre entreprise — contactez contact@konsilys.fr.')+'</p>'
+    +(canFinish?'<button id="pw-go" style="background:#84CC16;color:#0f1720;border:none;border-radius:10px;padding:14px 22px;font-size:15px;font-weight:800;cursor:pointer">Finaliser mon paiement →</button>':'')
+    +'<div id="pw-msg" style="font-size:13px;color:#fca5a5;margin-top:12px;min-height:16px"></div>'
+    +'<div style="margin-top:22px"><a href="#" id="pw-out" style="color:#94a3b8;font-size:13px;text-decoration:underline">Se déconnecter</a></div>'
+    +'</div></div>';
+  var host=document.createElement('div');host.innerHTML=html;document.body.appendChild(host);
+  var out=document.getElementById('pw-out');
+  if(out)out.onclick=function(e){e.preventDefault();try{sb.auth.signOut().then(function(){location.href='/login';});}catch(_e){location.href='/login';}};
+  var go=document.getElementById('pw-go');
+  if(go)go.onclick=async function(){
+    go.disabled=true;go.textContent='Redirection…';
+    var msg=document.getElementById('pw-msg');msg.textContent='';
+    try{
+      var ses=await sb.auth.getSession();
+      var tok=ses&&ses.data&&ses.data.session&&ses.data.session.access_token;
+      var r=await fetch('https://rwmstlesxnglpblrurqj.supabase.co/functions/v1/seats-checkout',{method:'POST',headers:{'content-type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({items:cart.items,seats:cart.seats||[],success_url:location.origin+'/login?checkout=success',cancel_url:location.origin+'/app'})});
+      var d=await r.json();
+      if(d&&d.url){location.href=d.url;return;}
+      msg.textContent=(d&&d.error)||'Erreur — réessayez.';go.disabled=false;go.textContent='Finaliser mon paiement →';
+    }catch(e){msg.textContent='Erreur réseau — réessayez.';go.disabled=false;go.textContent='Finaliser mon paiement →';}
+  };
+}
+
 async function loadSB(){
   if(!sb||!SB_CID)return false;
   try{
@@ -6227,6 +6262,15 @@ async function initApp(){
 
       /* ── 3. Charger les donn\u00e9es depuis Supabase ── */
       try{ await sb.rpc('claim_subscription'); }catch(e){console.warn('claim_subscription:',e);}
+
+      /* ── Verrou d'accès : une entreprise n'est utilisable qu'une fois payée.
+         Les entreprises existantes sont actives (grandfathering). Une entreprise
+         inactive = paiement non finalisé → écran de finalisation, on stoppe. ── */
+      try{
+        var _actv=await sb.from('companies').select('active,pending_cart,name').eq('id',SB_CID).maybeSingle();
+        if(_actv&&_actv.data&&_actv.data.active===false){ showPaywall(_actv.data); return; }
+      }catch(e){console.warn('active check:',e);}
+
       var ok=await loadSB();
       if(!ok){
         /* Supabase connecté mais sans données : nouvelle entreprise, pas de fallback localStorage */
