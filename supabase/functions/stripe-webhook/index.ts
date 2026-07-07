@@ -3,6 +3,9 @@
 // (enregistre l'abonnement + active les modules de l'entreprise achetés).
 // La facturation est gérée par Stripe (factures automatiques) — pas de Qonto.
 // Pas de JWT : Stripe appelle sans token, on vérifie la SIGNATURE Stripe.
+// ⚠️ TOUJOURS déployer cette fonction avec verify_jwt=false. Si verify_jwt=true
+//    (valeur par défaut de l'outil de déploiement), Stripe reçoit 401 et AUCUN
+//    paiement n'est traité (entreprise jamais activée).
 import Stripe from "https://esm.sh/stripe@16.12.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4?target=deno";
 
@@ -154,12 +157,17 @@ function linesFromSub(sub: Stripe.Subscription) {
 }
 
 async function recordSubscription(sub: Stripe.Subscription, companyId: string, email: string) {
+  // Selon la version d'API, current_period_end est soit sur l'abonnement,
+  // soit sur ses items (billing_mode flexible). On lit les deux.
+  const cpe = (sub as any).current_period_end
+    ?? (sub.items?.data?.[0] as any)?.current_period_end
+    ?? null;
   const row: Record<string, unknown> = {
     stripe_subscription_id: sub.id,
     stripe_customer_id: sub.customer as string,
     status: sub.status,
     lines: linesFromSub(sub),
-    current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+    current_period_end: cpe ? new Date(cpe * 1000).toISOString() : null,
     updated_at: new Date().toISOString(),
   };
   if (companyId) row.company_id = companyId;
