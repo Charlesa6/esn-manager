@@ -2207,9 +2207,13 @@ function saveSettings(){
   if(msg){msg.style.display='block';msg.style.color='#94a3b8';msg.textContent='Enregistrement...';}
   /* Sauvegarder dans Supabase pour toute l\'entreprise */
   if(sb&&SB_CID){
+    /* Ne jamais persister les flags modules dans le JSON modifiable :
+       leur source de vérité est la table `companies` (back-office uniquement). */
+    var _persist=Object.assign({},S.settings);
+    delete _persist.hasBusinessModule;delete _persist.hasRecrutementModule;
     sb.from('company_settings').upsert({
       company_id:SB_CID,
-      settings:S.settings,
+      settings:_persist,
       updated_at:new Date().toISOString()
     },{onConflict:'company_id'}).then(function(r){
       if(msg){
@@ -5765,6 +5769,17 @@ async function loadSB(){
       }
     }catch(e){/* table pas encore créée : utiliser les defaults */}
 
+    /* ── Flags modules : source de vérité = table `companies` (lecture seule,
+       non modifiable par les membres). Écrase toute valeur venue du JSON settings
+       pour empêcher l'activation via la console. ── */
+    try{
+      var cmod=await sb.from('companies').select('has_business_module,has_recrutement_module').eq('id',SB_CID).single();
+      if(cmod&&cmod.data){
+        S.settings.hasBusinessModule=!!cmod.data.has_business_module;
+        S.settings.hasRecrutementModule=!!cmod.data.has_recrutement_module;
+      }
+    }catch(e){/* colonnes pas encore présentes : conserver les defaults */}
+
     /* ── Charger l'annuaire des profils de l'organisation ──
        Nécessaire pour : résoudre le N+1, lister les pairs (délégation),
        remonter au N+2 si l'approbateur est absent. */
@@ -5894,20 +5909,6 @@ async function sbUpsertCand(c){
     recruiter:c.recruiter||null
   });
   if(res.error)throw new Error(c.name+': '+res.error.message);
-}
-function inviterConsultant(id){
-  var all=(S._all&&S._all.cons)||S.cons;
-  var c=all.find(function(x){return x.id===id;});
-  if(!c){alert('Consultant introuvable (id='+id+').');return;}
-  var code='CSL-'+id.slice(0,4).toUpperCase()+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
-  if(sb&&SB_CID){
-    sb.from('licence_codes').insert({
-      code:code,role:'utilisateur',used:false,
-      linked_cons_id:id,company_id:SB_CID,dir_name:S.dirName||''
-    }).catch(function(e){console.warn('invite:',e);});
-  }
-  S.modal={type:'invite_code',consName:c.name,code:code};
-  render();
 }
 
 function toggleRecruited(){
@@ -6085,7 +6086,7 @@ async function initApp(){
       var pr=await sb.from('profiles').select('*').eq('id',uid2).single();
       if(pr.data&&pr.data.company_id){
         SB_CID=pr.data.company_id;
-        S.role=pr.data.role==='gestionnaire'?'gestionnaire':pr.data.role==='utilisateur'?'utilisateur':pr.data.role==='super_admin'?'super_admin':pr.data.role==='recruteur'?'recruteur':pr.data.role==='sales'?'sales':'admin';
+        S.role=pr.data.role==='gestionnaire'?'gestionnaire':pr.data.role==='directeur'?'gestionnaire':pr.data.role==='utilisateur'?'utilisateur':pr.data.role==='super_admin'?'super_admin':pr.data.role==='recruteur'?'recruteur':pr.data.role==='sales'?'sales':'admin';
           /* Nom du VP pour l'étiqueter dans directeur_invites */
           if(S.role==='admin'&&pr.data.first_name){S.vpName=(pr.data.first_name+' '+(pr.data.last_name||'')).trim();}
           S.profileFirstName=pr.data.first_name||'';
