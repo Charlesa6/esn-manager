@@ -1252,7 +1252,9 @@ function tTeams(){
     +(partis.length?' \u00b7 '+partis.length+' parti'+(partis.length!==1?'s':'')+' ce FY':'');
 
   return '<div><div class="ph"><div><div class="pt">\u00c9quipe</div><div class="ps">'+sub+'</div></div>'
-    +'<button class="bp" data-act="ac">+ Ajouter un membre</button></div>'
+    +'<div style="display:flex;gap:8px;flex-shrink:0">'
+    +'<button class="bg" data-act="import-cons-open" title="Importer votre \u00e9quipe depuis un fichier Excel ou CSV">\ud83d\udce5 Importer (Excel/CSV)</button>'
+    +'<button class="bp" data-act="ac">+ Ajouter un membre</button></div></div>'
     +filtersHtml
     +'<div class="card ov"><table style="min-width:640px">'
     +'<thead><tr><th>'+rLabel('utilisateur')+'</th><th>Poste</th><th>SCR/j</th><th>Mission actuelle</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
@@ -4916,6 +4918,12 @@ function tModal(){
       +'<div class="br"><button class="bg" data-act="mc">Annuler</button>'
       +'<button class="bp" style="background:#b91c1c;border-color:#b91c1c" data-act="appr-ko-confirm" data-id="'+esc(m.reqId||'')+'">Confirmer le refus</button></div>';
   }
+  /* ── Modal import consultants (Excel/CSV) ── */
+  if(tp==='import_cons'){
+    wide=true;
+    title='📥 Importer des consultants';
+    body=tImportConsBody();
+  }
   return '<div class="mov" id="mov"><div class="mbox '+(wide?'mw':'mn')+'">'
     +'<div class="mhd"><h3>'+esc(title)+'</h3><button class="mcl" data-act="mc">&times;</button></div>'
     +'<div class="mbd">'+body+'</div></div></div>';
@@ -5573,6 +5581,11 @@ function bind(){
       else if(a==='biz-del'){var _tbl=b.getAttribute('data-table')||'';bizDelItem(_tbl,id);}
       else if(a==='biz-opp-mission'){bizOppToMission(id);}
       else if(a==='restart-onboarding'){restartOnboarding();}
+      else if(a==='import-cons-open'){openImportCons();}
+      else if(a==='import-cons-tpl'){downloadConsTemplate();}
+      else if(a==='import-cons-map'){applyConsImp();}
+      else if(a==='import-cons-back'){if(S.consImp){S.consImp.step='map';render();}}
+      else if(a==='import-cons-commit'){commitConsImp();}
       else if(a==='open-salary-detail'){S.modal={type:'salary_detail'};render();}
       /* ── Invites unifiés ── */
       else if(a==='inv-add'){
@@ -6392,6 +6405,191 @@ function applyImpMap(){
 function clearImp(){S.imp=null;S.impView=S.impHistory.length>0?'pl':'import';render();}
 function removeImpHistory(id){S.impHistory=S.impHistory.filter(function(h){return h.id!==id;});if(S.impHistory.length===0)S.impView='import';render();}
 function clearAllImports(){if(confirm('Vider tout l\'historique des imports ?')){S.impHistory=[];S.impView='import';render();}}
+
+/* ══════════════════════════════════
+   IMPORT CONSULTANTS (Excel / CSV) — onboarding équipe
+══════════════════════════════════ */
+var CONS_IMPORT_FIELDS=[
+  {k:'name',lb:'Nom complet',req:true,hint:'Ou renseignez Prénom + Nom séparés ci-dessous'},
+  {k:'firstName',lb:'Prénom (si colonne séparée)'},
+  {k:'lastName',lb:'Nom (si colonne séparée)'},
+  {k:'email',lb:'Email'},
+  {k:'title',lb:'Poste / Fonction'},
+  {k:'dir',lb:'Directeur / N+1',hint:'Rattache automatiquement au manager si le nom correspond'},
+  {k:'grade',lb:'Grade'},
+  {k:'contract',lb:'Contrat'},
+  {k:'scr',lb:'SCR (coût journalier)'},
+  {k:'arrive',lb:'Date d\'arrivée'},
+  {k:'depart',lb:'Date de départ'},
+  {k:'expertise',lb:'Expertise'},
+  {k:'sectors',lb:'Secteurs'}
+];
+function autoMapCons(headers){
+  var am={},norm=headers.map(function(h){return String(h||'').toLowerCase().replace(/\s+/g,' ').trim();});
+  function used(i){for(var kk in am){if(am[kk]===i)return true;}return false;}
+  function exact(k,vals){if(am[k]!==undefined)return;for(var i=0;i<norm.length;i++){if(vals.indexOf(norm[i])>=0&&!used(i)){am[k]=i;return;}}}
+  function inc(k,vals){if(am[k]!==undefined)return;for(var i=0;i<norm.length;i++){for(var j=0;j<vals.length;j++){if(norm[i].indexOf(vals[j])>=0&&!used(i)){am[k]=i;return;}}}}
+  exact('firstName',['prénom','prenom','first name','firstname']);
+  exact('lastName',['nom','last name','lastname','nom de famille']);
+  exact('name',['nom complet','nom et prénom','collaborateur','consultant','name','full name']);
+  inc('email',['email','mail','courriel']);
+  inc('name',['collaborateur','consultant','salarié','salarie']);
+  inc('title',['poste','fonction','titre','intitulé','intitule','title','job']);
+  inc('dir',['directeur','manager','responsable','n+1','référent','referent','superviseur']);
+  inc('grade',['grade','niveau','séniorité','seniorite','seniority','échelon','echelon']);
+  inc('contract',['contrat','contract','statut']);
+  inc('scr',['scr','coût','cout','cjm','salaire','daily cost']);
+  inc('arrive',['arrivée','arrivee','entrée','entree','embauche','hire','début','debut']);
+  inc('depart',['départ','depart','sortie','fin de contrat','fin contrat','end date']);
+  inc('expertise',['expertise','compétence','competence','skill','techno','stack']);
+  inc('sectors',['secteur','sector','industrie','industry','domaine']);
+  return am;
+}
+function openImportCons(){S.consImp={file:'',headers:[],raw:[],map:{},rows:[],step:'upload',results:null};S.modal={type:'import_cons'};render();}
+function handleConsImpFile(file){
+  if(!file)return;
+  var ext=file.name.split('.').pop().toLowerCase();
+  if(['xlsx','xls','csv'].indexOf(ext)<0){alert('Format non supporté. Utilisez .xlsx, .xls ou .csv');return;}
+  loadXLSX(function(){
+    var r=new FileReader();
+    r.onload=function(e){
+      try{
+        var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
+        var ws=wb.Sheets[wb.SheetNames[0]];
+        var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        var data=rows.filter(function(row){return row.some(function(c){return String(c).trim()!=='';});});
+        if(data.length<2){alert('Fichier vide ou sans lignes de données.');return;}
+        var headers=data[0].map(function(h){return String(h||'').replace(/\s*\*/g,'').trim();});
+        S.consImp={file:file.name,headers:headers,raw:data.slice(1),map:autoMapCons(headers),rows:[],step:'map',results:null};
+        if(!S.modal||S.modal.type!=='import_cons')S.modal={type:'import_cons'};
+        render();
+      }catch(err){alert('Erreur de lecture : '+err.message);}
+    };
+    r.readAsArrayBuffer(file);
+  });
+}
+function applyConsImp(){
+  var ci=S.consImp;if(!ci)return;
+  var cm={};
+  CONS_IMPORT_FIELDS.forEach(function(f){var el=document.getElementById('cim-'+f.k);if(el&&el.value!=='')cm[f.k]=parseInt(el.value);});
+  if(cm.name===undefined&&cm.firstName===undefined&&cm.lastName===undefined){alert('Sélectionnez au moins la colonne du nom.');return;}
+  var existEmail={},existName={};
+  ((S._all&&S._all.cons)||S.cons).forEach(function(c){if(c.email)existEmail[String(c.email).toLowerCase()]=true;if(c.name)existName[String(c.name).toLowerCase().trim()]=true;});
+  function val(row,k){return cm[k]!==undefined?row[cm[k]]:'';}
+  function parseName(raw){var s=String(raw||'').trim();if(s.indexOf(',')>=0){var p=s.split(',');return ((p[1]||'').trim()+' '+(p[0]||'').trim()).trim();}return s;}
+  function toList(v){return String(v||'').split(/[,;/]+/).map(function(x){return x.trim();}).filter(Boolean);}
+  function toNum(v){var n=parseFloat(String(v||'').replace(/[^\d.,-]/g,'').replace(',','.'));return isNaN(n)?0:n;}
+  function pad(x){return String(x).length<2?'0'+x:String(x);}
+  function toDate(v){
+    if(!v)return '';
+    if(v instanceof Date)return v.getFullYear()+'-'+pad(v.getMonth()+1)+'-'+pad(v.getDate());
+    var s=String(v).trim();
+    var m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+    if(m){var y=m[3].length===2?'20'+m[3]:m[3];return y+'-'+pad(m[2])+'-'+pad(m[1]);}
+    var m2=s.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/);
+    if(m2)return m2[1]+'-'+pad(m2[2])+'-'+pad(m2[3]);
+    return '';
+  }
+  function normContract(v){var l=String(v||'').toLowerCase();if(l.indexOf('free')>=0||l.indexOf('indép')>=0||l.indexOf('indep')>=0)return 'freelance';if(l.indexOf('sous')>=0||l.indexOf('trait')>=0)return 'sous-traitant';if(l.indexOf('portage')>=0)return 'portage';return 'salarie';}
+  var rows=ci.raw.map(function(row){
+    var name=(cm.firstName!==undefined||cm.lastName!==undefined)
+      ?((String(val(row,'firstName')||'').trim()+' '+String(val(row,'lastName')||'').trim()).trim())
+      :parseName(val(row,'name'));
+    var email=String(val(row,'email')||'').trim().toLowerCase();
+    var o={name:name,email:email,title:String(val(row,'title')||'').trim(),dir:String(val(row,'dir')||'').trim(),
+      grade:String(val(row,'grade')||'').trim(),contract:normContract(val(row,'contract')),scr:toNum(val(row,'scr')),
+      arrive:toDate(val(row,'arrive')),depart:toDate(val(row,'depart')),expertise:toList(val(row,'expertise')),sectors:toList(val(row,'sectors'))};
+    o._invalid=!o.name;
+    o._dup=(email&&existEmail[email])||(!email&&!!o.name&&existName[o.name.toLowerCase().trim()]);
+    return o;
+  }).filter(function(o){return o.name||o.email;});
+  ci.map=cm;ci.rows=rows;ci.step='preview';render();
+}
+function commitConsImp(){
+  var ci=S.consImp;if(!ci||!ci.rows)return;
+  if(!sb||!SB_CID){alert('Connexion Supabase requise pour importer.');return;}
+  var toIns=ci.rows.filter(function(o){return !o._invalid&&!o._dup;});
+  if(!toIns.length){alert('Aucune ligne à importer.');return;}
+  var profByName={};
+  (S.orgProfiles||[]).forEach(function(p){var n=((p.first_name||'')+' '+(p.last_name||'')).trim().toLowerCase();if(n)profByName[n]=p.id;});
+  var payload=toIns.map(function(o){
+    var mgr=o.dir?profByName[o.dir.toLowerCase().trim()]:null;
+    return {company_id:SB_CID,name:o.name,title:o.title||null,email:o.email||null,directeur:o.dir||null,
+      manager_id:mgr||null,scr:o.scr||0,arrive:o.arrive||null,depart:o.depart||null,
+      expertise:o.expertise||[],sectors:o.sectors||[],contract:o.contract||'salarie',grade:o.grade||null};
+  });
+  ci.step='importing';render();
+  sb.from('consultants').insert(payload).select().then(function(r){
+    if(r.error){ci.results={ok:0,err:r.error.message};ci.step='result';render();return;}
+    if(r.data){var mapped=r.data.map(mapC);S.cons=S.cons.concat(mapped);if(S._all&&S._all.cons)S._all.cons=S._all.cons.concat(mapped);}
+    ci.results={ok:(r.data?r.data.length:payload.length),
+      dup:ci.rows.filter(function(o){return o._dup;}).length,
+      invalid:ci.rows.filter(function(o){return o._invalid;}).length};
+    ci.step='result';render();
+  });
+}
+function downloadConsTemplate(){
+  var headers=['Nom complet','Email','Poste','Directeur','Grade','Contrat','SCR','Arrivée','Départ','Expertise','Secteurs'];
+  var ex=['Sophie Martin','sophie.martin@exemple.com','Consultante Senior','Charles Allouard','Senior','salarie','450','2024-01-15','','Java; Spring','Banque, Assurance'];
+  var csv=headers.join(';')+'\n'+ex.join(';')+'\n';
+  var a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,﻿'+encodeURIComponent(csv);
+  a.download='modele_import_consultants.csv';
+  document.body.appendChild(a);a.click();a.remove();
+}
+function tImportConsBody(){
+  var ci=S.consImp||{step:'upload'};var st=ci.step||'upload';
+  if(st==='upload'){
+    return '<div style="font-size:13px;color:#475569;margin-bottom:14px">Importez votre équipe depuis un export Excel (.xlsx) ou CSV — par ex. depuis Boond, un tableur RH, ou notre modèle. Les colonnes sont reconnues automatiquement, vous pourrez ajuster.</div>'
+      +'<label style="display:inline-block;background:#2563eb;color:#fff;padding:12px 20px;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer">📥 Choisir un fichier'
+      +'<input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleConsImpFile(this.files[0]);this.value=\'\'"></label>'
+      +'<div style="margin-top:14px"><button class="bg" data-act="import-cons-tpl" style="font-size:12px">⬇ Télécharger le modèle</button></div>'
+      +'<div style="margin-top:16px;padding:10px 14px;background:#f8fafc;border-radius:8px;font-size:11px;color:#64748b">Colonnes reconnues : Nom, Email, Poste, Directeur/N+1, Grade, Contrat, SCR, Arrivée, Départ, Expertise, Secteurs. Seul le <strong>nom</strong> est obligatoire.</div>'
+      +'<div class="br"><button class="bg" data-act="mc">Fermer</button></div>';
+  }
+  if(st==='map'){
+    var opts=function(sel){return '<option value="">— Ignorer —</option>'+ci.headers.map(function(h,i){return '<option value="'+i+'"'+(sel===i?' selected':'')+'>'+esc(h||('Colonne '+(i+1)))+'</option>';}).join('');};
+    var flds=CONS_IMPORT_FIELDS.map(function(f){
+      return '<div class="fd"><label class="fl">'+esc(f.lb)+(f.req?' *':'')+'</label>'
+        +'<select class="ic" id="cim-'+f.k+'">'+opts(ci.map[f.k])+'</select>'
+        +(f.hint?'<p class="fh">'+esc(f.hint)+'</p>':'')+'</div>';
+    }).join('');
+    return '<div style="font-size:13px;color:#475569;margin-bottom:4px">Fichier : <strong>'+esc(ci.file)+'</strong> · '+ci.raw.length+' ligne'+(ci.raw.length>1?'s':'')+'</div>'
+      +'<div style="font-size:12px;color:#64748b;margin-bottom:14px">Associez chaque champ à une colonne de votre fichier (pré-rempli automatiquement).</div>'
+      +'<div class="g2">'+flds+'</div>'
+      +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="import-cons-map">Prévisualiser →</button></div>';
+  }
+  if(st==='preview'){
+    var valid=ci.rows.filter(function(o){return !o._invalid&&!o._dup;});
+    var dup=ci.rows.filter(function(o){return o._dup;});
+    var inval=ci.rows.filter(function(o){return o._invalid;});
+    var tr=ci.rows.slice(0,200).map(function(o){
+      var tag=o._invalid?'<span style="color:#b91c1c">✕ sans nom</span>':o._dup?'<span style="color:#b45309">↔ doublon</span>':'<span style="color:#15803d">✓ nouveau</span>';
+      var bg=o._invalid?'#fff1f2':o._dup?'#fffbeb':'#f0fdf4';
+      return '<tr style="background:'+bg+'"><td style="padding:4px 8px;white-space:nowrap">'+tag+'</td><td style="padding:4px 8px">'+esc(o.name||'—')+'</td><td style="padding:4px 8px">'+esc(o.email||'')+'</td><td style="padding:4px 8px">'+esc(o.title||'')+'</td><td style="padding:4px 8px">'+esc(o.dir||'')+'</td><td style="padding:4px 8px">'+esc(o.contract||'')+'</td><td style="padding:4px 8px">'+(o.scr||'')+'</td></tr>';
+    }).join('');
+    return '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'
+      +'<span style="background:#f0fdf4;color:#15803d;padding:4px 10px;border-radius:99px;font-size:12px;font-weight:700">✓ '+valid.length+' à importer</span>'
+      +'<span style="background:#fffbeb;color:#b45309;padding:4px 10px;border-radius:99px;font-size:12px;font-weight:700">↔ '+dup.length+' doublon(s)</span>'
+      +'<span style="background:#fff1f2;color:#b91c1c;padding:4px 10px;border-radius:99px;font-size:12px;font-weight:700">✕ '+inval.length+' invalide(s)</span></div>'
+      +'<div style="max-height:340px;overflow:auto;border:1px solid #e2e8f0;border-radius:8px"><table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr style="position:sticky;top:0;background:#f8fafc"><th style="padding:6px 8px;text-align:left">Statut</th><th style="padding:6px 8px;text-align:left">Nom</th><th style="padding:6px 8px;text-align:left">Email</th><th style="padding:6px 8px;text-align:left">Poste</th><th style="padding:6px 8px;text-align:left">Directeur</th><th style="padding:6px 8px;text-align:left">Contrat</th><th style="padding:6px 8px;text-align:left">SCR</th></tr></thead><tbody>'+tr+'</tbody></table></div>'
+      +(ci.rows.length>200?'<div style="font-size:11px;color:#94a3b8;margin-top:6px">Aperçu limité à 200 lignes — toutes les valides seront importées.</div>':'')
+      +'<div class="br"><button class="bg" data-act="import-cons-back">← Mapping</button><button class="bp" data-act="import-cons-commit"'+(valid.length?'':' disabled style="opacity:.5;cursor:not-allowed"')+'>Importer '+valid.length+' consultant'+(valid.length>1?'s':'')+'</button></div>';
+  }
+  if(st==='importing'){
+    return '<div style="text-align:center;padding:30px 0"><div style="font-size:40px">⏳</div><div style="margin-top:10px;font-size:14px;color:#0f172a;font-weight:700">Import en cours…</div></div>';
+  }
+  if(st==='result'){
+    var rz=ci.results||{};
+    if(rz.err)return '<div style="padding:16px;background:#fff1f2;border:1px solid #fecdd3;border-radius:10px;color:#b91c1c;font-size:13px">✕ Erreur Supabase : '+esc(rz.err)+'</div><div class="br"><button class="bg" data-act="import-cons-back">← Retour</button><button class="bp" data-act="mc">Fermer</button></div>';
+    return '<div style="text-align:center;padding:16px 0"><div style="font-size:44px">✅</div>'
+      +'<div style="margin-top:8px;font-size:16px;font-weight:800;color:#0f172a">'+(rz.ok||0)+' consultant'+((rz.ok||0)>1?'s':'')+' importé'+((rz.ok||0)>1?'s':'')+'</div>'
+      +'<div style="font-size:12px;color:#64748b;margin-top:6px">'+(rz.dup||0)+' doublon(s) ignoré(s) · '+(rz.invalid||0)+' invalide(s)</div>'
+      +'<div style="font-size:11px;color:#94a3b8;margin-top:8px">Les fiches apparaissent dans l\'onglet Équipe. Vous pouvez ensuite inviter certains membres à créer un compte.</div></div>'
+      +'<div class="br"><button class="bp" data-act="mc">Terminer</button></div>';
+  }
+  return '';
+}
 
 
 /* ══════════════════════════════════
