@@ -225,7 +225,6 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
 
     <div class="tabs">
       <button class="tab on" id="t-login" onclick="sw('login')">Se connecter</button>
-      <button class="tab"    id="t-signup" onclick="sw('signup')">Cr&eacute;er un compte</button>
     </div>
 
     <div class="alert alert-err" id="alert-err"></div>
@@ -255,69 +254,36 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
         <span id="lb-login">Se connecter</span>
         <div class="spin" id="sp-login"></div>
       </button>
-      <div class="switch-row">Pas de compte&nbsp;? <button onclick="sw('signup')">Cr&eacute;er un compte</button></div>
+      <div class="switch-row">Pas encore d'espace&nbsp;? <a href="/#abonnement">Créer mon entreprise</a></div>
     </div>
 
-    <!-- SIGNUP -->
-    <div id="f-signup" style="display:none">
-      <h2 class="card-title">Commencer</h2>
-      <p class="card-sub">Créez votre espace en quelques secondes</p>
+    <!-- DÉFINIR MON MOT DE PASSE (lien d'activation reçu par email) -->
+    <div id="f-setpw" style="display:none">
+      <p class="card-sub">Bienvenue sur Konsilys&nbsp;! Choisissez votre mot de passe pour activer votre accès.</p>
       <div class="fd">
-        <label for="s-co">Nom de votre ESN *</label>
-        <input class="inp" type="text" id="s-co" placeholder="Nom de votre entreprise" autocomplete="organization">
-        <p class="err-msg" id="e-s-co">Requis</p>
-      </div>
-      <div class="fd2">
-        <div>
-          <label for="s-fn">Pr&eacute;nom *</label>
-          <input class="inp" type="text" id="s-fn" placeholder="Charles" autocomplete="given-name">
-          <p class="err-msg" id="e-s-fn">Requis</p>
-        </div>
-        <div>
-          <label for="s-ln">Nom *</label>
-          <input class="inp" type="text" id="s-ln" placeholder="Dupont" autocomplete="family-name">
-          <p class="err-msg" id="e-s-ln">Requis</p>
-        </div>
-      </div>
-      <div class="fd">
-        <label for="s-em">Email *</label>
-        <input class="inp" type="email" id="s-em" placeholder="vous@votreesn.com" autocomplete="email">
-        <p class="err-msg" id="e-s-em">Email invalide</p>
-      </div>
-      <div class="fd">
-        <label for="s-pw">Mot de passe *</label>
+        <label for="sp-pw">Nouveau mot de passe</label>
         <div class="pwd-wrap">
-          <input class="inp" type="password" id="s-pw" placeholder="8 caract&egrave;res minimum" autocomplete="new-password" oninput="strength(this.value)">
-          <button class="pwd-eye" type="button" onclick="eye('s-pw',this)">
+          <input class="inp" type="password" id="sp-pw" placeholder="8 caract&egrave;res minimum" autocomplete="new-password">
+          <button class="pwd-eye" type="button" onclick="eye('sp-pw',this)">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
-        <div class="pwd-strength" id="str-wrap"><div class="str-bg"><div class="str-bar" id="str-bar"></div></div><p class="str-lbl" id="str-lbl"></p></div>
-        <p class="err-msg" id="e-s-pw">8 caract&egrave;res minimum</p>
+        <p class="err-msg" id="e-sp-pw">8 caract&egrave;res minimum</p>
       </div>
       <div class="fd">
-        <label for="s-p2">Confirmer *</label>
+        <label for="sp-p2">Confirmer</label>
         <div class="pwd-wrap">
-          <input class="inp" type="password" id="s-p2" placeholder="R&eacute;p&eacute;tez votre mot de passe" autocomplete="new-password">
-          <button class="pwd-eye" type="button" onclick="eye('s-p2',this)">
+          <input class="inp" type="password" id="sp-p2" placeholder="R&eacute;p&eacute;tez votre mot de passe" autocomplete="new-password">
+          <button class="pwd-eye" type="button" onclick="eye('sp-p2',this)">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
-        <p class="err-msg" id="e-s-p2">Les mots de passe ne correspondent pas</p>
+        <p class="err-msg" id="e-sp-p2">Les mots de passe ne correspondent pas</p>
       </div>
-      <div class="fd">
-
-      </div>
-      <label class="cgu-row">
-        <input type="checkbox" id="cgu">
-        <span>J&apos;accepte les <a href="#" onclick="return false">conditions d&apos;utilisation</a></span>
-      </label>
-      <p class="err-msg" id="e-cgu">Vous devez accepter les conditions</p>
-      <button class="btn" id="b-signup" onclick="doSignup()">
-        <span id="lb-signup">Cr&eacute;er mon compte</span>
-        <div class="spin" id="sp-signup"></div>
+      <button class="btn" id="b-setpw" onclick="doSetPw()">
+        <span id="lb-setpw">Activer mon compte</span>
+        <div class="spin" id="sp-setpw"></div>
       </button>
-      <div class="switch-row">D&eacute;j&agrave; un compte&nbsp;? <button onclick="sw('login')">Se connecter</button></div>
     </div>
 
     <!-- SUCCESS -->
@@ -341,7 +307,10 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
 
 var SUPABASE_URL = 'https://rwmstlesxnglpblrurqj.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3bXN0bGVzeG5nbHBibHJ1cnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MjcyNTMsImV4cCI6MjA5NzEwMzI1M30.9SrsA1sYjdsqdPCnZ_sc2iTl01NKXsl7gAu2Y_VYgSQ';
-var sb = (SUPABASE_URL && SUPABASE_KEY && SUPABASE_URL.indexOf('supabase.co') > 0)
+/* Capturer le type de lien (invite/recovery) AVANT que Supabase ne nettoie
+   l'URL (detectSessionInUrl efface le hash de façon asynchrone). */
+var K_LINK_TYPE = ((window.location.hash || '') + ' ' + (window.location.search || ''));
+var sb = (typeof supabase !== 'undefined' && SUPABASE_URL && SUPABASE_KEY && SUPABASE_URL.indexOf('supabase.co') > 0)
   ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 /* Pré-remplir l'email sauvegardé */
@@ -357,34 +326,61 @@ document.addEventListener('DOMContentLoaded', function() {
     } catch(e) {}
   }
 
-  /* ── Détection lien d'invitation consultant (?invite=CODE) ── */
   var params = new URLSearchParams(window.location.search);
-  var inviteCode = params.get('invite');
-  if (inviteCode) {
-    /* Basculer sur l'onglet "Créer un compte" */
-    sw('signup');
-    /* Redirection vers formulaire */
-    var licInput = null;
-    if (licInput) {
-      licInput.value = inviteCode.toUpperCase();
-      licInput.setAttribute('readonly', 'readonly');
-      licInput.style.background = '#f0fdf4';
-      licInput.style.color = '#15803d';
-      licInput.style.fontWeight = '700';
-    }
-    /* Message de bienvenue */
-    showBanner('ok', '\uD83C\uDF89 Invitation d\u00e9tect\u00e9e\u00a0! Remplissez vos informations pour activer votre compte.');
-    /* Focus sur le prénom */
-    setTimeout(function(){ var fn=document.getElementById('s-fn'); if(fn)fn.focus(); }, 200);
+
+  /* -- Lien d'activation (invitation) ou de reinitialisation recu par email --
+     Supabase etablit la session automatiquement (detectSessionInUrl). On propose
+     alors de definir le mot de passe pour activer/recuperer l'acces. */
+  var isSetPw = /type=(invite|recovery)/.test(K_LINK_TYPE);
+  if (sb) {
+    sb.auth.onAuthStateChange(function(event) {
+      if (event === 'PASSWORD_RECOVERY') showSetPw();
+    });
+    if (isSetPw) showSetPw();
   }
 
-  /* ── Retour de paiement Stripe (?checkout=success) ── */
-  if (params.get('checkout') === 'success') {
-    sw('signup');
-    showBanner('ok', '🎉 Paiement réussi ! Dernière étape : créez votre compte ci-dessous avec le MÊME email que celui du paiement. Vous devenez l’administrateur de votre ESN ; vos sièges seront prêts et vous pourrez inviter votre équipe.');
-    setTimeout(function(){ var fn=document.getElementById('s-fn'); if(fn)fn.focus(); }, 200);
+  /* -- Retour de paiement Stripe (?checkout=success) --
+     Le compte admin a deja ete cree dans le tunnel : s'il est connecte, on file
+     vers l'espace ; sinon on l'invite simplement a se connecter. */
+  if (params.get('checkout') === 'success' && !isSetPw) {
+    if (sb) {
+      sb.auth.getSession().then(function(s){
+        if (s && s.data && s.data.session) {
+          showBanner('ok', '\u{1F389} Paiement réussi ! Ouverture de votre espace…');
+          setTimeout(function(){ window.location.href = '/app'; }, 1200);
+        } else {
+          showBanner('ok', '\u{1F389} Paiement réussi ! Connectez-vous pour accéder à votre espace.');
+        }
+      });
+    } else {
+      showBanner('ok', '\u{1F389} Paiement réussi ! Connectez-vous pour accéder à votre espace.');
+    }
   }
 });
+
+/* Bascule sur le formulaire "definir mon mot de passe" (lien email). */
+function showSetPw() {
+  var fl = document.getElementById('f-login'); if (fl) fl.style.display = 'none';
+  var tabs = document.querySelector('.tabs'); if (tabs) tabs.style.display = 'none';
+  var fs = document.getElementById('f-setpw'); if (fs) fs.style.display = 'block';
+  hideBanner();
+}
+
+/* Definit le mot de passe puis ouvre l'espace. La session est deja etablie par
+   le lien d'invitation/reinitialisation. */
+async function doSetPw() {
+  var pw = document.getElementById('sp-pw').value || '';
+  var p2 = document.getElementById('sp-p2').value || '';
+  if (pw.length < 8) { setErr('sp-pw', 'e-sp-pw', '8 caractères minimum'); return; }
+  if (pw !== p2) { setErr('sp-p2', 'e-sp-p2', 'Les mots de passe ne correspondent pas'); return; }
+  if (!sb) { showBanner('ok', 'Mode démo'); return; }
+  loading('b-setpw', 'sp-setpw', 'lb-setpw', true);
+  var r = await sb.auth.updateUser({ password: pw });
+  loading('b-setpw', 'sp-setpw', 'lb-setpw', false);
+  if (r.error) { showBanner('err', r.error.message || 'Lien expiré ou invalide. Demandez un nouveau lien.'); return; }
+  showBanner('ok', 'Compte activé ! Ouverture de votre espace…');
+  setTimeout(function(){ window.location.href = '/app'; }, 1000);
+}
 
 function saveEmail(email) {
   try {
@@ -427,12 +423,12 @@ if (sb) {
 }
 
 function sw(m) {
-  var login = m === 'login';
-  document.getElementById('f-login').style.display  = login ? 'block' : 'none';
-  document.getElementById('f-signup').style.display = login ? 'none'  : 'block';
-  document.getElementById('success').classList.remove('on');
-  document.getElementById('t-login').classList.toggle('on', login);
-  document.getElementById('t-signup').classList.toggle('on', !login);
+  /* La création de compte autonome a été retirée : seule la connexion existe.
+     On garde la fonction (référencée par l'onglet) mais elle ne fait qu'afficher
+     le formulaire de connexion. */
+  document.getElementById('f-login').style.display = 'block';
+  var suc = document.getElementById('success'); if (suc) suc.classList.remove('on');
+  document.getElementById('t-login').classList.add('on');
   clearErr(); hideBanner();
 }
 function clearErr() {
@@ -462,7 +458,7 @@ function loading(b, s, l, on) {
 }
 function showSuccess(t, m, hideBtn) {
   document.getElementById('f-login').style.display  = 'none';
-  document.getElementById('f-signup').style.display = 'none';
+  var fs = document.getElementById('f-setpw'); if (fs) fs.style.display = 'none';
   document.getElementById('suc-title').textContent  = t;
   document.getElementById('suc-msg').textContent    = m;
   if (hideBtn) document.getElementById('suc-link').style.display = 'none';
@@ -711,14 +707,15 @@ async function forgot() {
   var em = document.getElementById('l-email').value.trim();
   if (!isEmail(em)) { setErr('l-email','e-l-email','Entrez votre email d\'abord'); return; }
   if (!sb) { showBanner('ok', 'Lien envoy\u00e9 \u00e0 ' + em + ' (mode d\u00e9mo)'); return; }
-  await sb.auth.resetPasswordForEmail(em, { redirectTo: window.location.origin });
+  await sb.auth.resetPasswordForEmail(em, { redirectTo: window.location.origin + '/login' });
   showBanner('ok', 'Lien de r\u00e9initialisation envoy\u00e9 \u00e0 ' + em);
 }
 
 document.addEventListener('keydown', function(e) {
   if (e.key !== 'Enter') return;
+  var fs = document.getElementById('f-setpw');
+  if (fs && fs.style.display !== 'none' && fs.style.display !== '') { doSetPw(); return; }
   if (document.getElementById('f-login').style.display !== 'none') doLogin();
-  else if (document.getElementById('f-signup').style.display !== 'none') doSignup();
 });
 </script>
 </body>

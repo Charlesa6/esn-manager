@@ -58,6 +58,7 @@ Deno.serve(async (req) => {
       case "checkout.session.completed": {
         const s = evt.data.object as Stripe.Checkout.Session;
         const companyId = s.metadata?.company_id || "";
+        const batchId = s.metadata?.batch_id || "";
         if (s.subscription) {
           const sub = await stripe.subscriptions.retrieve(s.subscription as string, {
             expand: ["items.data.price"],
@@ -65,6 +66,10 @@ Deno.serve(async (req) => {
           await recordSubscription(sub, companyId, s.customer_details?.email || s.customer_email || "");
           await applyModules(sub, companyId, true);
         }
+        // Le paiement débloque l'accès : l'entreprise devient active et les
+        // comptes des collègues achetés (sièges) sont provisionnés.
+        if (companyId) await activateCompany(companyId);
+        if (companyId && batchId) await provisionSeats(companyId, batchId);
         // Facturation gérée par Stripe (factures automatiques). Qonto désactivé.
         break;
       }
@@ -95,6 +100,43 @@ Deno.serve(async (req) => {
     return new Response("Erreur: " + String((e as Error).message), { status: 500 });
   }
 });
+
+// ── Activation & provisioning des comptes ──────────────────────────
+// Le paiement est la SEULE façon d'ouvrir un accès : on active l'entreprise
+// et on efface le panier mémorisé (utilisé pour finaliser un paiement abandonné).
+async function activateCompany(companyId: string) {
+  const { error } = await supa.from("companies")
+    .update({ active: true, pending_cart: null }).eq("id", companyId);
+  if (error) console.error("activateCompany:", error.message);
+}
+
+// Crée les comptes des personnes pour qui l'admin a payé une licence. Chacune
+// reçoit un email avec un lien pour définir son mot de passe. Le trigger
+// handle_new_user crée le profil (rôle + entreprise) à partir des métadonnées.
+async function provisionSeats(companyId: string, batchId: string) {
+  const { data: seats, error } = await supa.from("pending_seats")
+    .select("*").eq("batch_id", batchId).eq("company_id", companyId).eq("status", "pending");
+  if (error) { console.error("provisionSeats read:", error.message); return; }
+  for (const seat of seats || []) {
+    try {
+      const { error: invErr } = await supa.auth.admin.inviteUserByEmail(seat.email, {
+        data: {
+          role: seat.role,
+          company_id: companyId,
+          first_name: seat.first_name,
+          last_name: seat.last_name,
+        },
+        redirectTo: "https://konsilys.fr/login",
+      });
+      if (invErr) throw invErr;
+      await supa.from("pending_seats").update({ status: "provisioned" }).eq("id", seat.id);
+    } catch (e) {
+      await supa.from("pending_seats")
+        .update({ status: "error", error: String((e as Error).message).slice(0, 300) })
+        .eq("id", seat.id);
+    }
+  }
+}
 
 // ── Provisioning Supabase ──────────────────────────────────────────
 function linesFromSub(sub: Stripe.Subscription) {

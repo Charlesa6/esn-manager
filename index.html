@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -233,6 +234,8 @@ footer{background:var(--dark);padding:48px 24px 32px}
 .delay-7{animation-delay:.56s}.delay-8{animation-delay:.64s}.delay-9{animation-delay:.72s}
 
 /* ── RESPONSIVE NAV ── */
+.cfg-in{width:100%;padding:11px 13px;border:1px solid var(--border);border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;margin-bottom:8px}
+.cfg-in:focus{outline:none;border-color:var(--navy)}
 .cfg-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
 @media(max-width:900px){.cfg-steps{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:640px){
@@ -537,23 +540,23 @@ footer{background:var(--dark);padding:48px 24px 32px}
       <div class="cfg-steps">
         <div style="display:flex;flex-direction:column;gap:6px">
           <div style="width:28px;height:28px;border-radius:8px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px">1</div>
-          <div style="font-weight:800;font-size:14px;color:var(--navy)">Choisissez vos sièges</div>
-          <div style="font-size:13px;color:var(--muted);line-height:1.5">Un siège = une licence (Consultant, Directeur, Business Manager…). Prenez autant de sièges que de personnes à équiper.</div>
+          <div style="font-weight:800;font-size:14px;color:var(--navy)">Composez votre abonnement</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.5">Votre entreprise, votre compte administrateur, et une licence par membre de votre équipe.</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px">
           <div style="width:28px;height:28px;border-radius:8px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px">2</div>
-          <div style="font-weight:800;font-size:14px;color:var(--navy)">Payez en ligne</div>
-          <div style="font-size:13px;color:var(--muted);line-height:1.5">Paiement sécurisé Stripe. Notez bien l'email utilisé : il fait le lien avec votre compte à l'étape suivante.</div>
+          <div style="font-weight:800;font-size:14px;color:var(--navy)">Payez et créez votre compte</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.5">Paiement sécurisé Stripe. Votre compte administrateur est créé au moment du paiement.</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px">
           <div style="width:28px;height:28px;border-radius:8px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px">3</div>
-          <div style="font-weight:800;font-size:14px;color:var(--navy)">Créez votre compte admin</div>
-          <div style="font-size:13px;color:var(--muted);line-height:1.5">Avec le <strong>même email</strong> que le paiement. Vous devenez l'administrateur de l'espace de votre ESN.</div>
+          <div style="font-weight:800;font-size:14px;color:var(--navy)">Votre équipe reçoit un email</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.5">Chaque collègue pour qui vous avez payé une licence reçoit un lien pour définir son mot de passe.</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px">
           <div style="width:28px;height:28px;border-radius:8px;background:var(--lime);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px">4</div>
-          <div style="font-weight:800;font-size:14px;color:var(--navy)">Invitez votre équipe</div>
-          <div style="font-size:13px;color:var(--muted);line-height:1.5">Vos sièges sont prêts : invitez vos collaborateurs et attribuez-leur leur licence en un clic.</div>
+          <div style="font-weight:800;font-size:14px;color:var(--navy)">Vous pilotez votre ESN</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.5">Missions, absences, CRM, recrutement… tout votre pilotage au même endroit, dès la connexion.</div>
         </div>
       </div>
     </div>
@@ -565,19 +568,37 @@ footer{background:var(--dark);padding:48px 24px 32px}
 
     <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:32px;align-items:start" id="cfg-wrap">
       <div>
-        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px">Licences (par siège)</div>
-        <div style="font-size:12px;color:var(--navy);background:rgba(132,204,22,.12);border:1px solid rgba(132,204,22,.35);border-radius:8px;padding:8px 12px;margin-bottom:10px">⭐ <strong>1 licence Admin minimum</strong> par entreprise — elle vous donne les droits d'administration de votre espace.</div>
-        <div id="cfg-licences" style="display:flex;flex-direction:column;gap:8px"></div>
-        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 10px">Modules (par entreprise)</div>
+        <!-- 1. Votre entreprise -->
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px">1 · Votre entreprise</div>
+        <input id="cfg-co" type="text" placeholder="Nom de votre ESN" class="cfg-in">
+
+        <!-- 2. Vous (administrateur) -->
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 8px">2 · Vous (administrateur)</div>
+        <div style="font-size:12px;color:var(--navy);background:rgba(132,204,22,.12);border:1px solid rgba(132,204,22,.35);border-radius:8px;padding:8px 12px;margin-bottom:10px">⭐ La <strong>licence Admin</strong> est incluse : elle vous donne les droits d'administration de votre espace. Vous créez votre compte ici, en payant.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <input id="cfg-fn" type="text" placeholder="Prénom" class="cfg-in" style="margin:0">
+          <input id="cfg-ln" type="text" placeholder="Nom" class="cfg-in" style="margin:0">
+        </div>
+        <input id="cfg-em" type="email" placeholder="Votre email professionnel" class="cfg-in">
+        <input id="cfg-pw" type="password" placeholder="Choisissez un mot de passe (8 caractères min.)" class="cfg-in">
+
+        <!-- 3. Votre équipe -->
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 8px">3 · Votre équipe <span style="text-transform:none;font-weight:600;color:var(--muted)">(optionnel — vous pourrez en ajouter plus tard)</span></div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Chaque personne ajoutée = une licence de son rôle. Elle recevra un email pour définir son mot de passe une fois le paiement effectué.</div>
+        <div id="cfg-team" style="display:flex;flex-direction:column;gap:10px"></div>
+        <button type="button" onclick="addMember()" style="margin-top:10px;background:#fff;border:1px dashed var(--navy);color:var(--navy);border-radius:10px;padding:10px 14px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer">+ Ajouter un membre</button>
+
+        <!-- 4. Modules -->
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 10px">4 · Modules (par entreprise)</div>
         <div id="cfg-modules" style="display:flex;flex-direction:column;gap:8px"></div>
       </div>
       <div style="background:var(--navy);border-radius:16px;padding:24px;color:#fff;position:sticky;top:88px">
         <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.5)">À payer</div>
         <div style="margin:6px 0 16px"><span id="cfg-total" style="font-size:36px;font-weight:900">0 €</span><span id="cfg-period" style="font-size:14px;font-weight:600;color:rgba(255,255,255,.5)"> /mois</span></div>
         <div id="cfg-summary" style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:rgba(255,255,255,.7);min-height:24px;border-top:1px solid rgba(255,255,255,.1);padding-top:14px"></div>
-        <button onclick="subscribe()" id="cfg-btn" style="width:100%;margin-top:18px;background:var(--lime);color:var(--navy);padding:14px;border:none;border-radius:10px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;cursor:pointer;transition:background .15s" onmouseover="this.style.background='var(--lime-dark)'" onmouseout="this.style.background='var(--lime)'">S'abonner →</button>
+        <button onclick="subscribe()" id="cfg-btn" style="width:100%;margin-top:18px;background:var(--lime);color:var(--navy);padding:14px;border:none;border-radius:10px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;cursor:pointer;transition:background .15s" onmouseover="this.style.background='var(--lime-dark)'" onmouseout="this.style.background='var(--lime)'">Payer et créer mon compte →</button>
         <div id="cfg-msg" style="font-size:12px;margin-top:10px;text-align:center;min-height:16px"></div>
-        <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:8px;text-align:center">Paiement sécurisé Stripe · Facture émise automatiquement</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:8px;text-align:center">Paiement sécurisé Stripe · Compte créé après paiement · Facture automatique</div>
       </div>
     </div>
   </div>
@@ -598,7 +619,10 @@ var MODULES=[
   {key:'business',name:'Business Développement',price:59,m:'price_1TqUYVA6guMn7iZUr72z01vh',a:'price_1TqUYXA6guMn7iZUllYZc79I'},
   {key:'recrutement',name:'Recrutement',price:59,m:'price_1TqUYYA6guMn7iZUkwyVkWpb',a:'price_1TqUYZA6guMn7iZUwngF93eZ'}
 ];
-var CFG={billing:'monthly',qty:{},mod:{}};
+var sb=(window.supabase)?window.supabase.createClient('https://rwmstlesxnglpblrurqj.supabase.co',SUPA_ANON):null;
+var CFG={billing:'monthly',members:[],mod:{}};
+function planByRole(r){for(var i=0;i<PLANS.length;i++){if(PLANS[i].key===r)return PLANS[i];}return null;}
+function priceId(p){return CFG.billing==='annual'?p.a:p.m;}
 function setBilling(b){
   CFG.billing=b;
   document.getElementById('bill-m').style.background=b==='monthly'?'#1B2B3A':'transparent';
@@ -607,52 +631,86 @@ function setBilling(b){
   document.getElementById('bill-a').style.color=b==='annual'?'#fff':'#64748B';
   renderCfg();
 }
-function cfgStep(key,d){CFG.qty[key]=Math.max(0,(CFG.qty[key]||0)+d);renderCfg();}
 function cfgTog(key){CFG.mod[key]=!CFG.mod[key];renderCfg();}
 function unit(p){return CFG.billing==='annual'?p.price*10:p.price;}
 function fmt(n){return n.toLocaleString('fr-FR');}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function isEmail(v){return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);}
+function addMember(){CFG.members.push({fn:'',ln:'',em:'',role:'utilisateur'});renderCfg();}
+function removeMember(i){CFG.members.splice(i,1);renderCfg();}
+function setMember(i,k,v){CFG.members[i][k]=v;if(k==='role')renderCfg();else recalc();}
+function roleOpts(sel){var per=CFG.billing==='annual'?'/an':'/mois';return PLANS.map(function(p){return '<option value="'+p.key+'"'+(p.key===sel?' selected':'')+'>'+p.name+' — '+fmt(unit(p))+' €'+per+'</option>';}).join('');}
 function renderCfg(){
-  var per=CFG.billing==='annual'?' /an':' /mois';
-  document.getElementById('cfg-licences').innerHTML=PLANS.map(function(p){
-    var q=CFG.qty[p.key]||0;
-    return '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid '+(q>0?'#bbf7d0':'#e2e8f0')+';border-radius:10px;background:'+(q>0?'#f0fdf4':'#fff')+'">'
-      +'<div style="flex:1"><div style="font-size:14px;font-weight:700;color:#1B2B3A">'+p.name+'</div>'
-      +'<div style="font-size:12px;color:#64748B">'+fmt(unit(p))+' €'+per+' / siège</div></div>'
-      +'<button onclick="cfgStep(\''+p.key+'\',-1)" style="width:30px;height:30px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;font-size:18px;font-weight:800;color:#1B2B3A;cursor:pointer">–</button>'
-      +'<div style="width:32px;text-align:center;font-size:15px;font-weight:800;color:#1B2B3A">'+q+'</div>'
-      +'<button onclick="cfgStep(\''+p.key+'\',1)" style="width:30px;height:30px;border-radius:8px;border:1px solid #84CC16;background:#84CC16;font-size:18px;font-weight:800;color:#1B2B3A;cursor:pointer">+</button>'
-      +'</div>';
-  }).join('');
   document.getElementById('cfg-modules').innerHTML=MODULES.map(function(m){
-    var on=!!CFG.mod[m.key];
+    var on=!!CFG.mod[m.key];var per=CFG.billing==='annual'?' /an':' /mois';
     return '<label style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid '+(on?'#bbf7d0':'#e2e8f0')+';border-radius:10px;background:'+(on?'#f0fdf4':'#fff')+';cursor:pointer">'
       +'<input type="checkbox" '+(on?'checked':'')+' onchange="cfgTog(\''+m.key+'\')" style="width:18px;height:18px;accent-color:#84CC16">'
       +'<div style="flex:1"><div style="font-size:14px;font-weight:700;color:#1B2B3A">'+m.name+'</div>'
       +'<div style="font-size:12px;color:#64748B">'+fmt(unit(m))+' €'+per+'</div></div></label>';
   }).join('');
-  var total=0,lines=[];
-  PLANS.forEach(function(p){var q=CFG.qty[p.key]||0;if(q>0){total+=q*unit(p);lines.push(q+'× '+p.name);}});
+  document.getElementById('cfg-team').innerHTML=CFG.members.map(function(m,i){
+    return '<div style="border:1px solid var(--border);border-radius:10px;padding:12px;background:var(--off)">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:var(--navy)">Membre '+(i+1)+'</div>'
+      +'<button type="button" onclick="removeMember('+i+')" style="border:none;background:none;color:#ef4444;font-size:12px;font-weight:800;cursor:pointer">Retirer</button></div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input class="cfg-in" style="margin:0" placeholder="Prénom" value="'+esc(m.fn)+'" oninput="setMember('+i+',\'fn\',this.value)"><input class="cfg-in" style="margin:0" placeholder="Nom" value="'+esc(m.ln)+'" oninput="setMember('+i+',\'ln\',this.value)"></div>'
+      +'<input class="cfg-in" type="email" placeholder="Email" value="'+esc(m.em)+'" oninput="setMember('+i+',\'em\',this.value)">'
+      +'<select class="cfg-in" style="margin:0" onchange="setMember('+i+',\'role\',this.value)">'+roleOpts(m.role)+'</select>'
+      +'</div>';
+  }).join('');
+  recalc();
+}
+function recalc(){
+  var per=CFG.billing==='annual'?' /an':' /mois';
+  var adminPlan=planByRole('admin');
+  var total=unit(adminPlan);
+  var lines=['1× Admin (vous)'];
+  var counts={};
+  CFG.members.forEach(function(m){var p=planByRole(m.role);if(p)total+=unit(p);counts[m.role]=(counts[m.role]||0)+1;});
+  Object.keys(counts).forEach(function(r){var p=planByRole(r);if(p)lines.push(counts[r]+'× '+p.name);});
   MODULES.forEach(function(m){if(CFG.mod[m.key]){total+=unit(m);lines.push(m.name);}});
   document.getElementById('cfg-total').textContent=fmt(total)+' €';
   document.getElementById('cfg-period').textContent=per;
-  document.getElementById('cfg-summary').innerHTML=lines.length?lines.map(function(l){return '<div>· '+l+'</div>';}).join(''):'<div style="color:rgba(255,255,255,.4)">Ajoutez des licences ou modules</div>';
+  document.getElementById('cfg-summary').innerHTML=lines.map(function(l){return '<div>· '+l+'</div>';}).join('');
 }
 function subscribe(){
-  var items=[];
-  PLANS.forEach(function(p){var q=CFG.qty[p.key]||0;if(q>0)items.push({price_id:CFG.billing==='annual'?p.a:p.m,quantity:q});});
-  MODULES.forEach(function(m){if(CFG.mod[m.key])items.push({price_id:CFG.billing==='annual'?m.a:m.m,quantity:1});});
   var msg=document.getElementById('cfg-msg');
-  if(!items.length){msg.style.color='#fca5a5';msg.textContent='Sélectionnez au moins une licence.';return;}
-  /* Chaque entreprise doit inclure au moins une licence Admin : c'est elle qui
-     donne les droits d'administration de l'espace à la personne qui paie. */
-  if((CFG.qty['admin']||0)<1){msg.style.color='#fca5a5';msg.textContent='Ajoutez au moins 1 licence Admin : elle vous donne les droits d\'administration de votre espace ESN.';return;}
-  var btn=document.getElementById('cfg-btn');btn.disabled=true;btn.textContent='Redirection…';
+  function err(t){msg.style.color='#fca5a5';msg.textContent=t;}
+  var co=(document.getElementById('cfg-co').value||'').trim();
+  var fn=(document.getElementById('cfg-fn').value||'').trim();
+  var ln=(document.getElementById('cfg-ln').value||'').trim();
+  var em=(document.getElementById('cfg-em').value||'').trim().toLowerCase();
+  var pw=document.getElementById('cfg-pw').value||'';
+  if(!co)return err('Indiquez le nom de votre entreprise.');
+  if(!fn||!ln)return err('Indiquez votre prénom et votre nom.');
+  if(!isEmail(em))return err('Indiquez un email valide.');
+  if(pw.length<8)return err('Mot de passe : 8 caractères minimum.');
+  var seats=[];
+  for(var i=0;i<CFG.members.length;i++){var m=CFG.members[i];
+    if(!m.fn.trim()||!m.ln.trim()||!isEmail(m.em))return err('Membre '+(i+1)+' : prénom, nom et email valides requis.');
+    seats.push({first_name:m.fn.trim(),last_name:m.ln.trim(),email:m.em.trim().toLowerCase(),role:m.role});
+  }
+  var items=[{price_id:priceId(planByRole('admin')),quantity:1}];
+  var counts={};CFG.members.forEach(function(m){counts[m.role]=(counts[m.role]||0)+1;});
+  Object.keys(counts).forEach(function(r){items.push({price_id:priceId(planByRole(r)),quantity:counts[r]});});
+  MODULES.forEach(function(m){if(CFG.mod[m.key])items.push({price_id:priceId(m),quantity:1});});
+  if(!sb)return err('Service indisponible, réessayez dans un instant.');
+  var btn=document.getElementById('cfg-btn');btn.disabled=true;btn.textContent='Création du compte…';
   msg.style.color='rgba(255,255,255,.6)';msg.textContent='';
-  var back={success_url:location.origin+'/login?checkout=success',cancel_url:location.origin+'/#abonnement'};
-  fetch(SUPA_FN+'/create-checkout',{method:'POST',headers:{'content-type':'application/json','Authorization':'Bearer '+SUPA_ANON,'apikey':SUPA_ANON},body:JSON.stringify({items:items,success_url:back.success_url,cancel_url:back.cancel_url})})
-    .then(function(r){return r.json();})
-    .then(function(d){if(d&&d.url){window.location.href=d.url;}else{btn.disabled=false;btn.textContent='S\'abonner →';msg.style.color='#fca5a5';msg.textContent=(d&&d.error)||'Erreur — réessayez ou contactez-nous.';}})
-    .catch(function(){btn.disabled=false;btn.textContent='S\'abonner →';msg.style.color='#fca5a5';msg.textContent='Erreur réseau — réessayez.';});
+  var newCid=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():('xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return(c==='x'?r:r&0x3|0x8).toString(16);}));
+  function reset(){btn.disabled=false;btn.textContent='Payer et créer mon compte →';}
+  sb.auth.signUp({email:em,password:pw,options:{data:{company_name:co,first_name:fn,last_name:ln,role:'admin',company_id:newCid}}})
+    .then(function(res){
+      if(res.error){var e=(res.error.message||'').toLowerCase();reset();
+        if(e.indexOf('already')>=0||e.indexOf('registered')>=0){err('Cet email a déjà un compte. Connectez-vous, puis finalisez votre paiement depuis votre espace.');}
+        else{err(res.error.message||'Erreur lors de la création du compte.');}
+        return null;}
+      var token=res.data&&res.data.session&&res.data.session.access_token;
+      if(!token){reset();err('Vérifiez votre email pour confirmer votre compte, puis connectez-vous pour payer.');return null;}
+      btn.textContent='Redirection vers le paiement…';
+      return fetch(SUPA_FN+'/seats-checkout',{method:'POST',headers:{'content-type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({items:items,seats:seats,success_url:location.origin+'/login?checkout=success',cancel_url:location.origin+'/#abonnement'})}).then(function(r){return r.json();});
+    })
+    .then(function(d){if(!d)return;if(d.url){window.location.href=d.url;return;}reset();err((d&&d.error)||'Erreur — réessayez ou contactez-nous.');})
+    .catch(function(){reset();err('Erreur réseau — réessayez.');});
 }
 renderCfg();
 </script>
