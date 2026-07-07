@@ -99,7 +99,8 @@ Deno.serve(async (req) => {
 
     const batchId = crypto.randomUUID();
     if (seats.length) {
-      const rows = seats.map((s: any) => ({ batch_id: batchId, company_id: prof.company_id, ...s }));
+      // invited_by_id = l'acheteur : il devient le N+1 de chaque personne provisionnée.
+      const rows = seats.map((s: any) => ({ batch_id: batchId, company_id: prof.company_id, invited_by_id: user.id, ...s }));
       const { error: seatErr } = await svc.from("pending_seats").insert(rows);
       if (seatErr) return json({ error: "Enregistrement des sièges impossible : " + seatErr.message }, 500);
     }
