@@ -253,7 +253,8 @@ footer{background:var(--dark);padding:48px 24px 32px}
     <div class="nav-links">
       <a href="#fonctionnalites">Fonctionnalités</a>
       <a href="#licences">Licences</a>
-      <a href="#tarifs">Tarifs & Devis</a>
+      <a href="#abonnement">Tarifs</a>
+      <a href="#tarifs">Devis</a>
       <a href="mailto:contact@konsilys.fr">Contact</a>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
@@ -402,7 +403,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
 
       <div class="licence-card anim-up delay-1">
         <div class="lic-name">Super Admin</div>
-        <div class="lic-price">Sur devis</div>
+        <div class="lic-price">49 €</div>
         <div class="lic-period">par mois</div>
         <ul class="lic-features">
           <li>Pilotage global de l'organisation</li>
@@ -415,7 +416,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
 
       <div class="licence-card featured anim-up delay-2">
         <div class="lic-name">Admin</div>
-        <div class="lic-price">Sur devis</div>
+        <div class="lic-price">39 €</div>
         <div class="lic-period">par mois</div>
         <ul class="lic-features">
           <li>Vision multi-Gestionnaires</li>
@@ -428,7 +429,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
 
       <div class="licence-card anim-up delay-3">
         <div class="lic-name">Gestionnaire</div>
-        <div class="lic-price">Sur devis</div>
+        <div class="lic-price">29 €</div>
         <div class="lic-period">par mois</div>
         <ul class="lic-features">
           <li>Gestion complète de son équipe</li>
@@ -441,7 +442,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
 
       <div class="licence-card anim-up delay-4">
         <div class="lic-name">Utilisateur</div>
-        <div class="lic-price">Sur devis</div>
+        <div class="lic-price">8 €</div>
         <div class="lic-period">par mois</div>
         <ul class="lic-features">
           <li>Suivi de ses missions</li>
@@ -456,7 +457,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
 
       <div class="licence-card anim-up delay-5">
         <div class="lic-name">Recruteur</div>
-        <div class="lic-price">Sur devis</div>
+        <div class="lic-price">22 €</div>
         <div class="lic-period">par mois</div>
         <ul class="lic-features">
           <li>Pipeline candidats 8 statuts</li>
@@ -469,7 +470,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
 
       <div class="licence-card anim-up delay-6">
         <div class="lic-name">Business Manager</div>
-        <div class="lic-price">Sur devis</div>
+        <div class="lic-price">22 €</div>
         <div class="lic-period">par mois</div>
         <ul class="lic-features">
           <li>Accès Business + Activité + Absences</li>
@@ -516,9 +517,110 @@ footer{background:var(--dark);padding:48px 24px 32px}
 
     </div>
 
-    <p style="text-align:center;font-size:13px;color:var(--muted);margin-top:24px">Tarification sur devis · <a href="mailto:contact@konsilys.fr" style="color:var(--navy);font-weight:700;text-decoration:underline">contact@konsilys.fr</a> · Activation des modules sous 24h</p>
+    <p style="text-align:center;font-size:13px;color:var(--muted);margin-top:24px">Tarifs transparents, sans frais de mise en place · <a href="mailto:contact@konsilys.fr" style="color:var(--navy);font-weight:700;text-decoration:underline">contact@konsilys.fr</a></p>
   </div>
 </section>
+
+<!-- CONFIGURATEUR D'ABONNEMENT -->
+<section id="abonnement" style="background:#fff;padding:80px 24px">
+  <div class="container">
+    <p class="section-eyebrow">Abonnement</p>
+    <h2 class="section-title">Composez votre abonnement</h2>
+    <p class="section-sub">Choisissez vos sièges et modules, payez en ligne, accédez à Konsilys immédiatement. Sans engagement, résiliable à tout moment.</p>
+
+    <div style="display:inline-flex;background:var(--off);border:1px solid var(--border);border-radius:99px;padding:4px;margin-bottom:28px">
+      <button id="bill-m" onclick="setBilling('monthly')" style="padding:8px 20px;border-radius:99px;border:none;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer;background:var(--navy);color:#fff">Mensuel</button>
+      <button id="bill-a" onclick="setBilling('annual')" style="padding:8px 20px;border-radius:99px;border:none;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer;background:transparent;color:var(--muted)">Annuel <span style="color:var(--lime-dark)">· 2 mois offerts</span></button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:32px;align-items:start" id="cfg-wrap">
+      <div>
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px">Licences (par siège)</div>
+        <div id="cfg-licences" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 10px">Modules (par entreprise)</div>
+        <div id="cfg-modules" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+      <div style="background:var(--navy);border-radius:16px;padding:24px;color:#fff;position:sticky;top:88px">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.5)">À payer</div>
+        <div style="margin:6px 0 16px"><span id="cfg-total" style="font-size:36px;font-weight:900">0 €</span><span id="cfg-period" style="font-size:14px;font-weight:600;color:rgba(255,255,255,.5)"> /mois</span></div>
+        <div id="cfg-summary" style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:rgba(255,255,255,.7);min-height:24px;border-top:1px solid rgba(255,255,255,.1);padding-top:14px"></div>
+        <button onclick="subscribe()" id="cfg-btn" style="width:100%;margin-top:18px;background:var(--lime);color:var(--navy);padding:14px;border:none;border-radius:10px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;cursor:pointer;transition:background .15s" onmouseover="this.style.background='var(--lime-dark)'" onmouseout="this.style.background='var(--lime)'">S'abonner →</button>
+        <div id="cfg-msg" style="font-size:12px;margin-top:10px;text-align:center;min-height:16px"></div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:8px;text-align:center">Paiement sécurisé Stripe · Facture émise automatiquement</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+var SUPA_FN='https://rwmstlesxnglpblrurqj.supabase.co/functions/v1';
+var SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3bXN0bGVzeG5nbHBibHJ1cnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MjcyNTMsImV4cCI6MjA5NzEwMzI1M30.9SrsA1sYjdsqdPCnZ_sc2iTl01NKXsl7gAu2Y_VYgSQ';
+var PLANS=[
+  {key:'utilisateur',name:'Consultant',price:8,m:'price_1TqUYFA6guMn7iZUAYWbMGfR',a:'price_1TqUYGA6guMn7iZUzeoBFm9V'},
+  {key:'gestionnaire',name:'Directeur',price:29,m:'price_1TqUYNA6guMn7iZUW0TAySfr',a:'price_1TqUYPA6guMn7iZUGUuT6aaP'},
+  {key:'admin',name:'Admin (VP)',price:39,m:'price_1TqUYQA6guMn7iZUdOwh2sri',a:'price_1TqUYRA6guMn7iZU0VqsQlIt'},
+  {key:'super_admin',name:'Super Admin',price:49,m:'price_1TqUYTA6guMn7iZUVdiYjBhI',a:'price_1TqUYUA6guMn7iZUtB7aYGuq'},
+  {key:'sales',name:'Business Manager',price:22,m:'price_1TqUYKA6guMn7iZUBf840s9D',a:'price_1TqUYLA6guMn7iZUKzu8PByk'},
+  {key:'recruteur',name:'Recruteur',price:22,m:'price_1TqUYHA6guMn7iZUhwKFDqQQ',a:'price_1TqUYJA6guMn7iZUIzsPv23E'}
+];
+var MODULES=[
+  {key:'business',name:'Business Développement',price:59,m:'price_1TqUYVA6guMn7iZUr72z01vh',a:'price_1TqUYXA6guMn7iZUllYZc79I'},
+  {key:'recrutement',name:'Recrutement',price:59,m:'price_1TqUYYA6guMn7iZUkwyVkWpb',a:'price_1TqUYZA6guMn7iZUwngF93eZ'}
+];
+var CFG={billing:'monthly',qty:{},mod:{}};
+function setBilling(b){
+  CFG.billing=b;
+  document.getElementById('bill-m').style.background=b==='monthly'?'#1B2B3A':'transparent';
+  document.getElementById('bill-m').style.color=b==='monthly'?'#fff':'#64748B';
+  document.getElementById('bill-a').style.background=b==='annual'?'#1B2B3A':'transparent';
+  document.getElementById('bill-a').style.color=b==='annual'?'#fff':'#64748B';
+  renderCfg();
+}
+function cfgStep(key,d){CFG.qty[key]=Math.max(0,(CFG.qty[key]||0)+d);renderCfg();}
+function cfgTog(key){CFG.mod[key]=!CFG.mod[key];renderCfg();}
+function unit(p){return CFG.billing==='annual'?p.price*10:p.price;}
+function fmt(n){return n.toLocaleString('fr-FR');}
+function renderCfg(){
+  var per=CFG.billing==='annual'?' /an':' /mois';
+  document.getElementById('cfg-licences').innerHTML=PLANS.map(function(p){
+    var q=CFG.qty[p.key]||0;
+    return '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid '+(q>0?'#bbf7d0':'#e2e8f0')+';border-radius:10px;background:'+(q>0?'#f0fdf4':'#fff')+'">'
+      +'<div style="flex:1"><div style="font-size:14px;font-weight:700;color:#1B2B3A">'+p.name+'</div>'
+      +'<div style="font-size:12px;color:#64748B">'+fmt(unit(p))+' €'+per+' / siège</div></div>'
+      +'<button onclick="cfgStep(\''+p.key+'\',-1)" style="width:30px;height:30px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;font-size:18px;font-weight:800;color:#1B2B3A;cursor:pointer">–</button>'
+      +'<div style="width:32px;text-align:center;font-size:15px;font-weight:800;color:#1B2B3A">'+q+'</div>'
+      +'<button onclick="cfgStep(\''+p.key+'\',1)" style="width:30px;height:30px;border-radius:8px;border:1px solid #84CC16;background:#84CC16;font-size:18px;font-weight:800;color:#1B2B3A;cursor:pointer">+</button>'
+      +'</div>';
+  }).join('');
+  document.getElementById('cfg-modules').innerHTML=MODULES.map(function(m){
+    var on=!!CFG.mod[m.key];
+    return '<label style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid '+(on?'#bbf7d0':'#e2e8f0')+';border-radius:10px;background:'+(on?'#f0fdf4':'#fff')+';cursor:pointer">'
+      +'<input type="checkbox" '+(on?'checked':'')+' onchange="cfgTog(\''+m.key+'\')" style="width:18px;height:18px;accent-color:#84CC16">'
+      +'<div style="flex:1"><div style="font-size:14px;font-weight:700;color:#1B2B3A">'+m.name+'</div>'
+      +'<div style="font-size:12px;color:#64748B">'+fmt(unit(m))+' €'+per+'</div></div></label>';
+  }).join('');
+  var total=0,lines=[];
+  PLANS.forEach(function(p){var q=CFG.qty[p.key]||0;if(q>0){total+=q*unit(p);lines.push(q+'× '+p.name);}});
+  MODULES.forEach(function(m){if(CFG.mod[m.key]){total+=unit(m);lines.push(m.name);}});
+  document.getElementById('cfg-total').textContent=fmt(total)+' €';
+  document.getElementById('cfg-period').textContent=per;
+  document.getElementById('cfg-summary').innerHTML=lines.length?lines.map(function(l){return '<div>· '+l+'</div>';}).join(''):'<div style="color:rgba(255,255,255,.4)">Ajoutez des licences ou modules</div>';
+}
+function subscribe(){
+  var items=[];
+  PLANS.forEach(function(p){var q=CFG.qty[p.key]||0;if(q>0)items.push({price_id:CFG.billing==='annual'?p.a:p.m,quantity:q});});
+  MODULES.forEach(function(m){if(CFG.mod[m.key])items.push({price_id:CFG.billing==='annual'?m.a:m.m,quantity:1});});
+  var msg=document.getElementById('cfg-msg');
+  if(!items.length){msg.style.color='#fca5a5';msg.textContent='Sélectionnez au moins une licence.';return;}
+  var btn=document.getElementById('cfg-btn');btn.disabled=true;btn.textContent='Redirection…';
+  msg.style.color='rgba(255,255,255,.6)';msg.textContent='';
+  fetch(SUPA_FN+'/create-checkout',{method:'POST',headers:{'content-type':'application/json','Authorization':'Bearer '+SUPA_ANON,'apikey':SUPA_ANON},body:JSON.stringify({items:items})})
+    .then(function(r){return r.json();})
+    .then(function(d){if(d&&d.url){window.location.href=d.url;}else{btn.disabled=false;btn.textContent='S\'abonner →';msg.style.color='#fca5a5';msg.textContent=(d&&d.error)||'Erreur — réessayez ou contactez-nous.';}})
+    .catch(function(){btn.disabled=false;btn.textContent='S\'abonner →';msg.style.color='#fca5a5';msg.textContent='Erreur réseau — réessayez.';});
+}
+renderCfg();
+</script>
 
 
 <section id="tarifs" style="background:#fff;padding:80px 24px">
