@@ -381,7 +381,7 @@ document.addEventListener('DOMContentLoaded', function() {
   /* ── Retour de paiement Stripe (?checkout=success) ── */
   if (params.get('checkout') === 'success') {
     sw('signup');
-    showBanner('ok', '🎉 Paiement réussi ! Créez votre compte avec l’email utilisé lors du paiement pour activer votre licence.');
+    showBanner('ok', '🎉 Paiement réussi ! Dernière étape : créez votre compte ci-dessous avec le MÊME email que celui du paiement. Vous devenez l’administrateur de votre ESN ; vos sièges seront prêts et vous pourrez inviter votre équipe.');
     setTimeout(function(){ var fn=document.getElementById('s-fn'); if(fn)fn.focus(); }, 200);
   }
 });

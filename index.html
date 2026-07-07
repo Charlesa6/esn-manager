@@ -233,9 +233,12 @@ footer{background:var(--dark);padding:48px 24px 32px}
 .delay-7{animation-delay:.56s}.delay-8{animation-delay:.64s}.delay-9{animation-delay:.72s}
 
 /* ── RESPONSIVE NAV ── */
+.cfg-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+@media(max-width:900px){.cfg-steps{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:640px){
   .nav-links{display:none}
   .hero-stats{gap:24px}
+  .cfg-steps{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -527,6 +530,33 @@ footer{background:var(--dark);padding:48px 24px 32px}
     <p class="section-eyebrow">Abonnement</p>
     <h2 class="section-title">Composez votre abonnement</h2>
     <p class="section-sub">Choisissez vos sièges et modules, payez en ligne, accédez à Konsilys immédiatement. Sans engagement, résiliable à tout moment.</p>
+
+    <!-- Comment ça marche : lever l'ambiguïté paiement → compte → équipe -->
+    <div style="background:var(--off);border:1px solid var(--border);border-radius:16px;padding:22px 24px;margin-bottom:32px">
+      <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--navy);margin-bottom:16px">Comment ça marche</div>
+      <div class="cfg-steps">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="width:28px;height:28px;border-radius:8px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px">1</div>
+          <div style="font-weight:800;font-size:14px;color:var(--navy)">Choisissez vos sièges</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.5">Un siège = une licence (Consultant, Directeur, Business Manager…). Prenez autant de sièges que de personnes à équiper.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="width:28px;height:28px;border-radius:8px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px">2</div>
+          <div style="font-weight:800;font-size:14px;color:var(--navy)">Payez en ligne</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.5">Paiement sécurisé Stripe. Notez bien l'email utilisé : il fait le lien avec votre compte à l'étape suivante.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="width:28px;height:28px;border-radius:8px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px">3</div>
+          <div style="font-weight:800;font-size:14px;color:var(--navy)">Créez votre compte admin</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.5">Avec le <strong>même email</strong> que le paiement. Vous devenez l'administrateur de l'espace de votre ESN.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="width:28px;height:28px;border-radius:8px;background:var(--lime);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px">4</div>
+          <div style="font-weight:800;font-size:14px;color:var(--navy)">Invitez votre équipe</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.5">Vos sièges sont prêts : invitez vos collaborateurs et attribuez-leur leur licence en un clic.</div>
+        </div>
+      </div>
+    </div>
 
     <div style="display:inline-flex;background:var(--off);border:1px solid var(--border);border-radius:99px;padding:4px;margin-bottom:28px">
       <button id="bill-m" onclick="setBilling('monthly')" style="padding:8px 20px;border-radius:99px;border:none;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer;background:var(--navy);color:#fff">Mensuel</button>
