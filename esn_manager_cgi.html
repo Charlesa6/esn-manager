@@ -783,24 +783,25 @@ function tSB(){
       {id:'help',      ic:'\u2753',lb:'Aide'}
     ];
   }else{
+    /* Ordre demand\u00e9 : KPIs, Dashboard, Business (remont\u00e9), Recrutement, puis les
+       autres. \u00c9quipe et Activit\u00e9 (non cit\u00e9es) sont conserv\u00e9es juste apr\u00e8s
+       Recrutement. Gestion des acc\u00e8s se place juste avant Aide. */
     NAV=[
       {id:'kpis',      ic:'\uD83D\uDCC8',lb:'KPIs'},
       {id:'dashboard', ic:'\uD83D\uDCCA',lb:'Dashboard'},
-      {id:'teams',     ic:'\uD83D\uDC65',lb:'\u00c9quipe'},
+      {id:'business',  ic:'\uD83D\uDCBC',lb:'Business'},
       {id:'recrutement',ic:'\uD83C\uDFAF',lb:'Recrutement'},
+      {id:'teams',     ic:'\uD83D\uDC65',lb:'\u00c9quipe'},
+      {id:'activite',  ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'},
       {id:'missions',  ic:'\uD83D\uDCCB',lb:'Missions'},
       {id:'planning',  ic:'\uD83D\uDCC5',lb:'Planning'},
       {id:'leaves',    ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
-      {id:'business',  ic:'\uD83D\uDCBC',lb:'Business'},
       {id:'approvals',  ic:'\uD83D\uDD14',lb:'Approbations'},
-      {id:'param',     ic:'\uD83D\uDCA1',lb:'Pr\u00e9conisations'},
-      {id:'help',      ic:'\u2753',lb:'Aide'}
+      {id:'param',     ic:'\uD83D\uDCA1',lb:'Pr\u00e9conisations'}
     ];
-    if(S.role==='admin')NAV.push({id:'svp_acces',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
-    if(S.role==='gestionnaire')NAV.push({id:'svp_acces',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
-    if(S.role==='super_admin')NAV.push({id:'svp_acces',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
+    if(S.role==='admin'||S.role==='gestionnaire'||S.role==='super_admin')NAV.push({id:'svp_acces',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
     if(S.role==='super_admin')NAV.push({id:'svp_settings',ic:'\u2699',lb:'Param\u00e8tres'});
-    NAV.splice(4,0,{id:'activite',ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'});
+    NAV.push({id:'help',ic:'\u2753',lb:'Aide'});
   }
   var alC=(function(){
     /* Compteur unifié par identité : demandes (approvals + leaves) dont JE suis l'approbateur */
