@@ -128,7 +128,31 @@ nav{
 }
 .hero-stat .num{font-size:28px;font-weight:900;color:#fff}
 .hero-stat .lbl{font-size:12px;color:rgba(255,255,255,.45);margin-top:2px}
-
+.feat-tag{font-size:10px;background:var(--lime);color:var(--navy);padding:1px 7px;border-radius:99px;font-weight:800;vertical-align:middle;margin-left:4px}
+/* ── Aperçu produit (mockup animé) dans le hero ── */
+.hero-mock{max-width:900px;margin:56px auto 0;perspective:1600px}
+.mock-win{background:#0f1720;border:1px solid rgba(255,255,255,.10);border-radius:14px;overflow:hidden;box-shadow:0 40px 90px rgba(0,0,0,.5),0 0 80px rgba(132,204,22,.12);transform:rotateX(6deg);transform-origin:center top;animation:mockFloat 7s ease-in-out infinite}
+@keyframes mockFloat{0%,100%{transform:rotateX(6deg) translateY(0)}50%{transform:rotateX(6deg) translateY(-10px)}}
+.mock-bar{display:flex;align-items:center;gap:7px;padding:11px 14px;background:#141d28;border-bottom:1px solid rgba(255,255,255,.06)}
+.mock-bar>span{width:11px;height:11px;border-radius:50%}
+.mock-bar>span:nth-child(1){background:#ef5f57}.mock-bar>span:nth-child(2){background:#f6bd3b}.mock-bar>span:nth-child(3){background:#5fce6a}
+.mock-url{margin-left:14px;font-size:11px;color:#64748b;background:#0f1720;border-radius:6px;padding:3px 12px}
+.mock-body{display:flex;height:300px}
+.mock-sb{width:64px;background:linear-gradient(180deg,#1f3243,#16222e);padding:14px 0;display:flex;flex-direction:column;align-items:center;gap:11px;flex-shrink:0}
+.mock-logo{width:26px;height:26px;border-radius:7px;background:var(--lime)}
+.mock-nav{width:34px;height:8px;border-radius:4px;background:rgba(255,255,255,.10)}
+.mock-nav.on{background:var(--lime);width:40px}
+.mock-main{flex:1;padding:22px;display:flex;flex-direction:column;gap:18px;background:#0d131b}
+.mock-h{width:150px;height:14px;border-radius:6px;background:rgba(255,255,255,.14)}
+.mock-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.mock-kpi{background:#161e29;border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:14px}
+.mock-kpi b{display:block;font-size:20px;font-weight:900;color:#fff}
+.mock-kpi:nth-child(1) b{color:var(--lime)}
+.mock-kpi i{font-size:11px;color:#93a1b3;font-style:normal}
+.mock-chart{flex:1;display:flex;align-items:flex-end;gap:10px;padding-top:6px;border-top:1px solid rgba(255,255,255,.06)}
+.mock-chart>div{flex:1;background:linear-gradient(180deg,var(--lime),#5f9e0c);border-radius:5px 5px 0 0;min-height:6px;opacity:.92}
+@media(max-width:767px){.hero-mock{margin-top:36px}.mock-body{height:210px}.mock-sb{width:44px}.mock-kpi b{font-size:14px}.mock-kpi i{font-size:9px}}
+@media(prefers-reduced-motion:reduce){.mock-win{animation:none}}
 /* ── SECTIONS ── */
 section{padding:80px 24px}
 .container{max-width:1160px;margin:0 auto}
@@ -303,9 +327,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
     </a>
     <div class="nav-links">
       <a href="#fonctionnalites">Fonctionnalités</a>
-      <a href="#licences">Licences</a>
-      <a href="#abonnement">S'abonner</a>
-      <a href="#tarifs">Démo</a>
+      <a href="#abonnement">Tarifs</a>
       <a href="mailto:contact@konsilys.fr">Contact</a>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
@@ -319,9 +341,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
 <!-- Onglets de navigation rapide (mobile) -->
 <div class="tabbar">
   <a href="#fonctionnalites">Fonctionnalités</a>
-  <a href="#licences">Licences</a>
-  <a href="#abonnement">S'abonner</a>
-  <a href="#tarifs">Démo</a>
+  <a href="#abonnement">Tarifs</a>
   <a href="mailto:contact@konsilys.fr">Contact</a>
 </div>
 
@@ -329,29 +349,40 @@ footer{background:var(--dark);padding:48px 24px 32px}
 <section class="hero">
   <div class="container" style="position:relative">
     <div class="hero-eyebrow anim-fade">Plateforme SaaS ESN · Disponible maintenant</div>
-    <h1 class="anim-up delay-1">Pilotez vos équipes de consultants <em>sans effort</em></h1>
-    <p class="hero-sub anim-up delay-2">Missions, staffing, absences, recrutement, CRM — tout centralisé en temps réel. Importez votre équipe depuis Excel et soyez opérationnel en quelques minutes.</p>
+    <h1 class="anim-up delay-1">Pilotez votre ESN <em>en temps réel</em></h1>
+    <p class="hero-sub anim-up delay-2">Staffing, missions & marge, absences, recrutement et CRM — dans une seule interface. Importez votre équipe depuis Excel, opérationnel en quelques minutes.</p>
     <div class="hero-actions anim-up delay-3">
       <a href="/login" class="btn-primary">Accéder à l'application →</a>
-      <a href="mailto:contact@konsilys.fr" class="btn-ghost">Demander une démo</a>
+      <a href="#abonnement" class="btn-ghost">Voir les tarifs</a>
+    </div>
+    <!-- Aperçu produit (mockup animé) -->
+    <div class="hero-mock anim-up delay-4" aria-hidden="true">
+      <div class="mock-win">
+        <div class="mock-bar"><span></span><span></span><span></span><div class="mock-url">app.konsilys.fr</div></div>
+        <div class="mock-body">
+          <div class="mock-sb">
+            <div class="mock-logo"></div>
+            <div class="mock-nav on"></div><div class="mock-nav"></div><div class="mock-nav"></div><div class="mock-nav"></div><div class="mock-nav"></div><div class="mock-nav"></div>
+          </div>
+          <div class="mock-main">
+            <div class="mock-h"></div>
+            <div class="mock-kpis">
+              <div class="mock-kpi"><b>84,9 %</b><i>Staffing moyen</i></div>
+              <div class="mock-kpi"><b>828 k€</b><i>CA total</i></div>
+              <div class="mock-kpi"><b>789 €</b><i>TJM moyen</i></div>
+            </div>
+            <div class="mock-chart">
+              <div style="height:52%"></div><div style="height:74%"></div><div style="height:44%"></div><div style="height:90%"></div><div style="height:66%"></div><div style="height:83%"></div><div style="height:57%"></div><div style="height:100%"></div><div style="height:71%"></div><div style="height:61%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="hero-stats anim-fade delay-4">
-      <div class="hero-stat">
-        <div class="num">6</div>
-        <div class="lbl">Niveaux d'accès</div>
-      </div>
-      <div class="hero-stat">
-        <div class="num">Excel → App</div>
-        <div class="lbl">Onboarding express</div>
-      </div>
-      <div class="hero-stat">
-        <div class="num">Temps réel</div>
-        <div class="lbl">Synchronisation</div>
-      </div>
-      <div class="hero-stat">
-        <div class="num">Europe</div>
-        <div class="lbl">Données hébergées</div>
-      </div>
+      <div class="hero-stat"><div class="num">6</div><div class="lbl">Niveaux d'accès</div></div>
+      <div class="hero-stat"><div class="num">Excel → App</div><div class="lbl">Onboarding express</div></div>
+      <div class="hero-stat"><div class="num">Temps réel</div><div class="lbl">Synchronisation</div></div>
+      <div class="hero-stat"><div class="num">Europe</div><div class="lbl">Données hébergées</div></div>
     </div>
   </div>
 </section>
@@ -365,195 +396,35 @@ footer{background:var(--dark);padding:48px 24px 32px}
     <div class="features-grid">
       <div class="feat-card anim-up delay-1">
         <div class="feat-icon">📊</div>
-        <div class="feat-title">KPIs & Pilotage</div>
-        <div class="feat-desc">Staffing moyen, CA total, TJM moyen et contribution nette en temps réel. Filtrable par exercice fiscal et trimestre.</div>
+        <div class="feat-title">KPIs & pilotage</div>
+        <div class="feat-desc">Staffing, CA, TJM, marge et contribution nette en temps réel — consolidés par unité, par exercice et par trimestre.</div>
       </div>
       <div class="feat-card anim-up delay-2">
-        <div class="feat-icon">🎯</div>
-        <div class="feat-title">Tableau de bord</div>
-        <div class="feat-desc">Vue 360° : approbations en attente, prochaines arrivées, inter-contrats, fins de mission imminentes.</div>
+        <div class="feat-icon">💼</div>
+        <div class="feat-title">Missions & marge</div>
+        <div class="feat-desc">Assistance technique (TJM) et forfaits, avec calcul automatique du CA, de la marge et du prévisionnel 12 mois.</div>
       </div>
       <div class="feat-card anim-up delay-3">
-        <div class="feat-icon">👥</div>
-        <div class="feat-title">Gestion d'équipe</div>
-        <div class="feat-desc">Fiches consultants avec expertise, secteurs, filtres avancés. Futurs arrivants mis en avant automatiquement.</div>
-      </div>
-      <div class="feat-card anim-up delay-4">
-        <div class="feat-icon">💼</div>
-        <div class="feat-title">Missions</div>
-        <div class="feat-desc">Assistance technique (TJM) et forfaits. Calcul automatique du CA, de la marge et de la contribution nette.</div>
-      </div>
-      <div class="feat-card anim-up delay-5">
         <div class="feat-icon">📅</div>
-        <div class="feat-title">Planning Gantt</div>
-        <div class="feat-desc">Vue mensuelle par consultant. Missions, congés et inter-contrats visibles sur la même timeline.</div>
+        <div class="feat-title">Planning & absences</div>
+        <div class="feat-desc">Timeline mensuelle par consultant, 9 types d'absences et validation par le N+1 — jours ouvrés calculés automatiquement.</div>
       </div>
-      <div class="feat-card anim-up delay-6">
-        <div class="feat-icon">🌴</div>
-        <div class="feat-title">Absences</div>
-        <div class="feat-desc">9 types gérés (congés, RTT, maladie, maternité…). Calcul automatique des jours ouvrés hors fériés.</div>
-      </div>
-      <div class="feat-card anim-up delay-7">
+      <div class="feat-card anim-up delay-1">
         <div class="feat-icon">🎓</div>
-        <div class="feat-title">Recrutement <span style="font-size:10px;background:#84CC16;color:#1B2B3A;padding:1px 6px;border-radius:99px;font-weight:800;vertical-align:middle">MODULE</span></div>
-        <div class="feat-desc">Pipeline 8 statuts personnalisables. Recruteur assigné par candidat. Conversion automatique en Utilisateur. Module optionnel.</div>
+        <div class="feat-title">Recrutement <span class="feat-tag">MODULE</span></div>
+        <div class="feat-desc">Pipeline de candidats, recruteur assigné, matching sur les opportunités et conversion automatique en collaborateur.</div>
       </div>
-      <div class="feat-card anim-up delay-8">
-        <div class="feat-icon">💼</div>
-        <div class="feat-title">Business Développement <span style="font-size:10px;background:#84CC16;color:#1B2B3A;padding:1px 6px;border-radius:99px;font-weight:800;vertical-align:middle">MODULE</span></div>
-        <div class="feat-desc">CRM Comptes, Contacts, Pipeline d'opportunités, KPIs commerciaux. Opportunité gagnée → Mission créée automatiquement. Module optionnel.</div>
+      <div class="feat-card anim-up delay-2">
+        <div class="feat-icon">🤝</div>
+        <div class="feat-title">CRM Business <span class="feat-tag">MODULE</span></div>
+        <div class="feat-desc">Comptes, contacts, pipeline pondéré et KPIs commerciaux. Opportunité gagnée → mission créée automatiquement.</div>
       </div>
-      <div class="feat-card anim-up delay-9">
-        <div class="feat-icon">📥</div>
-        <div class="feat-title">Import & onboarding express</div>
-        <div class="feat-desc">Importez vos fiches consultants depuis Excel/CSV : colonnes reconnues automatiquement, préréglages réutilisables par format. Opérationnel en minutes.</div>
-      </div>
-      <div class="feat-card anim-up delay-9">
-        <div class="feat-icon">🔗</div>
-        <div class="feat-title">Intégration Microsoft Teams</div>
-        <div class="feat-desc">Synchronisation via Microsoft Graph. Retrouvez planning et absences directement dans votre environnement Teams.</div>
-      </div>
-      <div class="feat-card anim-up delay-9">
-        <div class="feat-icon">✅</div>
-        <div class="feat-title">Validation par le N+1</div>
-        <div class="feat-desc">Absences et modifications approuvées ou refusées — avec motif — par le manager direct. Délégation en cas d'absence. Notification instantanée.</div>
-      </div>
-      <div class="feat-card anim-up delay-9">
+      <div class="feat-card anim-up delay-3">
         <div class="feat-icon">🔒</div>
-        <div class="feat-title">Sécurité & isolation</div>
-        <div class="feat-desc">Chaque entreprise est isolée. Row Level Security Supabase. Données hébergées en Europe.</div>
+        <div class="feat-title">Import Excel & sécurité</div>
+        <div class="feat-desc">Onboarding express depuis Excel/CSV, isolation stricte par entreprise (RLS) et données hébergées en Europe.</div>
       </div>
     </div>
-  </div>
-</section>
-
-<!-- LICENCES & TARIFS -->
-<section class="licences" id="licences">
-  <div class="container">
-    <p class="section-eyebrow">Licences & Modules</p>
-    <h2 class="section-title">Un accès adapté à chaque rôle</h2>
-    <p class="section-sub" style="margin-bottom:32px">6 licences disponibles + 2 modules optionnels pour enrichir l'expérience de toute votre organisation.</p>
-
-    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px">6 Licences</p>
-    <div class="licence-grid lic6">
-
-      <div class="licence-card anim-up delay-1">
-        <div class="lic-name">Super Admin</div>
-        <div class="lic-price">49 €</div>
-        <div class="lic-period">par mois</div>
-        <ul class="lic-features">
-          <li>Pilotage global de l'organisation</li>
-          <li>KPIs hiérarchiques 3 niveaux</li>
-          <li>Gestion des accès & invitations</li>
-          <li>Paramètres (devise, FY, rôles…)</li>
-        </ul>
-        <a href="#abonnement" class="lic-cta">S'abonner →</a>
-      </div>
-
-      <div class="licence-card featured anim-up delay-2">
-        <div class="lic-name">Admin</div>
-        <div class="lic-price">39 €</div>
-        <div class="lic-period">par mois</div>
-        <ul class="lic-features">
-          <li>Vision multi-Gestionnaires</li>
-          <li>KPIs agrégés par équipe</li>
-          <li>Dashboard & missions complètes</li>
-          <li>Invite ses Gestionnaires</li>
-        </ul>
-        <a href="#abonnement" class="lic-cta">S'abonner →</a>
-      </div>
-
-      <div class="licence-card anim-up delay-3">
-        <div class="lic-name">Gestionnaire</div>
-        <div class="lic-price">29 €</div>
-        <div class="lic-period">par mois</div>
-        <ul class="lic-features">
-          <li>Gestion complète de son équipe</li>
-          <li>KPIs, missions & planning</li>
-          <li>Validation des approbations</li>
-          <li>Invite ses Utilisateurs</li>
-        </ul>
-        <a href="#abonnement" class="lic-cta">S'abonner →</a>
-      </div>
-
-      <div class="licence-card anim-up delay-4">
-        <div class="lic-name">Utilisateur</div>
-        <div class="lic-price">8 €</div>
-        <div class="lic-period">par mois</div>
-        <ul class="lic-features">
-          <li>Suivi de ses missions</li>
-          <li>Soumission de demandes</li>
-          <li>Approbations en temps réel</li>
-          <li>Planning & absences personnels</li>
-        </ul>
-        <a href="#abonnement" class="lic-cta">S'abonner →</a>
-      </div>
-
-
-
-      <div class="licence-card anim-up delay-5">
-        <div class="lic-name">Recruteur</div>
-        <div class="lic-price">22 €</div>
-        <div class="lic-period">par mois</div>
-        <ul class="lic-features">
-          <li>Pipeline candidats 8 statuts</li>
-          <li>Recruteur assigné par candidat</li>
-          <li>Filtrage & suivi par recruteur</li>
-          <li>Conversion automatique → Utilisateur</li>
-        </ul>
-        <a href="#abonnement" class="lic-cta" style="background:#0F766E;color:#fff">S'abonner →</a>
-      </div>
-
-      <div class="licence-card anim-up delay-6">
-        <div class="lic-name">Business Manager</div>
-        <div class="lic-price">22 €</div>
-        <div class="lic-period">par mois</div>
-        <ul class="lic-features">
-          <li>Accès Business + Activité + Absences</li>
-          <li>CRM Comptes, Contacts, Pipeline</li>
-          <li>Opportunité gagnée → Mission auto</li>
-          <li>Absences validées par son N+1</li>
-        </ul>
-        <a href="#abonnement" class="lic-cta">S'abonner →</a>
-      </div>
-
-    </div>
-
-    <!-- Modules optionnels -->
-    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:28px 0 12px">Modules optionnels — étendent les licences de base</p>
-    <div class="mod-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-
-      <div style="background:var(--navy);border-radius:14px;padding:22px;border:1px solid rgba(132,204,22,.3)">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="font-size:15px;font-weight:800;color:#84CC16">Module Recrutement</div>
-          <span style="background:rgba(132,204,22,.15);color:#84CC16;font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px">MODULE</span>
-        </div>
-        <div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:12px">Débloque l'onglet Recrutement pour Admin, Gestionnaire et Utilisateur</div>
-        <ul class="lic-features" style="margin-bottom:14px">
-          <li>8 statuts personnalisables</li>
-          <li>Visibilité hiérarchique (Admin → Gestionnaire → Recruteur)</li>
-          <li>Statuts renommables dans les Paramètres</li>
-        </ul>
-        <a href="#abonnement" class="lic-cta">Ajouter à mon abonnement →</a>
-      </div>
-
-      <div style="background:var(--navy);border-radius:14px;padding:22px;border:1px solid rgba(132,204,22,.3)">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="font-size:15px;font-weight:800;color:#84CC16">Business Développement</div>
-          <span style="background:rgba(132,204,22,.15);color:#84CC16;font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px">MODULE</span>
-        </div>
-        <div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:12px">Débloque l'onglet Business pour Admin, Gestionnaire et Utilisateur</div>
-        <ul class="lic-features" style="margin-bottom:14px">
-          <li>CRM Comptes, Contacts, Pipeline d'opportunités</li>
-          <li>KPIs commerciaux & entonnoir de vente</li>
-          <li>Visibilité hiérarchique (Admin → Gestionnaire → Business Manager)</li>
-        </ul>
-        <a href="#abonnement" class="lic-cta">Ajouter à mon abonnement →</a>
-      </div>
-
-    </div>
-
-    <p style="text-align:center;font-size:13px;color:var(--muted);margin-top:24px">Tarifs transparents, sans frais de mise en place · <a href="mailto:contact@konsilys.fr" style="color:var(--navy);font-weight:700;text-decoration:underline">contact@konsilys.fr</a></p>
   </div>
 </section>
 
@@ -761,138 +632,6 @@ renderCfg();
 </script>
 
 
-<section id="tarifs" style="background:#fff;padding:80px 24px">
-  <div class="container">
-    <div class="tarifs-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start">
-
-      <!-- Colonne gauche : pitch -->
-      <div>
-        <p class="section-eyebrow">Démo & accompagnement</p>
-        <h2 class="section-title" style="margin-bottom:20px">Envie de voir Konsilys en action ?</h2>
-        <p style="font-size:16px;color:var(--muted);margin-bottom:32px;line-height:1.7">Les tarifs sont publics (ci-dessus) et l'inscription est en libre-service. Pour une démonstration personnalisée, un accompagnement à la migration ou un besoin sur-mesure, écrivez-nous.</p>
-
-        <div style="display:flex;flex-direction:column;gap:18px">
-          <div style="display:flex;gap:14px;align-items:flex-start">
-            <div style="width:36px;height:36px;border-radius:8px;background:var(--off);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">⚡</div>
-            <div>
-              <div style="font-weight:700;color:var(--navy);font-size:14px;margin-bottom:3px">Réponse sous 24h</div>
-              <div style="font-size:13px;color:var(--muted)">Un interlocuteur dédié vous recontacte rapidement avec une proposition personnalisée.</div>
-            </div>
-          </div>
-          <div style="display:flex;gap:14px;align-items:flex-start">
-            <div style="width:36px;height:36px;border-radius:8px;background:var(--off);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🎯</div>
-            <div>
-              <div style="font-weight:700;color:var(--navy);font-size:14px;margin-bottom:3px">Démo incluse</div>
-              <div style="font-size:13px;color:var(--muted)">Nous vous présentons Konsilys avec vos propres données pour vous projeter immédiatement.</div>
-            </div>
-          </div>
-          <div style="display:flex;gap:14px;align-items:flex-start">
-            <div style="width:36px;height:36px;border-radius:8px;background:var(--off);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🤝</div>
-            <div>
-              <div style="font-weight:700;color:var(--navy);font-size:14px;margin-bottom:3px">Accompagnement à l'onboarding</div>
-              <div style="font-size:13px;color:var(--muted)">Mise en place guidée, import de vos données existantes, formation de vos équipes.</div>
-            </div>
-          </div>
-        </div>
-
-        <div style="margin-top:36px;padding:20px;background:var(--off);border-radius:12px;border:1px solid var(--border)">
-          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:10px">Bon à savoir</div>
-          <p style="font-size:13px;color:var(--navy);font-weight:600;line-height:1.6">Le choix des licences et la configuration de votre espace se décident ensemble lors de la démo — inutile d'y réfléchir avant.</p>
-        </div>
-      </div>
-
-      <!-- Colonne droite : formulaire -->
-      <div style="background:var(--off);border-radius:16px;padding:32px;border:1px solid var(--border)">
-        <h3 style="font-size:18px;font-weight:800;color:var(--navy);margin-bottom:6px">Demander une démo</h3>
-        <p style="font-size:13px;color:var(--muted);margin-bottom:24px">Complétez ce formulaire, nous revenons vers vous sous 24h.</p>
-
-        <form id="qualification-form" onsubmit="submitForm(event)" style="display:flex;flex-direction:column;gap:14px">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div>
-              <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px">Prénom *</label>
-              <input name="prenom" required placeholder="Prénom" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='#84CC16'" onblur="this.style.borderColor='#E2E8F0'">
-            </div>
-            <div>
-              <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px">Nom *</label>
-              <input name="nom" required placeholder="Nom" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='#84CC16'" onblur="this.style.borderColor='#E2E8F0'">
-            </div>
-          </div>
-
-          <div>
-            <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px">Email professionnel *</label>
-            <input name="email" type="email" required placeholder="prenom.nom@entreprise.com" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='#84CC16'" onblur="this.style.borderColor='#E2E8F0'">
-          </div>
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div>
-              <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px">Entreprise *</label>
-              <input name="entreprise" required placeholder="Nom de l'ESN" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='#84CC16'" onblur="this.style.borderColor='#E2E8F0'">
-            </div>
-            <div>
-              <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px">Votre poste</label>
-              <input name="poste" placeholder="ex : Directeur Général" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='#84CC16'" onblur="this.style.borderColor='#E2E8F0'">
-            </div>
-          </div>
-
-          <div>
-            <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px">Nombre de consultants *</label>
-            <select name="nb_consultants" required style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;outline:none;appearance:none;cursor:pointer">
-              <option value="">— Sélectionnez —</option>
-              <option value="1-10">1 à 10 consultants</option>
-              <option value="10-30">10 à 30 consultants</option>
-              <option value="30-100">30 à 100 consultants</option>
-              <option value="100+">Plus de 100 consultants</option>
-            </select>
-          </div>
-
-          <div>
-            <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px">Outil actuel</label>
-            <input name="outil_actuel" placeholder="ex : Excel, Boond, un ERP, aucun…" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='#84CC16'" onblur="this.style.borderColor='#E2E8F0'">
-          </div>
-
-          <div>
-            <label style="font-size:12px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px">Message / besoins spécifiques</label>
-            <textarea name="message" rows="3" placeholder="Décrivez votre contexte, vos priorités ou vos questions..." style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;outline:none;resize:vertical;transition:border-color .15s" onfocus="this.style.borderColor='#84CC16'" onblur="this.style.borderColor='#E2E8F0'"></textarea>
-          </div>
-
-          <button type="submit" style="background:var(--navy);color:#fff;padding:13px 24px;border:none;border-radius:10px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;cursor:pointer;transition:background .15s;margin-top:4px" onmouseover="this.style.background='#243447'" onmouseout="this.style.background='var(--navy)'">
-            Envoyer ma demande →
-          </button>
-
-          <p id="form-success" style="display:none;text-align:center;color:#15803d;font-weight:700;font-size:14px;background:#f0fdf4;padding:12px;border-radius:8px">✅ Demande envoyée ! Nous vous recontactons sous 24h.</p>
-          <p style="font-size:11px;color:var(--muted);text-align:center">En soumettant ce formulaire, vous acceptez notre <a href="/cgu" style="color:var(--navy)">politique de confidentialité</a>.</p>
-        </form>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<script>
-function submitForm(e){
-  e.preventDefault();
-  var f=e.target;
-  var data={
-    prenom:f.prenom.value,nom:f.nom.value,
-    email:f.email.value,entreprise:f.entreprise.value,
-    poste:f.poste.value,nb:f.nb_consultants.value,
-    outil:f.outil_actuel.value,message:f.message.value
-  };
-  var body='Nouvelle demande de démo Konsilys%0A%0A'
-    +'Prénom : '+data.prenom+'%0A'
-    +'Nom : '+data.nom+'%0A'
-    +'Email : '+data.email+'%0A'
-    +'Entreprise : '+data.entreprise+'%0A'
-    +'Poste : '+data.poste+'%0A'
-    +'Nombre de consultants : '+data.nb+'%0A'
-    +'Outil actuel : '+data.outil+'%0A'
-    +'Message : '+data.message;
-  window.location.href='mailto:contact@konsilys.fr?subject=Demande de démo - '+encodeURIComponent(data.entreprise)+'&body='+body;
-  document.getElementById('form-success').style.display='block';
-  f.reset();
-}
-</script>
-
 <!-- CTA FINAL -->
 <section class="cta-section">
   <div class="container">
@@ -922,8 +661,7 @@ function submitForm(e){
         <h4>Produit</h4>
         <ul>
           <li><a href="#fonctionnalites">Fonctionnalités</a></li>
-          <li><a href="#licences">Licences</a></li>
-          <li><a href="#tarifs">Tarifs</a></li>
+          <li><a href="#abonnement">Tarifs & abonnement</a></li>
           <li><a href="/login">Se connecter</a></li>
         </ul>
       </div>
