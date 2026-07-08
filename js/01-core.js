@@ -602,3 +602,73 @@ function toast(msg,type){
   requestAnimationFrame(function(){t.style.opacity='1';t.style.transform='none';});
   setTimeout(function(){t.style.opacity='0';t.style.transform='translateY(8px)';setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t);},240);},2400);
 }
+
+/* ══════════════════════════════════════════════════════════════
+   THÈME SOMBRE — moteur de transformation des couleurs INLINE
+   ══════════════════════════════════════════════════════════════
+   Les templates produisent des couleurs claires codées en dur. Une feuille CSS
+   ne peut pas surcharger un style inline ; on transforme donc chaque couleur
+   inline SELON SON RÔLE (la propriété CSS) :
+     • color        → toujours rendu clair et lisible ;
+     • background   → toujours rendu sombre ;
+     • bordure      → sombre discrète ;
+     • accents saturés (lime, rouge, ambre, bleu) → teinte préservée, luminosité
+       ajustée pour le contraste.
+   Cela lève l'ambiguïté #fff-texte / #fff-fond sans migration manuelle. Les
+   couleurs passant déjà par var(--x) sont gérées par les tokens [data-theme=dark]. */
+var _themeCache={};
+function isDark(){return document.documentElement.getAttribute('data-theme')==='dark';}
+function _cparse(c){
+  if(!c)return null;c=(''+c).trim().toLowerCase();var m;
+  if(m=c.match(/^#([0-9a-f]{3})$/))return{r:parseInt(m[1][0]+m[1][0],16),g:parseInt(m[1][1]+m[1][1],16),b:parseInt(m[1][2]+m[1][2],16),a:1};
+  if(m=c.match(/^#([0-9a-f]{6})$/))return{r:parseInt(m[1].substr(0,2),16),g:parseInt(m[1].substr(2,2),16),b:parseInt(m[1].substr(4,2),16),a:1};
+  if(m=c.match(/^rgba?\(([^)]+)\)$/)){var p=m[1].split(',').map(function(x){return parseFloat(x);});return{r:p[0],g:p[1],b:p[2],a:p.length>3?p[3]:1};}
+  return null;
+}
+function _rgb2hsl(r,g,b){r/=255;g/=255;b/=255;var mx=Math.max(r,g,b),mn=Math.min(r,g,b),h,s,l=(mx+mn)/2;if(mx===mn){h=s=0;}else{var d=mx-mn;s=l>0.5?d/(2-mx-mn):d/(mx+mn);switch(mx){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;default:h=(r-g)/d+4;}h/=6;}return[h,s,l];}
+function _hsl2rgb(h,s,l){var r,g,b;function hue(p,q,t){if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<1/2)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p;}if(s===0){r=g=b=l;}else{var q=l<0.5?l*(1+s):l+s-l*s,p=2*l-q;r=hue(p,q,h+1/3);g=hue(p,q,h);b=hue(p,q,h-1/3);}return{r:r*255,g:g*255,b:b*255};}
+function _cfmt(o){o.r=Math.max(0,Math.min(255,Math.round(o.r)));o.g=Math.max(0,Math.min(255,Math.round(o.g)));o.b=Math.max(0,Math.min(255,Math.round(o.b)));return o.a<1?'rgba('+o.r+','+o.g+','+o.b+','+o.a+')':'rgb('+o.r+','+o.g+','+o.b+')';}
+function darkColor(c,role){
+  var key=role+'|'+c;if(_themeCache[key]!==undefined)return _themeCache[key];
+  var o=_cparse(c);if(!o){_themeCache[key]=c;return c;}
+  var hsl=_rgb2hsl(o.r,o.g,o.b),h=hsl[0],s=hsl[1],l=hsl[2];
+  var spread=Math.abs(o.r-o.g)+Math.abs(o.g-o.b)+Math.abs(o.r-o.b);
+  var out,nl,ns=s;
+  if(s>0.28&&spread>60){
+    /* Accent saturé : garder teinte, ajuster luminosité selon le rôle. */
+    if(role==='text'){nl=Math.max(l,0.62);}
+    else if(role==='bg'){nl=Math.min(l,0.32);ns=Math.min(s,0.6);}
+    else{nl=Math.min(Math.max(l,0.34),0.5);}
+  }else{
+    /* Neutre : luminosité pilotée par le rôle, très légère teinte conservée. */
+    if(role==='text'){nl=Math.max(1-l,0.60);}
+    else if(role==='bg'){nl=Math.min(1-l,0.13);}
+    else{nl=0.24;}
+    ns=Math.min(s,0.14);
+  }
+  var rr=_hsl2rgb(h,ns,nl);out={r:rr.r,g:rr.g,b:rr.b,a:o.a};
+  var res=_cfmt(out);_themeCache[key]=res;return res;
+}
+/* Applique la transformation sombre aux couleurs inline d'une racine DOM. */
+function themify(root){
+  if(!root||!isDark())return;
+  var els=root.querySelectorAll('[style]'),i,st;
+  for(i=0;i<els.length;i++){
+    st=els[i].style;
+    if(st.color)st.color=darkColor(st.color,'text');
+    if(st.backgroundColor)st.backgroundColor=darkColor(st.backgroundColor,'bg');
+    if(st.borderTopColor)st.borderTopColor=darkColor(st.borderTopColor,'border');
+    if(st.borderRightColor)st.borderRightColor=darkColor(st.borderRightColor,'border');
+    if(st.borderBottomColor)st.borderBottomColor=darkColor(st.borderBottomColor,'border');
+    if(st.borderLeftColor)st.borderLeftColor=darkColor(st.borderLeftColor,'border');
+    if(st.backgroundImage&&st.backgroundImage.indexOf('gradient')>=0){
+      st.backgroundImage=st.backgroundImage.replace(/rgba?\([^)]+\)|#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}/g,function(m){return darkColor(m,'bg');});
+    }
+  }
+}
+/* Bascule clair / sombre (persistée). */
+function setTheme(mode){
+  document.documentElement.setAttribute('data-theme',mode);
+  try{localStorage.setItem('theme',mode);}catch(e){}
+}
+function toggleTheme(){setTheme(isDark()?'light':'dark');}
