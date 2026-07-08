@@ -50,8 +50,7 @@ function render(){
     :'';
   var _topbar='<div class="topbar"><button class="topsearch" data-act="cmdk-open" title="Rechercher (⌘K)">'
     +'<span style="opacity:.7">🔍</span><span class="tsp">Rechercher une fonctionnalité, une page…</span>'
-    +'<span class="tsk">⌘K</span></button>'
-    +'<button class="toptheme" data-act="theme-toggle" title="'+(isDark()?'Passer en clair':'Passer en sombre')+'" aria-label="Changer de thème">'+(isDark()?'☀️':'🌙')+'</button></div>';
+    +'<span class="tsk">⌘K</span></button></div>';
   document.getElementById('mc').innerHTML=_demoBanner+_topbar+'<div class="inn'+(_tabChanged?' vin':'')+'" style="position:relative">'+_pfBtn+v+'</div>';
   document.getElementById('md').innerHTML=tModal()+(S.bizModal?tBizModal():'');
   /* Thème sombre : transforme les couleurs inline du contenu et des modales
