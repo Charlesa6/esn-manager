@@ -3,7 +3,7 @@
 //
 // Deux usages, même code :
 //   • 1re inscription : l'admin vient de créer son compte (entreprise inactive).
-//     → une licence Admin est obligatoire dans le panier.
+//     → une licence propriétaire (Admin ou Super Admin) est obligatoire.
 //   • Ajout de sièges : une entreprise déjà active achète des licences pour
 //     d'autres personnes. → pas de licence Admin requise.
 //
@@ -26,8 +26,11 @@ const ALLOWED = new Set<string>([
   "price_1TqUYVA6guMn7iZUr72z01vh", "price_1TqUYXA6guMn7iZUllYZc79I",
   "price_1TqUYYA6guMn7iZUkwyVkWpb", "price_1TqUYZA6guMn7iZUwngF93eZ",
 ]);
-const ADMIN_PRICES = new Set<string>([
-  "price_1TqUYQA6guMn7iZUdOwh2sri", "price_1TqUYRA6guMn7iZU0VqsQlIt",
+// Licences « propriétaire » acceptées pour créer l'espace à la 1re inscription :
+// Admin ou Super Admin (mensuel + annuel).
+const OWNER_PRICES = new Set<string>([
+  "price_1TqUYQA6guMn7iZUdOwh2sri", "price_1TqUYRA6guMn7iZU0VqsQlIt", // Admin
+  "price_1TqUYTA6guMn7iZUVdiYjBhI", "price_1TqUYUA6guMn7iZUtB7aYGuq", // Super Admin
 ]);
 const SEAT_ROLES = new Set<string>([
   "utilisateur", "recruteur", "sales", "gestionnaire", "admin", "super_admin",
@@ -79,9 +82,9 @@ Deno.serve(async (req) => {
 
     const initial = !co?.active; // entreprise pas encore active => 1re inscription
     if (initial) {
-      if (prof.role !== "admin") return json({ error: "Seul l'administrateur peut initier la création de l'entreprise." }, 403);
-      if (!items.some((i: any) => ADMIN_PRICES.has(i.price_id))) {
-        return json({ error: "Ajoutez au moins 1 licence Admin : elle donne les droits d'administration de votre espace ESN." }, 400);
+      if (!["admin", "super_admin"].includes(prof.role)) return json({ error: "Seul un administrateur peut initier la création de l'entreprise." }, 403);
+      if (!items.some((i: any) => OWNER_PRICES.has(i.price_id))) {
+        return json({ error: "Ajoutez votre licence Admin ou Super Admin : elle donne les droits d'administration de votre espace ESN." }, 400);
       }
     } else if (!["admin", "gestionnaire", "super_admin"].includes(prof.role)) {
       return json({ error: "Droits insuffisants pour acheter des licences." }, 403);

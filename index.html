@@ -585,8 +585,9 @@ footer{background:var(--dark);padding:48px 24px 32px}
         <input id="cfg-co" type="text" placeholder="Nom de votre ESN" class="cfg-in">
 
         <!-- 2. Vous (administrateur) -->
-        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 8px">2 · Vous (administrateur)</div>
-        <div style="font-size:12px;color:var(--navy);background:rgba(132,204,22,.12);border:1px solid rgba(132,204,22,.35);border-radius:8px;padding:8px 12px;margin-bottom:10px">⭐ La <strong>licence Admin</strong> est incluse : elle vous donne les droits d'administration de votre espace. Vous créez votre compte ici, en payant.</div>
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 8px">2 · Votre licence (vous)</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Choisissez votre niveau d'accès administrateur. Vous créez votre compte ici, en payant.</div>
+        <div id="cfg-owner" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <input id="cfg-fn" type="text" placeholder="Prénom" class="cfg-in" style="margin:0">
           <input id="cfg-ln" type="text" placeholder="Nom" class="cfg-in" style="margin:0">
@@ -632,7 +633,12 @@ var MODULES=[
   {key:'recrutement',name:'Recrutement',price:59,m:'price_1TqUYYA6guMn7iZUkwyVkWpb',a:'price_1TqUYZA6guMn7iZUwngF93eZ'}
 ];
 var sb=(window.supabase)?window.supabase.createClient('https://rwmstlesxnglpblrurqj.supabase.co',SUPA_ANON):null;
-var CFG={billing:'monthly',members:[],mod:{}};
+var CFG={billing:'monthly',members:[],mod:{},ownerRole:'admin'};
+var OWNER_ROLES=[
+  {key:'admin',name:'Admin',desc:'Gestion multi-équipes, KPIs agrégés, missions & dashboard complets.'},
+  {key:'super_admin',name:'Super Admin',desc:'Tout Admin + pilotage global sur 3 niveaux et paramétrage complet (devise, exercice fiscal, rôles).'}
+];
+function setOwner(r){CFG.ownerRole=r;renderCfg();}
 function planByRole(r){for(var i=0;i<PLANS.length;i++){if(PLANS[i].key===r)return PLANS[i];}return null;}
 function priceId(p){return CFG.billing==='annual'?p.a:p.m;}
 function setBilling(b){
@@ -653,6 +659,14 @@ function removeMember(i){CFG.members.splice(i,1);renderCfg();}
 function setMember(i,k,v){CFG.members[i][k]=v;if(k==='role')renderCfg();else recalc();}
 function roleOpts(sel){var per=CFG.billing==='annual'?'/an':'/mois';return PLANS.map(function(p){return '<option value="'+p.key+'"'+(p.key===sel?' selected':'')+'>'+p.name+' — '+fmt(unit(p))+' €'+per+'</option>';}).join('');}
 function renderCfg(){
+  var per0=CFG.billing==='annual'?'/an':'/mois';
+  document.getElementById('cfg-owner').innerHTML=OWNER_ROLES.map(function(o){
+    var p=planByRole(o.key);var on=CFG.ownerRole===o.key;
+    return '<button type="button" onclick="setOwner(\''+o.key+'\')" style="text-align:left;border:2px solid '+(on?'#84CC16':'#e2e8f0')+';background:'+(on?'#f0fdf4':'#fff')+';border-radius:12px;padding:12px;cursor:pointer;font-family:inherit;transition:all .12s">'
+      +'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px"><span style="font-size:13px;font-weight:800;color:#1B2B3A">'+(on?'✓ ':'')+o.name+'</span>'
+      +'<span style="font-size:15px;font-weight:900;color:#1B2B3A">'+fmt(unit(p))+' €<span style="font-size:11px;font-weight:600;color:#64748B">'+per0+'</span></span></div>'
+      +'<div style="font-size:11px;color:#64748B;margin-top:5px;line-height:1.4">'+o.desc+'</div></button>';
+  }).join('');
   document.getElementById('cfg-modules').innerHTML=MODULES.map(function(m){
     var on=!!CFG.mod[m.key];var per=CFG.billing==='annual'?' /an':' /mois';
     return '<label style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid '+(on?'#bbf7d0':'#e2e8f0')+';border-radius:10px;background:'+(on?'#f0fdf4':'#fff')+';cursor:pointer">'
@@ -673,9 +687,10 @@ function renderCfg(){
 }
 function recalc(){
   var per=CFG.billing==='annual'?' /an':' /mois';
-  var adminPlan=planByRole('admin');
-  var total=unit(adminPlan);
-  var lines=['1× Admin (vous)'];
+  var ownerPlan=planByRole(CFG.ownerRole);
+  var ownerName=(CFG.ownerRole==='super_admin')?'Super Admin':'Admin';
+  var total=unit(ownerPlan);
+  var lines=['1× '+ownerName+' (vous)'];
   var counts={};
   CFG.members.forEach(function(m){var p=planByRole(m.role);if(p)total+=unit(p);counts[m.role]=(counts[m.role]||0)+1;});
   Object.keys(counts).forEach(function(r){var p=planByRole(r);if(p)lines.push(counts[r]+'× '+p.name);});
@@ -701,7 +716,7 @@ function subscribe(){
     if(!m.fn.trim()||!m.ln.trim()||!isEmail(m.em))return err('Membre '+(i+1)+' : prénom, nom et email valides requis.');
     seats.push({first_name:m.fn.trim(),last_name:m.ln.trim(),email:m.em.trim().toLowerCase(),role:m.role});
   }
-  var items=[{price_id:priceId(planByRole('admin')),quantity:1}];
+  var items=[{price_id:priceId(planByRole(CFG.ownerRole)),quantity:1}];
   var counts={};CFG.members.forEach(function(m){counts[m.role]=(counts[m.role]||0)+1;});
   Object.keys(counts).forEach(function(r){items.push({price_id:priceId(planByRole(r)),quantity:counts[r]});});
   MODULES.forEach(function(m){if(CFG.mod[m.key])items.push({price_id:priceId(m),quantity:1});});
@@ -710,7 +725,7 @@ function subscribe(){
   msg.style.color='rgba(255,255,255,.6)';msg.textContent='';
   var newCid=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():('xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return(c==='x'?r:r&0x3|0x8).toString(16);}));
   function reset(){btn.disabled=false;btn.textContent='Payer et créer mon compte →';}
-  sb.auth.signUp({email:em,password:pw,options:{data:{company_name:co,first_name:fn,last_name:ln,role:'admin',company_id:newCid}}})
+  sb.auth.signUp({email:em,password:pw,options:{data:{company_name:co,first_name:fn,last_name:ln,role:CFG.ownerRole,company_id:newCid}}})
     .then(function(res){
       if(res.error){var e=(res.error.message||'').toLowerCase();reset();
         if(e.indexOf('already')>=0||e.indexOf('registered')>=0){err('Cet email a déjà un compte. Connectez-vous, puis finalisez votre paiement depuis votre espace.');}
