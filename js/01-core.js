@@ -556,3 +556,20 @@ function tEmpty(icon,title,sub,ctaHtml){
     +(ctaHtml?'<div style="margin-top:12px">'+ctaHtml+'</div>':'')
     +'</div>';
 }
+
+/* Notification légère et non bloquante (confirmation d'enregistrement, erreur…).
+   toast('Unité enregistrée')  ·  toast('Échec…','error') */
+function toast(msg,type){
+  var box=document.getElementById('toasts');
+  if(!box){box=document.createElement('div');box.id='toasts';
+    box.style.cssText='position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:2000;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none';
+    document.body.appendChild(box);}
+  var ok=type!=='error';
+  var t=document.createElement('div');
+  t.setAttribute('role','status');
+  t.style.cssText='pointer-events:auto;display:flex;align-items:center;gap:8px;background:'+(ok?'#1B2B3A':'#7f1d1d')+';color:#fff;font-size:13px;font-weight:600;padding:10px 16px;border-radius:12px;box-shadow:0 10px 30px rgba(2,6,23,.28);opacity:0;transform:translateY(8px);transition:opacity .18s,transform .18s;max-width:90vw';
+  t.innerHTML='<span style="font-size:15px">'+(ok?'✅':'⚠️')+'</span><span>'+esc(msg)+'</span>';
+  box.appendChild(t);
+  requestAnimationFrame(function(){t.style.opacity='1';t.style.transform='none';});
+  setTimeout(function(){t.style.opacity='0';t.style.transform='translateY(8px)';setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t);},240);},2400);
+}

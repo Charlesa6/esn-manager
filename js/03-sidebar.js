@@ -2,6 +2,12 @@
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    TEMPLATES - SIDEBAR
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+/* Un segment du sélecteur de période (Année / T1…T4), style « segmented control ». */
+function qSeg(id,lb,active,title){
+  return '<button data-act="qsel" data-id="'+id+'"'+(title?' title="'+esc(title)+'"':'')
+    +' style="flex:1;min-width:0;padding:6px 2px;border:none;border-radius:6px;font-size:10.5px;font-weight:800;cursor:pointer;transition:all .14s;'
+    +(active?'background:#84CC16;color:#16240a;box-shadow:0 1px 4px rgba(132,204,22,.35)':'background:transparent;color:#9fb0c2')+'">'+lb+'</button>';
+}
 function tSB(){
   var NAV;
   if(S.role==='recruteur'){
@@ -120,14 +126,20 @@ function tSB(){
     +'<div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:700;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(S.profileFirstName||S._userEmail||'Profil')+'</div>'
     +'<div style="font-size:10px;color:#475569">'+rLabel(S.role)+'</div></div>'
     +'<span style="font-size:10px;color:#475569">&#x270E;</span></button>'
-    +'<div class="syr"><div class="syr-lbl">Exercice fiscal</div><select id="yrs">'+fyOpts+'</select>'
-    +'<div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap">'
-    +'<button data-act="qsel" data-id="" style="flex:1;min-width:54px;padding:6px 4px;border-radius:7px;font-size:10px;font-weight:800;border:1px solid '+(!S.quarter?'#84CC16':'rgba(255,255,255,.12)')+';background:'+(!S.quarter?'#84CC16':'transparent')+';color:'+(!S.quarter?'#16240a':'#9fb0c2')+';cursor:pointer;transition:all .14s">Ann\u00e9e</button>'
-    +QUARTERS.map(function(q){
-      var active=S.quarter===q.id;
-      return '<button data-act="qsel" data-id="'+q.id+'" title="'+esc(q.lbFull)+'" style="flex:1;min-width:38px;padding:6px 4px;border-radius:7px;font-size:10px;font-weight:800;border:1px solid '+(active?'#84CC16':'rgba(255,255,255,.12)')+';background:'+(active?'#84CC16':'transparent')+';color:'+(active?'#16240a':'#9fb0c2')+';cursor:pointer;transition:all .14s">'+q.lb+'</button>';
-    }).join('')
-    +'</div></div>'
+    +'<div class="syr"><div class="syr-lbl">Exercice fiscal</div>'
+    /* Stepper d'exercice : \u2039 FY26 \u203a \u2014 plus direct qu'un menu d\u00e9roulant */
+    +'<div style="display:flex;align-items:center;gap:4px">'
+    +'<button data-act="yr-prev"'+(S.year<=CFY-2?' disabled':'')+' aria-label="Exercice pr\u00e9c\u00e9dent" style="width:30px;height:30px;flex-shrink:0;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#cbd5e1;font-size:15px;font-weight:800;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .14s'+(S.year<=CFY-2?';opacity:.3;cursor:default':'')+'">\u2039</button>'
+    +'<div style="flex:1;text-align:center;font-size:13px;font-weight:800;color:#f8fafc">'+fyLbl(S.year)+'</div>'
+    +'<button data-act="yr-next"'+(S.year>=CFY+1?' disabled':'')+' aria-label="Exercice suivant" style="width:30px;height:30px;flex-shrink:0;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#cbd5e1;font-size:15px;font-weight:800;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .14s'+(S.year>=CFY+1?';opacity:.3;cursor:default':'')+'">\u203a</button>'
+    +'</div>'
+    /* P\u00e9riode : segmented control tenant sur une seule ligne */
+    +'<div style="display:flex;margin-top:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10);border-radius:9px;padding:3px;gap:2px">'
+    +qSeg('','Ann\u00e9e',!S.quarter)
+    +QUARTERS.map(function(q){return qSeg(q.id,q.lb,S.quarter===q.id,q.lbFull);}).join('')
+    +'</div>'
+    +'<div style="font-size:10px;color:#64748b;margin-top:6px;text-align:center">'+(S.quarter?esc(((QUARTERS.find(function(q){return q.id===S.quarter;})||{}).lbFull)||''):'Exercice complet')+'</div>'
+    +'</div>'
     +dirBlock
     +'<nav class="snv">'+nav+'</nav>'
     +'<div class="sft">'

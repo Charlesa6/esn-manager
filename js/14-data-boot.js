@@ -114,9 +114,10 @@ function setNplus1(memberId, mgrId){
   if(!sb)return;
   var val=mgrId||null;
   sb.rpc('set_member_manager',{p_member:memberId,p_manager:val}).then(function(r){
-    if(r&&r.error){alert('Hiérarchie : '+r.error.message);return;}
+    if(r&&r.error){if(typeof toast==='function')toast('Hiérarchie : '+r.error.message,'error');else alert('Hiérarchie : '+r.error.message);return;}
     var m=(S.orgProfiles||[]).find(function(p){return p.id===memberId;});
     if(m)m.manager_id=val;
+    if(typeof toast==='function')toast(val?'Responsable (N+1) enregistré':'Responsable (N+1) retiré');
   });
 }
 

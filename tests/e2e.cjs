@@ -122,7 +122,7 @@ async function newPage(browser) {
     const kb = await p.$('[data-nav="kpis"]'); if (kb) { await kb.click(); await p.waitForTimeout(800); }
     const bodyTxt = await p.evaluate(() => document.body.innerText);
     check('KPIs : prévisionnel de CA affiché', /Prévisionnel de CA/.test(bodyTxt));
-    check('KPIs : marge consolidée par BU/Practice affichée', /Marge consolidée par BU/.test(bodyTxt));
+    check('KPIs : marge consolidée par unité affichée', /Marge consolidée par unité/.test(bodyTxt));
 
     // Force l'activation des modules Business + Recrutement pour exercer ces
     // écrans (sinon masqués en démo) — couvre les modules js/09 et js/12.

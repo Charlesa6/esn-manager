@@ -216,8 +216,12 @@ function buDelNode(id){
 /* Affecte une BU à un membre (RPC serveur : super_admin/admin, même entreprise) */
 function setMemberBU(memberId,buId,silent){
   var p=(S.orgProfiles||[]).find(function(x){return x.id===memberId;});
+  var prev=p?p.bu_id:null;
   if(p)p.bu_id=buId||null; /* optimiste */
-  if(sb&&SB_CID){sb.rpc('set_member_bu',{p_member:memberId,p_bu:buId||null}).then(function(r){if(r&&r.error)console.warn('set_member_bu:',r.error.message);});}
+  if(sb&&SB_CID){sb.rpc('set_member_bu',{p_member:memberId,p_bu:buId||null}).then(function(r){
+    if(r&&r.error){if(p)p.bu_id=prev;render();if(!silent)toast('Échec de l\'enregistrement : '+r.error.message,'error');}
+    else if(!silent)toast(buId?('Unité enregistrée : '+(buLabel(buId)||'')):'Unité retirée');
+  });}
   if(!silent)render();
 }
 function buTreeRows(parentId,depth){
@@ -421,7 +425,9 @@ function tSVPAcces(){
     +'</div>'
 
     /* B. Hiérarchie */
-    +'<div class="card ov" style="margin-bottom:16px"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">🏢 Hiérarchie (N+1) &amp; Business Unit</div>'
+    +'<div class="card ov" style="margin-bottom:16px"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
+    +'<span style="font-size:13px;font-weight:700;color:#0f172a">🏢 Hiérarchie (N+1) &amp; Business Unit</span>'
+    +'<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#15803d;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:99px;padding:3px 10px">✅ Enregistrement automatique</span></div>'
     +'<table><thead><tr><th>Membre</th><th>Rôle</th><th>Responsable (N+1)</th><th>Business Unit</th></tr></thead><tbody>'
     +(hierRows||'<tr><td colspan="4" class="emp">Aucun membre pour le moment.</td></tr>')+'</tbody></table></div>'
 
