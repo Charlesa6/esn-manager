@@ -48,7 +48,10 @@ function render(){
     +'<a href="/login" style="color:#e9d5ff;font-size:12px;font-weight:600;background:rgba(255,255,255,.15);padding:4px 12px;border-radius:6px;text-decoration:none">'
     +'Cr\u00e9er un compte \u2192</a></div>'
     :'';
-  document.getElementById('mc').innerHTML=_demoBanner+'<div class="inn'+(_tabChanged?' vin':'')+'" style="position:relative">'+_pfBtn+v+'</div>';
+  var _topbar='<div class="topbar"><button class="topsearch" data-act="cmdk-open" title="Rechercher (⌘K)">'
+    +'<span style="opacity:.7">🔍</span><span class="tsp">Rechercher une fonctionnalité, une page…</span>'
+    +'<span class="tsk">⌘K</span></button></div>';
+  document.getElementById('mc').innerHTML=_demoBanner+_topbar+'<div class="inn'+(_tabChanged?' vin':'')+'" style="position:relative">'+_pfBtn+v+'</div>';
   document.getElementById('md').innerHTML=tModal()+(S.bizModal?tBizModal():'');
   /* on restaure les données maîtres (les handlers de bind() mutent l'ensemble complet) */
   S.cons=S._all.cons;S.miss=S._all.miss;S.lvs=S._all.lvs;
@@ -877,17 +880,26 @@ function cmdkActions(){
   var acts=[];
   /* Navigation : reprend exactement les onglets visibles pour le rôle courant. */
   var navs=document.querySelectorAll('#sb .snv [data-nav]');
+  var tabs={};
   navs.forEach(function(n){
+    tabs[n.getAttribute('data-nav')]=true;
     var lbl=(n.textContent||'').replace(/\s+/g,' ').replace(/\s*\d+$/,'').trim();
     if(!lbl)return;
     acts.push({label:'Aller à — '+lbl, run:function(){n.click();}});
   });
   acts.push({label:'Aller à — Mon profil', run:function(){S.tab='profile';render();}});
+  /* Fonctionnalités : navigue vers l'onglet puis déclenche l'action (si autorisée). */
+  function feat(ok,label,tab,act){
+    if(!ok)return;
+    acts.push({label:label, run:function(){S.tab=tab;render();var b=document.querySelector('[data-act="'+act+'"]');if(b)b.click();}});
+  }
+  feat(tabs.teams,'Nouveau collaborateur','teams','ac');
+  feat(tabs.teams,'Importer des collaborateurs (Excel)','teams','import-cons-open');
+  feat(tabs.missions,'Nouvelle mission','missions','am');
+  feat(tabs.leaves,'Poser une absence / un congé','leaves','al');
+  feat(tabs.business,'Nouvelle opportunité','business','biz-new');
+  feat(tabs.recrutement,'Nouveau candidat','recrutement','arec');
   acts.push({label:'Afficher / masquer la barre latérale', run:function(){toggleSB();}});
-  if(S.settings&&S.settings.hasBusinessModule&&(S.role==='sales'||S.role==='admin'||S.role==='gestionnaire'||S.role==='super_admin'))
-    acts.push({label:'Nouvelle opportunité', run:function(){S.tab='business';render();var b=document.querySelector('[data-act="biz-new"]');if(b)b.click();}});
-  if(S.settings&&S.settings.hasRecrutementModule&&(S.role==='recruteur'||S.role==='admin'||S.role==='gestionnaire'||S.role==='super_admin'))
-    acts.push({label:'Nouveau candidat', run:function(){S.tab='recrutement';render();var b=document.querySelector('[data-act="arec"]');if(b)b.click();}});
   return acts;
 }
 function cmdkRenderList(){

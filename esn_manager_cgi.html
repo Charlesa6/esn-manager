@@ -228,6 +228,13 @@ tr[data-act]{transition:background .12s}
   .inn.vin{animation:none}
   .card:hover,.kc:hover,.goal-card:hover,.bp:hover,.bg:hover{transform:none}
 }
+/* ═══ Barre de recherche centrée (top) ═══ */
+.topbar{position:sticky;top:0;z-index:50;display:flex;justify-content:center;padding:10px 16px;background:rgba(247,249,251,.82);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.topsearch{display:flex;align-items:center;gap:9px;width:100%;max-width:480px;background:#fff;border:1px solid var(--line);border-radius:11px;padding:9px 14px;cursor:text;color:#94a3b8;font-size:13px;box-shadow:var(--sh-1);transition:border-color .14s,box-shadow .14s}
+.topsearch:hover{border-color:#cfd7e3;box-shadow:0 4px 14px rgba(2,6,23,.07)}
+.topsearch .tsp{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topsearch .tsk{background:#f1f5f9;border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700;color:#64748b;flex-shrink:0}
+@media(max-width:767px){.topbar{padding-left:64px}.topsearch .tsp{font-size:12px}}
 /* ═══ Command palette (⌘K / Ctrl+K) — style Linear ═══ */
 .cmdk-ov{position:fixed;inset:0;background:rgba(2,6,23,.5);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);z-index:1500;display:flex;align-items:flex-start;justify-content:center;padding:13vh 16px 16px;animation:cmdkFade .12s ease}
 @keyframes cmdkFade{from{opacity:0}to{opacity:1}}
