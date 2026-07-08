@@ -87,6 +87,9 @@ function tSettings(){
     /* ── Business Units (hiérarchie) ── */
     +tBUTreeCard()
 
+    /* ── Régions & villes de mobilité ── */
+    +tRegionsCard()
+
     /* ── Bouton sauvegarder ── */
     +'<div class="card" style="padding:24px;margin-bottom:16px">'
     +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">📌 Modules &amp; Add-ons</h3>'
@@ -240,6 +243,61 @@ function tBUTreeCard(){
     +(tree||'<div style="font-size:12px;color:#94a3b8">Aucune BU définie. Créez le niveau racine ci-dessous.</div>')
     +'</div>'
     +'<button onclick="buAddNode(null)" class="bp">+ Ajouter une BU racine</button>'
+    +'</div>';
+}
+
+/* ═══ Régions & villes de mobilité (Paramètres super_admin) ═══ */
+function regionAdd(){
+  var name=prompt('Nom de la région (ex : Auvergne-Rhône-Alpes) :');
+  if(!name||!name.trim())return;
+  if(!S.settings)S.settings={};
+  if(!S.settings.regions)S.settings.regions=[];
+  S.settings.regions.push({id:'rg_'+Date.now()+'_'+Math.floor(Math.random()*10000),name:name.trim(),cities:[]});
+  persistBUTree();render();
+}
+function regionDel(rid){
+  var r=(S.settings.regions||[]).find(function(x){return x.id===rid;});
+  if(!r)return;
+  if(!confirm('Supprimer la région « '+r.name+' » et ses villes ?'))return;
+  S.settings.regions=(S.settings.regions||[]).filter(function(x){return x.id!==rid;});
+  persistBUTree();render();
+}
+function regionAddCity(rid){
+  var el=document.getElementById('rg-city-'+rid);
+  var city=el&&el.value?el.value.trim():'';
+  if(!city)return;
+  var r=(S.settings.regions||[]).find(function(x){return x.id===rid;});
+  if(!r)return;
+  if(!r.cities)r.cities=[];
+  if(r.cities.indexOf(city)<0)r.cities.push(city);
+  persistBUTree();render();
+}
+function regionDelCityIdx(rid,idx){
+  var r=(S.settings.regions||[]).find(function(x){return x.id===rid;});
+  if(!r||!r.cities)return;
+  r.cities.splice(idx,1);
+  persistBUTree();render();
+}
+function tRegionsCard(){
+  var regions=regionNodes();
+  var rows=regions.map(function(r){
+    var chips=(r.cities||[]).map(function(c,i){
+      return '<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;font-size:12px;font-weight:600;background:#ede9fe;color:#5b21b6;margin:0 5px 5px 0">'+esc(c)
+        +' <button onclick="regionDelCityIdx(\''+r.id+'\','+i+')" style="background:none;border:none;color:#7c3aed;cursor:pointer;font-weight:800;padding:0">✕</button></span>';
+    }).join('');
+    return '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:10px;background:#fff">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-weight:800;font-size:13px;color:#0f172a">📍 '+esc(r.name)+'</span>'
+      +'<button onclick="regionDel(\''+r.id+'\')" style="margin-left:auto;background:#fff;border:1px solid #e2e8f0;color:#dc2626;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;font-weight:700">Supprimer la région</button></div>'
+      +'<div style="margin-bottom:8px">'+(chips||'<span style="font-size:12px;color:#94a3b8">Aucune ville</span>')+'</div>'
+      +'<div style="display:flex;gap:6px"><input class="ic" id="rg-city-'+r.id+'" placeholder="Ajouter une ville…" style="max-width:220px;font-size:13px" onkeydown="if(event.key===\'Enter\'){event.preventDefault();regionAddCity(\''+r.id+'\');}">'
+      +'<button onclick="regionAddCity(\''+r.id+'\')" style="background:#84CC16;color:#1B2B3A;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-weight:800;font-size:12px">+ Ville</button></div>'
+      +'</div>';
+  }).join('');
+  return '<div class="card" style="padding:24px;margin-bottom:16px">'
+    +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:6px">🗺️ Régions &amp; villes de mobilité</h3>'
+    +'<p style="font-size:12px;color:#94a3b8;margin-bottom:14px">Définissez vos régions et leurs villes. Elles alimentent la <strong>mobilité des consultants</strong> (fiche Équipe).</p>'
+    +(rows||'<div style="font-size:12px;color:#94a3b8;margin-bottom:10px">Aucune région définie.</div>')
+    +'<button onclick="regionAdd()" class="bp">+ Ajouter une région</button>'
     +'</div>';
 }
 
