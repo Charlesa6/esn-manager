@@ -1,0 +1,491 @@
+
+'use strict';
+
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   SUPABASE CONFIG - copiez les mêmes valeurs que dans esn_login.html
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+var SUPABASE_URL = 'https://rwmstlesxnglpblrurqj.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3bXN0bGVzeG5nbHBibHJ1cnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MjcyNTMsImV4cCI6MjA5NzEwMzI1M30.9SrsA1sYjdsqdPCnZ_sc2iTl01NKXsl7gAu2Y_VYgSQ';
+/* Garde : si le CDN Supabase n'a pas pu être chargé (réseau), on dégrade
+   proprement (sb=null) au lieu de planter toute l'app sur un ReferenceError. */
+var sb = (typeof supabase !== 'undefined' && SUPABASE_URL && SUPABASE_KEY && SUPABASE_URL.indexOf('supabase.co') > 0)
+  ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+var SB_CID = null; // company_id de l'utilisateur connecté (rempli après auth)
+
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   DATE UTILITIES
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+function pD(s){var p=s.split('-').map(Number);return new Date(p[0],p[1]-1,p[2]);}
+function fD(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function nxt(s){var d=pD(s);d.setDate(d.getDate()+1);return fD(d);}
+function addD(s,n){var d=pD(s);d.setDate(d.getDate()+n);return fD(d);}
+function isWE(s){var w=pD(s).getDay();return w===0||w===6;}
+function isWD(s,H){return !isWE(s)&&!H.has(s);}
+function wDays(a,b,H){var n=0,c=a;while(c<=b){if(isWD(c,H))n++;c=nxt(c);}return n;}
+function lvSet(cid,lvs,H,ys,ye){
+  var S=new Set();
+  lvs.filter(function(l){return l.cid===cid;}).forEach(function(l){
+    var c=l.s<ys?ys:l.s,e=l.e>ye?ye:l.e;
+    while(c<=e){if(isWD(c,H))S.add(c);c=nxt(c);}
+  });
+  return S;
+}
+
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   FRENCH HOLIDAYS (Easter - Meeus/Jones/Butcher)
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+function easter(y){
+  var a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4;
+  var f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3);
+  var h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4;
+  var l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451);
+  var mo=Math.floor((h+l-7*m+114)/31),dy=((h+l-7*m+114)%31)+1;
+  return fD(new Date(y,mo-1,dy));
+}
+function frHols(y){
+  var e=easter(y);
+  return new Set([y+'-01-01',addD(e,1),y+'-05-01',y+'-05-08',addD(e,39),addD(e,50),y+'-07-14',y+'-08-15',y+'-11-01',y+'-11-11',y+'-12-25']);
+}
+var HOLS_N=['Jour de l\u2019An','Lundi de P\u00e2ques','F\u00eate du Travail','Victoire 1945','Ascension','Lundi de Pentec\u00f4te','F\u00eate Nationale','Assomption','Toussaint','Armistice','No\u00ebl'];
+
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   FISCAL YEAR  (1 oct \u2192 30 sept)
+   FY26 = 1 oct 2025 \u2192 30 sept 2026
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+function fyStart(fy){
+  var m=((S&&S.settings&&S.settings.fyStartMonth)||10);
+  var ms=String(m).padStart(2,'0');
+  var sy=(m===1)?fy:(fy-1); /* FY janvier = même année; sinon année précédente */
+  return sy+'-'+ms+'-01';
+}
+function fyEnd(fy){
+  var m=((S&&S.settings&&S.settings.fyStartMonth)||10);
+  var em=m===1?12:m-1;var ems=String(em).padStart(2,'0');
+  var lastDay=new Date(fy,em,0).getDate(); /* dernier jour du mois em de l'année fy */
+  return fy+'-'+ems+'-'+String(lastDay).padStart(2,'0');
+}
+function fyHols(fy){
+  var h1=frHols(fy-1),h2=frHols(fy),c=new Set();
+  h1.forEach(function(d){c.add(d);});
+  h2.forEach(function(d){c.add(d);});
+  return c;
+}
+function currentFY(){
+  var d=new Date();
+  var cm=d.getMonth()+1;
+  var fm=((S&&S.settings&&S.settings.fyStartMonth)||10);
+  if(fm===1)return d.getFullYear();
+  return cm>=fm?d.getFullYear()+1:d.getFullYear();
+}
+var CFY=currentFY(); /* recalculé après chargement des settings dans loadSB */
+var TODAY=(function(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}());
+function fyLbl(fy){return 'FY'+String(fy).slice(2);}
+function fyRange(fy){return 'oct. '+(fy-1)+' \u2192 sept. '+fy;}
+
+/* \u2550\u2550\u2550 TRIMESTRES FISCAUX : Q1=Oct-D\u00e9c, Q2=Janv-Mars, Q3=Avr-Juin, Q4=Juil-Sept \u2550\u2550\u2550 */
+/* QUARTERS : recalculé dynamiquement selon fyStartMonth (via rebuildQuarters()) */
+var QUARTERS=[
+  {id:1,lb:'T1',months:[10,11,12]},
+  {id:2,lb:'T2',months:[1,2,3]},
+  {id:3,lb:'T3',months:[4,5,6]},
+  {id:4,lb:'T4',months:[7,8,9]}
+];
+var MOIS_ABR=['','Janv','F\u00e9vr','Mars','Avr','Mai','Juin','Juil','Ao\u00fbt','Sept','Oct','Nov','D\u00e9c'];
+var LTYPES=['Cong\u00e9 pay\u00e9','RTT','Formation','Inter-contrat','Maladie','Cong\u00e9 maternit\u00e9','Cong\u00e9 sans solde','Mission interne','Autre'];
+/* Reconstruire QUARTERS selon le mois de début du FY */
+function rebuildQuarters(){
+  var fm=((S&&S.settings&&S.settings.fyStartMonth)||10);
+  /* Générer les 12 mois dans l'ordre fiscal */
+  var ms=[];for(var i=0;i<12;i++)ms.push(((fm-1+i)%12)+1);
+  QUARTERS=[
+    {id:1,lb:'T1',months:[ms[0],ms[1],ms[2]]},
+    {id:2,lb:'T2',months:[ms[3],ms[4],ms[5]]},
+    {id:3,lb:'T3',months:[ms[6],ms[7],ms[8]]},
+    {id:4,lb:'T4',months:[ms[9],ms[10],ms[11]]}
+  ];
+  QUARTERS.forEach(function(q){
+    q.lbFull=q.lb+' ('+MOIS_ABR[q.months[0]]+'\u2013'+MOIS_ABR[q.months[2]]+')';
+  });
+}
+rebuildQuarters(); /* initialisation par défaut */
+
+
+/* Bornes ISO d'un trimestre donn\u00e9 \u00e0 l'int\u00e9rieur d'un exercice fiscal fy */
+function qRange(fy,q){
+  var qd=QUARTERS.find(function(x){return x.id===q;});
+  if(!qd)return [fyStart(fy),fyEnd(fy)];
+  var firstM=qd.months[0],lastM=qd.months[2];
+  var firstY=firstM>=10?fy-1:fy;
+  var lastY=lastM>=10?fy-1:fy;
+  var lastDay=new Date(lastY,lastM,0).getDate();
+  var s=firstY+'-'+String(firstM).padStart(2,'0')+'-01';
+  var e=lastY+'-'+String(lastM).padStart(2,'0')+'-'+String(lastDay).padStart(2,'0');
+  return [s,e];
+}
+/* P\u00e9riode actuellement s\u00e9lectionn\u00e9e dans la barre lat\u00e9rale : ann\u00e9e enti\u00e8re si S.quarter est null,
+   sinon born\u00e9e au trimestre choisi. Utilis\u00e9e par Dashboard / KPIs / Absences. */
+function curRange(fy){return S.quarter?qRange(fy,S.quarter):[fyStart(fy),fyEnd(fy)];}
+function curRangeLbl(){return S.quarter?(QUARTERS.find(function(q){return q.id===S.quarter;})||{}).lbFull||'':'';}
+/* Libell\u00e9 combin\u00e9 \u00ab FY26 \u00bb ou \u00ab FY26 \u00b7 T2 (Janv-Mars) \u00bb selon le trimestre actif */
+function curLbl(){return fyLbl(S.year)+(S.quarter?' \u00b7 '+curRangeLbl():'');}
+/* Mois fiscaux dans l'ordre Oct\u2192Sept, et bornes ISO d'un mois donn\u00e9 dans un FY */
+function monthLbl(month){return MOIS_ABR[month];}
+/* Liste des mois \u00e0 afficher selon la s\u00e9lection courante (ann\u00e9e enti\u00e8re ou trimestre) */
+function fEur(n){
+  var cur=(S&&S.settings&&S.settings.currency)||'EUR';
+  try{return new Intl.NumberFormat('fr-FR',{style:'currency',currency:cur,maximumFractionDigits:0}).format(n);}
+  catch(e){return n.toFixed(0)+' '+((S&&S.settings&&S.settings.currencySymbol)||'€');}
+}
+function fDt(s){return s?pD(s).toLocaleDateString('fr-FR'):'Sans \u00e9ch\u00e9ance';}
+function uid(){return Math.random().toString(36).slice(2,9);}
+function fromT(n){var d=new Date();d.setDate(d.getDate()+n);return fD(d);}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function gv(id){var el=document.getElementById(id);return el?el.value.trim():'';}
+function dL(e){if(!e)return null;return Math.round((pD(e)-pD(TODAY))/86400000);}
+function mSt(m){
+  if(m.sd>TODAY)return'future';
+  if(!m.ed)return'active';
+  var d=dL(m.ed);
+  if(d<0)return'ended';if(d<=14)return'critical';if(d<=30)return'soon';return'active';
+}
+function badge(st,dl){
+  var mp={
+    active:['bgrn','En mission'],critical:['bred','Fin imminente'],
+    soon:['bamb','Fin proche'],future:['bblu','\u00c0 venir'],
+    ended:['bgry','Termin\u00e9e'],none:['bgry','Sans mission']
+  };
+  if(st==='critical'&&dl!=null)mp.critical[1]='Fin J\u2212'+dl;
+  if(st==='soon'&&dl!=null)mp.soon[1]='Fin J\u2212'+dl;
+  var v=mp[st]||mp.none;
+  return '<span class="badge '+v[0]+'">'+esc(v[1])+'</span>';
+}
+function av(name,sz){
+  sz=sz||32;
+  var init=(name||'?').split(' ').map(function(n){return n[0]||'';}).join('').slice(0,2).toUpperCase();
+  return '<div class="av" style="width:'+sz+'px;height:'+sz+'px;font-size:'+(sz<30?11:13)+'px">'+init+'</div>';
+}
+
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   KPI - MARGE = (TJM \u2212 SCR) / TJM × 100
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+function kpi(c,miss,lvs,y,H,rangeOverride){
+  var ys,ye;
+  if(rangeOverride){ys=rangeOverride[0];ye=rangeOverride[1];}
+  else{ys=fyStart(y);ye=fyEnd(y);}
+  /* Borner sur la période d'activité réelle du consultant dans le FY */
+  var cs=(c.arrive&&c.arrive>ys)?c.arrive:ys;
+  var ce=(c.depart&&c.depart<ye)?c.depart:ye;
+  var tWD=cs<=ce?wDays(cs,ce,H):0;
+  var lds=lvSet(c.id,lvs,H,cs,ce);
+  var lvD=lds.size,avD=tWD-lvD,bill=0,rev=0;
+
+  /* Toutes les absences comptent dans le staffing (sauf Inter-contrat) */
+  var sickSet=new Set();
+  lvs.filter(function(l){return l.cid===c.id&&l.type!=='Inter-contrat';}).forEach(function(l){
+    var a=l.s<cs?cs:l.s,b=l.e>ce?ce:l.e;
+    while(a<=b){if(isWD(a,H))sickSet.add(a);a=nxt(a);}
+  });
+  var sickD=sickSet.size;
+  var pm=miss.filter(function(m){return m.cid===c.id;}).map(function(m){
+    var mS=m.sd<cs?cs:m.sd,mE=(!m.ed||m.ed>ce)?ce:m.ed;
+    if(mS>mE)return Object.assign({},m,{days:0,rev:0,mar:0});
+    var d=0;
+    if(m.wmode==='man'&&m.manualDays&&m.manualDays.length){
+      /* Mode manuel : compter uniquement les jours explicitement sélectionnés */
+      m.manualDays.forEach(function(day){
+        if(day>=mS&&day<=mE&&!lds.has(day))d++;
+      });
+    }else{
+      var wd=(m.wdays&&m.wdays.length)?m.wdays:[1,2,3,4,5];
+      var cur=mS;
+      while(cur<=mE){if(isWD(cur,H)&&!lds.has(cur)&&wd.indexOf(pD(cur).getDay())>=0)d++;cur=nxt(cur);}
+    }
+    var r,mar;
+    if(m.btype==='forfait'){
+      var deal=+m.deal||0;
+      var totD=m.ed?missWD(m,m.sd,m.ed,lvs):0;          /* jours travaill\u00e9s sur toute la mission */
+      r=(m.ed&&totD>0)?deal*(d/totD):(m.ed?0:deal);     /* CA au prorata des jours ; sans date de fin \u2192 deal entier */
+      mar=r>0?(r-d*c.scr*(c.contract==='freelance'?1:EMPLOYER_FACTOR))/r*100:0;
+    }else{
+      r=d*m.tjm;
+      mar=m.tjm>0?(m.tjm-c.scr*(c.contract==='freelance'?1:EMPLOYER_FACTOR))/m.tjm*100:0;
+    }
+    bill+=d;rev+=r;
+    return Object.assign({},m,{days:d,rev:r,mar:mar});
+  });
+  var sr=tWD>0?(bill+sickD)/tWD*100:0,avgT=bill>0?rev/bill:0;
+  var om=bill>0&&avgT>0?(avgT-c.scr*EMPLOYER_FACTOR)/avgT*100:null; /* \u2190 nouvelle formule */
+  return{tWD:tWD,lvD:lvD,avD:avD,sickD:sickD,bill:bill,rev:rev,sr:sr,avgT:avgT,om:om,pm:pm,cs:cs,ce:ce};
+}
+
+/* \u2550\u2550\u2550 JOURS TRAVAILL\u00c9S sur une p\u00e9riode quelconque (jours coch\u00e9s, hors f\u00e9ri\u00e9s/cong\u00e9s) \u2550\u2550\u2550 */
+function holRange(a,b){
+  var sY=pD(a).getFullYear(),eY=pD(b).getFullYear(),HS=new Set();
+  for(var y=sY-1;y<=eY;y++){frHols(y).forEach(function(d){HS.add(d);});}
+  return HS;
+}
+function missWD(m,a,b,lvs){
+  if(!a||!b||a>b)return 0;
+  /* Mode manuel : compter uniquement les jours s\u00e9lectionn\u00e9s dans la plage a\u2192b */
+  if(m.wmode==='man'&&m.manualDays&&m.manualDays.length){
+    var HHm=holRange(a,b);
+    var ldsm=lvSet(m.cid,lvs,HHm,a,b);
+    return m.manualDays.filter(function(d){return d>=a&&d<=b&&!ldsm.has(d);}).length;
+  }
+  /* Mode r\u00e9current (d\u00e9faut) */
+  var wd=(m.wdays&&m.wdays.length)?m.wdays:[1,2,3,4,5];
+  var HH=holRange(a,b);
+  var lds=lvSet(m.cid,lvs,HH,a,b);
+  var n=0,c=a;
+  while(c<=b){if(isWD(c,HH)&&!lds.has(c)&&wd.indexOf(pD(c).getDay())>=0)n++;c=nxt(c);}
+  return n;
+}
+/* \u2550\u2550\u2550 FORFAIT : budget de jours (selon marge cible + SCR), jours travaill\u00e9s, jours restants \u2550\u2550\u2550 */
+function forfaitInfo(m,scr,lvs){
+  var deal=+m.deal||0,tmar=(m.tmar!=null&&m.tmar!=='')?+m.tmar:0;
+  var budget=scr>0?deal*(1-tmar/100)/scr:0;
+  var end=(m.ed&&m.ed<TODAY)?m.ed:TODAY;
+  var worked=missWD(m,m.sd,end,lvs);
+  var left=budget-worked;
+  /* jours réellement disponibles d'ici la date de fin (capacité restante) */
+  var startAvail=m.sd>TODAY?m.sd:TODAY;
+  var avail=m.ed?missWD(m,startAvail,m.ed,lvs):null;
+  var slack=(avail!=null)?avail-left:null;
+  return{deal:deal,tmar:tmar,budget:budget,worked:worked,left:left,avail:avail,slack:slack};
+}
+
+/* ═══ ACTIVITÉ JOUR PAR JOUR ═══ */
+function missOnDay(cid,day){
+  return S.miss.find(function(m){
+    if(m.cid!==cid||m.sd>day||(m.ed&&day>m.ed))return false;
+    if(m.wmode==='man'&&m.manualDays&&m.manualDays.length)
+      return m.manualDays.indexOf(day)>=0;
+    var wd=(m.wdays&&m.wdays.length)?m.wdays:[1,2,3,4,5];
+    return wd.indexOf(pD(day).getDay())>=0;
+  });
+}
+function leaveOnDay(cid,day){
+  return S.lvs.find(function(l){return l.cid===cid&&l.s<=day&&day<=l.e;});
+}
+function shiftMonth(ym,delta){
+  var p=ym.split('-'),dd=new Date(+p[0],+p[1]-1+delta,1);
+  return dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0');
+}
+
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   SAMPLE DATA
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+/* \u2500\u2500 Données réelles CGI Business Conseil \u2500\u2500 */
+var IC=[];
+var IM=[];
+var IL=[];
+
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   STATE
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+var S={
+  tab:'kpis',
+  cons:IC.map(function(c){return Object.assign({},c);}),
+  miss:IM.map(function(m){return Object.assign({},m);}),
+  lvs:IL.map(function(l){return Object.assign({},l);}),
+  cands:[],
+  approvals:[],   /* demandes d'approbation des consultants */
+  consInvites:[], /* codes d'accès générés pour les consultants */
+  adminCode:null, /* dernier code généré (affiché dans Admin) */
+  year:CFY,quarter:null,modal:null,fmc:'all',fms:'all',fmt:'all',flc:'all',precs:{},
+  role:'admin',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,kpiDirOpen:{},invites:[],svpInvites:[],recruteurInvites:[],vpDirMap:{},vpName:'',profileFirstName:'',profileLastName:'',profileTitle:'',fvp:[],settings:{currency:'EUR',currencySymbol:'€',fyStartMonth:10,fyStartDay:1,roleLabels:{},hasBusinessModule:false,hasRecrutementModule:false},kpiVPOpen:{},kpiDirDirOpen:{},actCid:'',actMonth:'',_all:null,leaveApprovalRole:'super_admin',allInvites:[],managerId:null,approvalDelegateTo:null,approvalDelegateUntil:null,orgProfiles:[],
+  /* CRM Business */
+  bizTab:'pipeline',bizAccounts:[],bizContacts:[],bizOpps:[],bizActivities:[],bizApprovals:[],bizModal:null,bizFilter:{status:'all',account:'',exp:''},
+  sbSt:'\uD83D\uDFE2 Sauvegarde locale active',
+  sbSync:false,
+  imp:null,
+  impHistory:[],
+  impSelFY:'all',
+  missImp:null,
+  recSel:null,recF:{status:'all',q:'',loc:[],rec:'all',mine:true,exp:[]},recAddMeet:false,recAddCgi:false,recAddCv:false,
+  recEditMeetId:null,recEditCgiId:null,
+  activityLog:[]
+};
+var H=fyHols(CFY);
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MODE DÉMO — données fictives pour présentation commerciale
+══════════════════════════════════════════════════════════════════════════ */
+function loadDemoData(){
+  S.demo=true;
+  S._userEmail='demo@esn-manager.fr';
+  S.role='admin';
+  S.year=2026;
+  S.quarter=null;
+  S.tab=S.role==='utilisateur'?'activite':S.role==='recruteur'?'recrutement':S.role==='sales'?'business':'kpis';
+  S.cons=[
+    {id:'d1',name:'Sophie Martin',   title:'Consultante Senior',scr:520,email:'s.martin@demo.fr',   dir:'Thomas Bernard',arrive:'2024-10-01',depart:null},
+    {id:'d2',name:'Lucas Dupont',    title:'Architecte Cloud',  scr:610,email:'l.dupont@demo.fr',   dir:'Thomas Bernard',arrive:'2024-10-01',depart:null},
+    {id:'d3',name:'Inès Rousseau',   title:'Data Engineer',     scr:480,email:'i.rousseau@demo.fr', dir:'Marie Lefebvre',arrive:'2025-01-06',depart:null},
+    {id:'d4',name:'Karim Belhaj',    title:'Chef de projet',    scr:560,email:'k.belhaj@demo.fr',   dir:'Marie Lefebvre',arrive:'2024-10-01',depart:null},
+    {id:'d5',name:'Claire Morin',    title:'Développeuse BI',   scr:450,email:'c.morin@demo.fr',    dir:'Thomas Bernard',arrive:'2025-04-01',depart:null}
+  ];
+  S.miss=[
+    {id:'m1',cid:'d1',client:'BNP Paribas',   code:'300100001',tjm:780,sd:'2025-10-01',ed:'2026-03-31',type:'Régie'},
+    {id:'m2',cid:'d2',client:'Société Générale',code:'300100002',tjm:920,sd:'2025-10-01',ed:'2026-09-30',type:'Régie'},
+    {id:'m3',cid:'d3',client:'AXA',            code:'300100003',tjm:720,sd:'2025-10-01',ed:'2026-06-30',type:'Régie'},
+    {id:'m4',cid:'d4',client:'SNCF',           code:'300100004',tjm:840,sd:'2025-10-01',ed:'2026-03-31',type:'Forfait'},
+    {id:'m5',cid:'d5',client:'TotalEnergies',  code:'300100005',tjm:680,sd:'2025-10-01',ed:'2026-09-30',type:'Régie'},
+    {id:'m6',cid:'d1',client:'BNP Paribas',    code:'300100006',tjm:800,sd:'2026-04-01',ed:'2026-09-30',type:'Régie'}
+  ];
+  S.lvs=[
+    {id:'v1',cid:'d1',type:'Congé payé',s:'2025-12-22',e:'2026-01-03'},
+    {id:'v2',cid:'d2',type:'RTT',       s:'2025-11-10',e:'2025-11-10'},
+    {id:'v3',cid:'d3',type:'Congé payé',s:'2026-02-17',e:'2026-02-21'},
+    {id:'v4',cid:'d4',type:'Maladie',   s:'2026-01-13',e:'2026-01-17'},
+    {id:'v5',cid:'d5',type:'RTT',       s:'2025-12-29',e:'2025-12-31'}
+  ];
+  S.cands=[
+    {id:'c1',name:'Maxime Guillot',expertise:['React','TypeScript'],sectors:['Banque & Finance'],locations:['Lyon'],nationality:'Française',reqSalary:48000,yearsExp:4,status:'entretien',marginPct:28,createdBy:'demo',feedbacks:[],cgiMeetings:[],cvFiles:[]}
+  ];
+  H=fyHols(2026);
+}
+var SCR_FACTOR=113.35;   /* SCR × coeff = salaire brut annuel employé */
+var EMPLOYER_FACTOR=1.25; /* Charges patronales : coût réel employeur = brut × 1.25 */
+
+/* Statuts recrutement — modifiables par le Super Admin */
+var _DEFAULT_REC_STATUS=[
+  {id:'rh_a',      lb:'A rencontrer RH',           bg:'#eff6ff',fg:'#1e40af'},
+  {id:'rh_ec',     lb:'En cours de rencontre RH',  bg:'#dbeafe',fg:'#1d4ed8'},
+  {id:'op_a',      lb:'A rencontrer OP',            bg:'#fff7ed',fg:'#c2410c'},
+  {id:'op_ec',     lb:'En cours de rencontre OP',   bg:'#ffedd5',fg:'#ea580c'},
+  {id:'nogo_cand', lb:'NoGo candidat',              bg:'#fce7f3',fg:'#9d174d'},
+  {id:'nogo',      lb:'NoGo',                       bg:'#fee2e2',fg:'#b91c1c'},
+  {id:'pipe',      lb:'Pipe',                       bg:'#ede9fe',fg:'#5b21b6'},
+  {id:'recrute',   lb:'Recruté',               bg:'#d1fae5',fg:'#065f46'}
+];
+var REC_STATUS=_DEFAULT_REC_STATUS.slice();
+function applyRecStatuses(){
+  if(S.settings&&S.settings.recStatuses&&S.settings.recStatuses.length){
+    REC_STATUS=S.settings.recStatuses;
+  }else{
+    REC_STATUS=_DEFAULT_REC_STATUS.slice();
+  }
+}
+/* Label d'un statut — lit dans REC_STATUS courant (peut être custom) */
+function recStLb(id){var s=REC_STATUS.find(function(x){return x.id===id;});return s?s.lb:id;}
+/* Label avec renommage custom (retro-compat) — délègue à recStLb */
+function recStLbD(id){return recStLb(id);}
+function recStCol(id){var s=REC_STATUS.find(function(x){return x.id===id;});return s?[s.bg,s.fg]:['#f1f5f9','#475569'];}
+function recScr(sal){return sal>0?sal/SCR_FACTOR:0;}
+function recTjm(sal,mar){var scr=recScr(sal);return scr>0?scr/(1-(mar||25)/100):0;}
+
+/* \u2550\u2550\u2550 RECRUTEMENT : listes pr\u00e9d\u00e9finies (Expertises + Secteurs), tri\u00e9es alphab\u00e9tiquement (FR) \u2550\u2550\u2550 */
+var EXPERTISE_LIST=[
+  '.NET','Agile / Scrum','AI / Machine Learning','Angular','Architecture logicielle','AWS',
+  'Azure','Big Data','Blockchain','Business Analyst','C#','C++','Change Management',
+  'Cloud Computing','COBOL','Cybers\u00e9curit\u00e9','Data Engineering','Data Science','DevOps',
+  'Docker','Finance','GCP (Google Cloud)','Gestion de portefeuille','Gestion de projet',
+  'Gestion des risques','Go','ITIL','Java','JavaScript','Kotlin','Kubernetes','Linux',
+  'Marketing digital','Microservices','MuleSoft','Node.js','Oracle','PHP','Power BI','PMP',
+  'Product Management','Python','QA / Tests logiciels','React','Ressources Humaines','Ruby',
+  'Salesforce','SAP','Scrum Master','SEO / SEA','SQL','Strat\u00e9gie d\u2019entreprise','Supply Chain',
+  'Swift','Terraform','Transformation digitale','TypeScript','UX / UI Design','VBA','Vue.js'
+].sort(function(a,b){return a.localeCompare(b,'fr');});
+
+var SECTOR_LIST=[
+  'A\u00e9ronautique & D\u00e9fense','Agroalimentaire','Assurance','Automobile','Banque & Finance',
+  'BTP & Construction','Distribution & Retail','\u00c9nergie','Industrie / Manufacturing','Luxe',
+  'M\u00e9dias & T\u00e9l\u00e9communications','Pharma & Sant\u00e9','Public / Administration','Services',
+  'Tourisme & H\u00f4tellerie','Transport & Logistique'
+].sort(function(a,b){return a.localeCompare(b,'fr');});
+
+var REC_LOCATIONS=['Lyon','Grenoble','Clermont-Ferrand','Dijon'];
+
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   SVG BAR CHART
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+function svgBars(items,cfn,unit){
+  var n=items.length;if(!n)return '';
+  var h=185,pad=32;
+  var max=Math.max.apply(null,items.map(function(d){return d.v;}).concat([1]));
+  var cw=100/n,bw=cw*0.55,trackH=h-pad-20;
+  var bars=items.map(function(d,i){
+    var bh=Math.max(2,d.v/max*trackH);
+    var x=i*cw+cw*0.225,y=h-pad-bh;
+    var fill=cfn?cfn(d.v):'#3b82f6';
+    var lbl=unit==='%'?d.v.toFixed(0)+'%':unit==='k'?d.v.toFixed(1)+'k\u20ac':String(d.v);
+    return '<rect x="'+x+'%" y="'+y+'" width="'+bw+'%" height="'+bh+'" fill="'+fill+'" rx="3"/>'
+      +'<text x="'+(x+bw/2)+'%" y="'+(h-pad+13)+'" text-anchor="middle" font-size="11" fill="#64748b" font-family="system-ui">'+esc(d.n)+'</text>'
+      +'<text x="'+(x+bw/2)+'%" y="'+(y-4)+'" text-anchor="middle" font-size="10" fill="#374151" font-weight="600" font-family="system-ui">'+lbl+'</text>';
+  }).join('');
+  return '<svg width="100%" height="'+h+'" style="display:block;overflow:visible">'+bars+'</svg>';
+}
+
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   HELPERS
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+function getAct(cid){
+  return S.miss.find(function(m){var s=mSt(m);return m.cid===cid&&(s==='active'||s==='critical'||s==='soon');});
+}
+/* Consultant ayant quitté l'entreprise avant aujourd'hui */
+function isGone(c){return !!(c.depart&&c.depart<TODAY);}
+/* Absence active aujourd'hui (hors inter-contrat) */
+function getActiveLv(cid){
+  return S.lvs.find(function(l){
+    return l.cid===cid&&l.type!=='Inter-contrat'&&l.s<=TODAY&&l.e>=TODAY;
+  });
+}
+/* ── Libellé d'un rôle (avec personnalisation via Paramètres SVP) ── */
+var _ROLE_DEFAULTS={
+  'super_admin':'Super Admin',
+  'admin':'Admin',
+  'gestionnaire':'Gestionnaire',
+  'utilisateur':'Utilisateur',
+  'recruteur':'Recruteur',
+  'sales':'Business Manager'
+};
+function rLabel(role){
+  var custom=S.settings&&S.settings.roleLabels&&S.settings.roleLabels[role];
+  return custom||_ROLE_DEFAULTS[role]||role;
+}
+
+function buildKS(){
+  /* Cache par render — évite de recalculer pour chaque template */
+  if(S._ks&&S._ks._valid)return S._ks.data;
+  var _rng=S.quarter?curRange(S.year):null;
+  var data=S.cons.map(function(c){return{c:c,k:kpi(c,S.miss,S.lvs,S.year,H,_rng)};});
+  S._ks={data:data,_valid:true};
+  return data;
+}
+function clientRev(ks){
+  var map={};
+  ks.forEach(function(x){x.k.pm.forEach(function(m){if(m.days>0){map[m.cli]=(map[m.cli]||0)+m.rev;}});});
+  return Object.keys(map).map(function(k){return{name:k,rev:map[k]};}).sort(function(a,b){return b.rev-a.rev;});
+}
+
+/* ═══ PERMISSIONS / VUE FILTRÉE PAR DIRECTEUR ═══
+   - role 'admin' : accès à tout, peut filtrer par un ou plusieurs directeurs (S.fdir)
+   - role 'gestionnaire'    : accès limité aux consultants de son équipe (c.dir === S.dirName)
+   visibleData() renvoie le sous-ensemble cons/miss/lvs à afficher (les données maîtres
+   restent dans S._all pour la sauvegarde et les mutations). */
+function visibleConsIds(){
+  var base=(S._all&&S._all.cons)||S.cons;
+  if(S.role==='gestionnaire'){base=base.filter(function(c){return c.managerId===S._userId || (!c.managerId && (c.dir||'')===S.dirName) || c.id===S.consId;});}
+  else if(S.role==='utilisateur'||S.role==='sales'||S.role==='recruteur'){base=base.filter(function(c){return c.id===S.consId||c.email===S._userEmail;});}
+  else if(S.role==='super_admin'&&S.fvp&&S.fvp.length){
+    /* Filtrer par VP : on cherche les directeurs appartenant aux VPs sélectionnés */
+    var allowedDirs=[];
+    S.fvp.forEach(function(vpName){
+      var dirs=(S.vpDirMap||{})[vpName]||[];
+      dirs.forEach(function(d){if(allowedDirs.indexOf(d)<0)allowedDirs.push(d);});
+    });
+    if(allowedDirs.length)base=base.filter(function(c){return allowedDirs.indexOf(c.dir||'')>=0;});
+  }
+  else if(S.fdir&&S.fdir.length){base=base.filter(function(c){return S.fdir.indexOf(c.dir||'')>=0;});}
+  var s={};base.forEach(function(c){s[c.id]=1;});return s;
+}
+function visibleData(){
+  var ids=visibleConsIds(),src=S._all||{cons:S.cons,miss:S.miss,lvs:S.lvs};
+  return{
+    cons:src.cons.filter(function(c){return ids[c.id];}),
+    miss:src.miss.filter(function(m){return ids[m.cid];}),
+    lvs:src.lvs.filter(function(l){return ids[l.cid];})
+  };
+}
+

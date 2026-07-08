@@ -124,6 +124,26 @@ async function newPage(browser) {
     check('KPIs : prévisionnel de CA affiché', /Prévisionnel de CA/.test(bodyTxt));
     check('KPIs : marge consolidée par BU/Practice affichée', /Marge consolidée par BU/.test(bodyTxt));
 
+    // Force l'activation des modules Business + Recrutement pour exercer ces
+    // écrans (sinon masqués en démo) — couvre les modules js/09 et js/12.
+    await p.evaluate(() => { S.settings = S.settings || {}; S.settings.hasBusinessModule = true; S.settings.hasRecrutementModule = true; render(); });
+    await p.waitForTimeout(400);
+    for (const t of ['business', 'recrutement']) {
+      const btn = await p.$('[data-nav="' + t + '"]');
+      if (!btn) { check('onglet ' + t + ' présent (module activé)', false, 'bouton nav absent'); continue; }
+      const before = p._appErrors.length;
+      await btn.click(); await p.waitForTimeout(500);
+      check('navigation vers « ' + t + ' » sans erreur JS', p._appErrors.length === before, p._appErrors.slice(before).join(' | '));
+    }
+    // Ouverture d'un modal (nouveau candidat) — exerce tModal + widgets recrutement
+    const arec = await p.$('[data-act="arec"]');
+    if (arec) {
+      const before = p._appErrors.length;
+      await arec.click(); await p.waitForTimeout(400);
+      const modalOpen = await p.evaluate(() => !!document.querySelector('.mov,.mob,.mbody,.mody'));
+      check('ouverture du modal « Nouveau candidat » sans erreur', modalOpen && p._appErrors.length === before, p._appErrors.slice(before).join(' | '));
+    }
+
     check('aucune erreur JS fatale sur tout le parcours app', p._appErrors.length === 0, p._appErrors.join(' | '));
     await p.context().close();
   } catch (e) { check('app démo charge sans exception', false, e.message); }

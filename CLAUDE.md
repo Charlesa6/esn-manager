@@ -15,18 +15,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Routes (`vercel.json`): `/`→`index.html` (landing + subscription tunnel), `/login`→`esn_login.html`, `/app`→`esn_manager_cgi.html` (the product), `/cgu`→`cgu.html`.
 
-## There is no build / test / lint
+## Build / test / lint
 
-No test suite, no linter, no CI. Verify changes by:
-- **JS syntax check** — extract each `<script>` block and validate, e.g.:
+No build step, no linter, no CI. There **is** a lightweight E2E suite:
+- **E2E (Playwright, no npm)** — `node tests/e2e.cjs` loads the pages in `file://` with a stubbed Supabase CDN (runs offline) and checks landing/login/app-demo boot, navigation on every tab, and key features (forecast, BU/Practice margin). Non-zero exit on regression. Run it after any change to the front. See `tests/README.md`.
+- **JS syntax check** — validate the `js/*.js` modules: `for f in js/*.js; do node --check "$f"; done` (or, for inline `<script>` blocks in `index.html`/`esn_login.html`):
   `node -e 'const fs=require("fs"),vm=require("vm");const h=fs.readFileSync("index.html","utf8");let m,re=/<script\b[^>]*>([\s\S]*?)<\/script>/gi;while((m=re.exec(h)))try{new vm.Script(m[1])}catch(e){console.log(e.message)}'`
 - **Visual/behaviour check** — render with headless Chromium via Playwright (`/opt/node22/bin/node`, chromium at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`). Take screenshots at 390px to check mobile. **LibreOffice/soffice is broken in this env** — don't use it; for PDFs, render HTML with Chromium `page.pdf()`.
 
 ## Frontend architecture (the important part)
 
-`esn_manager_cgi.html` is the whole product app in **one ~7,800-line file**. It is a hand-rolled SPA:
-- Global mutable state object **`S`** (declared ~line 440). A single **`render()`** rebuilds the view from `S`; call `render()` after mutating state.
-- **Event delegation via `data-act` attributes** — buttons carry `data-act="..."` / `data-id="..."`, and one central click dispatcher (a long `if/else if` chain, ~line 5580+) routes them. To add a UI action, add the button with `data-act` AND a branch in that dispatcher.
+`esn_manager_cgi.html` is the product app (a hand-rolled SPA). Its JavaScript is **split into ordered classic scripts under `js/`** (loaded via `<script src>` after the Supabase CDN, no build step). They share one global scope — **order matters**, and everything is `var`/`function` (no top-level `const`/`let`, which would not cross files). Modules by concern:
+  `01-core` (Supabase client, date/fiscal utils, KPI engine, global state `S`, constants) · `02-recommendations` · `03-sidebar` (nav) · `04-dashboard` · `05-missions-planning` · `06-kpis` (KPIs + forecast/BU-Practice) · `07-leaves` · `08-access-admin` (Gestion des accès + audit log view) · `09-business` (CRM) · `10-help-tutorials` · `11-directeurs-modal` · `12-recrutement` · `13-render-events` (`render()` + `bind()` + dispatchers) · `14-data-boot` (`loadSB()`, `initApp()`, imports, approvals — ends with the `initApp()` bootstrap call).
+- Global mutable state object **`S`** (in `js/01-core.js`). A single **`render()`** (`js/13-render-events.js`) rebuilds the view from `S`; call `render()` after mutating state.
+- **Event delegation via `data-act` attributes** — buttons carry `data-act="..."` / `data-id="..."`, and one central click dispatcher (a long `if/else if` chain in `js/13-render-events.js`) routes them. To add a UI action, add the button with `data-act` AND a branch in that dispatcher.
 - **`sb`** = Supabase client; **`SB_CID`** = the logged-in user's `company_id` (set after auth). **`loadSB()`** loads company data after login.
 - Data reads go straight through the Supabase REST client (protected by RLS). Sensitive writes go to Edge Functions, never from the client.
 
