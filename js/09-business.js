@@ -173,18 +173,29 @@ function oppMatches(reqExp,loc,minYears,sector,tjmCible,dateStart){
     var cexp=c.expertise||[];
     var overlap=reqExp.filter(function(e){return cexp.indexOf(e)>=0;});
     var expOk=act.exp?(overlap.length>0):null;
-    var locOk=act.loc?((c.locations||[]).indexOf(loc)>=0):null;
+    /* Localisation classifiée : cible (priorité) > secondaire > France entière.
+       On garde `locations` en repli pour les anciennes fiches. */
+    var locKind=null,locOk=null;
+    if(act.loc){
+      if((c.locTarget||'')===loc)locKind='target';
+      else if((c.locSecondary||[]).indexOf(loc)>=0)locKind='secondary';
+      else if(c.mobileFrance)locKind='france';
+      else if((c.locations||[]).indexOf(loc)>=0)locKind='target';
+      locOk=!!locKind;
+    }
     var yrsOk=act.yrs?((+c.yearsExp||0)>=minYears):null;
     var secOk=act.sec?((c.sectors||[]).indexOf(sector)>=0):null;
     var matchCount=(expOk===true?1:0)+(locOk===true?1:0)+(yrsOk===true?1:0)+(secOk===true?1:0);
     var tjmC=recTjm(c.reqSalary,c.marginPct);
     var priceOk=(!tjmCible||!tjmC)?null:(tjmC<=tjmCible*1.05);
     var availOk=(!dateStart||!c.availDate)?null:(c.availDate<=dateStart);
-    return {c:c,overlap:overlap,expOk:expOk,locOk:locOk,yrsOk:yrsOk,secOk:secOk,
+    return {c:c,overlap:overlap,expOk:expOk,locOk:locOk,locKind:locKind,yrsOk:yrsOk,secOk:secOk,
       matchCount:matchCount,nbActive:nbActive,tjmC:tjmC,priceOk:priceOk,availOk:availOk};
   }).filter(function(m){return nbActive>0&&m.matchCount>0;});
+  function _lr(k){return k==='target'?2:k==='secondary'?1:k==='france'?0:-1;}
   res.sort(function(a,b){
     if(b.matchCount!==a.matchCount)return b.matchCount-a.matchCount;           /* + de critères d'abord */
+    if(_lr(b.locKind)!==_lr(a.locKind))return _lr(b.locKind)-_lr(a.locKind);   /* cible > secondaire > France */
     if(b.overlap.length!==a.overlap.length)return b.overlap.length-a.overlap.length; /* + d'expertises en commun */
     var ea=(a.priceOk===true?1:0)+(a.availOk===true?1:0);
     var eb=(b.priceOk===true?1:0)+(b.availOk===true?1:0);
@@ -913,13 +924,19 @@ function tBizModal(){
     /* Chip d'indicateur d'un critère : vert si satisfait, gris pâle sinon ; masqué si le critère n'est pas renseigné (ok===null) */
     var _chip=function(lb,tip,ok){return ok==null?'':'<span title="'+tip+'" style="color:'+(ok?'#16a34a':'#cbd5e1')+'">'+lb+'</span>';};
     var _sugg=oppMatches(_reqExp,_oppLoc,_minYears,_sector,+(it.tjm_cible||0),it.date_start||null);
+    var _locStr=function(c){
+      if(c.mobileFrance)return 'France entière';
+      var t=c.locTarget||'';var n=(c.locSecondary||[]).length;
+      if(t)return t+(n?' +'+n:'');
+      return (c.locations||[]).join(', ')||'—';
+    };
     var _card=function(mm){var c=mm.c;
       return '<div data-act="opp-see-cand" data-id="'+c.id+'" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;cursor:pointer;background:#fff">'
         +'<div style="min-width:0"><div style="font-weight:700;font-size:13px;color:#0f172a">'+esc(c.name)+'</div>'
-        +'<div style="font-size:11px;color:#64748b">'+esc((c.locations||[]).join(', ')||'—')+' · '+(c.yearsExp?c.yearsExp+' an'+(c.yearsExp>1?'s':''):'exp ?')+' · '+(mm.tjmC?mm.tjmC.toFixed(0)+' €/j':'TJM ?')+' · dispo '+(c.availDate?fDt(c.availDate):'?')+'</div></div>'
+        +'<div style="font-size:11px;color:#64748b">'+esc(_locStr(c))+' · '+(c.yearsExp?c.yearsExp+' an'+(c.yearsExp>1?'s':''):'exp ?')+' · '+(mm.tjmC?mm.tjmC.toFixed(0)+' €/j':'TJM ?')+' · dispo '+(c.availDate?fDt(c.availDate):'?')+'</div></div>'
         +'<div style="display:flex;gap:7px;flex-shrink:0;font-size:11px;font-weight:700;align-items:center">'
         +_chip('💡'+mm.overlap.length,'Expertises en commun',mm.expOk)
-        +_chip('📍','Localisation',mm.locOk)
+        +(mm.locKind==='france'?_chip('🇫🇷','Mobile France entière',true):_chip('📍',mm.locKind==='secondary'?'Localisation secondaire (prêt à aller)':'Localisation cible (priorité)',mm.locOk))
         +_chip('⏳','Années d\'expérience',mm.yrsOk)
         +_chip('🏭','Secteur',mm.secOk)
         +'<span title="Prix (TJM revente ≤ cible)" style="color:'+(mm.priceOk===true?'#16a34a':mm.priceOk===false?'#dc2626':'#cbd5e1')+'">💶</span>'

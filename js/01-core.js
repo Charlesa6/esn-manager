@@ -397,6 +397,22 @@ var SECTOR_LIST=[
 
 var REC_LOCATIONS=['Lyon','Grenoble','Clermont-Ferrand','Dijon'];
 
+/* Grandes villes de France (fiche candidat : localisation cible / secondaires,
+   avec recherche). Liste triée alphabétiquement. */
+var FR_CITIES=['Aix-en-Provence','Ajaccio','Amiens','Angers','Annecy','Antibes','Argenteuil','Avignon',
+  'Bayonne','Besançon','Biarritz','Bordeaux','Boulogne-Billancourt','Bourges','Brest','Caen','Cannes',
+  'Chambéry','Clermont-Ferrand','Colmar','Créteil','Dijon','Dunkerque','Grenoble','La Rochelle','Le Havre',
+  'Le Mans','Lille','Limoges','Lorient','Lyon','Marseille','Metz','Montpellier','Mulhouse','Nancy','Nantes',
+  'Nice','Nîmes','Niort','Orléans','Paris','Pau','Perpignan','Poitiers','Quimper','Reims','Rennes','Roubaix',
+  'Rouen','Saint-Étienne','Saint-Nazaire','Strasbourg','Toulon','Toulouse','Tours','Troyes','Valence',
+  'Vannes','Versailles','Villeurbanne'].sort(function(a,b){return a.localeCompare(b,'fr');});
+
+/* Régions (villes de mobilité des consultants) : définies par le super_admin
+   dans les Paramètres. Stockées dans S.settings.regions = [{id,name,cities:[]}]. */
+function regionNodes(){return (S.settings&&S.settings.regions)||[];}
+function regionByName(nm){if(!nm)return null;return regionNodes().find(function(r){return r.name===nm;})||null;}
+function regionCities(nm){var r=regionByName(nm);return (r&&r.cities)||[];}
+
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    SVG BAR CHART
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */

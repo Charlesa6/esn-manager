@@ -49,12 +49,13 @@ function importJSON(file){
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    SUPABASE - helpers (synchronisation non-bloquante)
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
-function mapC(r){return{id:r.id,name:r.name,title:r.title||'',scr:r.scr||0,email:r.email||'',dir:r.directeur||'',managerId:r.manager_id||null,buId:r.bu_id||null,arrive:r.arrive||null,depart:r.depart||null,expertise:r.expertise||[],sectors:r.sectors||[],contract:r.contract||'salarie',grade:r.grade||''};}
+function mapC(r){return{id:r.id,name:r.name,title:r.title||'',scr:r.scr||0,email:r.email||'',dir:r.directeur||'',managerId:r.manager_id||null,buId:r.bu_id||null,region:r.region||'',mobility:Array.isArray(r.mobility)?r.mobility:[],arrive:r.arrive||null,depart:r.depart||null,expertise:r.expertise||[],sectors:r.sectors||[],contract:r.contract||'salarie',grade:r.grade||''};}
 function mapM(r){return{id:r.id,cid:r.consultant_id,name:r.name,cli:r.client_name||'',tjm:r.tjm||0,sd:r.start_date,ed:r.end_date||null,loc:r.location||'',mgr:r.manager_name||'',ccn:r.client_contact_name||'',ccr:r.client_contact_role||'',pcode:r.code_projet||'',btype:r.billing_type||'at',wdays:(Array.isArray(r.work_days)?r.work_days:(r.work_days?String(r.work_days).split(',').map(Number):[1,2,3,4,5])),deal:r.deal_amount||0,tmar:(r.target_margin!=null?r.target_margin:null),team:r.team||[]};}
 function mapL(r){return{id:r.id,cid:r.consultant_id,type:r.type||'Congé payé',s:r.start_date,e:r.end_date};}
 function mapCand(r){return{
   id:r.id,name:r.name,email:r.email||'',phone:r.phone||'',
   locations:Array.isArray(r.locations)?r.locations:[],nationality:r.nationality||'',
+  locTarget:r.loc_target||'',locSecondary:Array.isArray(r.loc_secondary)?r.loc_secondary:[],mobileFrance:!!r.mobile_france,
   availDate:r.avail_date||'',reqSalary:r.req_salary||0,
   yearsExp:r.years_exp||0,expertise:Array.isArray(r.expertise)?r.expertise:[],
   sectors:Array.isArray(r.sectors)?r.sectors:[],
@@ -265,7 +266,7 @@ async function loadSB(){
 
 async function sbUpsertCons(c){
   if(!sb||!SB_CID)return;
-  var res=await sb.from('consultants').upsert({id:c.id,company_id:SB_CID,name:c.name,title:c.title,scr:c.scr,email:c.email,directeur:c.dir||null,manager_id:c.managerId||null,bu_id:c.buId||null,arrive:c.arrive||null,depart:c.depart||null,expertise:c.expertise||[],sectors:c.sectors||[],contract:c.contract||'salarie',grade:c.grade||null});
+  var res=await sb.from('consultants').upsert({id:c.id,company_id:SB_CID,name:c.name,title:c.title,scr:c.scr,email:c.email,directeur:c.dir||null,manager_id:c.managerId||null,bu_id:c.buId||null,region:c.region||null,mobility:c.mobility||[],arrive:c.arrive||null,depart:c.depart||null,expertise:c.expertise||[],sectors:c.sectors||[],contract:c.contract||'salarie',grade:c.grade||null});
   if(res.error)throw new Error(c.name+': '+res.error.message);
 }
 async function sbUpsertMiss(m){
@@ -285,6 +286,7 @@ async function sbUpsertCand(c){
   var res=await sb.from('candidates').upsert({
     id:c.id,company_id:SB_CID,name:c.name,email:c.email||null,phone:c.phone||null,
     locations:c.locations||[],nationality:c.nationality||null,
+    loc_target:c.locTarget||null,loc_secondary:c.locSecondary||[],mobile_france:!!c.mobileFrance,
     avail_date:c.availDate||null,req_salary:c.reqSalary||0,years_exp:c.yearsExp||0,
     expertise:c.expertise||[],sectors:c.sectors||[],cv_files:c.cvFiles||[],
     compte_rendu:c.compteRendu||null,compte_rendu_file_path:c.compteRenduFilePath||null,compte_rendu_file_name:c.compteRenduFileName||null,

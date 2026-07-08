@@ -159,7 +159,7 @@ function tCandDetail(c){
   var infoGrid='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px 24px">'
     +info('Email',esc(c.email||'—'))
     +info('Téléphone',esc(c.phone||'—'))
-    +info('Localisation',esc((c.locations&&c.locations.length)?c.locations.join(', '):'—'))
+    +info('Localisation',(c.mobileFrance?'🇫🇷 Mobile France entière':((c.locTarget?'<strong>'+esc(c.locTarget)+'</strong> (priorité)':'')+((c.locSecondary&&c.locSecondary.length)?(c.locTarget?' · ':'')+esc(c.locSecondary.join(', '))+' (secondaire)':'')||(c.locations&&c.locations.length?esc(c.locations.join(', ')):'—'))))
     +info('Nationalité',esc(c.nationality||'—'))
     +info('Expérience',c.yearsExp?c.yearsExp+' an'+(c.yearsExp>1?'s':''):'—')
     +info('Disponibilité',c.availDate?fDt(c.availDate):'—')
@@ -427,6 +427,73 @@ function bindLocWidget(){
 }
 
 
+/* ── Localisation candidat classifiée : cible (priorité) + secondaires + mobilité
+   France entière. Recherche sur les grandes villes de France (FR_CITIES). ── */
+function candLocMatchesHTML(){
+  var m=S.modal||{},q=(m.locSecQ||'').toLowerCase().trim(),sec=m.locSecondary||[],target=m.locTarget||'';
+  if(!q)return '';
+  var matches=FR_CITIES.filter(function(c){return c.toLowerCase().indexOf(q)>=0&&sec.indexOf(c)<0&&c!==target;}).slice(0,12);
+  return matches.length
+    ? matches.map(function(c){return '<button type="button" class="_csecadd" data-v="'+esc(c)+'" style="padding:4px 12px;border-radius:99px;font-size:12px;font-weight:600;border:1px solid #e2e8f0;background:#fff;color:#475569;cursor:pointer;margin:0 5px 5px 0">+ '+esc(c)+'</button>';}).join('')
+    : '<span style="font-size:12px;color:#94a3b8">Aucune ville</span>';
+}
+function candLocHTML(){
+  var m=S.modal||{},mob=!!m.mobileFrance,target=m.locTarget||'',sec=m.locSecondary||[];
+  var h='<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px">';
+  h+='<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#0f172a;cursor:pointer'+(mob?'':';margin-bottom:12px')+'">'
+    +'<input type="checkbox" id="cloc-france"'+(mob?' checked':'')+' style="accent-color:#7c3aed;width:16px;height:16px"> 🇫🇷 Mobile sur toute la France</label>';
+  if(!mob){
+    h+='<datalist id="fr-cities-dl">'+FR_CITIES.map(function(c){return '<option value="'+esc(c)+'">';}).join('')+'</datalist>';
+    h+='<div style="margin-bottom:12px"><div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">📍 Localisation cible (priorité)</div>'
+      +'<input class="ic" id="cloc-target" list="fr-cities-dl" value="'+esc(target)+'" placeholder="Rechercher une ville…" style="max-width:280px"></div>';
+    h+='<div><div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Localisations secondaires (prêt à aller)</div>';
+    if(sec.length)h+='<div style="margin-bottom:6px">'+sec.map(function(city){return '<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:99px;font-size:12px;font-weight:600;background:#ede9fe;color:#5b21b6;margin:0 5px 5px 0">'+esc(city)+' <button type="button" class="_csecdel" data-v="'+esc(city)+'" style="background:none;border:none;color:#7c3aed;cursor:pointer;font-weight:800;padding:0">✕</button></span>';}).join('')+'</div>';
+    h+='<input class="ic" id="cloc-sec-q" value="'+esc(m.locSecQ||'')+'" placeholder="Rechercher une ville à ajouter…" style="max-width:280px;margin-bottom:6px">';
+    h+='<div id="cloc-sec-matches">'+candLocMatchesHTML()+'</div>';
+    h+='</div>';
+  }
+  h+='</div>';
+  return h;
+}
+function candLocRefresh(){var w=document.getElementById('cloc-wrap');if(w){w.innerHTML=candLocHTML();bindCandLoc();}}
+function bindCandLoc(){
+  var fr=document.getElementById('cloc-france');
+  if(fr)fr.onchange=function(){S.modal.mobileFrance=this.checked;candLocRefresh();};
+  var tg=document.getElementById('cloc-target');
+  if(tg)tg.oninput=function(){S.modal.locTarget=this.value;};
+  var q=document.getElementById('cloc-sec-q');
+  if(q)q.oninput=function(){S.modal.locSecQ=this.value;var c=document.getElementById('cloc-sec-matches');if(c)c.innerHTML=candLocMatchesHTML();};
+  var w=document.getElementById('cloc-wrap');
+  if(w)w.onclick=function(e){
+    var add=e.target.closest('._csecadd');
+    if(add){var v=add.getAttribute('data-v');var a=S.modal.locSecondary=S.modal.locSecondary||[];if(a.indexOf(v)<0)a.push(v);candLocRefresh();return;}
+    var del=e.target.closest('._csecdel');
+    if(del){var dv=del.getAttribute('data-v');S.modal.locSecondary=(S.modal.locSecondary||[]).filter(function(x){return x!==dv;});candLocRefresh();return;}
+  };
+}
+
+/* ── Mobilité régionale du consultant : région de rattachement + villes de la
+   région (définies par le super_admin dans Paramètres). Refresh partiel pour ne
+   pas perdre les autres champs saisis. ── */
+function consMobInner(){
+  var m=S.modal||{},regions=regionNodes(),reg=m.region||'',mob=m.mobility||[];
+  if(!regions.length)return '<label class="fl">Mobilité régionale</label><input class="ic" disabled value="Aucune région définie" style="background:#f1f5f9;color:#94a3b8"><p class="fh">Le super_admin définit les régions et leurs villes dans Paramètres.</p>';
+  var regOpts='<option value="">— Région —</option>'+regions.map(function(r){return '<option value="'+esc(r.name)+'"'+(reg===r.name?' selected':'')+'>'+esc(r.name)+'</option>';}).join('');
+  var cities=regionCities(reg);
+  var pills=cities.length?cities.map(function(city){var on=mob.indexOf(city)>=0;return '<button type="button" class="_cmob" data-v="'+esc(city)+'" style="padding:5px 12px;border-radius:99px;font-size:12px;font-weight:600;border:1px solid '+(on?'#7c3aed':'#e2e8f0')+';background:'+(on?'#7c3aed':'#fff')+';color:'+(on?'#fff':'#475569')+';cursor:pointer;margin:0 5px 5px 0">'+esc(city)+'</button>';}).join(''):(reg?'<span style="font-size:12px;color:#94a3b8">Aucune ville dans cette région (à ajouter dans Paramètres).</span>':'<span style="font-size:12px;color:#94a3b8">Choisissez d\'abord une région.</span>');
+  return '<label class="fl">Région de rattachement &amp; mobilité</label>'
+    +'<select class="ic" id="cons-region" style="max-width:280px;margin-bottom:10px">'+regOpts+'</select>'
+    +'<div id="cons-mob-pills">'+pills+'</div>'
+    +'<p class="fh">Villes de mobilité au sein de la région (liste gérée par le super_admin).</p>';
+}
+function consMobRefresh(){var w=document.getElementById('cons-mob-block');if(w){w.innerHTML=consMobInner();bindConsMobility();}}
+function bindConsMobility(){
+  var rs=document.getElementById('cons-region');
+  if(rs)rs.onchange=function(){S.modal.region=this.value;S.modal.mobility=[];consMobRefresh();};
+  var w=document.getElementById('cons-mob-pills');
+  if(w)w.onclick=function(e){var b=e.target.closest('._cmob');if(!b)return;var v=b.getAttribute('data-v');var a=S.modal.mobility=S.modal.mobility||[];var i=a.indexOf(v);if(i>=0)a.splice(i,1);else a.push(v);consMobRefresh();};
+}
+
 function addMissTeamRow(){
   var wrap=document.getElementById('miss-team');
   if(!wrap)return;
@@ -487,7 +554,7 @@ function tModal(){
       })()
       +'<div class="fd"><label class="fl">Email</label><input class="ic" id="rce" type="email" value="'+esc(it?it.email:'')+'" placeholder="candidat@email.com"></div>'
       +'<div class="fd"><label class="fl">Téléphone</label><input class="ic" id="rcph" value="'+esc(it?it.phone:'')+'" placeholder="06 12 34 56 78"></div>'
-      +'<div class="fd cs2"><label class="fl">Localisation(s)</label><div id="loc-wrap">'+locPickerHTML()+'</div></div>'
+      +'<div class="fd cs2"><label class="fl">Localisation &amp; mobilité</label><div id="cloc-wrap">'+candLocHTML()+'</div></div>'
       +'<div class="fd"><label class="fl">Nationalité</label><input class="ic" id="rcnat" value="'+esc(it?it.nationality||'':'')+'" placeholder="Française"></div>'
       +'<div class="fd"><label class="fl">Date de disponibilité</label><input class="ic" id="rcav" type="date" value="'+(it?esc(it.availDate||''):'')+'"></div>'
       +'<div class="fd"><label class="fl">Années d\u2019expérience</label><input class="ic" id="rcyrs" type="number" min="0" step="0.5" value="'+(it&&it.yearsExp?esc(String(it.yearsExp)):'')+'" placeholder="5"></div>'
@@ -586,6 +653,7 @@ function tModal(){
       +'<div class="fd"><label class="fl">Date de d\u00e9part</label><input class="ic" id="mdep" type="date" value="'+esc(it&&it.depart?it.depart:'')+'"><p class="fh">Laissez vide si toujours en poste</p></div>'
       +'<div class="fd cs2">'+dirFld+'</div>'
       +buFld
+      +'<div class="fd cs2" id="cons-mob-block">'+consMobInner()+'</div>'
       +'<div class="fd cs2"><label class="fl">Expertises</label><div id="exp-wrap">'+expPickerHTML()+'</div></div>'
       +'<div class="fd cs2"><label class="fl">Connaissance secteur</label><div id="sec-wrap">'+secPickerHTML()+'</div></div>'
       +'</div>'

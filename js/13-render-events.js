@@ -146,7 +146,8 @@ function bind(){
   }
   /* widgets multi-sélection Expertises / Secteurs (uniquement si le modal candidat est ouvert) */
   if(S.modal&&(S.modal.type==='candidate'||S.modal.type==='utilisateur')){bindExpWidget();bindSecWidget();}
-  if(S.modal&&S.modal.type==='candidate'){bindLocWidget();}
+  if(S.modal&&S.modal.type==='candidate'){bindCandLoc();}
+  if(S.modal&&S.modal.type==='utilisateur'){bindConsMobility();}
 
 
   /* filtre directeur (gestionnaire) */
@@ -203,7 +204,7 @@ function bind(){
       else if(a==='gen-ca'){genRecs('ca');}
       else if(a==='gen-util'){genRecs('util');}
       else if(a==='gen-tjm'){genRecs('tjm');}
-      else if(a==='ac'){S.modal={type:'utilisateur',item:null,expSel:[],secSel:[]};render();}
+      else if(a==='ac'){S.modal={type:'utilisateur',item:null,expSel:[],secSel:[],region:'',mobility:[]};render();}
       /* Chips expertise + suggestions candidats du formulaire d'opportunité (modal,
          hors #rec-list-wrap) : gérés ici dans le binding direct global. */
       else if(a==='opp-exp-tog'){
@@ -246,7 +247,7 @@ function bind(){
       render();}
       else if(a==='al'){S.modal={type:'leave',item:null};render();}
       else if(a==='mc'){S.modal=null;render();}
-      else if(a==='ec'){var _ec=S.cons.find(function(c){return c.id===id;});S.modal={type:'utilisateur',item:_ec,expSel:(_ec&&_ec.expertise)?_ec.expertise.slice():[],secSel:(_ec&&_ec.sectors)?_ec.sectors.slice():[]};render();}
+      else if(a==='ec'){var _ec=S.cons.find(function(c){return c.id===id;});S.modal={type:'utilisateur',item:_ec,expSel:(_ec&&_ec.expertise)?_ec.expertise.slice():[],secSel:(_ec&&_ec.sectors)?_ec.sectors.slice():[],region:(_ec&&_ec.region)||'',mobility:(_ec&&_ec.mobility)?_ec.mobility.slice():[]};render();}
       else if(a==='em'){
       var _it=S.miss.find(function(m){return m.id===id;});
       var _now2=new Date();
@@ -328,7 +329,7 @@ function bind(){
         if(!n){alert('Le nom est obligatoire.');return;}
         if(!s||s<0)s=0;
         var nc;
-        var _fields={name:n,title:t,scr:s,email:em,dir:rdir,managerId:mgrId,buId:buId||null,arrive:arr,depart:dep,expertise:expArr,sectors:secArr,contract:ctrct,grade:grade};
+        var _fields={name:n,title:t,scr:s,email:em,dir:rdir,managerId:mgrId,buId:buId||null,region:(S.modal.region||''),mobility:(S.modal.mobility||[]).slice(),arrive:arr,depart:dep,expertise:expArr,sectors:secArr,contract:ctrct,grade:grade};
         if(it){S.cons=S.cons.map(function(c){return c.id===it.id?(nc=Object.assign({},c,_fields)):c;});}
         else{nc=Object.assign({id:uid()},_fields);S.cons=S.cons.concat([nc]);}
         sbUpsertCons(nc);
@@ -391,13 +392,16 @@ function bind(){
         }
       }
       /* ════════════════════ RECRUTEMENT ════════════════════ */
-      else if(a==='arec'){S.modal={type:'candidate',item:null,expSel:[],secSel:[],locSel:[]};render();}
+      else if(a==='arec'){S.modal={type:'candidate',item:null,expSel:[],secSel:[],locSel:[],locTarget:'',locSecondary:[],mobileFrance:false,locSecQ:''};render();}
       else if(a==='erec'){
         var itEd=S.cands.find(function(c){return c.id===id;});
         S.modal={type:'candidate',item:itEd,
           expSel:(itEd&&itEd.expertise)?itEd.expertise.slice():[],
           secSel:(itEd&&itEd.sectors)?itEd.sectors.slice():[],
-          locSel:(itEd&&itEd.locations)?itEd.locations.slice():[]};
+          locSel:(itEd&&itEd.locations)?itEd.locations.slice():[],
+          locTarget:(itEd&&itEd.locTarget)||'',
+          locSecondary:(itEd&&itEd.locSecondary)?itEd.locSecondary.slice():[],
+          mobileFrance:!!(itEd&&itEd.mobileFrance),locSecQ:''};
         render();
       }
       else if(a==='drec'){
@@ -441,7 +445,14 @@ function bind(){
           }catch(upErr){alert('\u26a0 Erreur upload CV ('+cvFiles[cvi].name+') : '+upErr.message);return;}
         }
 
-        var locArr=(S.modal.locSel||[]).slice();
+        /* Localisation classifiée : cible (priorité), secondaires, mobilité France.
+           On lit aussi la valeur en direct de l'input cible (au cas où non encore
+           propagée à l'état). `locations` est maintenu (= cible + secondaires) pour
+           la compatibilité (filtres, tableau, anciennes fiches). */
+        var _mobFr=!!S.modal.mobileFrance;
+        var _locTarget=(gv('cloc-target')||S.modal.locTarget||'').trim();
+        var _locSec=(S.modal.locSecondary||[]).slice();
+        var locArr=_mobFr?[]:([_locTarget].concat(_locSec).filter(Boolean));
 
         /* Recruteur assigné : valeur choisie dans le formulaire. Si laissée vide,
            assignation automatique au créateur pour un NOUVEAU candidat (nom
@@ -452,7 +463,7 @@ function bind(){
         var _recruiter=_selRec||(itC?'':_creatorName);
         var cfields={
           name:rn,email:gv('rce'),phone:gv('rcph'),recruiter:_recruiter,
-          locations:locArr,nationality:gv('rcnat')||'',
+          locations:locArr,locTarget:_mobFr?'':_locTarget,locSecondary:_mobFr?[]:_locSec,mobileFrance:_mobFr,nationality:gv('rcnat')||'',
           availDate:gv('rcav')||'',reqSalary:+gv('rcsal')||0,
           yearsExp:+gv('rcyrs')||0,expertise:expArr,sectors:secArr,cvFiles:cvArr,
           compteRendu:gv('rccr'),compteRenduFilePath:crFilePath,compteRenduFileName:crFileName,
