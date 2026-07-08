@@ -169,7 +169,7 @@ async function loadSB(){
        Nécessaire pour : résoudre le N+1, lister les pairs (délégation),
        remonter au N+2 si l'approbateur est absent. */
     try{
-      var opr=await sb.from('profiles').select('id,first_name,last_name,role,manager_id,cons_id,approval_delegate_to,approval_delegate_until').eq('company_id',SB_CID);
+      var opr=await sb.from('profiles').select('id,first_name,last_name,role,manager_id,cons_id,bu_id,approval_delegate_to,approval_delegate_until').eq('company_id',SB_CID);
       if(opr.data)S.orgProfiles=opr.data;
     }catch(e){console.warn('orgProfiles load:',e);S.orgProfiles=[];}
 
@@ -1986,7 +1986,7 @@ async function saveDelegation(){
         }).eq('id',u.data.user.id);
       }
       /* Rafraîchir l'annuaire pour refléter la délégation */
-      try{var opr=await sb.from('profiles').select('id,first_name,last_name,role,manager_id,cons_id,approval_delegate_to,approval_delegate_until').eq('company_id',SB_CID);if(opr.data)S.orgProfiles=opr.data;}catch(e){}
+      try{var opr=await sb.from('profiles').select('id,first_name,last_name,role,manager_id,cons_id,bu_id,approval_delegate_to,approval_delegate_until').eq('company_id',SB_CID);if(opr.data)S.orgProfiles=opr.data;}catch(e){}
       if(msg){msg.style.color='#16a34a';msg.textContent=to?'\u2713 Délégation enregistrée.':'\u2713 Délégation retirée.';}
       setTimeout(render,900);
     }catch(e){if(msg){msg.style.color='#ef4444';msg.textContent='Erreur : '+e.message;}}

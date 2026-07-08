@@ -231,7 +231,12 @@ function tForecastSection(){
   /* ── Backlog sécurisé (missions) ── */
   (S.miss||[]).forEach(function(m){
     var c=consById[m.cid];if(!c)return;
-    var dir=c.dir||'(Sans practice)',bu=buOf(dir);
+    /* BU : hiérarchie configurée (bu_id du consultant) si disponible — BU racine
+       comme niveau haut, chemin complet comme practice. Sinon repli sur l'ancien
+       système VP → directeur. */
+    var bu,dir,_bid=consBU(c);
+    if(_bid){var _p=buPath(_bid);bu=_p.length?_p[0].name:'(Sans BU)';dir=buPathLabel(_bid)||'(Sans practice)';}
+    else{dir=c.dir||'(Sans practice)';bu=buOf(c.dir||'(Sans directeur)');}
     months.forEach(function(mo){
       var a=mo.ms>TODAY?mo.ms:TODAY; if(m.sd>a)a=m.sd;
       var b=mo.me; if(m.ed&&m.ed<b)b=m.ed;
@@ -255,7 +260,10 @@ function tForecastSection(){
   (S.bizOpps||[]).forEach(function(o){
     if(o.status==='gagne'||o.status==='perdu')return;
     var val=caPot(o)*(+o.probability||0)/100; if(val<=0)return;
-    var dur=Math.max(+o.duree_mois||1,1);
+    /* Durée d'étalement : durée en mois, sinon écart démarrage→fin, sinon 1. */
+    var dur=+o.duree_mois||0;
+    if(!dur&&o.date_start&&o.date_end){var a=pD(o.date_start),b=pD(o.date_end);dur=(b.getFullYear()-a.getFullYear())*12+(b.getMonth()-a.getMonth())+1;}
+    dur=Math.max(dur||1,1);
     var sd=pD(o.date_start||o.date_closing||TODAY);
     var si=(sd.getFullYear()-now.getFullYear())*12+(sd.getMonth()-now.getMonth()); if(si<0)si=0;
     var per=val/dur;
