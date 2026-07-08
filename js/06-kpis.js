@@ -231,7 +231,12 @@ function tForecastSection(){
   /* ── Backlog sécurisé (missions) ── */
   (S.miss||[]).forEach(function(m){
     var c=consById[m.cid];if(!c)return;
-    var dir=c.dir||'(Sans practice)',bu=buOf(dir);
+    /* BU : hiérarchie configurée (bu_id du consultant) si disponible — BU racine
+       comme niveau haut, chemin complet comme practice. Sinon repli sur l'ancien
+       système VP → directeur. */
+    var bu,dir,_bid=consBU(c);
+    if(_bid){var _p=buPath(_bid);bu=_p.length?_p[0].name:'(Sans BU)';dir=buPathLabel(_bid)||'(Sans practice)';}
+    else{dir=c.dir||'(Sans practice)';bu=buOf(c.dir||'(Sans directeur)');}
     months.forEach(function(mo){
       var a=mo.ms>TODAY?mo.ms:TODAY; if(m.sd>a)a=m.sd;
       var b=mo.me; if(m.ed&&m.ed<b)b=m.ed;

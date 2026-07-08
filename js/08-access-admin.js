@@ -84,6 +84,9 @@ function tSettings(){
     +'<button onclick="addRecStatus()" style="background:#84CC16;color:#1B2B3A;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:800;font-size:13px;white-space:nowrap">+ Ajouter</button>'
     +'</div></div>'
 
+    /* ── Business Units (hiérarchie) ── */
+    +tBUTreeCard()
+
     /* ── Bouton sauvegarder ── */
     +'<div class="card" style="padding:24px;margin-bottom:16px">'
     +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">📌 Modules &amp; Add-ons</h3>'
@@ -174,6 +177,72 @@ function saveSettings(){
   }
 }
 
+/* ═══ Business Units — éditeur d'arbre (Paramètres super_admin) ═══ */
+function persistBUTree(){
+  if(!S.settings)S.settings={};
+  try{localStorage.setItem('esn_settings_'+SB_CID,JSON.stringify(S.settings));}catch(e){}
+  if(sb&&SB_CID){
+    var _p=Object.assign({},S.settings);delete _p.hasBusinessModule;delete _p.hasRecrutementModule;
+    sb.from('company_settings').upsert({company_id:SB_CID,settings:_p,updated_at:new Date().toISOString()},{onConflict:'company_id'}).then(function(){});
+  }
+}
+function buAddNode(parentId){
+  parentId=parentId||null;
+  if(parentId&&buLevel(parentId)>=6){alert('6 niveaux maximum.');return;}
+  var name=prompt(parentId?('Nouvelle sous-BU sous « '+buLabel(parentId)+' » :'):'Nom de la BU racine (ex : Monde) :');
+  if(!name||!name.trim())return;
+  if(!S.settings)S.settings={};
+  if(!S.settings.buTree)S.settings.buTree=[];
+  S.settings.buTree.push({id:'bu_'+Date.now()+'_'+Math.floor(Math.random()*10000),name:name.trim(),parentId:parentId});
+  persistBUTree();render();
+}
+function buRenameNode(id,name){
+  var n=buById(id);if(!n)return;n.name=(name||'').trim()||n.name;persistBUTree();
+}
+function buDelNode(id){
+  var toDel={};(function rec(x){toDel[x]=1;buChildren(x).forEach(function(c){rec(c.id);});})(id);
+  var nKids=Object.keys(toDel).length-1;
+  var nMemb=(S.orgProfiles||[]).filter(function(p){return toDel[p.bu_id];}).length;
+  var msg='Supprimer la BU « '+buLabel(id)+' »'+(nKids?' et ses '+nKids+' sous-BU':'');
+  if(nMemb)msg+=' ? '+nMemb+' membre(s) affecté(s) seront détaché(s)';
+  if(!confirm(msg+' ?'))return;
+  (S.orgProfiles||[]).forEach(function(p){if(toDel[p.bu_id])setMemberBU(p.id,'',true);});
+  S.settings.buTree=buNodes().filter(function(n){return !toDel[n.id];});
+  persistBUTree();render();
+}
+/* Affecte une BU à un membre (RPC serveur : super_admin/admin, même entreprise) */
+function setMemberBU(memberId,buId,silent){
+  var p=(S.orgProfiles||[]).find(function(x){return x.id===memberId;});
+  if(p)p.bu_id=buId||null; /* optimiste */
+  if(sb&&SB_CID){sb.rpc('set_member_bu',{p_member:memberId,p_bu:buId||null}).then(function(r){if(r&&r.error)console.warn('set_member_bu:',r.error.message);});}
+  if(!silent)render();
+}
+function buTreeRows(parentId,depth){
+  return buChildren(parentId).map(function(n){
+    var canChild=depth<6, nMemb=(S.orgProfiles||[]).filter(function(p){return p.bu_id===n.id;}).length;
+    return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;padding-left:'+((depth-1)*20)+'px">'
+      +'<span style="font-size:10px;font-weight:700;color:#cbd5e1;min-width:20px">N'+depth+'</span>'
+      +'<input class="ic" value="'+esc(n.name)+'" onchange="buRenameNode(\''+n.id+'\',this.value)" style="max-width:240px;font-size:13px">'
+      +(nMemb?'<span style="font-size:10px;color:#94a3b8">'+nMemb+' membre'+(nMemb>1?'s':'')+'</span>':'')
+      +(canChild?'<button onclick="buAddNode(\''+n.id+'\')" style="background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;border-radius:6px;padding:3px 9px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap">+ sous-BU</button>':'')
+      +'<button onclick="buDelNode(\''+n.id+'\')" style="background:#fff;border:1px solid #e2e8f0;color:#dc2626;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;font-weight:700">✕</button>'
+      +'</div>'
+      +buTreeRows(n.id,depth+1);
+  }).join('');
+}
+function tBUTreeCard(){
+  var tree=buTreeRows(null,1);
+  return '<div class="card" style="padding:24px;margin-bottom:16px">'
+    +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:6px">🏢 Business Units (hiérarchie)</h3>'
+    +'<p style="font-size:12px;color:#94a3b8;margin-bottom:14px">Jusqu\'à 6 niveaux (ex : Monde › Europe › France › AURA › Lyon › Équipe 1). '
+      +'Rattachez chaque membre à une BU dans « Gestion des accès » ; <strong>les nouveaux comptes héritent automatiquement de la BU de leur créateur</strong>.</p>'
+    +'<div style="border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;background:#f8fafc;margin-bottom:12px">'
+    +(tree||'<div style="font-size:12px;color:#94a3b8">Aucune BU définie. Créez le niveau racine ci-dessous.</div>')
+    +'</div>'
+    +'<button onclick="buAddNode(null)" class="bp">+ Ajouter une BU racine</button>'
+    +'</div>';
+}
+
 function tSalesInvitePaywall(){
   return '<div style="background:#f8fafc;border:2px dashed #e2e8f0;border-radius:10px;padding:16px;margin-bottom:12px">'
     +'<div style="display:flex;align-items:center;gap:10px">'
@@ -243,14 +312,21 @@ function tSVPAcces(){
   }).join('');
 
   /* Hiérarchie : pour chaque membre existant, choix de son N+1 parmi les autres. */
+  /* Options BU (chemin complet), triées par profondeur/label pour la lisibilité */
+  var _buOpts=buNodes().slice().sort(function(a,b){return buPathLabel(a.id).localeCompare(buPathLabel(b.id),'fr');});
+  var _canBU=(S.role==='super_admin'||S.role==='admin');
   var hierRows=members.map(function(p){
     var opts='<option value="">— Aucun —</option>'+members.filter(function(q){return q.id!==p.id;}).map(function(q){
       var nmq=((q.first_name||'')+' '+(q.last_name||'')).trim()||q.id;
       return '<option value="'+q.id+'"'+(p.manager_id===q.id?' selected':'')+'>'+esc(nmq)+' ('+rLabel(q.role)+')</option>';
     }).join('');
+    var buOpts='<option value="">— Aucune —</option>'+_buOpts.map(function(n){
+      return '<option value="'+n.id+'"'+(p.bu_id===n.id?' selected':'')+'>'+esc(buPathLabel(n.id))+'</option>';
+    }).join('');
     var nm=((p.first_name||'')+' '+(p.last_name||'')).trim()||p.id;
     return '<tr><td>'+esc(nm)+'</td><td>'+rLabel(p.role)+'</td>'
-      +'<td><select class="ic" onchange="setNplus1(\''+p.id+'\',this.value)"'+(sbOn?'':' disabled')+'>'+opts+'</select></td></tr>';
+      +'<td><select class="ic" onchange="setNplus1(\''+p.id+'\',this.value)"'+(sbOn?'':' disabled')+'>'+opts+'</select></td>'
+      +'<td><select class="ic" onchange="setMemberBU(\''+p.id+'\',this.value)"'+(sbOn&&_canBU?'':' disabled title="Réservé Admin / Super Admin"')+'>'+buOpts+'</select></td></tr>';
   }).join('');
 
   var retryable=pend.filter(function(s){return s.status==='error'||s.status==='pending';}).length;
@@ -287,9 +363,9 @@ function tSVPAcces(){
     +'</div>'
 
     /* B. Hiérarchie */
-    +'<div class="card ov" style="margin-bottom:16px"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">🏢 Hiérarchie (N+1)</div>'
-    +'<table><thead><tr><th>Membre</th><th>Rôle</th><th>Responsable (N+1)</th></tr></thead><tbody>'
-    +(hierRows||'<tr><td colspan="3" class="emp">Aucun membre pour le moment.</td></tr>')+'</tbody></table></div>'
+    +'<div class="card ov" style="margin-bottom:16px"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">🏢 Hiérarchie (N+1) &amp; Business Unit</div>'
+    +'<table><thead><tr><th>Membre</th><th>Rôle</th><th>Responsable (N+1)</th><th>Business Unit</th></tr></thead><tbody>'
+    +(hierRows||'<tr><td colspan="4" class="emp">Aucun membre pour le moment.</td></tr>')+'</tbody></table></div>'
 
     /* C. Sièges en attente */
     +(pend.length?('<div class="card ov"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'

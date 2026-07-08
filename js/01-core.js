@@ -489,3 +489,29 @@ function visibleData(){
   };
 }
 
+
+/* ═══ BUSINESS UNITS (hiérarchie) ═══
+   Arbre stocké dans S.settings.buTree : [{id, name, parentId}]. Racine = parentId
+   nul/absent. Profondeur limitée à 6 niveaux côté UI (ex : Monde > Europe >
+   France > AURA > Lyon > Équipe 1). bu_id d'un membre = id d'un nœud. */
+function buNodes(){return (S.settings&&S.settings.buTree)||[];}
+function buById(id){if(!id)return null;return buNodes().find(function(n){return n.id===id;})||null;}
+function buChildren(pid){return buNodes().filter(function(n){return (n.parentId||null)===(pid||null);});}
+function buPath(id){var out=[],guard=0,n=buById(id);while(n&&guard<12){out.unshift(n);n=n.parentId?buById(n.parentId):null;guard++;}return out;}
+function buLevel(id){return buPath(id).length;}
+function buLabel(id){var n=buById(id);return n?n.name:'';}
+function buPathLabel(id){var p=buPath(id);return p.length?p.map(function(n){return n.name;}).join(' › '):'';}
+
+/* BU d'un consultant : via le profil lié à sa fiche (cons_id), sinon via son
+   directeur (gestionnaire) s'il a une BU. Renvoie un bu_id ou null. */
+function consBU(c){
+  if(!c)return null;
+  var pr=(S.orgProfiles||[]).find(function(p){return p.cons_id===c.id&&p.bu_id;});
+  if(pr)return pr.bu_id;
+  var dn=(c.dir||'').trim().toLowerCase();
+  if(dn){
+    var mgr=(S.orgProfiles||[]).find(function(p){return p.bu_id&&((p.first_name||'')+' '+(p.last_name||'')).trim().toLowerCase()===dn;});
+    if(mgr)return mgr.bu_id;
+  }
+  return null;
+}
