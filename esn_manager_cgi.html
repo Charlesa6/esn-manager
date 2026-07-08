@@ -1172,7 +1172,11 @@ function tDash(){
 }
 function tTeams(){
   var fyS=fyStart(S.year),fyE=fyEnd(S.year);
-  var allC=(S._all&&S._all.cons)||S.cons;
+  /* Respecte le filtre gestionnaire/VP de la barre latérale (S.fdir / S.fvp) :
+     on ne montre dans l'Équipe que les consultants visibles selon le filtre en
+     cours — sinon filtrer sur un gestionnaire n'affectait pas la liste. */
+  var _vids=visibleConsIds();
+  var allC=((S._all&&S._all.cons)||S.cons).filter(function(c){return _vids[c.id];});
 
   var inFY=allC.filter(function(c){
     if(c.arrive&&c.arrive>fyE)return false;
@@ -2501,7 +2505,9 @@ async function sbUpsertOpp(o){
     linked_mission_id:o.linked_mission_id||null,
     opp_team:o.opp_team||null,
     req_expertise:o.req_expertise||[],
-    location:o.location||null
+    location:o.location||null,
+    req_min_years:o.req_min_years||null,
+    req_sector:o.req_sector||null
   };
   return sb.from('crm_opportunities').upsert(payload,{onConflict:'id'});
 }
@@ -2509,27 +2515,38 @@ async function sbUpsertAct(k){if(!sb||!SB_CID)return;return sb.from('crm_activit
 
 /* ── Matching Business → Recrutement ──────────────────────────────────
    Suggère les candidats du pipeline recrutement susceptibles de répondre à
-   une opportunité : recouvrement d'expertise, localisation, prix (TJM revente
-   ≤ TJM cible), et disponibilité (avant la date de démarrage). */
-function oppMatches(reqExp,loc,tjmCible,dateStart){
-  reqExp=reqExp||[];
+   une opportunité. Les 4 critères — expertise, localisation, années
+   d'expérience (minimum) et secteur — sont connectés : chaque candidat est
+   noté par le NOMBRE de critères (parmi ceux renseignés) qu'il satisfait, puis
+   classé du plus complet au moins complet (ceux qui cochent les 3/3 d'abord,
+   puis 2/3, puis 1/3…). Prix (TJM revente ≤ cible) et disponibilité restent des
+   indicateurs secondaires servant uniquement de départage. */
+function oppMatches(reqExp,loc,minYears,sector,tjmCible,dateStart){
+  reqExp=reqExp||[];minYears=+minYears||0;sector=sector||'';
+  var act={exp:reqExp.length>0,loc:!!loc,yrs:minYears>0,sec:!!sector};
+  var nbActive=(act.exp?1:0)+(act.loc?1:0)+(act.yrs?1:0)+(act.sec?1:0);
   var res=(S.cands||[]).map(function(c){
     var cexp=c.expertise||[];
     var overlap=reqExp.filter(function(e){return cexp.indexOf(e)>=0;});
-    var expScore=reqExp.length?overlap.length/reqExp.length:0;
-    var locOk=!loc||((c.locations||[]).indexOf(loc)>=0);
+    var expOk=act.exp?(overlap.length>0):null;
+    var locOk=act.loc?((c.locations||[]).indexOf(loc)>=0):null;
+    var yrsOk=act.yrs?((+c.yearsExp||0)>=minYears):null;
+    var secOk=act.sec?((c.sectors||[]).indexOf(sector)>=0):null;
+    var matchCount=(expOk===true?1:0)+(locOk===true?1:0)+(yrsOk===true?1:0)+(secOk===true?1:0);
     var tjmC=recTjm(c.reqSalary,c.marginPct);
     var priceOk=(!tjmCible||!tjmC)?null:(tjmC<=tjmCible*1.05);
     var availOk=(!dateStart||!c.availDate)?null:(c.availDate<=dateStart);
-    var score=expScore*4+(locOk?1.5:0)+(priceOk===true?1:0)+(availOk===true?1:0);
-    return {c:c,overlap:overlap,expScore:expScore,locOk:locOk,priceOk:priceOk,availOk:availOk,tjmC:tjmC,score:score};
-  }).filter(function(m){
-    if(reqExp.length)return m.overlap.length>0;   /* expertise demandée : recouvrement obligatoire */
-    if(loc)return m.locOk;                          /* sinon au moins la localisation */
-    return false;
+    return {c:c,overlap:overlap,expOk:expOk,locOk:locOk,yrsOk:yrsOk,secOk:secOk,
+      matchCount:matchCount,nbActive:nbActive,tjmC:tjmC,priceOk:priceOk,availOk:availOk};
+  }).filter(function(m){return nbActive>0&&m.matchCount>0;});
+  res.sort(function(a,b){
+    if(b.matchCount!==a.matchCount)return b.matchCount-a.matchCount;           /* + de critères d'abord */
+    if(b.overlap.length!==a.overlap.length)return b.overlap.length-a.overlap.length; /* + d'expertises en commun */
+    var ea=(a.priceOk===true?1:0)+(a.availOk===true?1:0);
+    var eb=(b.priceOk===true?1:0)+(b.availOk===true?1:0);
+    return eb-ea;                                                              /* départage prix + dispo */
   });
-  res.sort(function(a,b){return b.score-a.score;});
-  return res.slice(0,6);
+  return res.slice(0,15);
 }
 async function sbDelBiz(table,id){if(!sb||!SB_CID)return;return sb.from(table).delete().eq('id',id).eq('company_id',SB_CID);}
 
@@ -2594,6 +2611,8 @@ function bizSaveOpp(){
     notes:gv('biz-opp-notes'),
     req_expertise:(S.bizModal&&S.bizModal.reqExp)||(it&&it.req_expertise)||[],
     location:gv('biz-opp-loc')||null,
+    req_min_years:+gv('biz-opp-minyears')||null,
+    req_sector:gv('biz-opp-sector')||null,
     owner_email:it?(it.owner_email||S._userEmail||''):S._userEmail||'',
     owner_name:it?(it.owner_name||S.profileFirstName||''):S.profileFirstName||'',
     owner_role:it?(it.owner_role||S.role):S.role,
@@ -3238,25 +3257,44 @@ function tBizModal(){
     /* Matching recrutement : expertise recherchée + localisation → candidats suggérés */
     if(S.bizModal.reqExp==null)S.bizModal.reqExp=((it.req_expertise)||[]).slice();
     if(S.bizModal.loc==null)S.bizModal.loc=(it.location||'');
-    var _reqExp=S.bizModal.reqExp,_oppLoc=S.bizModal.loc;
+    if(S.bizModal.minYears==null)S.bizModal.minYears=(+it.req_min_years||0);
+    if(S.bizModal.sector==null)S.bizModal.sector=(it.req_sector||'');
+    var _reqExp=S.bizModal.reqExp,_oppLoc=S.bizModal.loc,_minYears=+S.bizModal.minYears||0,_sector=S.bizModal.sector||'';
     var _expU={};(S.cands||[]).forEach(function(c){(c.expertise||[]).forEach(function(e){if(e)_expU[e]=1;});});((S._all&&S._all.cons)||S.cons||[]).forEach(function(c){(c.expertise||[]).forEach(function(e){if(e)_expU[e]=1;});});
     var _expList=Object.keys(_expU).sort();
     var _expChips=_expList.length?_expList.map(function(e){var on=_reqExp.indexOf(e)>=0;return '<button type="button" data-act="opp-exp-tog" data-id="'+esc(e)+'" style="padding:4px 12px;border-radius:99px;font-size:12px;font-weight:600;border:1px solid '+(on?'#0891b2':'#e2e8f0')+';background:'+(on?'#0891b2':'#fff')+';color:'+(on?'#fff':'#475569')+';cursor:pointer;margin:0 4px 4px 0">'+esc(e)+'</button>';}).join(''):'<span style="font-size:12px;color:#94a3b8">Renseignez des expertises sur vos candidats/consultants pour activer le matching.</span>';
     var _locOpts='<option value="">— Indifférent —</option>'+REC_LOCATIONS.map(function(l){return '<option value="'+esc(l)+'"'+(_oppLoc===l?' selected':'')+'>'+esc(l)+'</option>';}).join('');
-    var _fl=function(ok){return ok===true?'#16a34a':(ok===false?'#dc2626':'#94a3b8');};
-    var _sugg=oppMatches(_reqExp,_oppLoc,+(it.tjm_cible||0),it.date_start||null);
-    var _suggHtml=(_reqExp.length||_oppLoc)?(_sugg.length?_sugg.map(function(mm){var c=mm.c;
-        return '<div data-act="opp-see-cand" data-id="'+c.id+'" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;cursor:pointer;background:#fff">'
-          +'<div style="min-width:0"><div style="font-weight:700;font-size:13px;color:#0f172a">'+esc(c.name)+'</div>'
-          +'<div style="font-size:11px;color:#64748b">'+esc((c.locations||[]).join(', ')||'—')+' · '+(mm.tjmC?mm.tjmC.toFixed(0)+' €/j':'TJM ?')+' · dispo '+(c.availDate?fDt(c.availDate):'?')+'</div></div>'
-          +'<div style="display:flex;gap:8px;flex-shrink:0;font-size:11px;font-weight:700">'
-          +'<span title="Expertises en commun" style="color:'+(mm.overlap.length?'#16a34a':'#94a3b8')+'">✓ '+mm.overlap.length+'</span>'
-          +'<span title="Localisation" style="color:'+_fl(mm.locOk)+'">📍</span>'
-          +'<span title="Prix (TJM revente ≤ cible)" style="color:'+_fl(mm.priceOk)+'">💶</span>'
-          +'<span title="Disponible avant démarrage" style="color:'+_fl(mm.availOk)+'">📅</span>'
-          +'</div></div>';
-      }).join(''):'<div style="font-size:12px;color:#94a3b8;padding:6px 0">Aucun candidat correspondant pour l\'instant.</div>')
-      :'<div style="font-size:12px;color:#94a3b8;padding:6px 0">Choisissez une expertise et/ou une localisation pour voir des candidats suggérés.</div>';
+    var _secOpts='<option value="">— Indifférent —</option>'+SECTOR_LIST.map(function(s){return '<option value="'+esc(s)+'"'+(_sector===s?' selected':'')+'>'+esc(s)+'</option>';}).join('');
+    var _nbActive=(_reqExp.length?1:0)+(_oppLoc?1:0)+(_minYears>0?1:0)+(_sector?1:0);
+    /* Chip d'indicateur d'un critère : vert si satisfait, gris pâle sinon ; masqué si le critère n'est pas renseigné (ok===null) */
+    var _chip=function(lb,tip,ok){return ok==null?'':'<span title="'+tip+'" style="color:'+(ok?'#16a34a':'#cbd5e1')+'">'+lb+'</span>';};
+    var _sugg=oppMatches(_reqExp,_oppLoc,_minYears,_sector,+(it.tjm_cible||0),it.date_start||null);
+    var _card=function(mm){var c=mm.c;
+      return '<div data-act="opp-see-cand" data-id="'+c.id+'" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;cursor:pointer;background:#fff">'
+        +'<div style="min-width:0"><div style="font-weight:700;font-size:13px;color:#0f172a">'+esc(c.name)+'</div>'
+        +'<div style="font-size:11px;color:#64748b">'+esc((c.locations||[]).join(', ')||'—')+' · '+(c.yearsExp?c.yearsExp+' an'+(c.yearsExp>1?'s':''):'exp ?')+' · '+(mm.tjmC?mm.tjmC.toFixed(0)+' €/j':'TJM ?')+' · dispo '+(c.availDate?fDt(c.availDate):'?')+'</div></div>'
+        +'<div style="display:flex;gap:7px;flex-shrink:0;font-size:11px;font-weight:700;align-items:center">'
+        +_chip('💡'+mm.overlap.length,'Expertises en commun',mm.expOk)
+        +_chip('📍','Localisation',mm.locOk)
+        +_chip('⏳','Années d\'expérience',mm.yrsOk)
+        +_chip('🏭','Secteur',mm.secOk)
+        +'<span title="Prix (TJM revente ≤ cible)" style="color:'+(mm.priceOk===true?'#16a34a':mm.priceOk===false?'#dc2626':'#cbd5e1')+'">💶</span>'
+        +'<span title="Disponible avant démarrage" style="color:'+(mm.availOk===true?'#16a34a':mm.availOk===false?'#dc2626':'#cbd5e1')+'">📅</span>'
+        +'</div></div>';
+    };
+    var _suggHtml;
+    if(!_nbActive){_suggHtml='<div style="font-size:12px;color:#94a3b8;padding:6px 0">Renseignez au moins un critère (expertise, localisation, années d\'expérience ou secteur) pour voir des candidats suggérés.</div>';}
+    else if(!_sugg.length){_suggHtml='<div style="font-size:12px;color:#94a3b8;padding:6px 0">Aucun candidat ne correspond aux critères pour l\'instant.</div>';}
+    else{
+      var _grp={};_sugg.forEach(function(mm){(_grp[mm.matchCount]=_grp[mm.matchCount]||[]).push(mm);});
+      var _ks=Object.keys(_grp).map(Number).sort(function(a,b){return b-a;});
+      _suggHtml=_ks.map(function(k){
+        var full=(k===_nbActive);
+        var head='<div style="font-size:11px;font-weight:800;color:'+(full?'#16a34a':'#64748b')+';margin:10px 0 5px;display:flex;align-items:center;gap:6px">'
+          +(full?'✅':'•')+' '+k+'/'+_nbActive+' critère'+(k>1?'s':'')+' <span style="font-weight:600;color:#94a3b8">('+_grp[k].length+' candidat'+(_grp[k].length>1?'s':'')+')</span></div>';
+        return head+_grp[k].map(_card).join('');
+      }).join('');
+    }
     body='<div class="g2">'
       +'<div class="fd cs2"><label class="fl">Nom de l\'opportunit\u00e9 *</label><input class="ic" id="biz-opp-name" value="'+esc(it.name||'')+'" placeholder="Ex: Refonte SI DSI BNP"></div>'
       +'<div class="fd"><label class="fl">Compte</label><select class="ic" id="biz-opp-acc">'+accOpts+'</select></div>'
@@ -3287,8 +3325,10 @@ function tBizModal(){
       +'<div class="fd cs2"><label class="fl">Consultant(s) pr\u00e9sent\u00e9(s)</label><div id="opp-cons-wrap">'+oppConsPickerHTML()+'</div></div>'
       +(it.status==='perdu'?'<div class="fd cs2"><label class="fl">Motif de perte</label><input class="ic" id="biz-opp-motif" value="'+esc(it.motif_perte||'')+'"></div>':'<input type="hidden" id="biz-opp-motif">')
       +'<div class="fd"><label class="fl">Localisation recherchée</label><select class="ic" id="biz-opp-loc" onchange="S.bizModal.loc=this.value;render()">'+_locOpts+'</select></div>'
+      +'<div class="fd"><label class="fl">Années d\'expérience (min.)</label><input class="ic" type="number" min="0" step="0.5" id="biz-opp-minyears" value="'+(_minYears||'')+'" placeholder="Ex : 5" onchange="S.bizModal.minYears=+this.value||0;render()"></div>'
+      +'<div class="fd"><label class="fl">Secteur recherché</label><select class="ic" id="biz-opp-sector" onchange="S.bizModal.sector=this.value;render()">'+_secOpts+'</select></div>'
       +'<div class="fd cs2"><label class="fl">Expertise / compétences recherchées</label><div style="margin-top:4px">'+_expChips+'</div><p class="fh">Sert à suggérer des candidats du pipeline recrutement.</p></div>'
-      +'<div class="fd cs2"><label class="fl">🎯 Candidats suggérés</label><div style="margin-top:4px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px">'+_suggHtml+'</div><p class="fh">Basé sur l\'expertise, la localisation, le TJM cible et la date de démarrage.</p></div>'
+      +'<div class="fd cs2"><label class="fl">🎯 Candidats suggérés</label><div style="margin-top:4px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px">'+_suggHtml+'</div><p class="fh">Classés par nombre de critères satisfaits (expertise, localisation, années d\'expérience, secteur) ; 💶 prix et 📅 disponibilité servent de départage.</p></div>'
       +'<div class="fd cs2"><label class="fl">Notes</label><textarea class="ic" id="biz-opp-notes" rows="2">'+esc(it.notes||'')+'</textarea></div>'
       +'</div>';
   }
