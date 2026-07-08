@@ -456,7 +456,7 @@ var S={
   impHistory:[],
   impSelFY:'all',
   missImp:null,
-  recSel:null,recF:{status:'all',q:'',loc:[],rec:'all'},recAddMeet:false,recAddCgi:false,recAddCv:false,
+  recSel:null,recF:{status:'all',q:'',loc:[],rec:'all',mine:false,exp:[]},recAddMeet:false,recAddCgi:false,recAddCv:false,
   recEditMeetId:null,recEditCgiId:null,
   activityLog:[]
 };
@@ -4192,20 +4192,20 @@ function recListBody(){
   var stF=S.recF.status||'all';
   var locF=S.recF.loc||[];
   var recF=S.recF.rec||'all';
-  /* Filtrage hiérarchique des candidats selon le rôle */
-  var visibleCands=S.cands.filter(function(cd){
-    if(S.role==='super_admin')return true; /* voit tout (si module payé) */
-    if(S.role==='recruteur'){return !cd.recruiter||cd.recruiter===(S.profileFirstName+' '+(S.profileLastName||'')).trim()||cd.recruiter===S._userEmail;}
-    if(S.role==='gestionnaire'){
-      var myRecEmails=((S.recruteurInvites)||[]).map(function(r){return r.recruteur_name||r.email||'';});
-      return !cd.recruiter||myRecEmails.indexOf(cd.recruiter)>=0||cd.recruiter===S.dirName;
-    }
-    return true; /* admin, sales, utilisateur voient tout si module payé */
-  });
+  /* Pipeline entreprise : tous les rôles ayant accès au module (recruteur,
+     gestionnaire, admin, super_admin…) voient l'ensemble des candidats de
+     l'entreprise. Le cloisonnement inter-entreprises est assuré par la RLS.
+     L'affinage se fait via les filtres ci-dessous (Mes candidats, localisation,
+     expertise) — un recruteur de Nice voit et filtre les candidats de Lyon. */
+  var visibleCands=S.cands.slice();
+  var _myName=(S.profileFirstName+' '+(S.profileLastName||'')).trim();
+  var expF=S.recF.exp||[];
   var list=visibleCands.filter(function(c){
     if(stF!=='all'&&c.status!==stF)return false;
     if(locF.length&&!(c.locations||[]).some(function(l){return locF.indexOf(l)>=0;}))return false;
     if(recF!=='all'&&(c.recruiter||'')!==recF)return false;
+    if(S.recF.mine&&(c.recruiter||'')!==_myName&&(c.recruiter||'')!==S._userEmail&&(c.createdBy||'')!==S._userEmail)return false;
+    if(expF.length&&!(c.expertise||[]).some(function(e){return expF.indexOf(e)>=0;}))return false;
     if(q){
       var hay=(c.name+' '+(c.expertise||[]).join(' ')+' '+(c.email||'')).toLowerCase();
       if(hay.indexOf(q)<0)return false;
@@ -4240,6 +4240,19 @@ function recListBody(){
   var locPills='<div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:10px 0 4px">Localisation'+(locF.length?' ('+locF.length+' sélectionnée'+(locF.length>1?'s':'')+')':'')+'</div>'
     +REC_LOCATIONS.map(locPill).join('');
 
+  /* Filtre Expertise (dynamique : dérivé des expertises présentes) */
+  var expCounts={};S.cands.forEach(function(c){(c.expertise||[]).forEach(function(e){if(e)expCounts[e]=(expCounts[e]||0)+1;});});
+  var expKeys=Object.keys(expCounts).sort();
+  function expPill(e){
+    var active=expF.indexOf(e)>=0;
+    return '<button data-act="recf-exp" data-id="'+esc(e)+'" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid '+(active?'#0891b2':'#e2e8f0')+';background:'+(active?'#0891b2':'#fff')+';color:'+(active?'#fff':'#475569')+';cursor:pointer;margin:0 6px 6px 0">'+esc(e)+' <span style="opacity:.65">'+expCounts[e]+'</span></button>';
+  }
+  var expPills=expKeys.length?('<div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:10px 0 4px">Expertise'+(expF.length?' ('+expF.length+' sélectionnée'+(expF.length>1?'s':'')+')':'')+'</div>'+expKeys.map(expPill).join('')):'';
+
+  /* Bascule « Mes candidats » (recruteur assigné = moi, ou candidat créé par moi) */
+  var minePill='<button data-act="recf-mine" style="padding:7px 16px;border-radius:99px;font-size:12px;font-weight:800;border:1px solid '+(S.recF.mine?'#84CC16':'#e2e8f0')+';background:'+(S.recF.mine?'#84CC16':'#fff')+';color:'+(S.recF.mine?'#1B2B3A':'#475569')+';cursor:pointer">'+(S.recF.mine?'★ Mes candidats':'☆ Mes candidats')+'</button>'
+    +'<span style="font-size:12px;color:#94a3b8;margin-left:10px">'+list.length+' résultat'+(list.length!==1?'s':'')+' sur '+S.cands.length+'</span>';
+
   function tag(t){return '<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;background:#f1f5f9;color:#475569;margin:0 4px 2px 0">'+esc(t)+'</span>';}
 
   var rows=list.map(function(c){
@@ -4264,7 +4277,8 @@ function recListBody(){
       +'</tr>';
   }).join('');
 
-  return '<div>'+pills+recPills+locPills+'</div>'
+  return '<div style="margin-bottom:10px">'+minePill+'</div>'
+    +'<div>'+pills+recPills+locPills+expPills+'</div>'
     +'<div class="card ov" style="margin-top:14px">'
     +'<table><thead><tr><th>Nom</th><th>Expertise</th><th>Secteurs</th><th>Localisation</th><th>Disponibilité</th><th class="tr">Rém. demandée</th><th class="tr">SCR/j</th><th class="tr">TJM revente</th><th>Statut</th><th>Ajouté par</th></tr></thead>'
     +'<tbody>'+rows+(rows?'':'<tr><td colspan="10" class="emp">Aucun candidat'+(q||stF!=='all'||locF.length?' ne correspond aux filtres.':' pour le moment. Cliquez « + Nouveau candidat » pour commencer.')+'</td></tr>')
@@ -4279,7 +4293,7 @@ function recListRefresh(){
 
 function tRecList(){
   return '<div><div class="ph"><div><div class="pt">Recrutement</div>'
-    +'<div class="ps">'+S.cands.length+' candidat'+(S.cands.length!==1?'s':'')+' · pipeline partagé entreprise, visible par tous les directeurs</div></div>'
+    +'<div class="ps">'+S.cands.length+' candidat'+(S.cands.length!==1?'s':'')+' · pipeline partagé de toute l\'entreprise — chaque recruteur voit et filtre l\'ensemble des candidats</div></div>'
     +'<button class="bp" data-act="arec">+ Nouveau candidat</button></div>'
     +'<div style="margin-bottom:10px"><input class="ic" id="recq" placeholder="Rechercher un candidat, une expertise, un email..." value="'+esc(S.recF.q||'')+'" style="max-width:360px"></div>'
     +'<div id="rec-list-wrap">'+recListBody()+'</div></div>';
@@ -5091,6 +5105,14 @@ function bind(){
         var li=la.indexOf(rid);
         if(li>=0)la.splice(li,1);else la.push(rid);
         S.recF.loc=la;
+        recListRefresh();
+      }
+      else if(ra==='recf-mine'){S.recF.mine=!S.recF.mine;recListRefresh();}
+      else if(ra==='recf-exp'){
+        var ea=S.recF.exp||[];
+        var ei=ea.indexOf(rid);
+        if(ei>=0)ea.splice(ei,1);else ea.push(rid);
+        S.recF.exp=ea;
         recListRefresh();
       }
       else if(ra==='recopen'){S.recSel=rid;S.recAddMeet=false;S.recAddCgi=false;S.recAddCv=false;S.recEditMeetId=null;S.recEditCgiId=null;render();}
