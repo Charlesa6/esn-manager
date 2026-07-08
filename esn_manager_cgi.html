@@ -4277,42 +4277,45 @@ function recListBody(){
   var counts={};REC_STATUS.forEach(function(s){counts[s.id]=0;});
   S.cands.forEach(function(c){if(counts[c.status]!=null)counts[c.status]++;});
 
+  /* Style « doux » aligné sur l'onglet Équipe : pastilles compactes, libellé de
+     groupe inline (petite majuscule grise) sur la même ligne que les pastilles. */
+  function fLabel(txt){return '<span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-right:8px">'+txt+'</span>';}
   function pill(id,label,count){
     var active=stF===id;
-    return '<button data-act="recf-st" data-id="'+id+'" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid '+(active?'#2563eb':'#e2e8f0')+';background:'+(active?'#2563eb':'#fff')+';color:'+(active?'#fff':'#475569')+';cursor:pointer;margin:0 6px 6px 0">'+esc(label)+' <span style="opacity:.65">'+count+'</span></button>';
+    return '<button data-act="recf-st" data-id="'+id+'" style="padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;border:1px solid '+(active?'#2563eb':'#e2e8f0')+';background:'+(active?'#2563eb':'#fff')+';color:'+(active?'#fff':'#475569')+';cursor:pointer;margin:0 4px 4px 0">'+esc(label)+' <span style="opacity:.6">'+count+'</span></button>';
   }
   var recList=(S.recruteurInvites||[]).filter(function(r){return r.recruteur_name||r.email;});
   function recPill(rec,label){
     var active=recF===rec;
-    return '<button data-act="recf-rec" data-id="'+esc(rec)+'" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid '+(active?'#84CC16':'#e2e8f0')+';background:'+(active?'#84CC16':'#fff')+';color:'+(active?'#1B2B3A':'#475569')+';cursor:pointer;margin:0 6px 6px 0">'+esc(label)+'</button>';
+    return '<button data-act="recf-rec" data-id="'+esc(rec)+'" style="padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;border:1px solid '+(active?'#84CC16':'#e2e8f0')+';background:'+(active?'#84CC16':'#fff')+';color:'+(active?'#1B2B3A':'#475569')+';cursor:pointer;margin:0 4px 4px 0">'+esc(label)+'</button>';
   }
-  var recPills=recList.length?('<div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:10px 0 4px">Recruteur</div>'
+  var recPills=recList.length?('<div style="margin-bottom:6px">'+fLabel('Recruteur')
     +recPill('all','Tous')
-    +recList.map(function(r){return recPill(r.recruteur_name||r.email,r.recruteur_name||r.email);}).join('')):'';
-  var pills='<div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:0 0 4px">Statut</div>'
-    +pill('all','Tous',S.cands.length)+REC_STATUS.map(function(s){return pill(s.id,recStLbD(s.id),counts[s.id]);}).join('');
+    +recList.map(function(r){return recPill(r.recruteur_name||r.email,r.recruteur_name||r.email);}).join('')+'</div>'):'';
+  var pills='<div style="margin-bottom:6px">'+fLabel('Statut')
+    +pill('all','Tous',S.cands.length)+REC_STATUS.map(function(s){return pill(s.id,recStLbD(s.id),counts[s.id]);}).join('')+'</div>';
 
   var locCounts={};REC_LOCATIONS.forEach(function(l){locCounts[l]=0;});
   S.cands.forEach(function(c){(c.locations||[]).forEach(function(l){if(locCounts[l]!=null)locCounts[l]++;});});
   function locPill(loc){
     var active=locF.indexOf(loc)>=0;
-    return '<button data-act="recf-loc" data-id="'+esc(loc)+'" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid '+(active?'#7c3aed':'#e2e8f0')+';background:'+(active?'#7c3aed':'#fff')+';color:'+(active?'#fff':'#475569')+';cursor:pointer;margin:0 6px 6px 0">'+esc(loc)+' <span style="opacity:.65">'+locCounts[loc]+'</span></button>';
+    return '<button data-act="recf-loc" data-id="'+esc(loc)+'" style="padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;border:1px solid '+(active?'#7c3aed':'#e2e8f0')+';background:'+(active?'#7c3aed':'#fff')+';color:'+(active?'#fff':'#475569')+';cursor:pointer;margin:0 4px 4px 0">'+esc(loc)+' <span style="opacity:.6">'+locCounts[loc]+'</span></button>';
   }
-  var locPills='<div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:10px 0 4px">Localisation'+(locF.length?' ('+locF.length+' sélectionnée'+(locF.length>1?'s':'')+')':'')+'</div>'
-    +REC_LOCATIONS.map(locPill).join('');
+  var locPills='<div style="margin-bottom:6px">'+fLabel('Localisation'+(locF.length?' · '+locF.length:''))
+    +REC_LOCATIONS.map(locPill).join('')+'</div>';
 
   /* Filtre Expertise (dynamique : dérivé des expertises présentes) */
   var expCounts={};S.cands.forEach(function(c){(c.expertise||[]).forEach(function(e){if(e)expCounts[e]=(expCounts[e]||0)+1;});});
   var expKeys=Object.keys(expCounts).sort();
   function expPill(e){
     var active=expF.indexOf(e)>=0;
-    return '<button data-act="recf-exp" data-id="'+esc(e)+'" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid '+(active?'#0891b2':'#e2e8f0')+';background:'+(active?'#0891b2':'#fff')+';color:'+(active?'#fff':'#475569')+';cursor:pointer;margin:0 6px 6px 0">'+esc(e)+' <span style="opacity:.65">'+expCounts[e]+'</span></button>';
+    return '<button data-act="recf-exp" data-id="'+esc(e)+'" style="padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;border:1px solid '+(active?'#0891b2':'#e2e8f0')+';background:'+(active?'#0891b2':'#fff')+';color:'+(active?'#fff':'#475569')+';cursor:pointer;margin:0 4px 4px 0">'+esc(e)+' <span style="opacity:.6">'+expCounts[e]+'</span></button>';
   }
-  var expPills=expKeys.length?('<div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:10px 0 4px">Expertise'+(expF.length?' ('+expF.length+' sélectionnée'+(expF.length>1?'s':'')+')':'')+'</div>'+expKeys.map(expPill).join('')):'';
+  var expPills=expKeys.length?('<div>'+fLabel('Expertise'+(expF.length?' · '+expF.length:''))+expKeys.map(expPill).join('')+'</div>'):'';
 
   /* Bascule « Mes candidats » (recruteur assigné = moi, ou candidat créé par moi) */
-  var minePill='<button data-act="recf-mine" style="padding:7px 16px;border-radius:99px;font-size:12px;font-weight:800;border:1px solid '+(S.recF.mine?'#84CC16':'#e2e8f0')+';background:'+(S.recF.mine?'#84CC16':'#fff')+';color:'+(S.recF.mine?'#1B2B3A':'#475569')+';cursor:pointer">'+(S.recF.mine?'★ Mes candidats':'☆ Mes candidats')+'</button>'
-    +'<span style="font-size:12px;color:#94a3b8;margin-left:10px">'+list.length+' résultat'+(list.length!==1?'s':'')+' sur '+S.cands.length+'</span>';
+  var minePill='<button data-act="recf-mine" style="padding:5px 14px;border-radius:99px;font-size:11px;font-weight:800;border:1px solid '+(S.recF.mine?'#84CC16':'#e2e8f0')+';background:'+(S.recF.mine?'#84CC16':'#fff')+';color:'+(S.recF.mine?'#1B2B3A':'#475569')+';cursor:pointer">'+(S.recF.mine?'★ Mes candidats':'☆ Mes candidats')+'</button>'
+    +'<span style="font-size:11px;color:#94a3b8;margin-left:10px">'+list.length+' résultat'+(list.length!==1?'s':'')+' sur '+S.cands.length+'</span>';
 
   function tag(t){return '<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;background:#f1f5f9;color:#475569;margin:0 4px 2px 0">'+esc(t)+'</span>';}
 
@@ -4338,12 +4341,9 @@ function recListBody(){
       +'</tr>';
   }).join('');
 
-  return '<div class="card" style="padding:14px 16px;margin-bottom:14px;background:#f8fafc;border:1px solid #eef2f7">'
-    +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">'+minePill+'</div>'
-    +'<div style="margin-bottom:8px">'+pills+'</div>'
-    +(recPills?'<div style="margin-bottom:8px">'+recPills+'</div>':'')
-    +'<div style="margin-bottom:8px">'+locPills+'</div>'
-    +(expPills?'<div>'+expPills+'</div>':'')
+  return '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;margin-bottom:14px">'
+    +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">'+minePill+'</div>'
+    +pills+recPills+locPills+expPills
     +'</div>'
     +'<div class="card ov" style="margin-top:14px">'
     +'<table><thead><tr><th>Nom</th><th>Expertise</th><th>Secteurs</th><th>Localisation</th><th>Disponibilité</th><th class="tr">Rém. demandée</th><th class="tr">SCR/j</th><th class="tr">TJM revente</th><th>Statut</th><th>Ajouté par</th></tr></thead>'
@@ -5247,6 +5247,16 @@ function bind(){
       else if(a==='gen-util'){genRecs('util');}
       else if(a==='gen-tjm'){genRecs('tjm');}
       else if(a==='ac'){S.modal={type:'utilisateur',item:null,expSel:[],secSel:[]};render();}
+      /* Chips expertise + suggestions candidats du formulaire d'opportunité (modal,
+         hors #rec-list-wrap) : gérés ici dans le binding direct global. */
+      else if(a==='opp-exp-tog'){
+        var oe=(S.bizModal&&S.bizModal.reqExp)||[];
+        var oi=oe.indexOf(id);
+        if(oi>=0)oe.splice(oi,1);else oe.push(id);
+        if(S.bizModal)S.bizModal.reqExp=oe;
+        render();
+      }
+      else if(a==='opp-see-cand'){S.bizModal=null;S.tab='recrutement';S.recSel=id;render();}
       else if(a==='fexp-tog'){
         S.fexp=S.fexp||[];
         var ei=S.fexp.indexOf(id);
