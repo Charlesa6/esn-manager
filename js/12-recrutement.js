@@ -126,7 +126,7 @@ function recListBody(){
     +'</div>'
     +'<div class="card ov" style="margin-top:14px">'
     +'<table><thead><tr><th>Nom</th><th>Expertise</th><th>Secteurs</th><th>Localisation</th><th>Disponibilité</th><th class="tr">Rém. demandée</th><th class="tr">SCR/j</th><th class="tr">TJM revente</th><th>Statut</th><th>Ajouté par</th></tr></thead>'
-    +'<tbody>'+rows+(rows?'':'<tr><td colspan="10" class="emp">Aucun candidat'+(q||stF!=='all'||locF.length?' ne correspond aux filtres.':' pour le moment. Cliquez « + Nouveau candidat » pour commencer.')+'</td></tr>')
+    +'<tbody>'+rows+(rows?'':'<tr><td colspan="10">'+((q||stF!=='all'||locF.length||expF.length||S.recF.mine)?tEmpty('🔍','Aucun candidat pour ces filtres','Ajustez le statut, la localisation ou l\u2019expertise — ou décochez « Mes candidats ».'):tEmpty('🎯','Votre vivier est vide','Ajoutez un premier candidat pour construire votre pipeline de recrutement.','<button class="bp" data-act="arec">+ Nouveau candidat</button>'))+'</td></tr>')
     +'</tbody></table></div>';
 }
 /* Rafraîchit uniquement les pills + le tableau, sans toucher au champ de recherche

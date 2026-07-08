@@ -545,3 +545,14 @@ function consBU(c){
   }
   return null;
 }
+
+/* État vide illustré et cohérent (icône + titre + sous-texte + CTA optionnel).
+   Remplace les placeholders « .emp » ternes sur les écrans clés. */
+function tEmpty(icon,title,sub,ctaHtml){
+  return '<div style="text-align:center;padding:48px 24px;display:flex;flex-direction:column;align-items:center;gap:6px">'
+    +'<div style="width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#eef7dd,#e2f0cf);display:flex;align-items:center;justify-content:center;font-size:30px;margin-bottom:8px;box-shadow:inset 0 0 0 1px rgba(132,204,22,.25)">'+icon+'</div>'
+    +'<div style="font-size:15px;font-weight:800;color:#0f172a;letter-spacing:-.01em">'+esc(title)+'</div>'
+    +'<div style="font-size:13px;color:#94a3b8;max-width:360px;line-height:1.55">'+esc(sub||'')+'</div>'
+    +(ctaHtml?'<div style="margin-top:12px">'+ctaHtml+'</div>':'')
+    +'</div>';
+}
