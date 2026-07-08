@@ -247,6 +247,9 @@ function tForecastSection(){
     return vp;
   }
   var buMap={};
+  /* Contributions DIRECTES par nœud BU (pour l'arbre hiérarchique repliable) :
+     CA sécurisé (missions) et pipeline pondéré (opportunités), sur la période. */
+  var secByNode={}, secNoBu={ca:0,cost:0}, pipeByNode={}, pipeNoBu=0;
   /* ── Backlog sécurisé (missions) ── */
   (S.miss||[]).forEach(function(m){
     var c=consById[m.cid];if(!c)return;
@@ -276,6 +279,8 @@ function tForecastSection(){
       if(mo.inPeriod){ /* les totaux et la consolidation ne comptent que la période choisie */
         if(!buMap[bkey])buMap[bkey]={name:bname,path:bpath,ca:0,cost:0};
         buMap[bkey].ca+=rev; buMap[bkey].cost+=cost;
+        if(_bid){if(!secByNode[_bid])secByNode[_bid]={ca:0,cost:0};secByNode[_bid].ca+=rev;secByNode[_bid].cost+=cost;}
+        else{secNoBu.ca+=rev;secNoBu.cost+=cost;}
       }
     });
   });
@@ -289,12 +294,18 @@ function tForecastSection(){
     dur=Math.max(dur||1,1);
     var sd=pD(o.date_start||o.date_closing||TODAY);
     var per=val/dur;
+    var obu=o.bu_id||null;
     for(var k=0;k<dur;k++){
       var dd=new Date(sd.getFullYear(),sd.getMonth()+k,1);
       for(var mi=0;mi<months.length;mi++){
         var mm=pD(months[mi].ms);
         if(mm.getFullYear()===dd.getFullYear()&&mm.getMonth()===dd.getMonth()){
-          if(!months[mi].isPast)months[mi].weighted+=per; /* pas de pipeline pondéré sur le passé */
+          if(!months[mi].isPast){ /* pas de pipeline pondéré sur le passé */
+            months[mi].weighted+=per;
+            if(months[mi].inPeriod){ /* ventilation par unité, sur la période */
+              if(obu)pipeByNode[obu]=(pipeByNode[obu]||0)+per; else pipeNoBu+=per;
+            }
+          }
           break;
         }
       }
@@ -330,22 +341,72 @@ function tForecastSection(){
       +'<div style="font-size:19px;font-weight:900;color:'+(color||'#0f172a')+';margin-top:2px">'+val+'</div>'
       +(sub?'<div style="font-size:11px;color:#94a3b8;margin-top:1px">'+sub+'</div>':'')+'</div>';
   }
-  /* ── Marge consolidée par BU / Practice (backlog 12 mois) ── */
-  var buList=Object.keys(buMap).map(function(k){var x=buMap[k];
-    return {name:x.name,path:x.path,ca:x.ca,cost:x.cost,marge:x.ca>0?(x.ca-x.cost)/x.ca*100:null};
-  }).sort(function(a,b){return b.ca-a.ca;});
+  /* ── Marge consolidée par unité (CA sécurisé + pipeline pondéré) ── */
   function mCol(m){return m==null?'#94a3b8':(m>=30?'#16a34a':m>=15?'#d97706':'#dc2626');}
-  var maxBuCa=Math.max.apply(null,buList.map(function(b){return b.ca;}).concat([1]));
-  var buRows=buList.map(function(bu){
-    var pct=Math.max(Math.round(bu.ca/maxBuCa*100),2);
-    return '<tr><td style="padding:10px 14px">'
-      +'<div style="font-size:13px;font-weight:800;color:#1B2B3A">🏢 '+esc(bu.name)+'</div>'
-      +(bu.path?'<div style="font-size:10px;color:#94a3b8;margin-top:1px">'+esc(bu.path)+'</div>':'')
-      +'<div style="height:5px;background:#f1f5f9;border-radius:3px;margin-top:7px;max-width:240px"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#84CC16,#65a30d);border-radius:3px"></div></div>'
-      +'</td>'
-      +'<td class="tr" style="font-weight:900;color:#0f172a;white-space:nowrap;vertical-align:middle">'+fEur(Math.round(bu.ca))+'</td>'
-      +'<td class="tr" style="font-weight:800;color:'+mCol(bu.marge)+';vertical-align:middle">'+(bu.marge!=null?bu.marge.toFixed(1)+'%':'—')+'</td></tr>';
-  }).join('');
+  var _round=function(n){return Math.round(n||0);};
+  var _hasBU=buNodes().length>0;
+  var consTable='', consSub='';
+  if(_hasBU){
+    /* Arbre hiérarchique repliable : chaque nœud agrège son propre sous-arbre. */
+    if(!S.buFcOpen)S.buFcOpen={};
+    var aggr=function(id){
+      var s=secByNode[id]||{ca:0,cost:0};
+      var ca=s.ca,cost=s.cost,pipe=pipeByNode[id]||0;
+      buChildren(id).forEach(function(ch){var a=aggr(ch.id);ca+=a.ca;cost+=a.cost;pipe+=a.pipe;});
+      return {ca:ca,cost:cost,pipe:pipe};
+    };
+    var maxNodeVal=1;
+    buChildren(null).forEach(function(n){var a=aggr(n.id);if(a.ca+a.pipe>maxNodeVal)maxNodeVal=a.ca+a.pipe;});
+    var nodeRows=function(parentId,depth){
+      return buChildren(parentId).map(function(n){
+        var a=aggr(n.id); if(a.ca===0&&a.pipe===0)return '';
+        var kids=buChildren(n.id).filter(function(ch){var x=aggr(ch.id);return x.ca||x.pipe;});
+        var hasKids=kids.length>0, open=!!S.buFcOpen[n.id];
+        var marge=a.ca>0?(a.ca-a.cost)/a.ca*100:null;
+        var pct=Math.max(Math.round((a.ca+a.pipe)/maxNodeVal*100),2);
+        var row='<tr'+(hasKids?' data-act="bu-fc-toggle" data-id="'+n.id+'" style="cursor:pointer"':'')+'>'
+          +'<td style="padding:9px 14px 9px '+(14+depth*20)+'px">'
+          +'<div style="display:flex;align-items:center;gap:7px">'
+          +(hasKids?'<span style="font-size:10px;color:#94a3b8;width:12px;display:inline-block;transform:rotate('+(open?'90':'0')+'deg);transition:transform .15s">▶</span>':'<span style="width:12px;display:inline-block"></span>')
+          +'<span style="font-size:13px;font-weight:'+(depth===0?800:600)+';color:'+(depth===0?'#1B2B3A':'#334155')+'">'+(depth===0?'🏢 ':'')+esc(n.name)+'</span>'
+          +'</div>'
+          +'<div style="height:5px;background:#f1f5f9;border-radius:3px;margin-top:7px;max-width:240px;margin-left:19px"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#84CC16,#65a30d);border-radius:3px"></div></div>'
+          +'</td>'
+          +'<td class="tr" style="font-weight:'+(depth===0?900:700)+';color:#0f172a;white-space:nowrap;vertical-align:middle">'+fEur(_round(a.ca))+'</td>'
+          +'<td class="tr" style="font-weight:'+(depth===0?800:600)+';color:#65a30d;white-space:nowrap;vertical-align:middle">'+(a.pipe>0?fEur(_round(a.pipe)):'—')+'</td>'
+          +'<td class="tr" style="font-weight:800;color:'+mCol(marge)+';vertical-align:middle">'+(marge!=null?marge.toFixed(1)+'%':'—')+'</td></tr>';
+        return row+(open?nodeRows(n.id,depth+1):'');
+      }).join('');
+    };
+    var treeRows=nodeRows(null,0);
+    if(secNoBu.ca>0||pipeNoBu>0){
+      var mN=secNoBu.ca>0?(secNoBu.ca-secNoBu.cost)/secNoBu.ca*100:null;
+      treeRows+='<tr><td style="padding:9px 14px 9px 33px;color:#94a3b8;font-style:italic">Sans unité</td>'
+        +'<td class="tr" style="font-weight:700;color:#64748b">'+fEur(_round(secNoBu.ca))+'</td>'
+        +'<td class="tr" style="color:#94a3b8">'+(pipeNoBu>0?fEur(_round(pipeNoBu)):'—')+'</td>'
+        +'<td class="tr" style="color:'+mCol(mN)+'">'+(mN!=null?mN.toFixed(1)+'%':'—')+'</td></tr>';
+    }
+    consSub='hiérarchie dépliable · cliquez une unité pour voir ses sous-unités';
+    consTable=treeRows?('<div class="ov"><table><thead><tr><th>Unité</th><th class="tr">CA sécurisé</th><th class="tr">Pipeline pondéré</th><th class="tr">Marge nette</th></tr></thead><tbody>'+treeRows+'</tbody></table></div>'):'';
+  } else {
+    /* Fallback : aucune hiérarchie configurée → liste plate par unité/directeur. */
+    var buList=Object.keys(buMap).map(function(k){var x=buMap[k];
+      return {name:x.name,path:x.path,ca:x.ca,cost:x.cost,marge:x.ca>0?(x.ca-x.cost)/x.ca*100:null};
+    }).sort(function(a,b){return b.ca-a.ca;});
+    var maxBuCa=Math.max.apply(null,buList.map(function(b){return b.ca;}).concat([1]));
+    var flatRows=buList.map(function(bu){
+      var pct=Math.max(Math.round(bu.ca/maxBuCa*100),2);
+      return '<tr><td style="padding:10px 14px">'
+        +'<div style="font-size:13px;font-weight:800;color:#1B2B3A">🏢 '+esc(bu.name)+'</div>'
+        +(bu.path?'<div style="font-size:10px;color:#94a3b8;margin-top:1px">'+esc(bu.path)+'</div>':'')
+        +'<div style="height:5px;background:#f1f5f9;border-radius:3px;margin-top:7px;max-width:240px"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#84CC16,#65a30d);border-radius:3px"></div></div>'
+        +'</td>'
+        +'<td class="tr" style="font-weight:900;color:#0f172a;white-space:nowrap;vertical-align:middle">'+fEur(Math.round(bu.ca))+'</td>'
+        +'<td class="tr" style="font-weight:800;color:'+mCol(bu.marge)+';vertical-align:middle">'+(bu.marge!=null?bu.marge.toFixed(1)+'%':'—')+'</td></tr>';
+    }).join('');
+    consSub='dernier niveau, comparables entre elles';
+    consTable=flatRows?('<div class="ov"><table><thead><tr><th>Unité</th><th class="tr">CA sécurisé</th><th class="tr">Marge nette</th></tr></thead><tbody>'+flatRows+'</tbody></table></div>'):'';
+  }
 
   var winLbl=qDef?(qDef.lb+' · '+fyLbl(S.year)):fyLbl(S.year);
   var sub=allPast
@@ -365,8 +426,8 @@ function tForecastSection(){
     +'<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:11px;height:11px;background:#bef264;border-radius:2px;display:inline-block"></span>Pipeline pondéré</span>'
     +(qDef?'<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:11px;height:11px;background:#d7dde5;border-radius:2px;display:inline-block"></span>Hors '+esc(qDef.lb)+'</span>':'')
     +'</div>'
-    +(buRows?('<div style="margin-top:18px"><div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:6px">Marge consolidée par unité <span style="font-weight:500;color:#94a3b8">— dernier niveau, comparables entre elles · '+esc(winLbl)+'</span></div>'
-      +'<div class="ov"><table><thead><tr><th>Unité</th><th class="tr">CA sécurisé</th><th class="tr">Marge nette</th></tr></thead><tbody>'+buRows+'</tbody></table></div></div>'):'')
+    +(consTable?('<div style="margin-top:18px"><div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:6px">Marge consolidée par unité <span style="font-weight:500;color:#94a3b8">— '+consSub+' · '+esc(winLbl)+'</span></div>'
+      +consTable+'</div>'):'')
     +'</div>';
 }
 

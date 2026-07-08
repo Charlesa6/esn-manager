@@ -202,6 +202,7 @@ function bind(){
       e.stopPropagation();
       if(a==='export'){exportJSON();return;}
       else if(a==='qsel'){S.quarter=id?+id:null;render();}
+      else if(a==='bu-fc-toggle'){if(!S.buFcOpen)S.buFcOpen={};S.buFcOpen[id]=!S.buFcOpen[id];render();}
       else if(a==='yr-prev'){if(S.year>CFY-2){S.year--;H=fyHols(S.year);S.precs={};render();}}
       else if(a==='yr-next'){if(S.year<CFY+1){S.year++;H=fyHols(S.year);S.precs={};render();}}
       else if(a==='lvc'){S.flc=id;render();return;}

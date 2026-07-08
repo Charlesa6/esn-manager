@@ -151,7 +151,8 @@ async function sbUpsertOpp(o){
     req_expertise:o.req_expertise||[],
     location:o.location||null,
     req_min_years:o.req_min_years||null,
-    req_sector:o.req_sector||null
+    req_sector:o.req_sector||null,
+    bu_id:o.bu_id||null
   };
   return sb.from('crm_opportunities').upsert(payload,{onConflict:'id'});
 }
@@ -273,6 +274,8 @@ function bizSaveOpp(){
     owner_role:it?(it.owner_role||S.role):S.role,
     owner_dir:it?(it.owner_dir||S.dirName||''):S.dirName||'', /* Gestionnaire du créateur */
     owner_vp:it?(it.owner_vp||S.vpName||''):S.vpName||'',   /* Admin du créateur */
+    /* Unité : BU (niveau le plus fin) du créateur. Conservée telle quelle en édition. */
+    bu_id:it?(it.bu_id||myBuId()):myBuId(),
   };
   if(!o.name){alert('Nom requis');return;}
   if(S.role==='utilisateur'){
