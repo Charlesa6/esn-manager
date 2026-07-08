@@ -305,16 +305,32 @@ function bind(){
       else if(a==='sc'){
         var n=gv('mn'),t=gv('mti'),s=+gv('ms'),em=gv('me');
         var arr=gv('marr')||null,dep=gv('mdep')||null;
-        var rdir=(S.role==='gestionnaire')?S.dirName:gv('mdir');
+        var it=S.modal.item;
+        /* Rattachement d'équipe (directeur/N+1) : réservé au grade gestionnaire et
+           au-dessus. Sinon on conserve l'existant. On résout aussi le managerId. */
+        var rdir,mgrId;
+        if(canEditTeam()){
+          rdir=(S.role==='gestionnaire')?S.dirName:gv('mdir');
+          var _mgr=mgrAccountByName(rdir);
+          mgrId=_mgr?_mgr.id:(it?it.managerId:null);
+        }else{rdir=it?(it.dir||''):'';mgrId=it?it.managerId:null;}
+        /* BU : réservée au N+1 du consultant (admin/super_admin au-dessus). En
+           création ou si vide, hérite de la BU du N+1. */
+        var _canBU=it?isConsMyReport(it):canEditTeam();
+        var buId;
+        if(_canBU){
+          buId=gv('mbu')||'';
+          if(!buId){var _m2=mgrAccountByName(rdir);if(_m2&&_m2.bu_id)buId=_m2.bu_id;}
+        }else{buId=it?(it.buId||null):null;}
         var expArr=(S.modal.expSel||[]).slice();
         var secArr=(S.modal.secSel||[]).slice();
         var ctrct=gv('mcontract')||'salarie';var grade=gv('mgrade')||'';
         if(!n){alert('Le nom est obligatoire.');return;}
         if(!s||s<0)s=0;
-        var it=S.modal.item;
         var nc;
-        if(it){S.cons=S.cons.map(function(c){if(c.id===it.id){nc=Object.assign({},c,{name:n,title:t,scr:s,email:em,dir:rdir,arrive:arr,depart:dep,expertise:expArr,sectors:secArr,contract:ctrct,grade:grade});return nc;}return c;});}
-        else{nc={id:uid(),name:n,title:t,scr:s,email:em,dir:rdir,arrive:arr,depart:dep,expertise:expArr,sectors:secArr,contract:ctrct,grade:grade};S.cons=S.cons.concat([nc]);}
+        var _fields={name:n,title:t,scr:s,email:em,dir:rdir,managerId:mgrId,buId:buId||null,arrive:arr,depart:dep,expertise:expArr,sectors:secArr,contract:ctrct,grade:grade};
+        if(it){S.cons=S.cons.map(function(c){return c.id===it.id?(nc=Object.assign({},c,_fields)):c;});}
+        else{nc=Object.assign({id:uid()},_fields);S.cons=S.cons.concat([nc]);}
         sbUpsertCons(nc);
         S.modal=null;render();
       }
@@ -457,13 +473,16 @@ function bind(){
         if(rcCb&&rcCb.checked){
           var rcStart=gv('rc-start');
           var rcPoste=gv('rc-poste');
-          var rcDir=gv('rc-dir');
+          /* rc-dir = id du compte gestionnaire (N+1) s\u00e9lectionn\u00e9 \u2192 nom + managerId + BU h\u00e9rit\u00e9e */
+          var rcDirId=gv('rc-dir');
+          var _mgrAcc=(S.orgProfiles||[]).find(function(p){return p.id===rcDirId;});
+          var rcDirName=_mgrAcc?(((_mgrAcc.first_name||'')+' '+(_mgrAcc.last_name||'')).trim()):'';
           if(!rcStart||!rcPoste){alert('La date de d\u00e9marrage et le poste sont obligatoires pour int\u00e9grer le consultant dans l\'\u00e9quipe.');return;}
           /* Stocker les champs recrutement sur le candidat */
           ncand.recruited=true;
           ncand.recruitStart=rcStart;
           ncand.recruitPoste=rcPoste;
-          ncand.recruitDir=rcDir;
+          ncand.recruitDir=rcDirName;
           ncand.status='recrute';
           /* Créer ou mettre à jour le profil consultant (ne crée qu'une seule fois) */
           if(!wasRecruited){
@@ -473,7 +492,9 @@ function bind(){
               title:rcPoste,
               scr:Math.round(recScr(cfields.reqSalary||0)),
               email:cfields.email||'',
-              dir:rcDir||'',
+              dir:rcDirName||'',
+              managerId:_mgrAcc?_mgrAcc.id:null,
+              buId:_mgrAcc?(_mgrAcc.bu_id||null):null, /* héritage BU du gestionnaire */
               arrive:rcStart,
               depart:null,
               phone:cfields.phone||''

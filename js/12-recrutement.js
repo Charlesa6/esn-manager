@@ -523,15 +523,15 @@ function tModal(){
       +'<select class="ic" id="rc-poste"><option value="">-- Sélectionner --</option>'+['Consultant Junior','Consultant Confirmé','Consultant Sénior','Manager','Business Manager'].map(function(g){return '<option value="'+g+'"'+(it&&it.recruitPoste===g?' selected':'')+'>'+g+'</option>';}).join('')+'</select>'
       +'</div>'
 
-      +'<div class="fd cs2"><label class="fl">'+rLabel('gestionnaire')+'</label>'
-      +'<input class="ic" id="rc-dir" list="rc-dir-list" placeholder="Nom du directeur" value="'+(it&&it.recruitDir?esc(it.recruitDir):'')+'">'
-      +'<datalist id="rc-dir-list">'+(function(){
-        var dirs=[];
-        ((S._all&&S._all.cons)||S.cons).forEach(function(c){var d=c.dir||'';if(d&&dirs.indexOf(d)<0)dirs.push(d);});
-        dirs.sort();
-        return dirs.map(function(d){return '<option value="'+esc(d)+'">'+esc(d)+'</option>';}).join('');
-      }())+'</datalist>'
-      +'<p class="fh">Choisissez parmi les directeurs existants ou saisissez un nouveau nom.</p></div>'
+      +'<div class="fd cs2"><label class="fl">'+rLabel('gestionnaire')+' (N+1)</label>'
+      +'<select class="ic" id="rc-dir"><option value="">— Sélectionner un gestionnaire —</option>'+(function(){
+        var _pre=mgrAccountByName(it&&it.recruitDir);
+        return (S.orgProfiles||[]).filter(function(p){return ['gestionnaire','admin','super_admin'].indexOf(p.role)>=0;}).map(function(p){
+          var nm=((p.first_name||'')+' '+(p.last_name||'')).trim()||p.id;
+          return '<option value="'+p.id+'"'+((_pre&&_pre.id===p.id)?' selected':'')+'>'+esc(nm)+' ('+rLabel(p.role)+')'+(p.bu_id?' — '+esc(buLabel(p.bu_id)):'')+'</option>';
+        }).join('');
+      }())+'</select>'
+      +'<p class="fh">Le consultant rejoint l\'équipe de ce gestionnaire et <strong>hérite de sa Business Unit</strong>.</p></div>'
       +'</div>'
 
       +'</div>'
@@ -562,6 +562,16 @@ function tModal(){
     var dirFld=(S.role==='gestionnaire')
       ? '<div class="fd"><label class="fl">Responsable (N+1)</label><input class="ic" id="mdir" value="'+esc(S.dirName)+'" disabled style="background:#f1f5f9;color:#64748b"><p class="fh">Membre rattach\u00e9 automatiquement \u00e0 votre \u00e9quipe</p></div>'
       : '<div class="fd"><label class="fl">Responsable (N+1)</label><select class="ic" id="mdir"><option value="">\u2014 Aucun \u2014</option>'+_mgrNames.map(function(n){return '<option value="'+esc(n)+'"'+(n===_curDir?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select><p class="fh">Vous ou un gestionnaire de votre organisation</p></div>';
+    /* Champ Business Unit : modifiable uniquement par le N+1 du consultant
+       (admin/super_admin au-dessus). En cr\u00e9ation, h\u00e9rite du N+1 choisi. */
+    var _canBU=it?isConsMyReport(it):canEditTeam();
+    var _curBU=it?(it.buId||''):'';
+    var buFld=buNodes().length
+      ? '<div class="fd"><label class="fl">Business Unit</label><select class="ic" id="mbu"'+(_canBU?'':' disabled title="Seul le N+1 (gestionnaire direct) peut modifier la BU"')+'>'
+        +'<option value="">\u2014 Aucune \u2014</option>'
+        +buNodes().slice().sort(function(a,b){return buPathLabel(a.id).localeCompare(buPathLabel(b.id),'fr');}).map(function(n){return '<option value="'+n.id+'"'+(_curBU===n.id?' selected':'')+'>'+esc(buPathLabel(n.id))+'</option>';}).join('')
+        +'</select><p class="fh">'+(_canBU?'Laissez vide pour h\u00e9riter de la BU du N+1.':'Rattachement r\u00e9serv\u00e9 au N+1 (gestionnaire direct).')+'</p></div>'
+      : '<div class="fd"><label class="fl">Business Unit</label><input class="ic" disabled value="Aucune BU d\u00e9finie" style="background:#f1f5f9;color:#94a3b8"><p class="fh">Le super_admin cr\u00e9e les BU dans Param\u00e8tres.</p></div>';
     body='<div class="g2">'
       +'<div class="fd"><label class="fl">Nom complet *</label><input class="ic" id="mn" value="'+esc(it?it.name:'')+'" placeholder="Prénom Nom"></div>'
       +'<div class="fd"><label class="fl">Grade / Rôle</label><select class="ic" id="mti"><option value="">— Aucun / non applicable —</option>'+availGrades.map(function(g){return '<option value="'+g+'"'+(it&&it.title===g?' selected':'')+'>'+esc(g)+'</option>';}).join('')+'</select><p class="fh">'+'Optionnel. Les grades concernent les consultants ; un Admin peut le laisser vide. Pour créer un compte Admin/Gestionnaire/Recruteur/Business Manager : utilisez Gestion des accès.'+'</p></div>'
@@ -575,6 +585,7 @@ function tModal(){
       +'<div class="fd"><label class="fl">Date d\'arriv\u00e9e</label><input class="ic" id="marr" type="date" value="'+esc(it&&it.arrive?it.arrive:'')+'"><p class="fh">Laissez vide si pr\u00e9sent depuis le d\u00e9but du FY</p></div>'
       +'<div class="fd"><label class="fl">Date de d\u00e9part</label><input class="ic" id="mdep" type="date" value="'+esc(it&&it.depart?it.depart:'')+'"><p class="fh">Laissez vide si toujours en poste</p></div>'
       +'<div class="fd cs2">'+dirFld+'</div>'
+      +buFld
       +'<div class="fd cs2"><label class="fl">Expertises</label><div id="exp-wrap">'+expPickerHTML()+'</div></div>'
       +'<div class="fd cs2"><label class="fl">Connaissance secteur</label><div id="sec-wrap">'+secPickerHTML()+'</div></div>'
       +'</div>'
