@@ -449,7 +449,7 @@ var S={
   year:CFY,quarter:null,modal:null,fmc:'all',fms:'all',fmt:'all',flc:'all',precs:{},
   role:'admin',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,kpiDirOpen:{},invites:[],svpInvites:[],recruteurInvites:[],vpDirMap:{},vpName:'',profileFirstName:'',profileLastName:'',profileTitle:'',fvp:[],settings:{currency:'EUR',currencySymbol:'€',fyStartMonth:10,fyStartDay:1,roleLabels:{},hasBusinessModule:false,hasRecrutementModule:false},kpiVPOpen:{},kpiDirDirOpen:{},actCid:'',actMonth:'',_all:null,leaveApprovalRole:'super_admin',allInvites:[],managerId:null,approvalDelegateTo:null,approvalDelegateUntil:null,orgProfiles:[],
   /* CRM Business */
-  bizTab:'pipeline',bizAccounts:[],bizContacts:[],bizOpps:[],bizActivities:[],bizApprovals:[],bizModal:null,bizFilter:{status:'all',account:''},
+  bizTab:'pipeline',bizAccounts:[],bizContacts:[],bizOpps:[],bizActivities:[],bizApprovals:[],bizModal:null,bizFilter:{status:'all',account:'',exp:''},
   sbSt:'\uD83D\uDFE2 Sauvegarde locale active',
   sbSync:false,
   imp:null,
@@ -2821,9 +2821,11 @@ function tBusiness(){
 function tBizPipeline(){
   var fst=S.bizFilter.status||'all';
   var facc=S.bizFilter.account||'';
+  var fexp=S.bizFilter.exp||'';
   var opps=visibleOpps().filter(function(o){
     if(fst!=='all'&&o.status!==fst)return false;
     if(facc&&o.account_id!==facc)return false;
+    if(fexp&&(o.req_expertise||[]).indexOf(fexp)<0)return false;
     return true;
   });
   /* KPI mini-bar */
@@ -2843,12 +2845,17 @@ function tBizPipeline(){
   /* Filtres */
   var accOpts='<option value="">Tous les comptes</option>'+S.bizAccounts.map(function(a){return '<option value="'+a.id+'"'+(facc===a.id?' selected':'')+'>'+esc(a.name)+'</option>';}).join('');
   var stOpts='<option value="all">Tous statuts</option>'+OPP_STATUS.map(function(s){return '<option value="'+s.id+'"'+(fst===s.id?' selected':'')+'>'+s.lb+'</option>';}).join('');
+  /* Filtre expertise : dérivé des expertises portées par les opportunités visibles */
+  var expSet={};visibleOpps().forEach(function(o){(o.req_expertise||[]).forEach(function(e){if(e)expSet[e]=1;});});
+  var expList=Object.keys(expSet).sort();
+  var expOpts='<option value="">Toutes expertises</option>'+expList.map(function(e){return '<option value="'+esc(e)+'"'+(fexp===e?' selected':'')+'>'+esc(e)+'</option>';}).join('');
   var filters='<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">'
     +'<select class="ic" id="biz-fst" style="min-width:160px;font-size:13px">'+stOpts+'</select>'
     +'<select class="ic" id="biz-facc" style="min-width:180px;font-size:13px">'+accOpts+'</select>'
+    +(expList.length?'<select class="ic" id="biz-fexp" style="min-width:180px;font-size:13px">'+expOpts+'</select>':'')
     +'</div>';
 
-  if(!opps.length)return kbar+filters+'<div class="emp">Aucune opportunité'+( fst!=='all'||facc?' avec ces filtres':'')+'</div>';
+  if(!opps.length)return kbar+filters+'<div class="emp">Aucune opportunité'+( fst!=='all'||facc||fexp?' avec ces filtres':'')+'</div>';
 
   var thead='<thead><tr>'
     +'<th>Opportunité</th><th>Compte</th><th>Contact</th>'
@@ -4331,8 +4338,13 @@ function recListBody(){
       +'</tr>';
   }).join('');
 
-  return '<div style="margin-bottom:10px">'+minePill+'</div>'
-    +'<div>'+pills+recPills+locPills+expPills+'</div>'
+  return '<div class="card" style="padding:14px 16px;margin-bottom:14px;background:#f8fafc;border:1px solid #eef2f7">'
+    +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">'+minePill+'</div>'
+    +'<div style="margin-bottom:8px">'+pills+'</div>'
+    +(recPills?'<div style="margin-bottom:8px">'+recPills+'</div>':'')
+    +'<div style="margin-bottom:8px">'+locPills+'</div>'
+    +(expPills?'<div>'+expPills+'</div>':'')
+    +'</div>'
     +'<div class="card ov" style="margin-top:14px">'
     +'<table><thead><tr><th>Nom</th><th>Expertise</th><th>Secteurs</th><th>Localisation</th><th>Disponibilité</th><th class="tr">Rém. demandée</th><th class="tr">SCR/j</th><th class="tr">TJM revente</th><th>Statut</th><th>Ajouté par</th></tr></thead>'
     +'<tbody>'+rows+(rows?'':'<tr><td colspan="10" class="emp">Aucun candidat'+(q||stF!=='all'||locF.length?' ne correspond aux filtres.':' pour le moment. Cliquez « + Nouveau candidat » pour commencer.')+'</td></tr>')
@@ -5205,6 +5217,8 @@ function bind(){
   if(bfst)bfst.onchange=function(){S.bizFilter.status=this.value;render();};
   var bfacc=document.getElementById('biz-facc');
   if(bfacc)bfacc.onchange=function(){S.bizFilter.account=this.value;render();};
+  var bfexp=document.getElementById('biz-fexp');
+  if(bfexp)bfexp.onchange=function(){S.bizFilter.exp=this.value;render();};
   var vpcb=document.querySelectorAll('[data-vp]');
   for(var vi=0;vi<vpcb.length;vi++){(function(cb){cb.onchange=function(){
     var v=cb.getAttribute('data-vp');
@@ -5216,7 +5230,12 @@ function bind(){
   var vpclr=document.querySelector('[data-vp-clear]');
   if(vpclr)vpclr.onclick=function(){S.fvp=[];render();};
   /* all data-act */
-  var bs=document.querySelectorAll('[data-act]:not([data-act="recopen"]):not([data-act="recf-st"])');
+  /* Les pastilles de filtre recrutement vivent dans #rec-list-wrap et sont gérées
+     UNIQUEMENT par le handler délégué (rlw.onclick). On les exclut du binding direct
+     ci-dessous : sinon son e.stopPropagation() intercepte le clic sans branche
+     correspondante → le filtre « clique dans le vide » tant que la liste n'a pas été
+     régénérée par un premier clic sur Statut. */
+  var bs=document.querySelectorAll('[data-act]:not([data-act="recopen"]):not([data-act="recf-st"]):not([data-act="recf-rec"]):not([data-act="recf-loc"]):not([data-act="recf-mine"]):not([data-act="recf-exp"])');
   for(var j=0;j<bs.length;j++){(function(b){
     var a=b.getAttribute('data-act'),id=b.getAttribute('data-id'),fb=b.getAttribute('data-fb');
     b.onclick=async function(e){
