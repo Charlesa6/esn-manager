@@ -905,6 +905,7 @@ function cmdkActions(){
   feat(tabs.leaves,'Poser une absence / un congé','leaves','al');
   feat(tabs.business,'Nouvelle opportunité','business','biz-new');
   feat(tabs.recrutement,'Nouveau candidat','recrutement','arec');
+  acts.push({label:(isDark()?'Passer en thème clair':'Passer en thème sombre'), run:function(){toggleTheme();render();}});
   acts.push({label:'Afficher / masquer la barre latérale', run:function(){toggleSB();}});
   return acts;
 }
