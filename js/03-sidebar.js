@@ -141,6 +141,9 @@ function tSB(){
     +'<div style="font-size:10px;color:#64748b;margin-top:6px;text-align:center">'+(S.quarter?esc(((QUARTERS.find(function(q){return q.id===S.quarter;})||{}).lbFull)||''):'Exercice complet')+'</div>'
     +'</div>'
     +dirBlock
+    +'<button data-act="cmdk-open" style="margin:8px 8px 2px;display:flex;align-items:center;gap:8px;width:calc(100% - 16px);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10);border-radius:9px;padding:7px 10px;color:#9fb0c2;font-size:12px;font-weight:600;cursor:pointer;transition:background .14s,border-color .14s" onmouseover="this.style.background=\'rgba(255,255,255,.09)\'" onmouseout="this.style.background=\'rgba(255,255,255,.05)\'">'
+    +'<span style="opacity:.8">🔍</span><span style="flex:1;text-align:left">Rechercher…</span>'
+    +'<span style="background:rgba(255,255,255,.10);border-radius:5px;padding:1px 6px;font-size:10px;font-weight:700">⌘K</span></button>'
     +'<nav class="snv">'+nav+'</nav>'
     +'<div class="sft">'
     +'<div style="font-size:10px;color:#475569;padding:0 2px">'+S.cons.length+' collab. \u00b7 '+S.miss.length+' missions</div>'

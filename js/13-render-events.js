@@ -203,6 +203,7 @@ function bind(){
       if(a==='export'){exportJSON();return;}
       else if(a==='qsel'){S.quarter=id?+id:null;render();}
       else if(a==='bu-fc-toggle'){if(!S.buFcOpen)S.buFcOpen={};S.buFcOpen[id]=!S.buFcOpen[id];render();}
+      else if(a==='cmdk-open'){openCmdK();return;}
       else if(a==='yr-prev'){if(S.year>CFY-2){S.year--;H=fyHols(S.year);S.precs={};render();}}
       else if(a==='yr-next'){if(S.year<CFY+1){S.year++;H=fyHols(S.year);S.precs={};render();}}
       else if(a==='lvc'){S.flc=id;render();return;}
@@ -866,5 +867,71 @@ function bind(){
   if(document.querySelector('[data-act="sync"]')){
     document.querySelector('[data-act="sync"]').onclick=function(){syncToSB();};
   }
+  if(!S._cmdkBound){S._cmdkBound=true;cmdkInit();}
+}
+
+/* ══════════════════════════════════════════════════════════════
+   COMMAND PALETTE (⌘K / Ctrl+K) — navigation et actions rapides
+   ══════════════════════════════════════════════════════════════ */
+function cmdkActions(){
+  var acts=[];
+  /* Navigation : reprend exactement les onglets visibles pour le rôle courant. */
+  var navs=document.querySelectorAll('#sb .snv [data-nav]');
+  navs.forEach(function(n){
+    var lbl=(n.textContent||'').replace(/\s+/g,' ').replace(/\s*\d+$/,'').trim();
+    if(!lbl)return;
+    acts.push({label:'Aller à — '+lbl, run:function(){n.click();}});
+  });
+  acts.push({label:'Aller à — Mon profil', run:function(){S.tab='profile';render();}});
+  acts.push({label:'Afficher / masquer la barre latérale', run:function(){toggleSB();}});
+  if(S.settings&&S.settings.hasBusinessModule&&(S.role==='sales'||S.role==='admin'||S.role==='gestionnaire'||S.role==='super_admin'))
+    acts.push({label:'Nouvelle opportunité', run:function(){S.tab='business';render();var b=document.querySelector('[data-act="biz-new"]');if(b)b.click();}});
+  if(S.settings&&S.settings.hasRecrutementModule&&(S.role==='recruteur'||S.role==='admin'||S.role==='gestionnaire'||S.role==='super_admin'))
+    acts.push({label:'Nouveau candidat', run:function(){S.tab='recrutement';render();var b=document.querySelector('[data-act="arec"]');if(b)b.click();}});
+  return acts;
+}
+function cmdkRenderList(){
+  var q=((S.cmdk&&S.cmdk.q)||'').toLowerCase();
+  var acts=cmdkActions().filter(function(a){return a.label.toLowerCase().indexOf(q)>=0;});
+  S._cmdkActs=acts;
+  if(S.cmdk.sel>=acts.length)S.cmdk.sel=Math.max(0,acts.length-1);
+  var list=document.getElementById('cmdk-list');if(!list)return;
+  list.innerHTML=acts.length?acts.map(function(a,i){
+    return '<div class="cmdk-item'+(i===S.cmdk.sel?' sel':'')+'" data-cmdk-run="'+i+'"><span style="opacity:.6">→</span>'+esc(a.label)+'</div>';
+  }).join(''):'<div class="cmdk-empty">Aucun résultat</div>';
+  var sel=list.querySelector('.cmdk-item.sel');if(sel&&sel.scrollIntoView)sel.scrollIntoView({block:'nearest'});
+}
+function openCmdK(){
+  S.cmdk={open:true,q:'',sel:0};
+  var box=document.getElementById('cmdk');if(!box)return;
+  var kb=(navigator.platform&&/Mac/.test(navigator.platform))?'⌘K':'Ctrl K';
+  box.innerHTML='<div class="cmdk-ov">'
+    +'<div class="cmdk-box" role="dialog" aria-label="Palette de commandes">'
+    +'<input id="cmdk-input" class="cmdk-input" placeholder="Rechercher une page, une action…" autocomplete="off" spellcheck="false">'
+    +'<div id="cmdk-list" class="cmdk-list"></div>'
+    +'<div class="cmdk-foot"><span><kbd>↑</kbd><kbd>↓</kbd> naviguer</span><span><kbd>↵</kbd> ouvrir</span><span><kbd>esc</kbd> fermer</span><span style="margin-left:auto">'+kb+'</span></div>'
+    +'</div></div>';
+  cmdkRenderList();
+  var inp=document.getElementById('cmdk-input');
+  if(inp){inp.addEventListener('input',function(){S.cmdk.q=this.value;S.cmdk.sel=0;cmdkRenderList();});inp.focus();}
+}
+function closeCmdK(){S.cmdk={open:false,q:'',sel:0};var box=document.getElementById('cmdk');if(box)box.innerHTML='';}
+function cmdkRun(i){var a=S._cmdkActs&&S._cmdkActs[i];if(!a)return;closeCmdK();a.run();}
+function cmdkInit(){
+  document.addEventListener('keydown',function(e){
+    var k=(e.key||'').toLowerCase();
+    if((e.metaKey||e.ctrlKey)&&k==='k'){e.preventDefault();if(S.cmdk&&S.cmdk.open)closeCmdK();else openCmdK();return;}
+    if(!S.cmdk||!S.cmdk.open)return;
+    if(k==='escape'){e.preventDefault();closeCmdK();}
+    else if(k==='arrowdown'){e.preventDefault();S.cmdk.sel=Math.min(((S._cmdkActs||[]).length)-1,S.cmdk.sel+1);cmdkRenderList();}
+    else if(k==='arrowup'){e.preventDefault();S.cmdk.sel=Math.max(0,S.cmdk.sel-1);cmdkRenderList();}
+    else if(k==='enter'){e.preventDefault();cmdkRun(S.cmdk.sel);}
+  });
+  var box=document.getElementById('cmdk');
+  if(box)box.addEventListener('click',function(e){
+    var it=e.target.closest?e.target.closest('[data-cmdk-run]'):null;
+    if(it){cmdkRun(+it.getAttribute('data-cmdk-run'));return;}
+    if(e.target.classList&&e.target.classList.contains('cmdk-ov'))closeCmdK();
+  });
 }
 
