@@ -122,10 +122,10 @@ function tSB(){
     +'<span style="font-size:10px;color:#475569">&#x270E;</span></button>'
     +'<div class="syr"><div class="syr-lbl">Exercice fiscal</div><select id="yrs">'+fyOpts+'</select>'
     +'<div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap">'
-    +'<button data-act="qsel" data-id="" style="flex:1;min-width:54px;padding:5px 4px;border-radius:6px;font-size:10px;font-weight:700;border:1px solid '+(!S.quarter?'#2563eb':'#334155')+';background:'+(!S.quarter?'#2563eb':'transparent')+';color:'+(!S.quarter?'#fff':'#94a3b8')+';cursor:pointer">Ann\u00e9e</button>'
+    +'<button data-act="qsel" data-id="" style="flex:1;min-width:54px;padding:6px 4px;border-radius:7px;font-size:10px;font-weight:800;border:1px solid '+(!S.quarter?'#84CC16':'rgba(255,255,255,.12)')+';background:'+(!S.quarter?'#84CC16':'transparent')+';color:'+(!S.quarter?'#16240a':'#9fb0c2')+';cursor:pointer;transition:all .14s">Ann\u00e9e</button>'
     +QUARTERS.map(function(q){
       var active=S.quarter===q.id;
-      return '<button data-act="qsel" data-id="'+q.id+'" title="'+esc(q.lbFull)+'" style="flex:1;min-width:38px;padding:5px 4px;border-radius:6px;font-size:10px;font-weight:700;border:1px solid '+(active?'#2563eb':'#334155')+';background:'+(active?'#2563eb':'transparent')+';color:'+(active?'#fff':'#94a3b8')+';cursor:pointer">'+q.lb+'</button>';
+      return '<button data-act="qsel" data-id="'+q.id+'" title="'+esc(q.lbFull)+'" style="flex:1;min-width:38px;padding:6px 4px;border-radius:7px;font-size:10px;font-weight:800;border:1px solid '+(active?'#84CC16':'rgba(255,255,255,.12)')+';background:'+(active?'#84CC16':'transparent')+';color:'+(active?'#16240a':'#9fb0c2')+';cursor:pointer;transition:all .14s">'+q.lb+'</button>';
     }).join('')
     +'</div></div>'
     +dirBlock

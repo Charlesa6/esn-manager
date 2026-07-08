@@ -77,6 +77,8 @@ function bind(){
     var nv=b.getAttribute('data-nav');
     if(nv==='recrutement'){S.recSel=null;S.recAddMeet=false;S.recAddCgi=false;S.recAddCv=false;S.recEditMeetId=null;S.recEditCgiId=null;}
     S.tab=nv;
+    /* Mobile : refermer la sidebar (overlay) après navigation */
+    if(window.innerWidth<=767)document.body.classList.add('sb-col');
     /* Rafraîchir les données en temps réel sur les onglets sensibles */
     if(nv==='admin'){loadConsInvites().then(function(){render();});}
     else if(nv==='svp_acces'){loadPendingSeats().then(function(){render();});loadSubscription().then(function(){render();});loadSVPInvites().then(function(){render();});}
