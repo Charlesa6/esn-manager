@@ -255,7 +255,10 @@ function tForecastSection(){
   (S.bizOpps||[]).forEach(function(o){
     if(o.status==='gagne'||o.status==='perdu')return;
     var val=caPot(o)*(+o.probability||0)/100; if(val<=0)return;
-    var dur=Math.max(+o.duree_mois||1,1);
+    /* Durée d'étalement : durée en mois, sinon écart démarrage→fin, sinon 1. */
+    var dur=+o.duree_mois||0;
+    if(!dur&&o.date_start&&o.date_end){var a=pD(o.date_start),b=pD(o.date_end);dur=(b.getFullYear()-a.getFullYear())*12+(b.getMonth()-a.getMonth())+1;}
+    dur=Math.max(dur||1,1);
     var sd=pD(o.date_start||o.date_closing||TODAY);
     var si=(sd.getFullYear()-now.getFullYear())*12+(sd.getMonth()-now.getMonth()); if(si<0)si=0;
     var per=val/dur;

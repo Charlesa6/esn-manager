@@ -47,7 +47,21 @@ function oppStLb(id){var s=OPP_STATUS.find(function(x){return x.id===id;});retur
 function oppStStyle(id){var s=OPP_STATUS.find(function(x){return x.id===id;});return s?'background:'+s.bg+';color:'+s.fg+';':'';}
 function accName(id){var a=S.bizAccounts.find(function(x){return x.id===id;});return a?a.name:'';}
 function ctName(id){var c=S.bizContacts.find(function(x){return x.id===id;});return c?(c.first_name+' '+c.last_name).trim():'';}
-function caPot(opp){return (opp.tjm_cible||0)*(opp.jours_estimes||0);}
+/* CA potentiel d'une opportunité (valeur totale du deal).
+   - Forfait : montant du deal.
+   - AT : TJM × jours. Si les jours ne sont pas saisis, on les déduit des dates
+     (jours ouvrés entre démarrage et fin) ou de la durée en mois (~20 j/mois),
+     pour qu'un TJM + une probabilité suffisent à alimenter le pipeline pondéré. */
+function caPot(opp){
+  if(!opp)return 0;
+  if(opp.btype==='forfait')return +opp.deal_amount||0;
+  var jours=+opp.jours_estimes||0;
+  if(!jours){
+    if(opp.date_start&&opp.date_end)jours=wDays(opp.date_start,opp.date_end,H);
+    else if(+opp.duree_mois)jours=Math.round((+opp.duree_mois)*20);
+  }
+  return (+opp.tjm_cible||0)*jours;
+}
 function uid2(){return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return(c==='x'?r:r&0x3|0x8).toString(16);});}
 
 /* ── Supabase CRM CRUD ── */
