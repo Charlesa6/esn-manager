@@ -5,13 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Konsilys</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{
-  font-family:'Nunito',sans-serif;
-  background:#f8fafc;
+  font-family:'Inter','Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;letter-spacing:-.006em;
+  background:#f5f7fa;
   display:flex;
   min-height:100vh;
   color:#334155;
@@ -22,7 +23,7 @@ input,button{font-family:inherit;font-size:inherit;}
 .left{
   width:420px;
   flex-shrink:0;
-  background:#0c1424;
+  background:linear-gradient(180deg,#1f3243 0%,#12202e 100%);
   display:flex;
   flex-direction:column;
   align-items:center;
@@ -51,11 +52,11 @@ input,button{font-family:inherit;font-size:inherit;}
 .left-inner{position:relative;z-index:1;text-align:center;}
 .logo-mark{
   width:56px;height:56px;
-  background:#2563eb;
+  background:#84CC16;
   border-radius:14px;
   display:flex;align-items:center;justify-content:center;
   margin:0 auto 28px;
-  font-size:22px;font-weight:900;color:#fff;letter-spacing:-.02em;
+  font-size:22px;font-weight:900;color:#16240a;letter-spacing:-.02em;box-shadow:0 6px 18px rgba(132,204,22,.35);
 }
 .product-name{
   font-size:32px;font-weight:800;
@@ -64,8 +65,8 @@ input,button{font-family:inherit;font-size:inherit;}
   margin-bottom:12px;
 }
 .product-line{
-  width:32px;height:2px;
-  background:#2563eb;
+  width:36px;height:3px;
+  background:#84CC16;
   border-radius:2px;
   margin:0 auto 20px;
 }
@@ -89,7 +90,7 @@ input,button{font-family:inherit;font-size:inherit;}
   border-radius:20px;
   padding:44px 40px;
   width:100%;max-width:440px;
-  box-shadow:0 4px 32px rgba(0,0,0,.07);
+  box-shadow:0 1px 2px rgba(16,24,40,.04),0 14px 40px rgba(16,24,40,.12);border:1px solid #eef1f6;
 }
 .card-title{font-size:20px;font-weight:800;color:#0f172a;letter-spacing:-.01em;margin-bottom:4px;}
 .card-sub{font-size:13px;color:#64748b;margin-bottom:28px;}
@@ -105,7 +106,7 @@ input,button{font-family:inherit;font-size:inherit;}
 label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px;}
 .inp{width:100%;border:1.5px solid #e2e8f0;border-radius:10px;padding:11px 14px;font-size:14px;color:#0f172a;outline:none;background:#fafafa;transition:border-color .15s,box-shadow .15s,background .15s;}
 .inp::placeholder{color:#94a3b8;}
-.inp:focus{border-color:#84CC16;box-shadow:0 0 0 3px rgba(37,99,235,.1);background:#fff;}
+.inp:focus{border-color:#84CC16;box-shadow:0 0 0 3px rgba(132,204,22,.20);background:#fff;}
 .inp.err{border-color:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.1);}
 .err-msg{font-size:12px;color:#ef4444;margin-top:5px;display:none;}
 .err-msg.show{display:block;}
@@ -121,18 +122,22 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
 .link{background:none;border:none;color:#2D6A0E;font-size:12px;font-weight:500;cursor:pointer;padding:0;font-family:inherit;}
 .link:hover{text-decoration:underline;}
 .cgu-row{display:flex;align-items:flex-start;gap:10px;margin-bottom:18px;cursor:pointer;}
-.cgu-row input[type="checkbox"]{width:15px;height:15px;margin-top:2px;flex-shrink:0;accent-color:#2563eb;cursor:pointer;}
+.cgu-row input[type="checkbox"]{width:15px;height:15px;margin-top:2px;flex-shrink:0;accent-color:#84CC16;cursor:pointer;}
 .cgu-row span{font-size:12px;color:#64748b;line-height:1.55;}
-.cgu-row a{color:#2563eb;text-decoration:none;}
+.cgu-row a{color:#2D6A0E;text-decoration:none;font-weight:600;}
 .btn{width:100%;background:#84CC16;color:#1B2B3A;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;}
-.btn:hover:not(:disabled){background:#6DAB0A;}
-.btn:disabled{background:#93c5fd;cursor:not-allowed;}
+.btn:hover:not(:disabled){background:#6DAB0A;box-shadow:0 3px 10px rgba(105,167,12,.35);}
+.btn:active:not(:disabled){transform:translateY(1px);}
+.btn:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(132,204,22,.25);}
+.btn:disabled{background:#cbd5e1;color:#64748b;cursor:not-allowed;}
 .spin{width:15px;height:15px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:none;}
 .spin.on{display:block;}
 @keyframes spin{to{transform:rotate(360deg);}}
 .switch-row{text-align:center;font-size:13px;color:#64748b;margin-top:20px;}
 .switch-row button{background:none;border:none;color:#2D6A0E;font-weight:600;cursor:pointer;font-size:13px;font-family:inherit;padding:0;}
 .switch-row button:hover{text-decoration:underline;}
+.switch-row a{color:#2D6A0E;font-weight:600;text-decoration:none;}
+.switch-row a:hover{text-decoration:underline;}
 .demo-row{text-align:center;margin-top:16px;padding-top:16px;border-top:1px solid #f1f5f9;}
 .demo-row a{font-size:12px;color:#94a3b8;text-decoration:none;}
 .demo-row a:hover{color:#64748b;}
