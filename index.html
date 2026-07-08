@@ -7,7 +7,7 @@
 <meta name="description" content="Konsilys : pilotez vos équipes de consultants, missions, absences, recrutement et CRM. Importez votre équipe depuis Excel et soyez opérationnel en quelques minutes.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Nunito:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -19,11 +19,11 @@
   --white:#FFFFFF;
   --off:#F8FAFC;
   --muted:#64748B;
-  --border:#E2E8F0;
+  --border:#E6EAF1;
   --dark:#0F172A;
 }
 html{scroll-behavior:smooth}
-body{font-family:'Nunito',sans-serif;color:var(--dark);background:var(--white);line-height:1.6;-webkit-font-smoothing:antialiased}
+body{font-family:'Inter','Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--dark);background:var(--white);line-height:1.6;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;letter-spacing:-.006em}
 a{color:inherit;text-decoration:none}
 img{max-width:100%}
 
@@ -241,8 +241,8 @@ footer{background:var(--dark);padding:48px 24px 32px}
 .delay-7{animation-delay:.56s}.delay-8{animation-delay:.64s}.delay-9{animation-delay:.72s}
 
 /* ── RESPONSIVE NAV ── */
-.cfg-in{width:100%;padding:11px 13px;border:1px solid var(--border);border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--navy);background:#fff;margin-bottom:8px}
-.cfg-in:focus{outline:none;border-color:var(--navy)}
+.cfg-in{width:100%;padding:11px 13px;border:1px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;color:var(--navy);background:#fff;margin-bottom:8px;transition:border-color .15s,box-shadow .15s}
+.cfg-in:focus{outline:none;border-color:var(--lime);box-shadow:0 0 0 3px rgba(132,204,22,.20)}
 .cfg-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
 .btn-connexion{white-space:nowrap}
 @media(max-width:900px){.cfg-steps{grid-template-columns:repeat(2,1fr)}}
