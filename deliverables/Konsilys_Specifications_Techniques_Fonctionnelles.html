@@ -60,7 +60,7 @@ tr:nth-child(even) td{background:#F7F9FB}
 <div class="callout"><b>Note sécurité :</b> les politiques d'accès de la table des approbations ont été renforcées pour être strictement cloisonnées par entreprise (voir §9).</div>
 
 <h1>4. Modèle de données (principales entités)</h1>
-<table><thead><tr><th>Entité</th><th>Description</th><th>Champs clés</th></tr></thead><tbody><tr><td>companies</td><td>Entreprises clientes (tenants).</td><td>id, name, active, has_business_module, has_recrutement_module, devise, exercice fiscal</td></tr><tr><td>profiles</td><td>Comptes utilisateurs, rattachés à une entreprise et un rôle.</td><td>id (=auth user), company_id, role, manager_id (N+1), cons_id</td></tr><tr><td>consultants</td><td>Fiches équipe (consultants, BM…).</td><td>id, company_id, name, grade, scr, contract, manager_id, expertise, secteurs</td></tr><tr><td>missions</td><td>Missions (assistance technique / forfait).</td><td>id, company_id, cons_id, type, tjm, dates, CA, marge</td></tr><tr><td>absences</td><td>Demandes d'absence (9 types).</td><td>id, company_id, cons_id, type, dates, statut</td></tr><tr><td>approvals</td><td>Demandes de validation (absences, modifications).</td><td>id, company_id, type, cons_id, payload, status</td></tr><tr><td>subscriptions</td><td>Abonnements Stripe rattachés à l'entreprise.</td><td>id, company_id, customer_email, status, lines</td></tr><tr><td>pending_seats</td><td>Sièges achetés en attente de provisioning.</td><td>id, company_id, email, role, status, invited_by_id</td></tr></tbody></table>
+<table><thead><tr><th>Entité</th><th>Description</th><th>Champs clés</th></tr></thead><tbody><tr><td>companies</td><td>Entreprises clientes (tenants).</td><td>id, name, active, canceled_at, has_business_module, has_recrutement_module, devise</td></tr><tr><td>profiles</td><td>Comptes utilisateurs, rattachés à une entreprise et un rôle.</td><td>id (=auth user), company_id, role, manager_id (N+1), cons_id</td></tr><tr><td>consultants</td><td>Fiches équipe (consultants, BM…).</td><td>id, company_id, name, grade, scr, contract, manager_id, expertise, secteurs</td></tr><tr><td>missions</td><td>Missions (assistance technique / forfait).</td><td>id, company_id, cons_id, type, tjm, dates, CA, marge</td></tr><tr><td>absences</td><td>Demandes d'absence (9 types).</td><td>id, company_id, cons_id, type, dates, statut</td></tr><tr><td>approvals</td><td>Demandes de validation (absences, modifications).</td><td>id, company_id, type, cons_id, payload, status</td></tr><tr><td>subscriptions</td><td>Abonnements Stripe rattachés à l'entreprise.</td><td>id, company_id, customer_email, status, lines</td></tr><tr><td>pending_seats</td><td>Sièges achetés en attente de provisioning.</td><td>id, company_id, email, role, status, invited_by_id</td></tr></tbody></table>
 <p class="muted"><i>Liste synthétique ; des tables complémentaires gèrent le CRM (comptes, contacts, opportunités), le recrutement (candidats, statuts) et les paramètres.</i></p>
 
 <h1>5. Authentification et gestion des comptes</h1>
@@ -73,7 +73,7 @@ tr:nth-child(even) td{background:#F7F9FB}
 <li>À la confirmation du paiement, le webhook Stripe active l'entreprise, enregistre l'abonnement et provisionne les sièges achetés.</li>
 </ul>
 <h2>5.3 Provisioning des membres</h2>
-<p>Chaque membre acheté est provisionné automatiquement : un compte est créé et un e-mail d'invitation lui permet de définir son mot de passe. Une fiche d'équipe (consultants) est créée et rattachée à son responsable (N+1). L'acheteur d'un siège devient le N+1 de la personne provisionnée.</p>
+<p>Chaque membre acheté est provisionné automatiquement : un compte est créé et un e-mail d'invitation lui permet de définir son mot de passe. Une fiche d'équipe (consultants) est créée et rattachée à son responsable (N+1). L'acheteur d'un siège devient le N+1 de la personne provisionnée. En cas d'échec (e-mail déjà rattaché à un compte, etc.), le siège est marqué en erreur et l'administrateur peut relancer le provisioning depuis l'application (fonction <i>retry-seats</i>).</p>
 <h2>5.4 Définition du mot de passe</h2>
 <p>La page de connexion détecte le type de lien reçu (invitation ou réinitialisation) et présente le formulaire de définition de mot de passe adapté, avant de rediriger l'utilisateur vers l'application.</p>
 <h2>5.5 Reprise et rétro-compatibilité</h2>
@@ -103,6 +103,8 @@ tr:nth-child(even) td{background:#F7F9FB}
 <li>Validation par le N+1, motif en cas de refus, notification. Délégation possible.</li></ul>
 <h2>7.6 Gestion des accès et hiérarchie</h2>
 <p>Administration des membres : attribution du N+1 (fonction sécurisée set_member_manager), achat de sièges supplémentaires (seats-checkout) et visualisation de la hiérarchie. L'achat d'un siège rattache automatiquement la personne à l'acheteur.</p>
+<ul><li>Carte « Mon abonnement » (administrateurs) : statut, prochaine échéance (ou date de fin d'accès si annulé), nombre de licences, et accès au portail de gestion de l'abonnement.</li>
+<li>Suivi des sièges achetés (en attente / provisionnés / en erreur) avec relance manuelle du provisioning en cas d'erreur.</li></ul>
 <h2>7.7 Module Recrutement</h2>
 <ul><li>Pipeline de candidats à 8 statuts, personnalisables.</li>
 <li>Recruteur assigné par candidat, visibilité hiérarchique.</li>
@@ -127,8 +129,17 @@ tr:nth-child(even) td{background:#F7F9FB}
 <ul><li>La souscription initiale et l'ajout de sièges passent par une Edge Function authentifiée qui construit la session de paiement Stripe.</li>
 <li>Le webhook Stripe (signé) enregistre l'abonnement, active l'entreprise et déclenche le provisioning.</li>
 <li>Le traitement est conçu pour être idempotent afin d'absorber les répétitions d'événements Stripe.</li></ul>
-<h2>8.3 Cycle de vie de l'abonnement</h2>
-<p>Un abonnement porte les lignes achetées (licences et modules). L'activation découle de l'existence d'un abonnement au statut payé (active, trialing ou past_due). Les données ne sont jamais désactivées automatiquement en cas d'incident de paiement isolé.</p>
+<h2>8.3 Cycle de vie de l'abonnement et relances de paiement</h2>
+<p>Un abonnement porte les lignes achetées (licences et modules). L'activation découle de l'existence d'un abonnement au statut payé (active, trialing ou past_due). En cas d'échec d'un paiement récurrent, l'abonnement passe en past_due et une procédure de relance automatique (dunning) retente le prélèvement selon un calendrier configuré (p. ex. tentatives hebdomadaires) avec e-mails de relance ; l'accès est maintenu pendant cette période.</p>
+<p>Si toutes les tentatives échouent, l'abonnement est annulé : l'entreprise est désactivée (accès bloqué) mais ses données sont conservées pendant un an (horodatage <i>canceled_at</i>) avant purge éventuelle. Une nouvelle souscription réactive immédiatement l'accès.</p>
+<h2>8.4 Gestion de l'abonnement (self-service)</h2>
+<p>Les administrateurs gèrent leur abonnement depuis l'application :</p>
+<ul>
+<li>Consultation du statut et de la prochaine échéance dans l'interface.</li>
+<li>Portail de facturation sécurisé (Stripe Customer Portal) : résilier (effet en fin de période payée), réactiver, mettre à jour le moyen de paiement, télécharger les factures.</li>
+<li>Ajout de licences ou de modules à tout moment via le parcours d'achat de sièges.</li>
+</ul>
+<p>À la résiliation, l'accès est maintenu jusqu'à la fin de la période déjà réglée, puis l'entreprise est désactivée (données conservées).</p>
 
 <h1>9. Sécurité et conformité</h1>
 <ul>
@@ -139,9 +150,10 @@ tr:nth-child(even) td{background:#F7F9FB}
 </ul>
 <h2>9.1 Corrections et durcissements récents</h2>
 <ul><li>Renforcement des politiques d'accès de la table des approbations : lecture/écriture désormais strictement limitées à l'entreprise de l'utilisateur (correction d'une exposition inter-entreprises).</li>
+<li>Blocage automatique de l'accès à l'annulation d'un abonnement, avec conservation des données pendant un an.</li>
 <li>Nettoyage des composants hérités de l'ancien système d'invitations au profit du modèle « compte créé au paiement ».</li></ul>
 <h2>9.2 Points de vigilance / recommandations</h2>
-<ul><li>Activer la protection contre les mots de passe compromis (vérification HaveIBeenPwned) au niveau de l'authentification.</li>
+<ul><li>Protection contre les mots de passe compromis (vérification HaveIBeenPwned) : option disponible avec le plan Pro de la plateforme d'authentification, à activer le moment venu. Une longueur minimale de mot de passe est déjà imposée côté client.</li>
 <li>Poursuivre la revue des fonctions à privilèges héritées et retirer celles devenues inutiles.</li></ul>
 
 <h1>10. Intégrations</h1>
@@ -157,8 +169,10 @@ tr:nth-child(even) td{background:#F7F9FB}
 <ul>
 <li>Passage au modèle « compte créé au paiement » (suppression de l'inscription libre et des invitations créant des comptes).</li>
 <li>Tunnel de souscription : entreprise + administrateur + membres + modules, paiement Stripe.</li>
-<li>Provisioning automatique des sièges avec rattachement N+1 à l'acheteur et création de fiche d'équipe.</li>
-<li>Nettoyage du site vitrine (doublons retirés, questionnaire recentré sur la démonstration) et passage responsive mobile.</li>
+<li>Provisioning automatique des sièges avec rattachement N+1 à l'acheteur et création de fiche d'équipe ; relance manuelle possible en cas d'erreur.</li>
+<li>Gestion de l'abonnement dans l'application (statut, échéance, portail de facturation Stripe : résiliation, réactivation, moyen de paiement, factures).</li>
+<li>Annulation d'abonnement : blocage de l'accès et conservation des données pendant un an ; relances de paiement (dunning) configurées côté Stripe.</li>
+<li>Nettoyage du site vitrine (doublons retirés, cartes de prix menant au parcours d'abonnement, navigation par onglets sur mobile, questionnaire recentré sur la démonstration) et passage responsive mobile.</li>
 <li>Durcissement de la sécurité de la table des approbations (cloisonnement par entreprise).</li>
 </ul>
 </body></html>
