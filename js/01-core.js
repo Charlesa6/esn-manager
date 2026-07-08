@@ -502,10 +502,24 @@ function buLevel(id){return buPath(id).length;}
 function buLabel(id){var n=buById(id);return n?n.name:'';}
 function buPathLabel(id){var p=buPath(id);return p.length?p.map(function(n){return n.name;}).join(' › '):'';}
 
-/* BU d'un consultant : via le profil lié à sa fiche (cons_id), sinon via son
-   directeur (gestionnaire) s'il a une BU. Renvoie un bu_id ou null. */
+/* Permissions équipe / BU des consultants.
+   - Rattachement d'équipe (directeur / N+1) : grade gestionnaire et au-dessus.
+   - BU d'un consultant : uniquement son N+1 (gestionnaire direct) ; admin et
+     super_admin sont au-dessus de la hiérarchie et peuvent donc aussi. */
+function canEditTeam(){return ['gestionnaire','admin','super_admin'].indexOf(S.role)>=0;}
+function mgrAccountByName(nm){nm=(nm||'').trim().toLowerCase();if(!nm)return null;return (S.orgProfiles||[]).find(function(p){return ((p.first_name||'')+' '+(p.last_name||'')).trim().toLowerCase()===nm;})||null;}
+function isConsMyReport(c){
+  if(!c)return false;
+  if(S.role==='admin'||S.role==='super_admin')return true;
+  if(S.role==='gestionnaire')return c.managerId===S._userId || (!!S.dirName && (c.dir||'')===S.dirName);
+  return false;
+}
+
+/* BU d'un consultant : BU stockée sur la fiche si présente, sinon via le profil
+   lié (cons_id), sinon via son directeur (gestionnaire) s'il a une BU. */
 function consBU(c){
   if(!c)return null;
+  if(c.buId)return c.buId;
   var pr=(S.orgProfiles||[]).find(function(p){return p.cons_id===c.id&&p.bu_id;});
   if(pr)return pr.bu_id;
   var dn=(c.dir||'').trim().toLowerCase();
