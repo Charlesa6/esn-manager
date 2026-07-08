@@ -1,0 +1,76 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Préparation RDV CGI</title><style>
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+@page{size:A4;margin:18mm 16mm}
+body{font-family:'Helvetica Neue',Arial,sans-serif;color:#222A33;font-size:11px;line-height:1.5}
+h1{font-size:19px;color:#1B2B3A;border-bottom:2px solid #84CC16;padding-bottom:6px;margin:24px 0 12px;page-break-after:avoid}
+h2{font-size:13.5px;color:#1B2B3A;margin:15px 0 6px;page-break-after:avoid}
+p{margin:0 0 8px}ul{margin:0 0 8px 18px}li{margin-bottom:4px}
+b.l{color:#1B2B3A}
+table{width:100%;border-collapse:collapse;margin:8px 0 14px;font-size:10px}
+th{background:#1B2B3A;color:#fff;text-align:left;padding:7px 9px;font-weight:700}
+td{border:1px solid #E2E8F0;padding:7px 9px;vertical-align:top}
+tr:nth-child(even) td{background:#F7F9FB}
+.warn{background:#FFF4E5;border-left:5px solid #E8963A;padding:12px 16px;margin:10px 0;border-radius:4px}
+.warn b{color:#B4610F}
+.ok{background:#F0FDF4;border-left:5px solid #84CC16;padding:10px 14px;margin:8px 0;border-radius:4px;font-size:10.5px}
+.cover{height:245mm;display:flex;flex-direction:column;justify-content:center;text-align:center;page-break-after:always}
+.cover .b{font-size:40px;font-weight:900;color:#1B2B3A}
+.cover .t{font-size:20px;font-weight:800;color:#333D47;margin-top:30px;line-height:1.3}
+.cover .s{font-size:13px;color:#556370;margin-top:16px}
+.cover .m{font-size:12px;color:#556370;margin-top:50px}
+.muted{color:#556370}
+</style></head><body>
+<div class="cover">
+  <div class="b">KONSILYS</div>
+  <div class="t">Préparation du rendez-vous CGI<br>Présenter & positionner Konsilys<br>pour un partenariat / rachat</div>
+  <div class="s">3 dirigeants CGI · Objectif : partenariat ou acquisition du produit</div>
+  <div class="m">Document de travail confidentiel · Juillet 2026</div>
+</div>
+
+<h1>1. Contexte & objectif</h1>
+<p>Tu présentes Konsilys — plateforme SaaS de pilotage d'ESN, déjà en production — à trois dirigeants de CGI, ton employeur et l'une des plus grandes ESN mondiales. <b class="l">Objectif visé : un partenariat ou le rachat du produit (et éventuellement de l'équipe).</b></p>
+<p>Le récit gagnant tient en une phrase : <i>« CGI peut, dès aujourd'hui, tirer parti d'un actif SaaS prêt — pour gagner en agilité en interne (filiales, acquisitions, BU) et pour l'ajouter à son offre — au lieu de le construire. »</i></p>
+<div class="ok"><b>Règle d'or :</b> ne survends pas. Montre un produit réel, écoute leurs enjeux, et propose de <b>dérisquer par un pilote</b>. Un pilote crédible vaut mieux qu'une promesse d'acquisition.</div>
+
+<h1>2. Priorité n°1 avant le rendez-vous : la propriété intellectuelle</h1>
+<div class="warn"><b>À régler impérativement avant le RDV.</b> Tu es salarié de CGI. Selon ton contrat de travail (clause de propriété intellectuelle) et les conditions de développement (temps personnel ? ressources personnelles ? aucune donnée/code CGI utilisé ?), <b>CGI pourrait déjà détenir des droits sur Konsilys</b> — ce qui change tout dans une négociation de « rachat ».</div>
+<p><b class="l">Actions :</b></p>
+<ul>
+<li>Relis ta clause de PI / d'invention de salarié et, si possible, <b>consulte un avocat</b> (droit du travail / PI) avant le rendez-vous.</li>
+<li>Réunis les preuves que le produit a été développé de façon indépendante (historique de commits, comptes personnels, hébergement à ton nom, absence d'actifs CGI).</li>
+<li>Prépare une position claire : soit l'IP est propre (tu peux céder/licencier), soit tu proposes d'emblée un cadre à définir avec CGI. La transparence te protège ; une ambiguïté découverte en due diligence te décrédibilise.</li>
+</ul>
+
+<h1>3. Les questions difficiles à anticiper</h1>
+<p>Prépare des réponses courtes et factuelles. Voici les plus probables et une trame de réponse :</p>
+<table><thead><tr><th>Question probable</th><th>Trame de réponse</th></tr></thead><tbody><tr><td>« À qui appartient Konsilys ? » (LA question)</td><td>Sois transparent et préparé. Clarifie AVANT : clause de PI de ton contrat CGI, développement sur temps/ressources personnels, absence de code/données CGI. Si l'IP est propre, dis-le clairement ; sinon, propose un cadre (cession, accord). Ne prétends jamais détenir ce que tu ne détiens pas — c'est le premier point qu'ils vérifieront en due diligence.</td></tr><tr><td>« N'y a-t-il pas un conflit d'intérêt, tu es salarié ? »</td><td>Assume-le et cadre-le : tu viens en transparence, tu as informé les bonnes personnes, et tu proposes précisément à CGI d'en bénéficier. Montre que ta démarche sert CGI (agilité + actif), pas contre elle.</td></tr><tr><td>« Pourquoi ne pas le construire nous-mêmes ? »</td><td>Time-to-market et risque : l'actif existe, il est en production, testé. Construire en interne = 12-24 mois, un budget et un risque d'échec. Ici vous achetez de la vitesse et un produit prouvé, avec l'équipe qui le connaît.</td></tr><tr><td>« Est-ce sécurisé et conforme à notre échelle ? »</td><td>Sécurité by design : isolation multi-tenant (RLS), moindre privilège, paiement délégué (Stripe), hébergement Europe / RGPD. Architecture prête à intégrer SSO/annuaire et à s'aligner sur vos standards (ISO 27001, souveraineté) dans le cadre d'une intégration.</td></tr><tr><td>« Comment ça s'intègre à notre SI / ERP (SAP, AD) ? »</td><td>Konsilys ne remplace pas l'ERP : il comble l'opérationnel léger. API et fonctions serveur permettent des connecteurs (SSO, RH-paie, exports). Intégration Teams déjà en place. La feuille de route d'intégration se définit avec vos équipes.</td></tr><tr><td>« Est-ce que ça passe à l'échelle ? »</td><td>Architecture SaaS multi-tenant nativement extensible (ajout d'entités/sièges sans redéploiement), base managée avec sauvegardes, front en CDN. Le modèle est conçu pour des milliers d'utilisateurs par entité.</td></tr><tr><td>« Quelle dépendance à une personne ? (bus factor) »</td><td>Point clé d'une acquisition : c'est justement pourquoi l'intégration de l'équipe fait partie du deal. Prépare l'état de la documentation, du code et un plan de transfert de connaissance.</td></tr><tr><td>« Quelle différenciation face aux solutions du marché ? »</td><td>Tout-en-un (staffing + missions + absences + recrutement + CRM) là où les concurrents sont fragmentés ; déploiement en minutes vs projets ERP ; modèle par licence qui épouse l'usage.</td></tr><tr><td>« Combien ça vaut / quelle structure de deal ? »</td><td>Ne donne pas un prix à la légère. Oriente vers un pilote qui prouve la valeur, puis une valorisation fondée sur des faits (traction, coût de reconstruction, synergies). Prépare une fourchette et une logique, pas un chiffre isolé.</td></tr><tr><td>« Et nos données / nos clients existants ? »</td><td>Import Excel/CSV pour démarrer vite ; isolation stricte par entité ; réversibilité et export. Rien n'est mélangé entre entités. La gouvernance des données s'aligne sur vos règles lors de l'intégration.</td></tr></tbody></table>
+
+<h1>4. Posture & tactique</h1>
+<ul>
+<li><b class="l">Écoute d'abord.</b> Commence par leurs enjeux (croissance par acquisitions, intégration, offres). Adapte le discours interne vs offre selon leurs réactions.</li>
+<li><b class="l">Montre, ne raconte pas.</b> Une démo live d'un produit qui marche vaut 20 slides. Prépare un environnement propre.</li>
+<li><b class="l">Vise le pilote.</b> Demande un déploiement test sur une entité volontaire, cadré (objectifs, durée, indicateurs). C'est un « oui » facile pour eux et ça enclenche la suite.</li>
+<li><b class="l">Reste factuel sur la valeur.</b> Pas de valorisation lancée au hasard ; parle synergies et preuve d'usage.</li>
+<li><b class="l">Parle leur langue.</b> CGI croît notamment par acquisitions : l'angle « accélérer et dérisquer le post-merger » leur parle directement.</li>
+<li><b class="l">Sois humble et confiant.</b> Tu apportes un actif prêt et l'énergie produit ; eux apportent l'échelle. C'est une addition, pas une supplication.</li>
+</ul>
+
+<h1>5. Trame de démo (10-12 min)</h1>
+<ol>
+<li><b>30 s</b> — Le pitch en une phrase + pourquoi CGI (agilité interne + offre).</li>
+<li><b>2 min</b> — Le problème concret : une entité qui pilote sur Excel, marge et staffing à l'aveugle.</li>
+<li><b>5-6 min</b> — Démo live : créer un espace, importer une équipe, voir les KPIs (staffing, CA, marge), une mission, le planning, une absence validée par le N+1, un module (CRM ou recrutement).</li>
+<li><b>2 min</b> — L'actif & l'architecture (production, multi-tenant, sécurité, Europe) — rapide, pour crédibiliser.</li>
+<li><b>2 min</b> — Les options (pilote → partenariat/acquisition) et la demande.</li>
+</ol>
+<div class="ok"><b>Astuce démo :</b> utilise un jeu de données propre et réaliste (pas de « MA/Up »). Un compte de démonstration soigné, préparé à l'avance, évite tout couac en direct.</div>
+
+<h1>6. Checklist des 2 prochaines semaines</h1>
+<table><thead><tr><th>À faire</th><th>Pourquoi</th></tr></thead><tbody><tr><td>Clarifier l'IP (avis juridique)</td><td>Sans ça, pas de rachat crédible — c'est bloquant.</td></tr><tr><td>Préparer un environnement de démo propre + jeu de données</td><td>La démo live est ton meilleur argument.</td></tr><tr><td>Chiffrer la traction (entreprises, consultants gérés, retours)</td><td>Remplace les « À COMPLÉTER » du deck par des faits.</td></tr><tr><td>Renseigner la slide Équipe (toi + éventuels associés)</td><td>Décisif dans une acquisition produit.</td></tr><tr><td>Définir ta demande précise (quelle entité pour le pilote ?)</td><td>Donne-leur un « oui » facile et concret.</td></tr><tr><td>Répéter le pitch (10-12 min) + la session Q&A</td><td>La fluidité inspire confiance.</td></tr><tr><td>Préparer un one-pager à laisser aux 3 dirigeants</td><td>Ils repartent avec un support de décision.</td></tr><tr><td>Anticiper la logique de valorisation (fourchette + raisonnement)</td><td>Pour ne pas être pris au dépourvu sur le prix.</td></tr></tbody></table>
+
+<h1>7. One-pager à laisser (résumé)</h1>
+<p><b class="l">Konsilys</b> — plateforme SaaS de pilotage des ESN, en production. Couvre staffing, missions & marge, planning, absences (validation N+1), recrutement et CRM. Multi-tenant, sécurisée, hébergée en Europe, déployable en minutes.</p>
+<p><b class="l">Opportunité pour CGI :</b> (1) agilité interne pour filiales/acquisitions/BU sans toucher à l'ERP ; (2) actif produit à distribuer ou intégrer à l'offre.</p>
+<p><b class="l">Demande :</b> un pilote cadré sur une entité, puis discussion d'un partenariat ou d'une acquisition.</p>
+<p class="muted"><i>Contact : [Votre nom] · contact@konsilys.fr · konsilys.fr</i></p>
+</body></html>
