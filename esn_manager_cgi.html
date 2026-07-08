@@ -2259,6 +2259,31 @@ function tSVPAcces(){
   var draft=(S.seatDraft=S.seatDraft||[]);
   var pend=(S.pendingSeats||[]);
 
+  /* Carte « Mon abonnement » (facturation) — réservée aux administrateurs. */
+  var subCard='';
+  if(role==='admin'||role==='super_admin'){
+    var sub=S.subscription||null;
+    var endTxt='—',statusTxt='Non trouvé',statusColor='#64748b',nLic=0,cancelAtEnd=false;
+    if(sub){
+      if(sub.current_period_end){var _d=new Date(sub.current_period_end);if(!isNaN(_d))endTxt=_d.toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});}
+      var _sm={active:['Actif','#16a34a'],trialing:['Période d\'essai','#16a34a'],past_due:['Paiement en retard','#d97706'],canceled:['Annulé','#dc2626'],unpaid:['Impayé','#dc2626']}[sub.status]||[sub.status||'—','#64748b'];
+      statusTxt=_sm[0];statusColor=_sm[1];
+      nLic=(sub.lines||[]).filter(function(l){return l.kind==='licence';}).reduce(function(s,l){return s+(l.quantity||0);},0);
+    }
+    subCard='<div class="card" style="padding:20px;margin-bottom:16px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">'
+      +'<div><h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:10px">💳 Mon abonnement</h3>'
+      +'<div style="display:flex;gap:24px;flex-wrap:wrap;font-size:13px">'
+      +'<div><div style="color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Statut</div><span style="font-weight:700;color:'+statusColor+'">'+statusTxt+'</span></div>'
+      +'<div><div style="color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">'+(sub&&sub.status==='canceled'?'Fin d\'accès':'Prochaine échéance')+'</div><span style="font-weight:700;color:#0f172a">'+endTxt+'</span></div>'
+      +'<div><div style="color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Licences</div><span style="font-weight:700;color:#0f172a">'+(nLic||'—')+'</span></div>'
+      +'</div></div>'
+      +'<button class="bp" data-act="billing-open"'+(sbOn?'':' disabled style="opacity:.5"')+' title="Résilier, réactiver, changer de carte, voir les factures">Gérer mon abonnement →</button>'
+      +'</div>'
+      +'<div style="font-size:12px;color:#64748b;margin-top:12px;line-height:1.5">Depuis le portail sécurisé Stripe : <strong>résilier</strong> (effet en fin de période payée), <strong>réactiver</strong>, mettre à jour la carte et télécharger les factures. Pour <strong>ajouter des licences ou des modules</strong>, utilisez « Ajouter des membres » ci-dessous.</div>'
+      +'</div>';
+  }
+
   /* Rôles que ce rôle peut ajouter (chacun = une licence payée). */
   var canAdd={
     super_admin:['admin','gestionnaire','utilisateur','recruteur','sales'],
@@ -2298,6 +2323,8 @@ function tSVPAcces(){
 
     +'<div class="card" style="padding:16px;margin-bottom:16px;background:#f0fdf4;border:1px solid #bbf7d0">'
     +'<div style="font-size:12px;color:#374151;line-height:1.6">Chaque membre de votre organisation possède une licence. Pour donner un accès à quelqu\'un, ajoutez-le ci-dessous puis payez sa licence : il recevra un email pour définir son mot de passe. L\'invitation ne crée plus de compte — elle sert uniquement à définir la hiérarchie (N+1).</div></div>'
+
+    +subCard
 
     /* A. Ajouter des membres (payant) */
     +'<div class="card" style="padding:20px;margin-bottom:16px">'
@@ -4997,7 +5024,7 @@ function bind(){
     S.tab=nv;
     /* Rafraîchir les données en temps réel sur les onglets sensibles */
     if(nv==='admin'){loadConsInvites().then(function(){render();});}
-    else if(nv==='svp_acces'){loadPendingSeats().then(function(){render();});loadSVPInvites().then(function(){render();});}
+    else if(nv==='svp_acces'){loadPendingSeats().then(function(){render();});loadSubscription().then(function(){render();});loadSVPInvites().then(function(){render();});}
     else if(nv==='dashboard'&&S.role==='gestionnaire'){loadApprovals().then(function(){render();});}
     else{render();}
   };})(nbs[i]);}
@@ -5614,6 +5641,17 @@ function bind(){
           b.disabled=false;b.textContent='Payer et créer les comptes →';alert((d&&d.error)||'Erreur — réessayez.');
         }).catch(function(){b.disabled=false;b.textContent='Payer et créer les comptes →';alert('Erreur réseau.');});
       }
+      else if(a==='billing-open'){
+        if(!sb||!SB_CID){alert('Connexion requise.');return;}
+        b.disabled=true;var _bo=b.textContent;b.textContent='Ouverture…';
+        sb.auth.getSession().then(function(ses){
+          var tok=ses&&ses.data&&ses.data.session&&ses.data.session.access_token;
+          return fetch('https://rwmstlesxnglpblrurqj.supabase.co/functions/v1/billing-portal',{method:'POST',headers:{'content-type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({return_url:location.origin+'/app'})});
+        }).then(function(r){return r.json();}).then(function(d){
+          if(d&&d.url){location.href=d.url;return;}
+          b.disabled=false;b.textContent=_bo;alert((d&&d.error)||'Erreur — réessayez.');
+        }).catch(function(){b.disabled=false;b.textContent=_bo;alert('Erreur réseau.');});
+      }
       else if(a==='seats-retry'){
         if(!sb||!SB_CID){alert('Connexion requise.');return;}
         b.disabled=true;var _bt=b.textContent;b.textContent='Relance\u2026';
@@ -5820,6 +5858,16 @@ async function loadPendingSeats(){
     var r=await sb.from('pending_seats').select('*').eq('company_id',SB_CID).order('created_at',{ascending:false});
     if(r&&r.data)S.pendingSeats=r.data;
   }catch(e){console.warn('pendingSeats load:',e);}
+}
+
+/* Charge l'abonnement de l'entreprise (statut + date de fin) pour Gestion des accès. */
+async function loadSubscription(){
+  if(!sb||!SB_CID)return;
+  try{
+    var r=await sb.from('subscriptions').select('status,current_period_end,lines,created_at')
+      .eq('company_id',SB_CID).order('created_at',{ascending:false}).limit(1).maybeSingle();
+    if(r&&r.data)S.subscription=r.data;
+  }catch(e){console.warn('subscription load:',e);}
 }
 
 async function loadSB(){
