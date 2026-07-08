@@ -4691,13 +4691,21 @@ function tModal(){
     body='<div class="g2">'
       +'<div class="fd"><label class="fl">Nom complet *</label><input class="ic" id="rcn" value="'+esc(it?it.name:'')+'" placeholder="Prénom Nom"></div>'
       +'<div class="fd"><label class="fl">Statut</label><select class="ic" id="rcst">'+stOpts+'</select></div>'
-      +'<div class="fd"><label class="fl">Recruteur assigné</label><select class="ic" id="rcrec">'
-      +'<option value="">— Aucun —</option>'
-      +(S.recruteurInvites||[]).map(function(r){
-        var nm=r.recruteur_name||r.email||'';
-        return '<option value="'+esc(nm)+'"'+(it&&it.recruiter===nm?' selected':'')+'>'+esc(nm)+'</option>';
-      }).join('')
-      +'</select></div>'
+      +(function(){
+        /* Options = recruteurs invités + moi (pour qu'un gestionnaire/admin puisse
+           s'assigner) + le recruteur déjà enregistré s'il n'est dans aucune liste
+           (ex. assignation auto au créateur). Doublons éliminés. */
+        var _me=((S.profileFirstName||'')+' '+(S.profileLastName||'')).trim()||S._userEmail||'';
+        var _names=[];
+        (S.recruteurInvites||[]).forEach(function(r){var nm=r.recruteur_name||r.email||'';if(nm&&_names.indexOf(nm)<0)_names.push(nm);});
+        if(_me&&_names.indexOf(_me)<0)_names.push(_me);
+        if(it&&it.recruiter&&_names.indexOf(it.recruiter)<0)_names.push(it.recruiter);
+        var _opts='<option value="">— Aucun —</option>'+_names.map(function(nm){
+          return '<option value="'+esc(nm)+'"'+(it&&it.recruiter===nm?' selected':'')+'>'+esc(nm)+(nm===_me?' (moi)':'')+'</option>';
+        }).join('');
+        return '<div class="fd"><label class="fl">Recruteur assigné</label><select class="ic" id="rcrec">'+_opts+'</select>'
+          +'<div style="font-size:10px;color:#94a3b8;margin-top:3px">Laissé vide → vous êtes assigné automatiquement</div></div>';
+      })()
       +'<div class="fd"><label class="fl">Email</label><input class="ic" id="rce" type="email" value="'+esc(it?it.email:'')+'" placeholder="candidat@email.com"></div>'
       +'<div class="fd"><label class="fl">Téléphone</label><input class="ic" id="rcph" value="'+esc(it?it.phone:'')+'" placeholder="06 12 34 56 78"></div>'
       +'<div class="fd cs2"><label class="fl">Localisation(s)</label><div id="loc-wrap">'+locPickerHTML()+'</div></div>'
@@ -5492,8 +5500,15 @@ function bind(){
 
         var locArr=(S.modal.locSel||[]).slice();
 
+        /* Recruteur assigné : valeur choisie dans le formulaire. Si laissée vide,
+           assignation automatique au créateur pour un NOUVEAU candidat (nom
+           d'affichage, sinon email). En édition, une valeur vide = « — Aucun — »
+           volontaire, donc on désassigne réellement. */
+        var _selRec=gv('rcrec');
+        var _creatorName=((S.profileFirstName||'')+' '+(S.profileLastName||'')).trim()||S._userEmail||'';
+        var _recruiter=_selRec||(itC?'':_creatorName);
         var cfields={
-          name:rn,email:gv('rce'),phone:gv('rcph'),
+          name:rn,email:gv('rce'),phone:gv('rcph'),recruiter:_recruiter,
           locations:locArr,nationality:gv('rcnat')||'',
           availDate:gv('rcav')||'',reqSalary:+gv('rcsal')||0,
           yearsExp:+gv('rcyrs')||0,expertise:expArr,sectors:secArr,cvFiles:cvArr,
