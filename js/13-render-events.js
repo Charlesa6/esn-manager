@@ -25,9 +25,9 @@ function render(){
   document.getElementById('sb').innerHTML=tSB();
   /* ── Contrôle d'accès central : chaque rôle a ses onglets autorisés ── */
   var _allowedTabs={
-    super_admin:['kpis','dashboard','teams','recrutement','missions','planning','leaves','business','approvals','svp_acces','svp_settings','param','help','profile','kpis_dir'],
-    admin:['kpis','dashboard','teams','recrutement','missions','planning','leaves','business','approvals','svp_acces','param','help','profile','kpis_dir'],
-    gestionnaire:['kpis','dashboard','teams','recrutement','missions','planning','leaves','business','approvals','svp_acces','help','profile','kpis_dir'],
+    super_admin:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','approvals','svp_acces','svp_settings','param','help','profile','kpis_dir'],
+    admin:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','approvals','svp_acces','param','help','profile','kpis_dir'],
+    gestionnaire:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','approvals','svp_acces','help','profile','kpis_dir'],
     utilisateur:['activite','missions','planning','leaves','approvals','business','help','profile'],
     recruteur:['recrutement','activite','leaves','help','profile'],
     sales:['business','activite','leaves','help','profile']
