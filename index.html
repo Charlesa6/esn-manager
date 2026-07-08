@@ -223,11 +223,13 @@ footer{background:var(--dark);padding:48px 24px 32px}
 @keyframes slideRight{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:translateX(0)}}
 @keyframes gradientShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 
-.anim-up{opacity:0;transition:none}
+/* Le masquage initial n'est appliqué que si JS est actif (classe .js) : sans JS,
+   ou si l'animation échoue, le contenu reste visible (pas d'écran vide). */
+.js .anim-up{opacity:0;transition:none}
 .anim-up.visible{animation:fadeUp .6s cubic-bezier(.22,1,.36,1) forwards}
-.anim-right{opacity:0}
+.js .anim-right{opacity:0}
 .anim-right.visible{animation:slideRight .55s cubic-bezier(.22,1,.36,1) forwards}
-.anim-fade{opacity:0}
+.js .anim-fade{opacity:0}
 .anim-fade.visible{animation:fadeIn .7s ease forwards}
 
 .feat-card{transition:box-shadow .2s,transform .2s}
@@ -256,9 +258,22 @@ footer{background:var(--dark);padding:48px 24px 32px}
   .hero-stats{gap:24px}
   .cfg-steps{grid-template-columns:1fr}
 }
+/* Barre d'onglets mobile : la nav principale est masquée ≤640px, on offre
+   une navigation rapide entre sections (défilement horizontal). */
+.tabbar{display:none}
+@media(max-width:640px){
+  .tabbar{position:fixed;top:64px;left:0;right:0;z-index:90;display:flex;overflow-x:auto;
+    background:rgba(27,43,58,.98);backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,.08);
+    -webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .tabbar::-webkit-scrollbar{display:none}
+  .tabbar a{flex:0 0 auto;padding:12px 16px;font-size:13px;font-weight:800;color:rgba(255,255,255,.72);white-space:nowrap;transition:color .15s}
+  .tabbar a:hover,.tabbar a:active{color:var(--lime)}
+  section[id]{scroll-margin-top:116px}
+}
 </style>
 </head>
 <body>
+<script>document.documentElement.className+=' js';</script>
 
 <!-- NAV -->
 <nav>
@@ -282,6 +297,15 @@ footer{background:var(--dark);padding:48px 24px 32px}
     </div>
   </div>
 </nav>
+
+<!-- Onglets de navigation rapide (mobile) -->
+<div class="tabbar">
+  <a href="#fonctionnalites">Fonctionnalités</a>
+  <a href="#licences">Licences</a>
+  <a href="#abonnement">S'abonner</a>
+  <a href="#tarifs">Démo</a>
+  <a href="mailto:contact@konsilys.fr">Contact</a>
+</div>
 
 <!-- HERO -->
 <section class="hero">
@@ -405,7 +429,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
           <li>Gestion des accès & invitations</li>
           <li>Paramètres (devise, FY, rôles…)</li>
         </ul>
-        <a href="mailto:contact@konsilys.fr" class="lic-cta">Nous contacter</a>
+        <a href="#abonnement" class="lic-cta">S'abonner →</a>
       </div>
 
       <div class="licence-card featured anim-up delay-2">
@@ -418,7 +442,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
           <li>Dashboard & missions complètes</li>
           <li>Invite ses Gestionnaires</li>
         </ul>
-        <a href="mailto:contact@konsilys.fr" class="lic-cta">Nous contacter</a>
+        <a href="#abonnement" class="lic-cta">S'abonner →</a>
       </div>
 
       <div class="licence-card anim-up delay-3">
@@ -431,7 +455,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
           <li>Validation des approbations</li>
           <li>Invite ses Utilisateurs</li>
         </ul>
-        <a href="mailto:contact@konsilys.fr" class="lic-cta">Nous contacter</a>
+        <a href="#abonnement" class="lic-cta">S'abonner →</a>
       </div>
 
       <div class="licence-card anim-up delay-4">
@@ -444,7 +468,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
           <li>Approbations en temps réel</li>
           <li>Planning & absences personnels</li>
         </ul>
-        <a href="mailto:contact@konsilys.fr" class="lic-cta">Nous contacter</a>
+        <a href="#abonnement" class="lic-cta">S'abonner →</a>
       </div>
 
 
@@ -459,7 +483,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
           <li>Filtrage & suivi par recruteur</li>
           <li>Conversion automatique → Utilisateur</li>
         </ul>
-        <a href="mailto:contact@konsilys.fr?subject=Licence Recruteur" class="lic-cta" style="background:#0F766E;color:#fff">Nous contacter</a>
+        <a href="#abonnement" class="lic-cta" style="background:#0F766E;color:#fff">S'abonner →</a>
       </div>
 
       <div class="licence-card anim-up delay-6">
@@ -472,7 +496,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
           <li>Opportunité gagnée → Mission auto</li>
           <li>Absences validées par son N+1</li>
         </ul>
-        <a href="mailto:contact@konsilys.fr?subject=Licence Business Manager" class="lic-cta">Nous contacter</a>
+        <a href="#abonnement" class="lic-cta">S'abonner →</a>
       </div>
 
     </div>
@@ -492,7 +516,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
           <li>Visibilité hiérarchique (Admin → Gestionnaire → Recruteur)</li>
           <li>Statuts renommables dans les Paramètres</li>
         </ul>
-        <a href="mailto:contact@konsilys.fr?subject=Module Recrutement" class="lic-cta">Activer ce module</a>
+        <a href="#abonnement" class="lic-cta">Ajouter à mon abonnement →</a>
       </div>
 
       <div style="background:var(--navy);border-radius:14px;padding:22px;border:1px solid rgba(132,204,22,.3)">
@@ -506,7 +530,7 @@ footer{background:var(--dark);padding:48px 24px 32px}
           <li>KPIs commerciaux & entonnoir de vente</li>
           <li>Visibilité hiérarchique (Admin → Gestionnaire → Business Manager)</li>
         </ul>
-        <a href="mailto:contact@konsilys.fr?subject=Business Développement" class="lic-cta">Activer ce module</a>
+        <a href="#abonnement" class="lic-cta">Ajouter à mon abonnement →</a>
       </div>
 
     </div>
@@ -894,12 +918,17 @@ function submitForm(e){
 
 <script>
 (function(){
+  var els=document.querySelectorAll('.anim-up,.anim-fade,.anim-right');
+  function revealAll(){for(var i=0;i<els.length;i++)els[i].classList.add('visible');}
+  if(!('IntersectionObserver' in window)){revealAll();return;}
   var obs=new IntersectionObserver(function(entries){
     entries.forEach(function(e){
       if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target);}
     });
   },{threshold:.1,rootMargin:'0px 0px -40px 0px'});
-  document.querySelectorAll('.anim-up,.anim-fade,.anim-right').forEach(function(el){obs.observe(el);});
+  els.forEach(function(el){obs.observe(el);});
+  // Filet de sécurité : tout révéler après 2,5 s si l'observer n'a pas déclenché.
+  setTimeout(revealAll,2500);
 })();
 </script>
 </body>
