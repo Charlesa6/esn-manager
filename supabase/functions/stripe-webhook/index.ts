@@ -72,6 +72,7 @@ Deno.serve(async (req) => {
         // Le paiement débloque l'accès : l'entreprise devient active et les
         // comptes des collègues achetés (sièges) sont provisionnés.
         if (companyId) await activateCompany(companyId);
+        if (companyId) await ensureOwnerFiche(companyId);
         if (companyId && batchId) await provisionSeats(companyId, batchId);
         // Facturation gérée par Stripe (factures automatiques). Qonto désactivé.
         break;
@@ -125,6 +126,30 @@ async function deactivateCompany(companyId: string) {
     .update({ active: false, canceled_at: new Date().toISOString() })
     .eq("id", companyId);
   if (error) console.error("deactivateCompany:", error.message);
+}
+
+// Le propriétaire (admin/super_admin/gestionnaire) s'inscrit via signUp, sans
+// fiche Équipe. On la crée pour qu'il apparaisse dans l'organisation et puisse
+// poser des congés. Idempotent : uniquement si cons_id est absent.
+async function ensureOwnerFiche(companyId: string) {
+  const { data: owners } = await supa.from("profiles")
+    .select("id, role, first_name, last_name, cons_id")
+    .eq("company_id", companyId)
+    .in("role", ["admin", "super_admin", "gestionnaire"])
+    .is("cons_id", null);
+  for (const o of owners || []) {
+    try {
+      const { data: au } = await supa.auth.admin.getUserById(o.id);
+      const email = au?.user?.email || "";
+      const fullName = ((o.first_name || "") + " " + (o.last_name || "")).trim() || email;
+      const { data: fiche } = await supa.from("consultants").insert({
+        company_id: companyId, name: fullName,
+        title: SEAT_TITLE[o.role] ?? "", grade: "",
+        email, manager_id: null, scr: 0, contract: "salarie",
+      }).select("id").single();
+      if (fiche?.id) await supa.from("profiles").update({ cons_id: String(fiche.id) }).eq("id", o.id);
+    } catch (e) { console.error("ensureOwnerFiche:", (e as Error).message); }
+  }
 }
 
 // Crée les comptes des personnes pour qui l'admin a payé une licence. Chacune
