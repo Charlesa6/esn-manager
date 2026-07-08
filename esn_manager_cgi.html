@@ -810,6 +810,14 @@ function tSB(){
     return a1+a2;
   })();
   var fyOpts=[CFY-2,CFY-1,CFY,CFY+1].map(function(fy){return '<option value="'+fy+'"'+(fy===S.year?' selected':'')+'>'+fyLbl(fy)+'</option>';}).join('');
+  /* Onglets modules masqués tant que le module n'est pas payé (actif au niveau
+     entreprise). Exceptions : le rôle recruteur (Recrutement) et le rôle sales /
+     Business Manager (Business) dont la licence inclut l'accès. */
+  NAV=NAV.filter(function(n){
+    if(n.id==='recrutement')return S.role==='recruteur'||!!(S.settings&&S.settings.hasRecrutementModule);
+    if(n.id==='business')return S.role==='sales'||!!(S.settings&&S.settings.hasBusinessModule);
+    return true;
+  });
   var nav=NAV.map(function(n){
     return '<button class="nb'+(S.tab===n.id?' act':'')+'" data-nav="'+n.id+'">'
       +'<span class="nbi">'+n.ic+'</span><span>'+n.lb+'</span>'
@@ -4669,9 +4677,24 @@ function tModal(){
     /* Grades disponibles selon le rôle du créateur */
     var availGrades=['Consultant Junior','Consultant Confirmé','Consultant Sénior','Manager','Business Manager'];
     /* Les comptes à rôle (Admin/Gestionnaire/Recruteur/Sales) se créent via Gestion des accès — une seule porte d'entrée */
+    /* Managers \u00e9ligibles comme N+1 : les membres \u00e0 licence de management
+       (moi inclus) + les responsables d\u00e9j\u00e0 existants. Liste d\u00e9roulante, plus
+       de saisie libre. */
+    var _mgrNames=[];
+    (S.orgProfiles||[]).forEach(function(p){
+      if(['gestionnaire','admin','super_admin'].indexOf(p.role)<0)return;
+      var nm=((p.first_name||'')+' '+(p.last_name||'')).trim();
+      var me=(p.id===S._userId);
+      if(!nm&&me)nm=(S.profileFirstName+' '+S.profileLastName).trim()||S._userEmail||'Moi';
+      if(nm&&_mgrNames.indexOf(nm)<0)_mgrNames.push(nm+(me?' me':''));
+    });
+    _mgrNames=_mgrNames.map(function(x){return x.replace(' me','');});
+    _rl.forEach(function(r){if(_mgrNames.indexOf(r)<0)_mgrNames.push(r);});
+    var _curDir=it?(it.dir||''):'';
+    if(_curDir&&_mgrNames.indexOf(_curDir)<0)_mgrNames.push(_curDir);
     var dirFld=(S.role==='gestionnaire')
-      ? '<div class="fd"><label class="fl">'+rLabel('gestionnaire')+'</label><input class="ic" id="mdir" value="'+esc(S.dirName)+'" disabled style="background:#f1f5f9;color:#64748b"><p class="fh">Membre rattach\u00e9 automatiquement \u00e0 votre \u00e9quipe</p></div>'
-      : '<div class="fd"><label class="fl">'+rLabel('gestionnaire')+'</label><input class="ic" id="mdir" list="esn-dir-list" value="'+esc(it?(it.dir||''):'')+'" placeholder="Nom du responsable"><datalist id="esn-dir-list">'+_rl.map(function(r){return '<option value="'+esc(r)+'">';}).join('')+'</datalist><p class="fh">Responsable direct du membre</p></div>';
+      ? '<div class="fd"><label class="fl">Responsable (N+1)</label><input class="ic" id="mdir" value="'+esc(S.dirName)+'" disabled style="background:#f1f5f9;color:#64748b"><p class="fh">Membre rattach\u00e9 automatiquement \u00e0 votre \u00e9quipe</p></div>'
+      : '<div class="fd"><label class="fl">Responsable (N+1)</label><select class="ic" id="mdir"><option value="">\u2014 Aucun \u2014</option>'+_mgrNames.map(function(n){return '<option value="'+esc(n)+'"'+(n===_curDir?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select><p class="fh">Vous ou un gestionnaire de votre organisation</p></div>';
     body='<div class="g2">'
       +'<div class="fd"><label class="fl">Nom complet *</label><input class="ic" id="mn" value="'+esc(it?it.name:'')+'" placeholder="Prénom Nom"></div>'
       +'<div class="fd"><label class="fl">Grade / Rôle</label><select class="ic" id="mti"><option value="">— Aucun / non applicable —</option>'+availGrades.map(function(g){return '<option value="'+g+'"'+(it&&it.title===g?' selected':'')+'>'+esc(g)+'</option>';}).join('')+'</select><p class="fh">'+'Optionnel. Les grades concernent les consultants ; un Admin peut le laisser vide. Pour créer un compte Admin/Gestionnaire/Recruteur/Business Manager : utilisez Gestion des accès.'+'</p></div>'
