@@ -121,11 +121,11 @@ function tSB(){
   return '<div class="sbl" style="display:flex;align-items:flex-start;justify-content:space-between"><div style="display:flex;align-items:center;gap:10px">'+'<div style="display:flex;align-items:flex-end;gap:3px;height:28px">'+'<div style="width:5px;border-radius:2px;height:45%;background:#f8fafc"></div>'+'<div style="width:5px;border-radius:2px;height:68%;background:#f8fafc"></div>'+'<div style="width:5px;border-radius:2px;height:100%;background:#84CC16"></div>'+'</div>'+'<div><div class="sbn" style="font-family:\'Nunito\',sans-serif;letter-spacing:-0.3px">Konsilys</div></div></div>'
     +'<button onclick="toggleSB()" style="background:none;border:none;color:#475569;cursor:pointer;font-size:16px;padding:2px 0 0;line-height:1;flex-shrink:0" aria-label="R\u00e9duire">&#8592;</button></div>'
     /* ── Profil utilisateur juste sous le logo ── */
-    +'<button data-nav="profile" style="width:100%;display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;border:none;background:rgba(255,255,255,.06);cursor:pointer;text-align:left;margin:8px 0">'
+    +'<button data-nav="profile" title="Voir mon profil" style="width:100%;display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.06);cursor:pointer;text-align:left;margin:8px 0;transition:background .14s,border-color .14s" onmouseover="this.style.background=\'rgba(255,255,255,.12)\';this.style.borderColor=\'rgba(132,204,22,.35)\'" onmouseout="this.style.background=\'rgba(255,255,255,.06)\';this.style.borderColor=\'rgba(255,255,255,.06)\'">'
     +'<div style="width:26px;height:26px;border-radius:50%;background:#84CC16;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#1B2B3A;flex-shrink:0">'+(S.profileFirstName?S.profileFirstName[0].toUpperCase():'?')+'</div>'
     +'<div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:700;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(S.profileFirstName||S._userEmail||'Profil')+'</div>'
-    +'<div style="font-size:10px;color:#475569">'+rLabel(S.role)+'</div></div>'
-    +'<span style="font-size:10px;color:#475569">&#x270E;</span></button>'
+    +'<div style="font-size:10px;color:#84CC16;font-weight:600">'+rLabel(S.role)+' · Mon profil</div></div>'
+    +'<span style="font-size:14px;color:#84CC16;font-weight:800;line-height:1">›</span></button>'
     +'<div class="syr"><div class="syr-lbl">Exercice fiscal</div>'
     /* Stepper d'exercice : \u2039 FY26 \u203a \u2014 plus direct qu'un menu d\u00e9roulant */
     +'<div style="display:flex;align-items:center;gap:4px">'
@@ -135,10 +135,9 @@ function tSB(){
     +'</div>'
     /* P\u00e9riode : segmented control tenant sur une seule ligne */
     +'<div style="display:flex;margin-top:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10);border-radius:9px;padding:3px;gap:2px">'
-    +qSeg('','Ann\u00e9e',!S.quarter)
+    +qSeg('','An',!S.quarter,'Exercice complet')
     +QUARTERS.map(function(q){return qSeg(q.id,q.lb,S.quarter===q.id,q.lbFull);}).join('')
     +'</div>'
-    +'<div style="font-size:10px;color:#64748b;margin-top:6px;text-align:center">'+(S.quarter?esc(((QUARTERS.find(function(q){return q.id===S.quarter;})||{}).lbFull)||''):'Exercice complet')+'</div>'
     +'</div>'
     +dirBlock
     +'<button data-act="cmdk-open" style="margin:8px 8px 2px;display:flex;align-items:center;gap:8px;width:calc(100% - 16px);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10);border-radius:9px;padding:7px 10px;color:#9fb0c2;font-size:12px;font-weight:600;cursor:pointer;transition:background .14s,border-color .14s" onmouseover="this.style.background=\'rgba(255,255,255,.09)\'" onmouseout="this.style.background=\'rgba(255,255,255,.05)\'">'
