@@ -529,7 +529,7 @@ function tBizPipeline(){
     +(expList.length?'<select class="ic" id="biz-fexp" style="min-width:180px;font-size:13px">'+expOpts+'</select>':'')
     +'</div>';
 
-  if(!opps.length)return kbar+filters+'<div class="emp">Aucune opportunité'+( fst!=='all'||facc||fexp?' avec ces filtres':'')+'</div>';
+  if(!opps.length)return kbar+filters+(fst!=='all'||facc||fexp)?'<div class="emp">Aucune opportunité avec ces filtres</div>':tEmpty('💼','Aucune opportunité','Créez votre première opportunité pour alimenter le pipeline commercial et le prévisionnel.','<button class="bp" data-act="biz-new">+ Nouvelle opportunité</button>');
 
   var thead='<thead><tr>'
     +'<th>Opportunité</th><th>Compte</th><th>Contact</th>'

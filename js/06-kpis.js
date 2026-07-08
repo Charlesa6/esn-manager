@@ -29,45 +29,56 @@ function tKPIs(){
   var srLabel=avgSr>=80?'Excellent':avgSr>=60?'Correct':'À surveiller';
   /* totSalary (période) utilisé pour la carte KPI — calcul dans tModal salary_detail */
 
-  var hero='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:#84CC16;border-radius:16px;overflow:hidden;margin-bottom:24px">'
-
-    /* Staffing moyen */
-    +'<div style="background:#1B2B3A;padding:24px 18px">'
-    +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#84CC16;margin-bottom:8px">Staffing moyen</div>'
-    +'<div style="font-size:36px;font-weight:900;color:#ffffff;letter-spacing:-.03em;line-height:1">'+avgSr.toFixed(1)+'<span style="font-size:18px;font-weight:600">%</span></div>'
-    +'<div style="font-size:11px;font-weight:700;color:'+srCol(avgSr)+';margin-top:8px">'+srLabel+'</div>'
-    +'<div style="margin-top:10px;height:3px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden"><div style="height:100%;width:'+Math.min(avgSr,100).toFixed(0)+'%;background:#84CC16;border-radius:2px"></div></div>'
+  /* Deltas vs exercice precedent (masques en vue trimestre pour rester comparable) */
+  var _showDelta=!S.quarter;
+  var _prev=_showDelta?(function(){
+    var yr=S.year-1,Hp=holRange(fyStart(yr),fyEnd(yr)),fyWDp=wDays(fyStart(yr),fyEnd(yr),Hp);
+    var ca=0,bill=0,twd=0,srw=0,sal=0;
+    S.cons.forEach(function(c){var k=kpi(c,S.miss,S.lvs,yr,Hp,null);ca+=k.rev;bill+=k.bill;twd+=k.tWD||0;srw+=k.sr*(k.tWD||0);sal+=(c.contract==='freelance'?c.scr*k.bill:c.scr*SCR_FACTOR*EMPLOYER_FACTOR*(k.tWD/(fyWDp||1)));});
+    return {sr:twd>0?srw/twd:0,ca:ca,tjm:bill>0?ca/bill:0,netC:ca-sal,sal:sal};
+  })():null;
+  function _delta(cur,prev,goodUp){
+    if(!_showDelta||prev==null||!isFinite(prev)||Math.abs(prev)<1e-9)return '';
+    var d=(cur-prev)/Math.abs(prev)*100;if(!isFinite(d))return '';
+    var flat=Math.abs(d)<0.5,up=d>=0,good=goodUp?up:!up;
+    var col=flat?'rgba(255,255,255,.4)':(good?'#86efac':'#fca5a5');
+    var ar=flat?'→':(up?'▲':'▼');
+    return '<div style="margin-top:9px"><span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:800;color:'+col+';background:rgba(255,255,255,.09);border-radius:99px;padding:3px 9px">'+ar+' '+(d>=0?'+':'')+d.toFixed(0)+'% <span style="font-weight:600;opacity:.6">vs N-1</span></span></div>';
+  }
+  function _kl(t){return '<div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#84CC16;margin-bottom:9px">'+t+'</div>';}
+  var _kpad='padding:22px 18px 20px';
+  var hero='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:linear-gradient(135deg,#84CC16,#5f9e0c);border-radius:16px;overflow:hidden;margin-bottom:24px;box-shadow:0 12px 32px rgba(27,43,58,.18)">'
+    +'<div style="background:#1B2B3A;'+_kpad+'">'
+    +_kl('Staffing moyen')
+    +'<div style="font-size:34px;font-weight:900;color:#fff;letter-spacing:-.03em;line-height:1">'+avgSr.toFixed(1)+'<span style="font-size:17px;font-weight:600">%</span></div>'
+    +'<div style="font-size:11px;font-weight:700;color:'+srCol(avgSr)+';margin-top:7px">'+srLabel+'</div>'
+    +'<div style="margin-top:9px;height:4px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden"><div style="height:100%;width:'+Math.min(avgSr,100).toFixed(0)+'%;background:#84CC16;border-radius:2px"></div></div>'
+    +_delta(avgSr,_prev&&_prev.sr,true)
     +'</div>'
-
-    /* CA Total */
-    +'<div style="background:#1B2B3A;padding:24px 18px">'
-    +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#84CC16;margin-bottom:8px">CA Total</div>'
-    +'<div style="font-size:30px;font-weight:900;color:#ffffff;letter-spacing:-.03em;line-height:1">'+fEur(totR)+'</div>'
+    +'<div style="background:#1B2B3A;'+_kpad+'">'
+    +_kl('CA Total')
+    +'<div style="font-size:29px;font-weight:900;color:#fff;letter-spacing:-.03em;line-height:1">'+fEur(totR)+'</div>'
     +'<div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:8px">'+ks.length+' consultants &middot; '+fyLbl(S.year)+'</div>'
+    +_delta(totR,_prev&&_prev.ca,true)
     +'</div>'
-
-    /* TJM moyen */
-    +'<div style="background:#1B2B3A;padding:24px 18px">'
-    +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#84CC16;margin-bottom:8px">TJM moyen</div>'
-    +'<div style="font-size:30px;font-weight:900;color:#ffffff;letter-spacing:-.03em;line-height:1">'+(avgTJMv>0?fEur(Math.round(avgTJMv)):'&mdash;')+'</div>'
+    +'<div style="background:#1B2B3A;'+_kpad+'">'
+    +_kl('TJM moyen')
+    +'<div style="font-size:29px;font-weight:900;color:#fff;letter-spacing:-.03em;line-height:1">'+(avgTJMv>0?fEur(Math.round(avgTJMv)):'&mdash;')+'</div>'
     +'<div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:8px">'+(avgM!=null?'Marge moy. : '+avgM.toFixed(1)+'%':'Données insuffisantes')+'</div>'
+    +_delta(avgTJMv,_prev&&_prev.tjm,true)
     +'</div>'
-
-    /* Contribution nette */
-    +'<div style="background:#1B2B3A;padding:24px 18px">'
-    +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#84CC16;margin-bottom:8px">Contribution nette</div>'
-    +'<div style="font-size:30px;font-weight:900;color:'+(netC>=0?'#86efac':'#fca5a5')+';letter-spacing:-.03em;line-height:1">'+fEur(netC)+'</div>'
-    +'<div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:8px">CA &minus; salaires p\u00e9riode ('+fEur(totSalary)+')</div>'
+    +'<div style="background:#1B2B3A;'+_kpad+'">'
+    +_kl('Contribution nette')
+    +'<div style="font-size:29px;font-weight:900;color:'+(netC>=0?'#86efac':'#fca5a5')+';letter-spacing:-.03em;line-height:1">'+fEur(netC)+'</div>'
+    +'<div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:8px">CA &minus; salaires période ('+fEur(totSalary)+')</div>'
+    +_delta(netC,_prev&&_prev.netC,true)
     +'</div>'
-
-    /* Coût salarial période (cliquable via data-act — pas d'encodeURIComponent) */
-    +'<div style="background:#1B2B3A;padding:24px 18px;cursor:pointer" data-act="open-salary-detail">'
-    +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#84CC16;margin-bottom:8px">Co\u00fbt salarial</div>'
-    +'<div style="font-size:30px;font-weight:900;color:#ffffff;letter-spacing:-.03em;line-height:1">'+fEur(Math.round(totSalary))+'</div>'
-    +'<div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:4px">'+S.cons.length+' membres &middot; p\u00e9riode en cours</div>'
-    +'<div style="margin-top:8px;font-size:9px;font-weight:700;color:#84CC16">\u25b6 D\u00e9tail par personne</div>'
+    +'<div style="background:#1B2B3A;'+_kpad+';cursor:pointer" data-act="open-salary-detail">'
+    +_kl('Coût salarial')
+    +'<div style="font-size:29px;font-weight:900;color:#fff;letter-spacing:-.03em;line-height:1">'+fEur(Math.round(totSalary))+'</div>'
+    +'<div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:8px">'+S.cons.length+' membres &middot; période en cours</div>'
+    +(_delta(totSalary,_prev&&_prev.sal,false)||'<div style="margin-top:9px;font-size:9px;font-weight:800;color:#84CC16">▶ Détail par personne</div>')
     +'</div>'
-
     +'</div>';
 
   var clientHtml='<div style="display:flex;flex-direction:column;gap:16px">'
