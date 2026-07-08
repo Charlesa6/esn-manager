@@ -245,9 +245,12 @@ function tForecastSection(){
     /* BU : hiérarchie configurée (bu_id du consultant) si disponible — BU racine
        comme niveau haut, chemin complet comme practice. Sinon repli sur l'ancien
        système VP → directeur. */
-    var bu,dir,_bid=consBU(c);
-    if(_bid){var _p=buPath(_bid);bu=_p.length?_p[0].name:'(Sans BU)';dir=buPathLabel(_bid)||'(Sans practice)';}
-    else{dir=c.dir||'(Sans practice)';bu=buOf(c.dir||'(Sans directeur)');}
+    var bkey,bname,bpath,_bid=consBU(c);
+    if(_bid){var _p=buPath(_bid);
+      bname=_p.length?_p[_p.length-1].name:'(Sans BU)';
+      bpath=_p.length>1?_p.slice(0,-1).map(function(n){return n.name;}).join(' › '):'';
+      bkey='bu:'+_bid;}
+    else{var _d=(c.dir||'').trim();bname=_d||'(Sans BU)';bpath='';bkey='dir:'+(_d||'none');}
     months.forEach(function(mo){
       var a=mo.ms>TODAY?mo.ms:TODAY; if(m.sd>a)a=m.sd;
       var b=mo.me; if(m.ed&&m.ed<b)b=m.ed;
@@ -261,10 +264,8 @@ function tForecastSection(){
       }else{rev=days*(m.tjm||0);}
       var cost=days*(c.scr||0)*(c.contract==='freelance'?1:EMPLOYER_FACTOR);
       mo.sec+=rev; mo.secCost+=cost;
-      if(!buMap[bu])buMap[bu]={ca:0,cost:0,practices:{}};
-      buMap[bu].ca+=rev; buMap[bu].cost+=cost;
-      if(!buMap[bu].practices[dir])buMap[bu].practices[dir]={ca:0,cost:0};
-      buMap[bu].practices[dir].ca+=rev; buMap[bu].practices[dir].cost+=cost;
+      if(!buMap[bkey])buMap[bkey]={name:bname,path:bpath,ca:0,cost:0};
+      buMap[bkey].ca+=rev; buMap[bkey].cost+=cost;
     });
   });
   /* ── Pipeline pondéré (opportunités ouvertes) ── */
@@ -305,22 +306,20 @@ function tForecastSection(){
       +(sub?'<div style="font-size:11px;color:#94a3b8;margin-top:1px">'+sub+'</div>':'')+'</div>';
   }
   /* ── Marge consolidée par BU / Practice (backlog 12 mois) ── */
-  var buList=Object.keys(buMap).map(function(b){var x=buMap[b];
-    return {name:b,ca:x.ca,cost:x.cost,marge:x.ca>0?(x.ca-x.cost)/x.ca*100:null,practices:x.practices};
+  var buList=Object.keys(buMap).map(function(k){var x=buMap[k];
+    return {name:x.name,path:x.path,ca:x.ca,cost:x.cost,marge:x.ca>0?(x.ca-x.cost)/x.ca*100:null};
   }).sort(function(a,b){return b.ca-a.ca;});
   function mCol(m){return m==null?'#94a3b8':(m>=30?'#16a34a':m>=15?'#d97706':'#dc2626');}
+  var maxBuCa=Math.max.apply(null,buList.map(function(b){return b.ca;}).concat([1]));
   var buRows=buList.map(function(bu){
-    var pracs=Object.keys(bu.practices).map(function(d){var p=bu.practices[d];
-      return {name:d,ca:p.ca,marge:p.ca>0?(p.ca-p.cost)/p.ca*100:null};}).sort(function(a,b){return b.ca-a.ca;});
-    var pracRows=pracs.map(function(p){
-      return '<tr style="background:#f8fafc"><td style="padding:6px 14px 6px 34px;font-size:12px;color:#475569">👤 '+esc(p.name)+'</td>'
-        +'<td class="tr" style="font-size:12px;font-weight:700;color:#0f172a">'+fEur(Math.round(p.ca))+'</td>'
-        +'<td class="tr" style="font-size:12px;font-weight:700;color:'+mCol(p.marge)+'">'+(p.marge!=null?p.marge.toFixed(1)+'%':'—')+'</td></tr>';
-    }).join('');
-    return '<tr><td style="padding:9px 14px;font-size:13px;font-weight:800;color:#1B2B3A">🏢 '+esc(bu.name)+'</td>'
-      +'<td class="tr" style="font-weight:900;color:#0f172a">'+fEur(Math.round(bu.ca))+'</td>'
-      +'<td class="tr" style="font-weight:800;color:'+mCol(bu.marge)+'">'+(bu.marge!=null?bu.marge.toFixed(1)+'%':'—')+'</td></tr>'
-      +pracRows;
+    var pct=Math.max(Math.round(bu.ca/maxBuCa*100),2);
+    return '<tr><td style="padding:10px 14px">'
+      +'<div style="font-size:13px;font-weight:800;color:#1B2B3A">🏢 '+esc(bu.name)+'</div>'
+      +(bu.path?'<div style="font-size:10px;color:#94a3b8;margin-top:1px">'+esc(bu.path)+'</div>':'')
+      +'<div style="height:5px;background:#f1f5f9;border-radius:3px;margin-top:7px;max-width:240px"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#84CC16,#65a30d);border-radius:3px"></div></div>'
+      +'</td>'
+      +'<td class="tr" style="font-weight:900;color:#0f172a;white-space:nowrap;vertical-align:middle">'+fEur(Math.round(bu.ca))+'</td>'
+      +'<td class="tr" style="font-weight:800;color:'+mCol(bu.marge)+';vertical-align:middle">'+(bu.marge!=null?bu.marge.toFixed(1)+'%':'—')+'</td></tr>';
   }).join('');
 
   return '<div class="card" style="padding:18px 20px;margin-bottom:16px">'
@@ -336,8 +335,8 @@ function tForecastSection(){
     +'<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:11px;height:11px;background:#1B2B3A;border-radius:2px;display:inline-block"></span>Backlog sécurisé</span>'
     +'<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:11px;height:11px;background:#bef264;border-radius:2px;display:inline-block"></span>Pipeline pondéré</span>'
     +'</div>'
-    +(buRows?('<div style="margin-top:18px"><div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:6px">Marge consolidée par BU / Practice <span style="font-weight:500;color:#94a3b8">— backlog 12 mois</span></div>'
-      +'<div class="ov"><table><thead><tr><th>BU / Practice</th><th class="tr">CA sécurisé</th><th class="tr">Marge nette</th></tr></thead><tbody>'+buRows+'</tbody></table></div></div>'):'')
+    +(buRows?('<div style="margin-top:18px"><div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:6px">Marge consolidée par unité <span style="font-weight:500;color:#94a3b8">— dernier niveau, comparables entre elles · backlog 12 mois</span></div>'
+      +'<div class="ov"><table><thead><tr><th>Unité</th><th class="tr">CA sécurisé</th><th class="tr">Marge nette</th></tr></thead><tbody>'+buRows+'</tbody></table></div></div>'):'')
     +'</div>';
 }
 
