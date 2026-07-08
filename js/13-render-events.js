@@ -48,7 +48,7 @@ function render(){
     +'<a href="/login" style="color:#e9d5ff;font-size:12px;font-weight:600;background:rgba(255,255,255,.15);padding:4px 12px;border-radius:6px;text-decoration:none">'
     +'Cr\u00e9er un compte \u2192</a></div>'
     :'';
-  document.getElementById('mc').innerHTML=_demoBanner+'<div class="inn" style="position:relative">'+_pfBtn+v+'</div>';
+  document.getElementById('mc').innerHTML=_demoBanner+'<div class="inn'+(_tabChanged?' vin':'')+'" style="position:relative">'+_pfBtn+v+'</div>';
   document.getElementById('md').innerHTML=tModal()+(S.bizModal?tBizModal():'');
   /* on restaure les données maîtres (les handlers de bind() mutent l'ensemble complet) */
   S.cons=S._all.cons;S.miss=S._all.miss;S.lvs=S._all.lvs;
