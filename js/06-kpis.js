@@ -222,13 +222,21 @@ function tKPIs(){
 ══════════════════════════════════════════════════════════════ */
 function eShortEur(n){n=Math.round(n||0);var neg=n<0;n=Math.abs(n);var s=n>=1000?(Math.round(n/100)/10)+'k':String(n);return (neg?'-':'')+s+'€';}
 function tForecastSection(){
-  var HN=12, now=pD(TODAY);
+  var HN=12;
   var consById={};(S.cons||[]).forEach(function(c){consById[c.id]=c;});
   var MLB=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+  /* Fenêtre = exercice fiscal sélectionné (S.year). Si un trimestre est choisi, les
+     mois hors trimestre restent affichés mais grisés (inPeriod=false). Un mois
+     entièrement écoulé (isPast) compte comme CA réalisé, sans pipeline pondéré. */
+  var fsD=pD(fyStart(S.year));
+  var qDef=S.quarter?QUARTERS.find(function(q){return q.id===S.quarter;}):null;
   var months=[];
   for(var i=0;i<HN;i++){
-    var d=new Date(now.getFullYear(),now.getMonth()+i,1);
-    months.push({ms:fD(d),me:fD(new Date(d.getFullYear(),d.getMonth()+1,0)),sec:0,secCost:0,weighted:0,
+    var d=new Date(fsD.getFullYear(),fsD.getMonth()+i,1);
+    var meS=fD(new Date(d.getFullYear(),d.getMonth()+1,0)), msS=fD(d);
+    months.push({ms:msS,me:meS,sec:0,secCost:0,weighted:0,
+      inPeriod:!qDef||qDef.months.indexOf(d.getMonth()+1)>=0,
+      isPast:meS<TODAY, isCurrent:msS<=TODAY&&TODAY<=meS,
       lb:MLB[d.getMonth()]+' '+String(d.getFullYear()).slice(2)});
   }
   function buOf(dir){
@@ -252,7 +260,8 @@ function tForecastSection(){
       bkey='bu:'+_bid;}
     else{var _d=(c.dir||'').trim();bname=_d||'(Sans BU)';bpath='';bkey='dir:'+(_d||'none');}
     months.forEach(function(mo){
-      var a=mo.ms>TODAY?mo.ms:TODAY; if(m.sd>a)a=m.sd;
+      /* Tout le mois : le passé est compté comme réalisé (aucun clamp à aujourd'hui). */
+      var a=mo.ms; if(m.sd>a)a=m.sd;
       var b=mo.me; if(m.ed&&m.ed<b)b=m.ed;
       if(a>b)return;
       var days=missWD(m,a,b,S.lvs); if(days<=0)return;
@@ -264,8 +273,10 @@ function tForecastSection(){
       }else{rev=days*(m.tjm||0);}
       var cost=days*(c.scr||0)*(c.contract==='freelance'?1:EMPLOYER_FACTOR);
       mo.sec+=rev; mo.secCost+=cost;
-      if(!buMap[bkey])buMap[bkey]={name:bname,path:bpath,ca:0,cost:0};
-      buMap[bkey].ca+=rev; buMap[bkey].cost+=cost;
+      if(mo.inPeriod){ /* les totaux et la consolidation ne comptent que la période choisie */
+        if(!buMap[bkey])buMap[bkey]={name:bname,path:bpath,ca:0,cost:0};
+        buMap[bkey].ca+=rev; buMap[bkey].cost+=cost;
+      }
     });
   });
   /* ── Pipeline pondéré (opportunités ouvertes) ── */
@@ -277,26 +288,40 @@ function tForecastSection(){
     if(!dur&&o.date_start&&o.date_end){var a=pD(o.date_start),b=pD(o.date_end);dur=(b.getFullYear()-a.getFullYear())*12+(b.getMonth()-a.getMonth())+1;}
     dur=Math.max(dur||1,1);
     var sd=pD(o.date_start||o.date_closing||TODAY);
-    var si=(sd.getFullYear()-now.getFullYear())*12+(sd.getMonth()-now.getMonth()); if(si<0)si=0;
     var per=val/dur;
-    for(var k=0;k<dur;k++){var mi=si+k;if(mi>=0&&mi<HN)months[mi].weighted+=per;}
+    for(var k=0;k<dur;k++){
+      var dd=new Date(sd.getFullYear(),sd.getMonth()+k,1);
+      for(var mi=0;mi<months.length;mi++){
+        var mm=pD(months[mi].ms);
+        if(mm.getFullYear()===dd.getFullYear()&&mm.getMonth()===dd.getMonth()){
+          if(!months[mi].isPast)months[mi].weighted+=per; /* pas de pipeline pondéré sur le passé */
+          break;
+        }
+      }
+    }
   });
-  var totSec=months.reduce(function(s,m){return s+m.sec;},0);
-  var totSecCost=months.reduce(function(s,m){return s+m.secCost;},0);
-  var totW=months.reduce(function(s,m){return s+m.weighted;},0);
+  var inP=months.filter(function(m){return m.inPeriod;});
+  var totSec=inP.reduce(function(s,m){return s+m.sec;},0);
+  var totSecCost=inP.reduce(function(s,m){return s+m.secCost;},0);
+  var totW=inP.reduce(function(s,m){return s+m.weighted;},0);
   var secMarge=totSec>0?(totSec-totSecCost)/totSec*100:null;
+  var allPast=inP.length>0&&inP.every(function(m){return m.isPast;});
   var maxM=Math.max.apply(null,months.map(function(m){return m.sec+m.weighted;}).concat([1]));
   var bars=months.map(function(m){
     var tot=m.sec+m.weighted;
     var hSec=Math.round(m.sec/maxM*110),hW=Math.round(m.weighted/maxM*110);
-    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0">'
-      +'<div style="font-size:9px;color:#64748b;font-weight:700;white-space:nowrap;height:12px">'+(tot>0?eShortEur(tot):'')+'</div>'
+    var dim=!m.inPeriod; /* mois hors période sélectionnée : grisé */
+    var cSec=dim?'#d7dde5':'#1B2B3A', cW=dim?'#e8eef0':'#bef264';
+    var cLbl=dim?'#cbd5e1':(m.isCurrent?'#65a30d':'#94a3b8');
+    var cVal=dim?'#cbd5e1':'#64748b';
+    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0"'+(m.isCurrent?' title="Mois en cours"':'')+'>'
+      +'<div style="font-size:9px;color:'+cVal+';font-weight:700;white-space:nowrap;height:12px">'+(tot>0?eShortEur(tot):'')+'</div>'
       +'<div style="display:flex;flex-direction:column;justify-content:flex-end;height:112px;width:70%;max-width:24px">'
-      +(hW>0?'<div title="Pipeline pondéré : '+eShortEur(m.weighted)+'" style="height:'+hW+'px;background:#bef264;border-radius:3px 3px 0 0"></div>':'')
-      +(hSec>0?'<div title="Backlog sécurisé : '+eShortEur(m.sec)+'" style="height:'+hSec+'px;background:#1B2B3A;border-radius:'+(hW>0?'0':'3px 3px 0 0')+'"></div>':'')
+      +(hW>0?'<div title="Pipeline pondéré : '+eShortEur(m.weighted)+'" style="height:'+hW+'px;background:'+cW+';border-radius:3px 3px 0 0"></div>':'')
+      +(hSec>0?'<div title="'+(m.isPast?'CA réalisé':'Backlog sécurisé')+' : '+eShortEur(m.sec)+'" style="height:'+hSec+'px;background:'+cSec+';border-radius:'+(hW>0?'0':'3px 3px 0 0')+'"></div>':'')
       +((hW+hSec)===0?'<div style="height:2px;background:#e2e8f0"></div>':'')
       +'</div>'
-      +'<div style="font-size:9px;color:#94a3b8;white-space:nowrap">'+m.lb+'</div>'
+      +'<div style="font-size:9px;color:'+cLbl+';font-weight:'+(m.isCurrent?'800':'400')+';white-space:nowrap">'+m.lb+'</div>'
       +'</div>';
   }).join('');
   function tile(lb,val,sub,color){
@@ -322,20 +347,25 @@ function tForecastSection(){
       +'<td class="tr" style="font-weight:800;color:'+mCol(bu.marge)+';vertical-align:middle">'+(bu.marge!=null?bu.marge.toFixed(1)+'%':'—')+'</td></tr>';
   }).join('');
 
+  var winLbl=qDef?(qDef.lb+' · '+fyLbl(S.year)):fyLbl(S.year);
+  var sub=allPast
+    ? 'Période écoulée : CA réalisé (missions). Aucun pipeline pondéré sur le passé.'
+    : 'Backlog sécurisé (missions projetées) + pipeline pondéré (opportunités × probabilité)'+(qDef?'. Les mois hors '+qDef.lb+' sont grisés.':'');
   return '<div class="card" style="padding:18px 20px;margin-bottom:16px">'
-    +'<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:4px">🔮 Prévisionnel de CA — 12 mois glissants</div>'
-    +'<div style="font-size:12px;color:#94a3b8;margin-bottom:14px">Backlog sécurisé (missions projetées) + pipeline pondéré (opportunités × probabilité)</div>'
+    +'<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:4px">🔮 Prévisionnel de CA — '+esc(winLbl)+'</div>'
+    +'<div style="font-size:12px;color:#94a3b8;margin-bottom:14px">'+sub+'</div>'
     +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">'
-    +tile('CA sécurisé (12 m)',fEur(Math.round(totSec)),'Marge nette '+(secMarge!=null?secMarge.toFixed(1)+'%':'—'),'#1B2B3A')
-    +tile('Pipeline pondéré',fEur(Math.round(totW)),'Opportunités × probabilité','#65a30d')
-    +tile('Total prévisionnel',fEur(Math.round(totSec+totW)),'Sécurisé + pondéré','#0f172a')
+    +tile('CA sécurisé'+(qDef?' ('+qDef.lb+')':''),fEur(Math.round(totSec)),'Marge nette '+(secMarge!=null?secMarge.toFixed(1)+'%':'—'),'#1B2B3A')
+    +tile('Pipeline pondéré',allPast?'—':fEur(Math.round(totW)),allPast?'Aucun sur le passé':'Opportunités × probabilité','#65a30d')
+    +tile(allPast?'Total réalisé':'Total prévisionnel',fEur(Math.round(totSec+totW)),allPast?'CA réalisé sur la période':'Sécurisé + pondéré','#0f172a')
     +'</div>'
     +'<div style="display:flex;align-items:flex-end;gap:4px;padding:6px 2px 0;border-top:1px solid #f1f5f9">'+bars+'</div>'
-    +'<div style="display:flex;gap:16px;margin-top:10px;font-size:11px;color:#64748b">'
-    +'<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:11px;height:11px;background:#1B2B3A;border-radius:2px;display:inline-block"></span>Backlog sécurisé</span>'
+    +'<div style="display:flex;gap:16px;margin-top:10px;font-size:11px;color:#64748b;flex-wrap:wrap">'
+    +'<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:11px;height:11px;background:#1B2B3A;border-radius:2px;display:inline-block"></span>Sécurisé / réalisé</span>'
     +'<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:11px;height:11px;background:#bef264;border-radius:2px;display:inline-block"></span>Pipeline pondéré</span>'
+    +(qDef?'<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:11px;height:11px;background:#d7dde5;border-radius:2px;display:inline-block"></span>Hors '+esc(qDef.lb)+'</span>':'')
     +'</div>'
-    +(buRows?('<div style="margin-top:18px"><div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:6px">Marge consolidée par unité <span style="font-weight:500;color:#94a3b8">— dernier niveau, comparables entre elles · backlog 12 mois</span></div>'
+    +(buRows?('<div style="margin-top:18px"><div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:6px">Marge consolidée par unité <span style="font-weight:500;color:#94a3b8">— dernier niveau, comparables entre elles · '+esc(winLbl)+'</span></div>'
       +'<div class="ov"><table><thead><tr><th>Unité</th><th class="tr">CA sécurisé</th><th class="tr">Marge nette</th></tr></thead><tbody>'+buRows+'</tbody></table></div></div>'):'')
     +'</div>';
 }
