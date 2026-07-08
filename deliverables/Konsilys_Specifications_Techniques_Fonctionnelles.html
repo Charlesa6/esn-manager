@@ -1,0 +1,164 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Konsilys — Spécifications</title><style>
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+@page{size:A4;margin:20mm 18mm}
+body{font-family:'Helvetica Neue',Arial,sans-serif;color:#222A33;font-size:11px;line-height:1.5}
+h1{font-size:19px;color:#1B2B3A;border-bottom:2px solid #84CC16;padding-bottom:6px;margin:26px 0 12px;page-break-after:avoid}
+h2{font-size:14px;color:#1B2B3A;margin:16px 0 6px;page-break-after:avoid}
+p{margin:0 0 8px}
+ul{margin:0 0 8px 18px}li{margin-bottom:4px}
+b.lead{color:#1B2B3A}
+table{width:100%;border-collapse:collapse;margin:8px 0 14px;font-size:10px}
+th{background:#1B2B3A;color:#fff;text-align:left;padding:7px 9px;font-weight:700}
+td{border:1px solid #E2E8F0;padding:6px 9px;vertical-align:top}
+tr:nth-child(even) td{background:#F7F9FB}
+.callout{background:#F1F4F7;border-left:4px solid #84CC16;padding:10px 14px;margin:10px 0;font-size:10.5px}
+.cover{height:247mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;page-break-after:always}
+.cover .brand{font-size:46px;font-weight:900;color:#1B2B3A;letter-spacing:-1px}
+.cover .tag{font-size:16px;color:#2F6F3E;margin-top:8px}
+.cover .doc{font-size:24px;font-weight:800;color:#333D47;margin-top:40px}
+.cover .meta{font-size:12px;color:#556370;margin-top:60px}
+.muted{color:#556370}
+</style></head><body>
+<div class="cover">
+  <div class="brand">KONSILYS</div>
+  <div class="tag">Plateforme SaaS de pilotage pour ESN</div>
+  <div class="doc">Spécifications techniques<br>et fonctionnelles</div>
+  <div class="meta">Version 1.0 &nbsp;·&nbsp; Juillet 2026<br><i>Document confidentiel</i></div>
+</div>
+
+<h1>1. Présentation générale</h1>
+<h2>1.1 Objet du document</h2>
+<p>Ce document décrit les spécifications techniques et fonctionnelles de Konsilys, plateforme SaaS de pilotage destinée aux ESN (Entreprises de Services du Numérique) et, plus largement, aux sociétés de conseil et de prestation intellectuelle. Il sert de référence pour l'équipe produit, le développement, la sécurité et les parties prenantes commerciales.</p>
+<h2>1.2 Périmètre</h2>
+<p>Konsilys couvre l'ensemble du cycle de vie opérationnel et commercial d'une société de prestation : gestion des consultants, missions et facturation associée, planning, absences et validations hiérarchiques, indicateurs de pilotage (KPIs), recrutement et développement commercial (CRM). La plateforme est multi-entreprises (multi-tenant) : chaque organisation dispose d'un espace isolé.</p>
+<h2>1.3 Public visé</h2>
+<p>Dirigeants et managers d'ESN, Business Managers, recruteurs et consultants, ainsi que l'équipe technique et les éventuels investisseurs souhaitant comprendre l'architecture du produit.</p>
+<h2>1.4 Glossaire</h2>
+<table><thead><tr><th>Terme</th><th>Définition</th></tr></thead><tbody><tr><td>ESN</td><td>Entreprise de Services du Numérique (société de conseil / prestation).</td></tr><tr><td>Consultant</td><td>Collaborateur placé en mission chez un client.</td></tr><tr><td>TJM</td><td>Taux Journalier Moyen facturé pour une mission d'assistance technique.</td></tr><tr><td>Inter-contrat</td><td>Période durant laquelle un consultant n'est pas staffé sur une mission.</td></tr><tr><td>Staffing</td><td>Affectation des consultants aux missions.</td></tr><tr><td>N+1</td><td>Responsable hiérarchique direct, en charge des validations.</td></tr><tr><td>Contribution nette</td><td>Marge dégagée par une mission après coûts.</td></tr><tr><td>Multi-tenant</td><td>Architecture où plusieurs entreprises partagent l'infrastructure tout en étant isolées.</td></tr><tr><td>RLS</td><td>Row Level Security : cloisonnement des données au niveau des lignes en base.</td></tr><tr><td>Siège / Licence</td><td>Droit d'accès payant attribué à un utilisateur selon son rôle.</td></tr></tbody></table>
+
+<h1>2. Vision produit et cas d'usage</h1>
+<p>La majorité des ESN pilotent leur activité sur des tableurs et par e-mail : les données sont fragmentées, le staffing se fait à l'aveugle et la marge est recalculée manuellement. Konsilys centralise ces informations dans une plateforme unique, temps réel et collaborative, opérationnelle en quelques minutes sans installation.</p>
+<h2>2.1 Cas d'usage principaux</h2>
+<ul>
+<li><b class="lead">L'administrateur</b> suit ses KPIs (staffing, CA, TJM, contribution nette), pilote plusieurs équipes et gère les accès.</li>
+<li><b class="lead">Le gestionnaire</b> gère son équipe, ses missions, son planning et valide les absences de ses collaborateurs.</li>
+<li><b class="lead">Le Business Manager</b> suit ses opportunités commerciales (CRM) ; une opportunité gagnée génère automatiquement la mission.</li>
+<li><b class="lead">Le recruteur</b> suit son pipeline de candidats et convertit un candidat recruté en consultant de l'équipe.</li>
+<li><b class="lead">Le consultant (utilisateur)</b> consulte ses missions, pose ses absences et suit ses demandes en temps réel.</li>
+</ul>
+
+<h1>3. Architecture technique</h1>
+<h2>3.1 Vue d'ensemble</h2>
+<p>Konsilys repose sur une architecture web moderne, sans serveur applicatif dédié : le frontend est une application monopage servie en statique, adossée à une plateforme Backend-as-a-Service (Supabase) et à un prestataire de paiement (Stripe).</p>
+<table><thead><tr><th>Couche</th><th>Technologie</th><th>Rôle</th></tr></thead><tbody><tr><td>Frontend</td><td>HTML/CSS/JavaScript (application monopage), servi par Vercel</td><td>Interface utilisateur, logique d'affichage et appels à l'API.</td></tr><tr><td>Backend de données</td><td>Supabase — PostgreSQL</td><td>Base de données relationnelle, API REST/Realtime auto-générée.</td></tr><tr><td>Authentification</td><td>Supabase Auth (JWT)</td><td>Comptes, sessions, e-mails transactionnels, définition de mot de passe.</td></tr><tr><td>Sécurité des données</td><td>PostgreSQL Row Level Security (RLS)</td><td>Isolation stricte des données par entreprise.</td></tr><tr><td>Logique serveur</td><td>Supabase Edge Functions (Deno / TypeScript)</td><td>Traitements sécurisés : souscription, provisioning, webhook Stripe.</td></tr><tr><td>Paiement</td><td>Stripe (Checkout + Webhooks)</td><td>Souscription, facturation récurrente, gestion des abonnements.</td></tr><tr><td>Hébergement</td><td>Vercel (front) + Supabase (Europe)</td><td>Diffusion du front, données hébergées en Europe.</td></tr></tbody></table>
+<h2>3.2 Frontend</h2>
+<p>L'application est structurée en trois pages : le site vitrine et tunnel de souscription (index), la page d'authentification et de définition de mot de passe (login), et l'application de gestion (app). Le routage est assuré par la configuration de déploiement (/, /login, /app, /cgu). L'interface est responsive (mobile et desktop).</p>
+<h2>3.3 Backend Supabase</h2>
+<p>Les données sont exposées via l'API REST auto-générée de Supabase, protégée par RLS. Les opérations sensibles (activation d'une entreprise, provisioning des comptes, traitement des paiements) sont déléguées à des Edge Functions disposant de privilèges élevés (service role), jamais au client.</p>
+<h2>3.4 Multi-tenant et sécurité</h2>
+<p>Chaque enregistrement métier porte un identifiant d'entreprise (company_id). Les politiques RLS garantissent qu'un utilisateur n'accède qu'aux données de sa propre entreprise, via une fonction de référence (my_company_id()) qui résout l'entreprise du compte connecté. Les fonctions à privilèges (SECURITY DEFINER) fixent explicitement leur search_path.</p>
+<div class="callout"><b>Note sécurité :</b> les politiques d'accès de la table des approbations ont été renforcées pour être strictement cloisonnées par entreprise (voir §9).</div>
+
+<h1>4. Modèle de données (principales entités)</h1>
+<table><thead><tr><th>Entité</th><th>Description</th><th>Champs clés</th></tr></thead><tbody><tr><td>companies</td><td>Entreprises clientes (tenants).</td><td>id, name, active, has_business_module, has_recrutement_module, devise, exercice fiscal</td></tr><tr><td>profiles</td><td>Comptes utilisateurs, rattachés à une entreprise et un rôle.</td><td>id (=auth user), company_id, role, manager_id (N+1), cons_id</td></tr><tr><td>consultants</td><td>Fiches équipe (consultants, BM…).</td><td>id, company_id, name, grade, scr, contract, manager_id, expertise, secteurs</td></tr><tr><td>missions</td><td>Missions (assistance technique / forfait).</td><td>id, company_id, cons_id, type, tjm, dates, CA, marge</td></tr><tr><td>absences</td><td>Demandes d'absence (9 types).</td><td>id, company_id, cons_id, type, dates, statut</td></tr><tr><td>approvals</td><td>Demandes de validation (absences, modifications).</td><td>id, company_id, type, cons_id, payload, status</td></tr><tr><td>subscriptions</td><td>Abonnements Stripe rattachés à l'entreprise.</td><td>id, company_id, customer_email, status, lines</td></tr><tr><td>pending_seats</td><td>Sièges achetés en attente de provisioning.</td><td>id, company_id, email, role, status, invited_by_id</td></tr></tbody></table>
+<p class="muted"><i>Liste synthétique ; des tables complémentaires gèrent le CRM (comptes, contacts, opportunités), le recrutement (candidats, statuts) et les paramètres.</i></p>
+
+<h1>5. Authentification et gestion des comptes</h1>
+<h2>5.1 Modèle « compte créé au paiement »</h2>
+<p>La création d'un espace et des comptes se fait exclusivement par la souscription payante. Il n'existe pas d'inscription libre : une entreprise n'est utilisable que lorsqu'elle est activée (companies.active = true), ce qui n'intervient qu'après un paiement confirmé.</p>
+<h2>5.2 Tunnel de souscription</h2>
+<ul>
+<li>L'administrateur saisit le nom de son entreprise, ses informations et un mot de passe, sélectionne éventuellement des membres et des modules.</li>
+<li>Un compte administrateur est créé (licence Admin incluse) et redirigé vers le paiement Stripe via l'Edge Function de souscription.</li>
+<li>À la confirmation du paiement, le webhook Stripe active l'entreprise, enregistre l'abonnement et provisionne les sièges achetés.</li>
+</ul>
+<h2>5.3 Provisioning des membres</h2>
+<p>Chaque membre acheté est provisionné automatiquement : un compte est créé et un e-mail d'invitation lui permet de définir son mot de passe. Une fiche d'équipe (consultants) est créée et rattachée à son responsable (N+1). L'acheteur d'un siège devient le N+1 de la personne provisionnée.</p>
+<h2>5.4 Définition du mot de passe</h2>
+<p>La page de connexion détecte le type de lien reçu (invitation ou réinitialisation) et présente le formulaire de définition de mot de passe adapté, avant de rediriger l'utilisateur vers l'application.</p>
+<h2>5.5 Reprise et rétro-compatibilité</h2>
+<p>Un mécanisme de rattachement (claim_subscription) réconcilie un paiement et l'entreprise en cas de délai, sans jamais activer une entreprise sans abonnement payé. Les entreprises créées avant la mise en place du modèle payant ont été conservées actives (grandfathering).</p>
+
+<h1>6. Rôles et permissions</h1>
+<p>Six niveaux d'accès structurent la visibilité et les droits, selon la hiérarchie de l'organisation.</p>
+<table><thead><tr><th>Rôle</th><th>Portée / droits</th><th>Tarif</th></tr></thead><tbody><tr><td>Super Admin</td><td>Pilotage global, KPIs sur 3 niveaux hiérarchiques, gestion des accès et paramètres (devise, exercice fiscal, rôles).</td><td>49 €/mois</td></tr><tr><td>Admin</td><td>Vision multi-gestionnaires, KPIs agrégés par équipe, dashboard et missions complets. Licence incluse à l'inscription.</td><td>39 €/mois</td></tr><tr><td>Gestionnaire</td><td>Gestion complète de son équipe, KPIs, missions et planning, validation des approbations.</td><td>29 €/mois</td></tr><tr><td>Business Manager</td><td>Accès Business (CRM), activité et absences ; opportunité gagnée → mission ; absences validées par son N+1.</td><td>22 €/mois</td></tr><tr><td>Recruteur</td><td>Pipeline candidats (8 statuts), suivi par recruteur, conversion d'un recruté en utilisateur.</td><td>22 €/mois</td></tr><tr><td>Utilisateur</td><td>Suivi de ses missions, soumission de demandes, approbations temps réel, planning et absences personnels.</td><td>8 €/mois</td></tr></tbody></table>
+
+<h1>7. Spécifications fonctionnelles détaillées</h1>
+<h2>7.1 Tableau de bord</h2>
+<p>Vue 360° : approbations en attente, prochaines arrivées de consultants, inter-contrats en cours et fins de mission imminentes. Le contenu s'adapte au rôle et à la hiérarchie de l'utilisateur.</p>
+<h2>7.2 Gestion d'équipe (consultants)</h2>
+<ul><li>Fiches consultants : identité, expertise, secteurs, grade, SCR, type de contrat.</li>
+<li>Rattachement hiérarchique (N+1) et visualisation de la hiérarchie.</li>
+<li>Filtres avancés et mise en avant automatique des futurs arrivants.</li>
+<li>Les Business Managers disposent d'une fiche d'équipe dédiée (grade commercial).</li></ul>
+<h2>7.3 Missions</h2>
+<ul><li>Deux types : assistance technique (au TJM) et forfait.</li>
+<li>Calcul automatique du chiffre d'affaires, de la marge et de la contribution nette.</li>
+<li>Association d'une mission à un consultant et suivi des dates.</li></ul>
+<h2>7.4 Planning (Gantt)</h2>
+<p>Vue mensuelle par consultant présentant, sur une même timeline, missions, congés et périodes d'inter-contrat, pour une lecture immédiate de la charge et de la disponibilité.</p>
+<h2>7.5 Absences et validation N+1</h2>
+<ul><li>Neuf types d'absences (congés payés, RTT, maladie, maternité, etc.).</li>
+<li>Calcul automatique des jours ouvrés, hors jours fériés.</li>
+<li>Validation par le N+1, motif en cas de refus, notification. Délégation possible.</li></ul>
+<h2>7.6 Gestion des accès et hiérarchie</h2>
+<p>Administration des membres : attribution du N+1 (fonction sécurisée set_member_manager), achat de sièges supplémentaires (seats-checkout) et visualisation de la hiérarchie. L'achat d'un siège rattache automatiquement la personne à l'acheteur.</p>
+<h2>7.7 Module Recrutement</h2>
+<ul><li>Pipeline de candidats à 8 statuts, personnalisables.</li>
+<li>Recruteur assigné par candidat, visibilité hiérarchique.</li>
+<li>Conversion automatique d'un candidat recruté en utilisateur.</li></ul>
+<p class="muted"><i>Module optionnel, activable pour l'entreprise (59 €/mois).</i></p>
+<h2>7.8 Module Business Développement (CRM)</h2>
+<ul><li>Gestion des comptes, contacts et pipeline d'opportunités.</li>
+<li>KPIs commerciaux et entonnoir de vente.</li>
+<li>Une opportunité gagnée crée automatiquement la mission correspondante.</li></ul>
+<p class="muted"><i>Module optionnel, activable pour l'entreprise (59 €/mois).</i></p>
+<h2>7.9 KPIs et pilotage</h2>
+<p>Indicateurs temps réel : staffing moyen, chiffre d'affaires total, TJM moyen et contribution nette, filtrables par exercice fiscal et par trimestre. Agrégation selon la hiérarchie.</p>
+<h2>7.10 Import et onboarding</h2>
+<p>Import des consultants depuis un fichier Excel/CSV : reconnaissance automatique des colonnes, préréglages réutilisables par format, création des fiches et rattachement au N+1.</p>
+<h2>7.11 Paramètres</h2>
+<p>Configuration de l'entreprise : devise, exercice fiscal, libellés de rôles et de statuts, activation des modules.</p>
+
+<h1>8. Abonnement et facturation</h1>
+<h2>8.1 Modèle tarifaire</h2>
+<p>Facturation SaaS par licence (siège) et par mois selon le rôle, avec deux modules optionnels facturés par entreprise. Deux cycles : mensuel, ou annuel avec deux mois offerts.</p>
+<h2>8.2 Chaîne de paiement</h2>
+<ul><li>La souscription initiale et l'ajout de sièges passent par une Edge Function authentifiée qui construit la session de paiement Stripe.</li>
+<li>Le webhook Stripe (signé) enregistre l'abonnement, active l'entreprise et déclenche le provisioning.</li>
+<li>Le traitement est conçu pour être idempotent afin d'absorber les répétitions d'événements Stripe.</li></ul>
+<h2>8.3 Cycle de vie de l'abonnement</h2>
+<p>Un abonnement porte les lignes achetées (licences et modules). L'activation découle de l'existence d'un abonnement au statut payé (active, trialing ou past_due). Les données ne sont jamais désactivées automatiquement en cas d'incident de paiement isolé.</p>
+
+<h1>9. Sécurité et conformité</h1>
+<ul>
+<li><b class="lead">Cloisonnement</b> — isolation multi-tenant stricte par RLS : chaque requête est filtrée par entreprise.</li>
+<li><b class="lead">Moindre privilège</b> — les opérations sensibles s'exécutent côté serveur (service role), jamais depuis le navigateur.</li>
+<li><b class="lead">Intégrité du paiement</b> — l'activation d'une entreprise nécessite un abonnement payé ; elle ne peut être forcée depuis le client.</li>
+<li><b class="lead">Hébergement &amp; RGPD</b> — données hébergées en Europe ; aucune donnée bancaire stockée par Konsilys (déléguée à Stripe).</li>
+</ul>
+<h2>9.1 Corrections et durcissements récents</h2>
+<ul><li>Renforcement des politiques d'accès de la table des approbations : lecture/écriture désormais strictement limitées à l'entreprise de l'utilisateur (correction d'une exposition inter-entreprises).</li>
+<li>Nettoyage des composants hérités de l'ancien système d'invitations au profit du modèle « compte créé au paiement ».</li></ul>
+<h2>9.2 Points de vigilance / recommandations</h2>
+<ul><li>Activer la protection contre les mots de passe compromis (vérification HaveIBeenPwned) au niveau de l'authentification.</li>
+<li>Poursuivre la revue des fonctions à privilèges héritées et retirer celles devenues inutiles.</li></ul>
+
+<h1>10. Intégrations</h1>
+<p>Intégration Microsoft Teams via Microsoft Graph : synchronisation permettant de retrouver planning et absences directement dans Teams. L'architecture (API REST et Edge Functions) permet d'étendre les intégrations (RH/paie, signature, exports comptables).</p>
+
+<h1>11. Exigences non-fonctionnelles</h1>
+<table><thead><tr><th>Exigence</th><th>Description</th></tr></thead><tbody><tr><td>Disponibilité</td><td>Front diffusé en CDN (Vercel), base managée (Supabase) avec sauvegardes.</td></tr><tr><td>Performance</td><td>API auto-générée et temps réel ; affichage optimisé côté client.</td></tr><tr><td>Compatibilité</td><td>Navigateurs modernes ; interface responsive mobile et desktop.</td></tr><tr><td>Sécurité</td><td>JWT, RLS, HTTPS, paiement délégué à Stripe.</td></tr><tr><td>Scalabilité</td><td>Modèle multi-tenant : ajout d'entreprises et de sièges sans redéploiement.</td></tr><tr><td>Conformité</td><td>Hébergement en Europe, logique RGPD, données bancaires externalisées.</td></tr></tbody></table>
+
+<h1>12. Annexes</h1>
+<h2>12.1 Récapitulatif tarifaire</h2>
+<table><thead><tr><th>Élément</th><th>Tarif</th><th>Facturation</th></tr></thead><tbody><tr><td>Licence Super Admin</td><td>49 €/mois</td><td>par utilisateur</td></tr><tr><td>Licence Admin</td><td>39 €/mois</td><td>par utilisateur (incluse à l'inscription)</td></tr><tr><td>Licence Gestionnaire</td><td>29 €/mois</td><td>par utilisateur</td></tr><tr><td>Licence Recruteur</td><td>22 €/mois</td><td>par utilisateur</td></tr><tr><td>Licence Business Manager</td><td>22 €/mois</td><td>par utilisateur</td></tr><tr><td>Licence Utilisateur</td><td>8 €/mois</td><td>par utilisateur</td></tr><tr><td>Module Recrutement</td><td>59 €/mois</td><td>par entreprise</td></tr><tr><td>Module Business Développement</td><td>59 €/mois</td><td>par entreprise</td></tr><tr><td>Engagement annuel</td><td>2 mois offerts</td><td>par abonnement</td></tr></tbody></table>
+<h2>12.2 Historique des évolutions majeures</h2>
+<ul>
+<li>Passage au modèle « compte créé au paiement » (suppression de l'inscription libre et des invitations créant des comptes).</li>
+<li>Tunnel de souscription : entreprise + administrateur + membres + modules, paiement Stripe.</li>
+<li>Provisioning automatique des sièges avec rattachement N+1 à l'acheteur et création de fiche d'équipe.</li>
+<li>Nettoyage du site vitrine (doublons retirés, questionnaire recentré sur la démonstration) et passage responsive mobile.</li>
+<li>Durcissement de la sécurité de la table des approbations (cloisonnement par entreprise).</li>
+</ul>
+</body></html>
