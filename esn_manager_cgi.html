@@ -2367,6 +2367,55 @@ function tSVPAcces(){
       +(retryable?('<button class="bs" data-act="seats-retry"'+(sbOn?'':' disabled')+' title="Relance la création des comptes restés en attente ou en erreur (ex : email déjà utilisé)">↻ Relancer le provisioning</button>'):'')
       +'</div>'
       +'<table><thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Statut</th></tr></thead><tbody>'+pendRows+'</tbody></table></div>'):'')
+
+    /* D. Journal d'activité (audit log) */
+    +tAuditSection()
+    +'</div>';
+}
+
+/* Journal d'activité : lecture de activity_logs (alimentée par les triggers SQL
+   audit_trigger sur les tables sensibles). Cloisonné par entreprise via la RLS. */
+var AUDIT_ENTITY_LB={consultants:'Consultant',missions:'Mission',leaves:'Absence',candidates:'Candidat',crm_opportunities:'Opportunité',crm_accounts:'Compte',crm_contacts:'Contact',profiles:'Membre',companies:'Entreprise',settings:'Paramètres',company_settings:'Paramètres'};
+var AUDIT_ACTION_STYLE={INSERT:['Création','#dcfce7','#166534'],UPDATE:['Modification','#dbeafe','#1e40af'],DELETE:['Suppression','#fee2e2','#991b1b']};
+function tAuditSection(){
+  var logs=(S.activityLog||[]);
+  var q=(S.auditQ||'').toLowerCase().trim();
+  var fa=S.auditAction||'all';
+  var filtered=logs.filter(function(l){
+    if(fa!=='all'&&l.action!==fa)return false;
+    if(q){
+      var hay=((l.user_email||'')+' '+(l.user_name||'')+' '+(l.details||'')+' '+(AUDIT_ENTITY_LB[l.entity_type]||l.entity_type||'')).toLowerCase();
+      if(hay.indexOf(q)<0)return false;
+    }
+    return true;
+  });
+  function actBadge(a){var s=AUDIT_ACTION_STYLE[a]||[a,'#f1f5f9','#475569'];return '<span style="padding:2px 9px;border-radius:99px;font-size:11px;font-weight:700;background:'+s[1]+';color:'+s[2]+'">'+s[0]+'</span>';}
+  var rows=filtered.slice(0,200).map(function(l){
+    var d=l.created_at?new Date(l.created_at):null;
+    var dTxt=d&&!isNaN(d)?d.toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+    var who=(l.user_name&&l.user_name!=='système')?l.user_name:(l.user_email||'système');
+    return '<tr>'
+      +'<td style="white-space:nowrap;font-size:11px;color:#64748b">'+esc(dTxt)+'</td>'
+      +'<td style="font-size:12px"><div style="font-weight:600;color:#0f172a">'+esc(who)+'</div><div style="font-size:10px;color:#94a3b8">'+esc(l.user_role||'')+'</div></td>'
+      +'<td>'+actBadge(l.action)+'</td>'
+      +'<td style="font-size:12px;color:#475569">'+esc(AUDIT_ENTITY_LB[l.entity_type]||l.entity_type||'—')+'</td>'
+      +'<td style="font-size:12px;color:#64748b">'+esc(l.details||'—')+'</td>'
+      +'</tr>';
+  }).join('');
+  var actOpts=['all','INSERT','UPDATE','DELETE'].map(function(a){
+    var lb=a==='all'?'Toutes actions':(AUDIT_ACTION_STYLE[a]?AUDIT_ACTION_STYLE[a][0]:a);
+    return '<option value="'+a+'"'+(fa===a?' selected':'')+'>'+lb+'</option>';
+  }).join('');
+  return '<div class="card ov" style="margin-top:16px">'
+    +'<div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'
+    +'<span style="font-size:13px;font-weight:700;color:#0f172a">📜 Journal d\'activité <span style="font-weight:500;color:#94a3b8;font-size:12px">— traçabilité des créations, modifications et suppressions</span></span>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +'<input class="ic" id="audit-q" placeholder="Rechercher (acteur, détail…)" value="'+esc(S.auditQ||'')+'" style="font-size:12px;min-width:180px">'
+    +'<select class="ic" id="audit-action" style="font-size:12px;min-width:140px">'+actOpts+'</select>'
+    +'</div></div>'
+    +'<table><thead><tr><th>Date</th><th>Acteur</th><th>Action</th><th>Type</th><th>Détail</th></tr></thead>'
+    +'<tbody>'+(rows||'<tr><td colspan="5" class="emp">Aucune activité enregistrée'+(q||fa!=='all'?' pour ces filtres':' pour le moment')+'.</td></tr>')+'</tbody></table>'
+    +(filtered.length>200?'<div style="padding:8px 20px;font-size:11px;color:#94a3b8">200 entrées les plus récentes affichées sur '+filtered.length+'.</div>':'')
     +'</div>';
 }
 
@@ -3382,7 +3431,7 @@ function logActivity(action,entityType,entityId,details){
 async function loadActivityLog(){
   if(!S.activityLog)S.activityLog=[];
   if(!sb||!SB_CID)return;
-  try{var r=await sb.from('activity_logs').select('*').eq('company_id',SB_CID).order('created_at',{ascending:false}).limit(100);if(r.data)S.activityLog=r.data;}catch(e){console.warn('activity_log:',e);}
+  try{var r=await sb.from('activity_logs').select('*').eq('company_id',SB_CID).order('created_at',{ascending:false}).limit(300);if(r.data)S.activityLog=r.data;}catch(e){console.warn('activity_log:',e);}
 }
 function markOnboardingDone(){localStorage.setItem('konsilys_ob_'+S._userEmail,'1');S.modal=null;render();}
 function restartOnboarding(){localStorage.removeItem('konsilys_ob_'+S._userEmail);S.modal={type:'onboarding',step:0};render();}
@@ -5290,6 +5339,11 @@ function bind(){
   if(bfacc)bfacc.onchange=function(){S.bizFilter.account=this.value;render();};
   var bfexp=document.getElementById('biz-fexp');
   if(bfexp)bfexp.onchange=function(){S.bizFilter.exp=this.value;render();};
+  /* Filtres du journal d'activité (Gestion des accès) */
+  var auq=document.getElementById('audit-q');
+  if(auq)auq.onchange=function(){S.auditQ=this.value;render();};
+  var aua=document.getElementById('audit-action');
+  if(aua)aua.onchange=function(){S.auditAction=this.value;render();};
   var vpcb=document.querySelectorAll('[data-vp]');
   for(var vi=0;vi<vpcb.length;vi++){(function(cb){cb.onchange=function(){
     var v=cb.getAttribute('data-vp');
