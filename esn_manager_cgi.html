@@ -2285,9 +2285,10 @@ function tSVPAcces(){
       +'<td><select class="ic" onchange="setNplus1(\''+p.id+'\',this.value)"'+(sbOn?'':' disabled')+'>'+opts+'</select></td></tr>';
   }).join('');
 
+  var retryable=pend.filter(function(s){return s.status==='error'||s.status==='pending';}).length;
   var pendRows=pend.map(function(s){
     var st=s.status==='provisioned'?'<span class="badge bgrn">✓ Compte créé</span>'
-      :(s.status==='error'?'<span class="badge bamb">Erreur</span>':'<span class="badge bamb">⏳ Après paiement</span>');
+      :(s.status==='error'?'<span class="badge bamb" title="'+esc(s.error||'Erreur')+'">⚠ Erreur</span>':'<span class="badge bamb">⏳ Après paiement</span>');
     return '<tr><td>'+esc(((s.first_name||'')+' '+(s.last_name||'')).trim())+'</td><td>'+esc(s.email)+'</td><td>'+rLabel(s.role)+'</td><td>'+st+'</td></tr>';
   }).join('');
 
@@ -2321,7 +2322,10 @@ function tSVPAcces(){
     +(hierRows||'<tr><td colspan="3" class="emp">Aucun membre pour le moment.</td></tr>')+'</tbody></table></div>'
 
     /* C. Sièges en attente */
-    +(pend.length?('<div class="card ov"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">Sièges achetés</div>'
+    +(pend.length?('<div class="card ov"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'
+      +'<span style="font-size:13px;font-weight:700;color:#0f172a">Sièges achetés</span>'
+      +(retryable?('<button class="bs" data-act="seats-retry"'+(sbOn?'':' disabled')+' title="Relance la création des comptes restés en attente ou en erreur (ex : email déjà utilisé)">↻ Relancer le provisioning</button>'):'')
+      +'</div>'
       +'<table><thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Statut</th></tr></thead><tbody>'+pendRows+'</tbody></table></div>'):'')
     +'</div>';
 }
@@ -4930,11 +4934,6 @@ function tModal(){
     title='📥 Importer des consultants';
     body=tImportConsBody();
   }
-  if(tp==='bulk_invite'){
-    wide=true;
-    title='📨 Inviter en masse';
-    body=tBulkInviteBody();
-  }
   return '<div class="mov" id="mov"><div class="mbox '+(wide?'mw':'mn')+'">'
     +'<div class="mhd"><h3>'+esc(title)+'</h3><button class="mcl" data-act="mc">&times;</button></div>'
     +'<div class="mbd">'+body+'</div></div></div>';
@@ -5615,6 +5614,19 @@ function bind(){
           b.disabled=false;b.textContent='Payer et créer les comptes →';alert((d&&d.error)||'Erreur — réessayez.');
         }).catch(function(){b.disabled=false;b.textContent='Payer et créer les comptes →';alert('Erreur réseau.');});
       }
+      else if(a==='seats-retry'){
+        if(!sb||!SB_CID){alert('Connexion requise.');return;}
+        b.disabled=true;var _bt=b.textContent;b.textContent='Relance\u2026';
+        sb.auth.getSession().then(function(ses){
+          var tok=ses&&ses.data&&ses.data.session&&ses.data.session.access_token;
+          return fetch('https://rwmstlesxnglpblrurqj.supabase.co/functions/v1/retry-seats',{method:'POST',headers:{'content-type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({})});
+        }).then(function(r){return r.json();}).then(function(d){
+          if(d&&typeof d.ok==='number'){
+            alert(d.ok+' compte(s) cr\u00e9\u00e9(s)'+(d.ko?', '+d.ko+' encore en erreur (email d\u00e9j\u00e0 utilis\u00e9 ?)':'')+'.');
+            loadPendingSeats().then(function(){render();});
+          }else{b.disabled=false;b.textContent=_bt;alert((d&&d.error)||'Erreur \u2014 r\u00e9essayez.');}
+        }).catch(function(){b.disabled=false;b.textContent=_bt;alert('Erreur r\u00e9seau.');});
+      }
       else if(a==='inv-del'){
         if(!confirm('Supprimer cette invitation ? La fiche \u00e9quipe associ\u00e9e sera aussi retir\u00e9e si le compte n\u2019a pas encore \u00e9t\u00e9 activ\u00e9.'))return;
         var invToDel=(S.allInvites||[]).find(function(iv){return iv.id===id;});
@@ -5756,14 +5768,19 @@ function mapCand(r){return{
 function showPaywall(co){
   var cart=(co&&co.pending_cart)||null;
   var canFinish=!!(cart&&cart.items&&cart.items.length);
+  var canceled=!!(co&&co.canceled_at); // abonnement annulé : accès suspendu, données conservées
+  var title=canceled?'Abonnement annulé':'Paiement à finaliser';
+  var msg=canceled
+    ? 'Votre abonnement a été annulé : l\'accès à votre espace est suspendu. Vos données sont conservées pendant 1 an. Pour réactiver votre espace, contactez contact@konsilys.fr.'
+    : ('Votre espace Konsilys s\'ouvre dès que votre abonnement est réglé. '
+       +(canFinish?'Finalisez votre paiement pour activer votre accès.':'Aucun paiement en attente n\'a été trouvé pour votre entreprise — contactez contact@konsilys.fr.'));
   var html=''
     +'<div style="position:fixed;inset:0;background:#0f1720;color:#fff;display:flex;align-items:center;justify-content:center;padding:24px;z-index:99999;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif">'
     +'<div style="max-width:460px;text-align:center">'
     +'<div style="font-size:40px;margin-bottom:12px">🔒</div>'
-    +'<h1 style="font-size:22px;font-weight:800;margin:0 0 10px">Paiement à finaliser</h1>'
-    +'<p style="font-size:15px;line-height:1.6;color:#cbd5e1;margin:0 0 22px">Votre espace Konsilys s\'ouvre dès que votre abonnement est réglé. '
-    +(canFinish?'Finalisez votre paiement pour activer votre accès.':'Aucun paiement en attente n\'a été trouvé pour votre entreprise — contactez contact@konsilys.fr.')+'</p>'
-    +(canFinish?'<button id="pw-go" style="background:#84CC16;color:#0f1720;border:none;border-radius:10px;padding:14px 22px;font-size:15px;font-weight:800;cursor:pointer">Finaliser mon paiement →</button>':'')
+    +'<h1 style="font-size:22px;font-weight:800;margin:0 0 10px">'+title+'</h1>'
+    +'<p style="font-size:15px;line-height:1.6;color:#cbd5e1;margin:0 0 22px">'+msg+'</p>'
+    +((canFinish&&!canceled)?'<button id="pw-go" style="background:#84CC16;color:#0f1720;border:none;border-radius:10px;padding:14px 22px;font-size:15px;font-weight:800;cursor:pointer">Finaliser mon paiement →</button>':'')
     +'<div id="pw-msg" style="font-size:13px;color:#fca5a5;margin-top:12px;min-height:16px"></div>'
     +'<div style="margin-top:22px"><a href="#" id="pw-out" style="color:#94a3b8;font-size:13px;text-decoration:underline">Se déconnecter</a></div>'
     +'</div></div>';
@@ -6070,20 +6087,6 @@ async function loadApprovals(){
     }
   }catch(e){console.warn('[Approvals] Exception:',e.message);}
 }
-async function sbInviteCons(email,name){
-  if(!sb||!SB_CID)return{error:{message:'Supabase non configuré'}};
-  /* Trouver le cons_id correspondant au nom */
-  var allC=(S._all&&S._all.cons)||S.cons;
-  var found=allC.find(function(c){return c.name===name&&(c.dir||'')===S.dirName;});
-  return await sb.from('consultant_invites').insert({
-    company_id:SB_CID,
-    email:email,
-    cons_name:name,
-    cons_id:found?found.id:null,
-    dir_name:S.dirName||'',
-    status:'pending'
-  });
-}
 async function sbDelConsInvite(id){
   if(!sb)return;
   var r=await sb.from('consultant_invites').delete().eq('id',id);
@@ -6259,7 +6262,7 @@ async function initApp(){
          Les entreprises existantes sont actives (grandfathering). Une entreprise
          inactive = paiement non finalisé → écran de finalisation, on stoppe. ── */
       try{
-        var _actv=await sb.from('companies').select('active,pending_cart,name').eq('id',SB_CID).maybeSingle();
+        var _actv=await sb.from('companies').select('active,pending_cart,name,canceled_at').eq('id',SB_CID).maybeSingle();
         if(_actv&&_actv.data&&_actv.data.active===false){ showPaywall(_actv.data); return; }
       }catch(e){console.warn('active check:',e);}
 
@@ -6556,85 +6559,6 @@ function delConsPreset(){
   S.settings.importPresets=consPresets().filter(function(x){return x.id!==id;});
   if(S.consImp&&S.consImp.presetId===id)S.consImp.presetId=null;
   persistImportPresets();render();
-}
-/* ══════════════════════════════════
-   INVITATION EN MASSE — pré-autorise des membres à créer leur compte
-══════════════════════════════════ */
-function invitableCons(existingInv){
-  var accounts={};(S.orgProfiles||[]).forEach(function(p){if(p.cons_id)accounts[p.cons_id]=true;});
-  var invited={};(existingInv||[]).forEach(function(iv){if(iv.cons_id)invited['c'+iv.cons_id]=true;if(iv.email)invited['@'+String(iv.email).toLowerCase()]=true;});
-  var all=(S._all&&S._all.cons)||S.cons,cands=[],noEmail=0,already=0;
-  all.forEach(function(c){
-    if(accounts[c.id]){already++;return;}
-    if(!c.email||!String(c.email).trim()){noEmail++;return;}
-    if(invited['c'+c.id]||invited['@'+String(c.email).toLowerCase()]){already++;return;}
-    cands.push(c);
-  });
-  return {cands:cands,noEmail:noEmail,already:already};
-}
-function openBulkInvite(){
-  if(!sb||!SB_CID){alert('Connexion Supabase requise pour inviter.');return;}
-  S.bulkInv={loading:true,cands:[],noEmail:0,already:0,results:null};
-  S.modal={type:'bulk_invite'};render();
-  sb.from('invites').select('email,cons_id,used').eq('company_id',SB_CID).then(function(r){
-    var res=invitableCons((r&&r.data)||[]);
-    S.bulkInv={loading:false,cands:res.cands,noEmail:res.noEmail,already:res.already,results:null};
-    render();
-  });
-}
-function commitBulkInvite(){
-  var bi=S.bulkInv;if(!bi||bi.sending)return;
-  var chosen=bi.cands.filter(function(c){var el=document.getElementById('bi-'+c.id);return el&&el.checked;});
-  if(!chosen.length){alert('Sélectionnez au moins un membre à inviter.');return;}
-  var myName=((S.profileFirstName||'')+' '+(S.profileLastName||'')).trim()||S._userEmail||'';
-  var profById={};(S.orgProfiles||[]).forEach(function(p){profById[p.id]=p;});
-  var payload=chosen.map(function(c){
-    var mgrId=c.managerId||S._userId||null,mgr=mgrId&&profById[mgrId];
-    var parts=String(c.name||'').trim().split(/\s+/),fn=parts.shift()||'',ln=parts.join(' ');
-    return {company_id:SB_CID,email:String(c.email).toLowerCase().trim(),role:'utilisateur',cons_id:c.id,
-      invited_by:S._userEmail||'',invited_by_role:(mgr&&mgr.role)||S.role,
-      invited_by_name:(mgr?((mgr.first_name||'')+' '+(mgr.last_name||'')).trim():myName)||myName,
-      invited_by_id:mgrId,first_name:fn,last_name:ln};
-  });
-  bi.sending=true;render();
-  sb.from('invites').insert(payload).then(function(r){
-    bi.sending=false;
-    if(r.error){bi.results={err:r.error.message};render();return;}
-    bi.results={ok:payload.length,emails:chosen.map(function(c){return String(c.email).trim();})};
-    render();
-  });
-}
-function tBulkInviteBody(){
-  var bi=S.bulkInv||{};
-  if(bi.loading)return '<div style="text-align:center;padding:30px 0"><div style="font-size:34px">⏳</div><div style="margin-top:8px;font-size:13px;color:#64748b">Recherche des membres à inviter…</div></div>';
-  if(bi.results){
-    var rz=bi.results;
-    if(rz.err)return '<div style="padding:16px;background:#fff1f2;border:1px solid #fecdd3;border-radius:10px;color:#b91c1c;font-size:13px">✕ Erreur : '+esc(rz.err)+'</div><div class="br"><button class="bp" data-act="mc">Fermer</button></div>';
-    var subject='Votre accès Konsilys';
-    var mbody='Bonjour,\n\nVous avez été ajouté(e) à l\'espace Konsilys de votre entreprise.\nCréez votre compte ici : https://konsilys.fr/login\nUtilisez l\'adresse email sur laquelle vous recevez ce message.\n\nÀ bientôt.';
-    var href='mailto:?bcc='+encodeURIComponent((rz.emails||[]).join(','))+'&subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(mbody);
-    return '<div style="text-align:center;padding:12px 0"><div style="font-size:44px">✅</div>'
-      +'<div style="margin-top:8px;font-size:16px;font-weight:800;color:#0f172a">'+rz.ok+' invitation'+(rz.ok>1?'s':'')+' créée'+(rz.ok>1?'s':'')+'</div>'
-      +'<div style="font-size:12px;color:#64748b;margin-top:6px">Chaque personne pourra créer son compte sur konsilys.fr/login avec son email — elle sera rattachée automatiquement à votre organisation et à son N+1.</div></div>'
-      +'<div class="br"><a class="bp" href="'+esc(href)+'" style="text-decoration:none">📧 Prévenir tout le monde par email</a><button class="bg" data-act="mc">Terminer</button></div>';
-  }
-  var cands=bi.cands||[];
-  if(!cands.length){
-    return '<div style="padding:18px;background:#f8fafc;border-radius:10px;font-size:13px;color:#475569;text-align:center">Aucun membre à inviter.<br><span style="font-size:12px;color:#94a3b8">'+(bi.already||0)+' déjà invité(s)/avec compte · '+(bi.noEmail||0)+' sans email.</span></div>'
-      +'<div class="br"><button class="bg" data-act="mc">Fermer</button></div>';
-  }
-  var rows=cands.map(function(c){
-    return '<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid #f1f5f9;cursor:pointer">'
-      +'<input type="checkbox" data-bi id="bi-'+c.id+'" checked style="accent-color:#84CC16;width:16px;height:16px;flex-shrink:0">'
-      +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#0f172a">'+esc(c.name||'—')+'</div>'
-      +'<div style="font-size:11px;color:#94a3b8">'+esc(c.email||'')+(c.dir?' · N+1 : '+esc(c.dir):'')+'</div></div></label>';
-  }).join('');
-  return '<div style="font-size:13px;color:#475569;margin-bottom:10px">Sélectionnez les membres à inviter. Ils recevront le droit de créer leur compte, rattaché à votre organisation et à leur N+1.</div>'
-    +'<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#f8fafc;border-radius:8px;font-size:12px;font-weight:700;color:#334155;cursor:pointer;margin-bottom:6px">'
-    +'<input type="checkbox" checked onclick="var ch=this.checked;document.querySelectorAll(\'[data-bi]\').forEach(function(x){x.checked=ch;});" style="accent-color:#84CC16;width:16px;height:16px">Tout sélectionner ('+cands.length+')</label>'
-    +'<div style="max-height:320px;overflow:auto;border:1px solid #e2e8f0;border-radius:8px">'+rows+'</div>'
-    +((bi.already||bi.noEmail)?'<div style="font-size:11px;color:#94a3b8;margin-top:8px">Exclus : '+(bi.already||0)+' déjà invité(s)/avec compte · '+(bi.noEmail||0)+' sans email.</div>':'')
-    +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="bulk-invite-send"'+(bi.sending?' disabled style="opacity:.6"':'')+'>'+(bi.sending?'Envoi…':'📨 Créer les invitations')+'</button></div>';
 }
 function openImportCons(){S.consImp={file:'',headers:[],raw:[],map:{},rows:[],step:'upload',results:null};S.modal={type:'import_cons'};render();}
 function handleConsImpFile(file){

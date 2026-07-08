@@ -91,8 +91,11 @@ Deno.serve(async (req) => {
       case "customer.subscription.updated": {
         const sub = evt.data.object as Stripe.Subscription;
         if (evt.type === "customer.subscription.deleted" || sub.status === "canceled") {
-          await recordSubscription(sub, sub.metadata?.company_id || "", "");
-          await applyModules(sub, sub.metadata?.company_id || "", false); // coupe les modules
+          const cid = sub.metadata?.company_id || "";
+          await recordSubscription(sub, cid, "");
+          await applyModules(sub, cid, false); // coupe les modules
+          // Blocage de l'accès (données conservées, voir deactivateCompany).
+          if (cid) await deactivateCompany(cid);
         }
         break;
       }
@@ -109,8 +112,19 @@ Deno.serve(async (req) => {
 // et on efface le panier mémorisé (utilisé pour finaliser un paiement abandonné).
 async function activateCompany(companyId: string) {
   const { error } = await supa.from("companies")
-    .update({ active: true, pending_cart: null }).eq("id", companyId);
+    .update({ active: true, pending_cart: null, canceled_at: null }).eq("id", companyId);
   if (error) console.error("activateCompany:", error.message);
+}
+
+// Annulation d'abonnement : on BLOQUE l'accès (active=false → paywall dans l'app)
+// mais on CONSERVE les données de l'entreprise. canceled_at horodate le début
+// de la rétention (1 an) pour une purge ultérieure. On n'appelle ceci qu'à
+// l'annulation définitive, jamais pendant les relances de paiement (past_due).
+async function deactivateCompany(companyId: string) {
+  const { error } = await supa.from("companies")
+    .update({ active: false, canceled_at: new Date().toISOString() })
+    .eq("id", companyId);
+  if (error) console.error("deactivateCompany:", error.message);
 }
 
 // Crée les comptes des personnes pour qui l'admin a payé une licence. Chacune
