@@ -357,8 +357,8 @@ function tForecastSection(){
     };
     var maxNodeVal=1;
     buChildren(null).forEach(function(n){var a=aggr(n.id);if(a.ca+a.pipe>maxNodeVal)maxNodeVal=a.ca+a.pipe;});
-    var nodeRows=function(parentId,depth){
-      return buChildren(parentId).map(function(n){
+    var renderNodes=function(nodes,depth){
+      return nodes.map(function(n){
         var a=aggr(n.id); if(a.ca===0&&a.pipe===0)return '';
         var kids=buChildren(n.id).filter(function(ch){var x=aggr(ch.id);return x.ca||x.pipe;});
         var hasKids=kids.length>0, open=!!S.buFcOpen[n.id];
@@ -375,10 +375,14 @@ function tForecastSection(){
           +'<td class="tr" style="font-weight:'+(depth===0?900:700)+';color:#0f172a;white-space:nowrap;vertical-align:middle">'+fEur(_round(a.ca))+'</td>'
           +'<td class="tr" style="font-weight:'+(depth===0?800:600)+';color:#65a30d;white-space:nowrap;vertical-align:middle">'+(a.pipe>0?fEur(_round(a.pipe)):'—')+'</td>'
           +'<td class="tr" style="font-weight:800;color:'+mCol(marge)+';vertical-align:middle">'+(marge!=null?marge.toFixed(1)+'%':'—')+'</td></tr>';
-        return row+(open?nodeRows(n.id,depth+1):'');
+        return row+(open?renderNodes(buChildren(n.id),depth+1):'');
       }).join('');
     };
-    var treeRows=nodeRows(null,0);
+    /* Chaque licence ne voit que son unité de rattachement et ses sous-unités —
+       jamais les unités au-dessus d'elle. Le super_admin (ou un compte sans BU) voit tout. */
+    var _my=myBuId();
+    var roots=(S.role==='super_admin'||!_my)?buChildren(null):[buById(_my)].filter(Boolean);
+    var treeRows=renderNodes(roots,0);
     if(secNoBu.ca>0||pipeNoBu>0){
       var mN=secNoBu.ca>0?(secNoBu.ca-secNoBu.cost)/secNoBu.ca*100:null;
       treeRows+='<tr><td style="padding:9px 14px 9px 33px;color:#94a3b8;font-style:italic">Sans unité</td>'
