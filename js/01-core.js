@@ -538,6 +538,30 @@ function myBuId(){
   var p=(S.orgProfiles||[]).find(function(x){return x.id===S._userId;});
   return (p&&p.bu_id)||null;
 }
+/* memberId est-il un subordonné hiérarchique (N+1 transitif) de ancestorId ? */
+function isHierDescendant(memberId,ancestorId){
+  if(!memberId||!ancestorId)return false;
+  var byId={};(S.orgProfiles||[]).forEach(function(x){byId[x.id]=x;});
+  var cur=byId[memberId],guard=0;
+  while(cur&&cur.manager_id&&guard<20){
+    if(cur.manager_id===ancestorId)return true;
+    cur=byId[cur.manager_id];guard++;
+  }
+  return false;
+}
+/* Qui peut modifier l'unité (BU) d'un membre — miroir exact du RPC set_member_bu :
+   super_admin = tout le monde (soi compris) ; admin = ses subordonnés non-admin ;
+   autres rôles = personne. */
+function canEditMemberBU(p){
+  if(!p)return false;
+  if(S.role==='super_admin')return true;
+  if(S.role==='admin'){
+    if(p.id===S._userId)return false;
+    if(p.role==='admin'||p.role==='super_admin')return false;
+    return isHierDescendant(p.id,S._userId);
+  }
+  return false;
+}
 function consBU(c){
   if(!c)return null;
   if(c.buId)return c.buId;

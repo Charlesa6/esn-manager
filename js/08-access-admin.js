@@ -376,8 +376,8 @@ function tSVPAcces(){
   /* Hiérarchie : pour chaque membre existant, choix de son N+1 parmi les autres. */
   /* Options BU (chemin complet), triées par profondeur/label pour la lisibilité */
   var _buOpts=buNodes().slice().sort(function(a,b){return buPathLabel(a.id).localeCompare(buPathLabel(b.id),'fr');});
-  var _canBU=(S.role==='super_admin'||S.role==='admin');
   var hierRows=members.map(function(p){
+    var _canBU=canEditMemberBU(p);
     var opts='<option value="">— Aucun —</option>'+members.filter(function(q){return q.id!==p.id;}).map(function(q){
       var nmq=((q.first_name||'')+' '+(q.last_name||'')).trim()||q.id;
       return '<option value="'+q.id+'"'+(p.manager_id===q.id?' selected':'')+'>'+esc(nmq)+' ('+rLabel(q.role)+')</option>';
@@ -388,7 +388,7 @@ function tSVPAcces(){
     var nm=((p.first_name||'')+' '+(p.last_name||'')).trim()||p.id;
     return '<tr><td>'+esc(nm)+'</td><td>'+rLabel(p.role)+'</td>'
       +'<td><select class="ic" onchange="setNplus1(\''+p.id+'\',this.value)"'+(sbOn?'':' disabled')+'>'+opts+'</select></td>'
-      +'<td><select class="ic" onchange="setMemberBU(\''+p.id+'\',this.value)"'+(sbOn&&_canBU?'':' disabled title="Réservé Admin / Super Admin"')+'>'+buOpts+'</select></td></tr>';
+      +'<td><select class="ic" onchange="setMemberBU(\''+p.id+'\',this.value)"'+(sbOn&&_canBU?'':' disabled title="Vous ne pouvez pas modifier cette unité"')+'>'+buOpts+'</select></td></tr>';
   }).join('');
 
   var retryable=pend.filter(function(s){return s.status==='error'||s.status==='pending';}).length;
