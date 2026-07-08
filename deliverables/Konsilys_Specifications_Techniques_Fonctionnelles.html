@@ -175,4 +175,20 @@ tr:nth-child(even) td{background:#F7F9FB}
 <li>Nettoyage du site vitrine (doublons retirés, cartes de prix menant au parcours d'abonnement, navigation par onglets sur mobile, questionnaire recentré sur la démonstration) et passage responsive mobile.</li>
 <li>Durcissement de la sécurité de la table des approbations (cloisonnement par entreprise).</li>
 </ul>
+<h1>13. Évolutions récentes (sécurité, pilotage, multi-BU, mobilité)</h1>
+<h2>13.1 Durcissement sécurité et conformité RGPD</h2>
+<p>Audit RLS systématique des tables : correction d’une élévation de privilèges possible via la mise à jour de son propre profil (verrouillage du rôle et du company_id), restriction des insertions de profil à sa propre ligne, suppression de policies anonymes trop permissives, et fixation du search_path des fonctions SECURITY DEFINER.</p>
+<ul><li><b class="lead">Journal d’activité (audit log)</b> : des déclencheurs base de données enregistrent toute création, modification et suppression sur les tables sensibles, avec acteur, entité et champs modifiés ; consultable dans Gestion des accès, cloisonné par entreprise.</li>
+<li><b class="lead">Permissions fines sur les consultants</b> : le rattachement d’équipe (N+1) est réservé au grade gestionnaire et au-dessus ; la Business Unit d’un consultant n’est modifiable que par son N+1 (ou un administrateur), côté interface et côté serveur.</li></ul>
+<h2>13.2 Pilotage financier : prévisionnel et marge consolidée</h2>
+<p>Prévisionnel de CA sur 12 mois glissants combinant le backlog des missions et le pipeline pondéré des opportunités, avec une marge consolidée par Business Unit et par practice.</p>
+<h2>13.3 Hiérarchie multi-Business Units</h2>
+<p>Hiérarchie de BU jusqu’à six niveaux (Monde › Europe › France › région › agence › équipe), configurable par le super administrateur ; chaque membre hérite automatiquement de la BU de la personne qui a créé son compte.</p>
+<h2>13.4 Recrutement : pipeline partagé et matching</h2>
+<ul><li>Vivier partagé à l’échelle de l’entreprise, filtres avancés ; un candidat recruté crée une fiche consultant reliée à son gestionnaire et héritant de sa BU.</li>
+<li>Matching opportunité → candidats sur expertise, localisation, années d’expérience et secteur, classés par nombre de critères satisfaits.</li>
+<li>Localisation candidat classifiée : cible (priorité), secondaires, mobilité France entière, recherche parmi les grandes villes de France.</li>
+<li>Mobilité régionale des consultants : villes de la région définies par le super administrateur dans les Paramètres.</li></ul>
+<h2>13.5 Qualité et robustesse</h2>
+<p>Application produit découpée en modules (sans étape de build) et suite de tests de bout-en-bout (Playwright, hors-ligne) prévenant les régressions.</p>
 </body></html>
