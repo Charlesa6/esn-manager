@@ -211,6 +211,23 @@ tr[data-act]{cursor:pointer}
 tr[data-act]:hover td{background:#f4f7fb}
 .nb:active{transform:scale(.985)}
 :focus-visible{outline:2px solid rgba(132,204,22,.55);outline-offset:2px}
+/* ═══ Effets inspirés de Linear : transition de vue + profondeur + glow ═══ */
+@keyframes viewIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.inn.vin{animation:viewIn .28s cubic-bezier(.22,.61,.36,1)}
+.card,.kc,.goal-card{transition:transform .18s cubic-bezier(.22,.61,.36,1),box-shadow .18s,border-color .18s}
+.card:hover,.kc:hover,.goal-card:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(2,6,23,.10);border-color:#dbe3ee}
+.nb{transition:background .16s,color .16s,transform .12s,box-shadow .18s}
+.nb.act{box-shadow:0 4px 14px rgba(132,204,22,.40),inset 0 0 0 1px rgba(255,255,255,.15)}
+.bp,.bg{transition:background .14s,box-shadow .16s,border-color .14s,transform .12s cubic-bezier(.22,.61,.36,1)}
+.bp:hover,.bg:hover{transform:translateY(-1px)}
+.bp:active,.bg:active{transform:translateY(0)}
+.badge{transition:transform .12s}
+tr[data-act]{transition:background .12s}
+/* Le contenu (#mc) glisse en douceur, la barre latérale reste fixe */
+@media(prefers-reduced-motion:reduce){
+  .inn.vin{animation:none}
+  .card:hover,.kc:hover,.goal-card:hover,.bp:hover,.bg:hover{transform:none}
+}
 </style>
 </head>
 <body>

@@ -68,6 +68,13 @@ nav{
   content:'';position:absolute;inset:0;
   background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(132,204,22,.08) 0%,transparent 70%);
 }
+/* Spotlight qui suit le curseur (effet « Linear ») */
+.hero::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(560px circle at var(--mx,50%) var(--my,-10%),rgba(132,204,22,.12),transparent 60%);
+  opacity:0;transition:opacity .35s ease;
+}
+.hero:hover::after{opacity:1}
 .hero-eyebrow{
   display:inline-block;
   background:rgba(132,204,22,.15);
@@ -128,9 +135,9 @@ section{padding:80px 24px}
   background:#fff;border-radius:14px;
   padding:24px;
   border:1px solid var(--border);
-  transition:box-shadow .2s,transform .2s;
+  transition:box-shadow .22s cubic-bezier(.22,.61,.36,1),transform .22s cubic-bezier(.22,.61,.36,1),border-color .22s;
 }
-.feat-card:hover{box-shadow:0 8px 24px rgba(0,0,0,.08);transform:translateY(-3px)}
+.feat-card:hover{box-shadow:0 14px 32px rgba(2,6,23,.10);transform:translateY(-4px);border-color:rgba(132,204,22,.55)}
 .feat-icon{font-size:26px;margin-bottom:12px}
 .feat-title{font-size:15px;font-weight:800;color:var(--navy);margin-bottom:6px}
 .feat-desc{font-size:13px;color:var(--muted);line-height:1.6}
@@ -944,6 +951,15 @@ function submitForm(e){
   els.forEach(function(el){obs.observe(el);});
   // Filet de sécurité : tout révéler après 2,5 s si l'observer n'a pas déclenché.
   setTimeout(revealAll,2500);
+  // Spotlight du hero qui suit le curseur (uniquement sur pointeur fin, pas tactile).
+  var hero=document.querySelector('.hero');
+  if(hero&&window.matchMedia&&window.matchMedia('(hover:hover)').matches){
+    hero.addEventListener('mousemove',function(e){
+      var r=hero.getBoundingClientRect();
+      hero.style.setProperty('--mx',(e.clientX-r.left)+'px');
+      hero.style.setProperty('--my',(e.clientY-r.top)+'px');
+    });
+  }
 })();
 </script>
 </body>
