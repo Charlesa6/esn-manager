@@ -162,7 +162,9 @@ details summary::-webkit-details-marker{display:none}
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 var SUPABASE_URL = 'https://rwmstlesxnglpblrurqj.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3bXN0bGVzeG5nbHBibHJ1cnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MjcyNTMsImV4cCI6MjA5NzEwMzI1M30.9SrsA1sYjdsqdPCnZ_sc2iTl01NKXsl7gAu2Y_VYgSQ';
-var sb = (SUPABASE_URL && SUPABASE_KEY && SUPABASE_URL.indexOf('supabase.co') > 0)
+/* Garde : si le CDN Supabase n'a pas pu être chargé (réseau), on dégrade
+   proprement (sb=null) au lieu de planter toute l'app sur un ReferenceError. */
+var sb = (typeof supabase !== 'undefined' && SUPABASE_URL && SUPABASE_KEY && SUPABASE_URL.indexOf('supabase.co') > 0)
   ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 var SB_CID = null; // company_id de l'utilisateur connecté (rempli après auth)
 
@@ -1673,6 +1675,7 @@ function tKPIs(){
   return '<div class="vw">'
     +'<div style="margin-bottom:24px"><div class="pt">KPIs &mdash; '+fyLbl(S.year)+(S.quarter?' \u00b7 '+curRangeLbl():'')+'</div></div>'
     +hero
+    +tForecastSection()
     +'<div style="display:grid;grid-template-columns:3fr 200px;gap:16px;margin-bottom:16px">'
     +'<div class="card" style="padding:20px">'
     +'<div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:8px">Staffing par consultant (%)</div>'
@@ -1690,6 +1693,126 @@ function tKPIs(){
 /* ══════════════════════════════════════════════════════════════
    TEMPLATE - KPIs SVP (3 niveaux : VP → Directeur → Consultant)
 ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   PRÉVISIONNEL DE CA (12 mois) + MARGE CONSOLIDÉE PAR BU / PRACTICE
+   Backlog sécurisé = missions en cours/à venir projetées mois par mois
+   (jours travaillés × TJM, ou forfait proraté). Pipeline pondéré = valeur des
+   opportunités ouvertes × probabilité, étalée sur leur durée à partir de la date
+   de démarrage. BU = Vice-Président (vpDirMap) ; Practice = directeur.
+══════════════════════════════════════════════════════════════ */
+function eShortEur(n){n=Math.round(n||0);var neg=n<0;n=Math.abs(n);var s=n>=1000?(Math.round(n/100)/10)+'k':String(n);return (neg?'-':'')+s+'€';}
+function tForecastSection(){
+  var HN=12, now=pD(TODAY);
+  var consById={};(S.cons||[]).forEach(function(c){consById[c.id]=c;});
+  var MLB=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+  var months=[];
+  for(var i=0;i<HN;i++){
+    var d=new Date(now.getFullYear(),now.getMonth()+i,1);
+    months.push({ms:fD(d),me:fD(new Date(d.getFullYear(),d.getMonth()+1,0)),sec:0,secCost:0,weighted:0,
+      lb:MLB[d.getMonth()]+' '+String(d.getFullYear()).slice(2)});
+  }
+  function buOf(dir){
+    var vp='(Sans BU)';
+    Object.keys(S.vpDirMap||{}).forEach(function(v){if((S.vpDirMap[v]||[]).indexOf(dir)>=0)vp=v;});
+    if(vp==='(Sans BU)'&&Object.keys(S.vpDirMap||{}).length===0&&S.svpInvites&&S.svpInvites.length===1)
+      vp=S.svpInvites[0].vp_name||S.svpInvites[0].email||'(Sans BU)';
+    return vp;
+  }
+  var buMap={};
+  /* ── Backlog sécurisé (missions) ── */
+  (S.miss||[]).forEach(function(m){
+    var c=consById[m.cid];if(!c)return;
+    var dir=c.dir||'(Sans practice)',bu=buOf(dir);
+    months.forEach(function(mo){
+      var a=mo.ms>TODAY?mo.ms:TODAY; if(m.sd>a)a=m.sd;
+      var b=mo.me; if(m.ed&&m.ed<b)b=m.ed;
+      if(a>b)return;
+      var days=missWD(m,a,b,S.lvs); if(days<=0)return;
+      var rev;
+      if(m.btype==='forfait'){
+        var totD=m.ed?missWD(m,m.sd,m.ed,S.lvs):0;
+        if(!m.ed||totD<=0)return;               /* forfait sans date de fin : non projetable */
+        rev=(+m.deal||0)*(days/totD);
+      }else{rev=days*(m.tjm||0);}
+      var cost=days*(c.scr||0)*(c.contract==='freelance'?1:EMPLOYER_FACTOR);
+      mo.sec+=rev; mo.secCost+=cost;
+      if(!buMap[bu])buMap[bu]={ca:0,cost:0,practices:{}};
+      buMap[bu].ca+=rev; buMap[bu].cost+=cost;
+      if(!buMap[bu].practices[dir])buMap[bu].practices[dir]={ca:0,cost:0};
+      buMap[bu].practices[dir].ca+=rev; buMap[bu].practices[dir].cost+=cost;
+    });
+  });
+  /* ── Pipeline pondéré (opportunités ouvertes) ── */
+  (S.bizOpps||[]).forEach(function(o){
+    if(o.status==='gagne'||o.status==='perdu')return;
+    var val=caPot(o)*(+o.probability||0)/100; if(val<=0)return;
+    var dur=Math.max(+o.duree_mois||1,1);
+    var sd=pD(o.date_start||o.date_closing||TODAY);
+    var si=(sd.getFullYear()-now.getFullYear())*12+(sd.getMonth()-now.getMonth()); if(si<0)si=0;
+    var per=val/dur;
+    for(var k=0;k<dur;k++){var mi=si+k;if(mi>=0&&mi<HN)months[mi].weighted+=per;}
+  });
+  var totSec=months.reduce(function(s,m){return s+m.sec;},0);
+  var totSecCost=months.reduce(function(s,m){return s+m.secCost;},0);
+  var totW=months.reduce(function(s,m){return s+m.weighted;},0);
+  var secMarge=totSec>0?(totSec-totSecCost)/totSec*100:null;
+  var maxM=Math.max.apply(null,months.map(function(m){return m.sec+m.weighted;}).concat([1]));
+  var bars=months.map(function(m){
+    var tot=m.sec+m.weighted;
+    var hSec=Math.round(m.sec/maxM*110),hW=Math.round(m.weighted/maxM*110);
+    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0">'
+      +'<div style="font-size:9px;color:#64748b;font-weight:700;white-space:nowrap;height:12px">'+(tot>0?eShortEur(tot):'')+'</div>'
+      +'<div style="display:flex;flex-direction:column;justify-content:flex-end;height:112px;width:70%;max-width:24px">'
+      +(hW>0?'<div title="Pipeline pondéré : '+eShortEur(m.weighted)+'" style="height:'+hW+'px;background:#bef264;border-radius:3px 3px 0 0"></div>':'')
+      +(hSec>0?'<div title="Backlog sécurisé : '+eShortEur(m.sec)+'" style="height:'+hSec+'px;background:#1B2B3A;border-radius:'+(hW>0?'0':'3px 3px 0 0')+'"></div>':'')
+      +((hW+hSec)===0?'<div style="height:2px;background:#e2e8f0"></div>':'')
+      +'</div>'
+      +'<div style="font-size:9px;color:#94a3b8;white-space:nowrap">'+m.lb+'</div>'
+      +'</div>';
+  }).join('');
+  function tile(lb,val,sub,color){
+    return '<div style="flex:1;min-width:120px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px">'
+      +'<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em">'+lb+'</div>'
+      +'<div style="font-size:19px;font-weight:900;color:'+(color||'#0f172a')+';margin-top:2px">'+val+'</div>'
+      +(sub?'<div style="font-size:11px;color:#94a3b8;margin-top:1px">'+sub+'</div>':'')+'</div>';
+  }
+  /* ── Marge consolidée par BU / Practice (backlog 12 mois) ── */
+  var buList=Object.keys(buMap).map(function(b){var x=buMap[b];
+    return {name:b,ca:x.ca,cost:x.cost,marge:x.ca>0?(x.ca-x.cost)/x.ca*100:null,practices:x.practices};
+  }).sort(function(a,b){return b.ca-a.ca;});
+  function mCol(m){return m==null?'#94a3b8':(m>=30?'#16a34a':m>=15?'#d97706':'#dc2626');}
+  var buRows=buList.map(function(bu){
+    var pracs=Object.keys(bu.practices).map(function(d){var p=bu.practices[d];
+      return {name:d,ca:p.ca,marge:p.ca>0?(p.ca-p.cost)/p.ca*100:null};}).sort(function(a,b){return b.ca-a.ca;});
+    var pracRows=pracs.map(function(p){
+      return '<tr style="background:#f8fafc"><td style="padding:6px 14px 6px 34px;font-size:12px;color:#475569">👤 '+esc(p.name)+'</td>'
+        +'<td class="tr" style="font-size:12px;font-weight:700;color:#0f172a">'+fEur(Math.round(p.ca))+'</td>'
+        +'<td class="tr" style="font-size:12px;font-weight:700;color:'+mCol(p.marge)+'">'+(p.marge!=null?p.marge.toFixed(1)+'%':'—')+'</td></tr>';
+    }).join('');
+    return '<tr><td style="padding:9px 14px;font-size:13px;font-weight:800;color:#1B2B3A">🏢 '+esc(bu.name)+'</td>'
+      +'<td class="tr" style="font-weight:900;color:#0f172a">'+fEur(Math.round(bu.ca))+'</td>'
+      +'<td class="tr" style="font-weight:800;color:'+mCol(bu.marge)+'">'+(bu.marge!=null?bu.marge.toFixed(1)+'%':'—')+'</td></tr>'
+      +pracRows;
+  }).join('');
+
+  return '<div class="card" style="padding:18px 20px;margin-bottom:16px">'
+    +'<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:4px">🔮 Prévisionnel de CA — 12 mois glissants</div>'
+    +'<div style="font-size:12px;color:#94a3b8;margin-bottom:14px">Backlog sécurisé (missions projetées) + pipeline pondéré (opportunités × probabilité)</div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">'
+    +tile('CA sécurisé (12 m)',fEur(Math.round(totSec)),'Marge nette '+(secMarge!=null?secMarge.toFixed(1)+'%':'—'),'#1B2B3A')
+    +tile('Pipeline pondéré',fEur(Math.round(totW)),'Opportunités × probabilité','#65a30d')
+    +tile('Total prévisionnel',fEur(Math.round(totSec+totW)),'Sécurisé + pondéré','#0f172a')
+    +'</div>'
+    +'<div style="display:flex;align-items:flex-end;gap:4px;padding:6px 2px 0;border-top:1px solid #f1f5f9">'+bars+'</div>'
+    +'<div style="display:flex;gap:16px;margin-top:10px;font-size:11px;color:#64748b">'
+    +'<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:11px;height:11px;background:#1B2B3A;border-radius:2px;display:inline-block"></span>Backlog sécurisé</span>'
+    +'<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:11px;height:11px;background:#bef264;border-radius:2px;display:inline-block"></span>Pipeline pondéré</span>'
+    +'</div>'
+    +(buRows?('<div style="margin-top:18px"><div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:6px">Marge consolidée par BU / Practice <span style="font-weight:500;color:#94a3b8">— backlog 12 mois</span></div>'
+      +'<div class="ov"><table><thead><tr><th>BU / Practice</th><th class="tr">CA sécurisé</th><th class="tr">Marge nette</th></tr></thead><tbody>'+buRows+'</tbody></table></div></div>'):'')
+    +'</div>';
+}
+
 function tKPIsSVPSection(){
   var allKS=buildKS();
   var dSort=S.kpiDirSort||null,dAsc=S.kpiDirSortAsc||false;
