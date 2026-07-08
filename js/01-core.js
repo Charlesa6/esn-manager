@@ -533,6 +533,11 @@ function isConsMyReport(c){
 
 /* BU d'un consultant : BU stockée sur la fiche si présente, sinon via le profil
    lié (cons_id), sinon via son directeur (gestionnaire) s'il a une BU. */
+/* BU (niveau le plus fin) de l'utilisateur connecté, d'après son profil. */
+function myBuId(){
+  var p=(S.orgProfiles||[]).find(function(x){return x.id===S._userId;});
+  return (p&&p.bu_id)||null;
+}
 function consBU(c){
   if(!c)return null;
   if(c.buId)return c.buId;
