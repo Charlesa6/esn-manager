@@ -50,9 +50,14 @@ function render(){
     :'';
   var _topbar='<div class="topbar"><button class="topsearch" data-act="cmdk-open" title="Rechercher (⌘K)">'
     +'<span style="opacity:.7">🔍</span><span class="tsp">Rechercher une fonctionnalité, une page…</span>'
-    +'<span class="tsk">⌘K</span></button></div>';
+    +'<span class="tsk">⌘K</span></button>'
+    +'<button class="toptheme" data-act="theme-toggle" title="'+(isDark()?'Passer en clair':'Passer en sombre')+'" aria-label="Changer de thème">'+(isDark()?'☀️':'🌙')+'</button></div>';
   document.getElementById('mc').innerHTML=_demoBanner+_topbar+'<div class="inn'+(_tabChanged?' vin':'')+'" style="position:relative">'+_pfBtn+v+'</div>';
   document.getElementById('md').innerHTML=tModal()+(S.bizModal?tBizModal():'');
+  /* Thème sombre : transforme les couleurs inline du contenu et des modales
+     (la barre latérale reste sur son fond navy, déjà adapté au sombre). */
+  themify(document.getElementById('mc'));
+  themify(document.getElementById('md'));
   /* on restaure les données maîtres (les handlers de bind() mutent l'ensemble complet) */
   S.cons=S._all.cons;S.miss=S._all.miss;S.lvs=S._all.lvs;
   bind();
@@ -207,6 +212,7 @@ function bind(){
       else if(a==='qsel'){S.quarter=id?+id:null;render();}
       else if(a==='bu-fc-toggle'){if(!S.buFcOpen)S.buFcOpen={};S.buFcOpen[id]=!S.buFcOpen[id];render();}
       else if(a==='cmdk-open'){openCmdK();return;}
+      else if(a==='theme-toggle'){toggleTheme();render();return;}
       else if(a==='yr-prev'){if(S.year>CFY-2){S.year--;H=fyHols(S.year);S.precs={};render();}}
       else if(a==='yr-next'){if(S.year<CFY+1){S.year++;H=fyHols(S.year);S.precs={};render();}}
       else if(a==='lvc'){S.flc=id;render();return;}
@@ -911,6 +917,7 @@ function cmdkRenderList(){
   list.innerHTML=acts.length?acts.map(function(a,i){
     return '<div class="cmdk-item'+(i===S.cmdk.sel?' sel':'')+'" data-cmdk-run="'+i+'"><span style="opacity:.6">→</span>'+esc(a.label)+'</div>';
   }).join(''):'<div class="cmdk-empty">Aucun résultat</div>';
+  themify(list);
   var sel=list.querySelector('.cmdk-item.sel');if(sel&&sel.scrollIntoView)sel.scrollIntoView({block:'nearest'});
 }
 function openCmdK(){
@@ -924,6 +931,7 @@ function openCmdK(){
     +'<div class="cmdk-foot"><span><kbd>↑</kbd><kbd>↓</kbd> naviguer</span><span><kbd>↵</kbd> ouvrir</span><span><kbd>esc</kbd> fermer</span><span style="margin-left:auto">'+kb+'</span></div>'
     +'</div></div>';
   cmdkRenderList();
+  themify(box);
   var inp=document.getElementById('cmdk-input');
   if(inp){inp.addEventListener('input',function(){S.cmdk.q=this.value;S.cmdk.sel=0;cmdkRenderList();});inp.focus();}
 }
