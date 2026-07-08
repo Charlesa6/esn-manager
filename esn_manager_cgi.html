@@ -37,7 +37,7 @@ body.sb-col #sb-open{display:flex}
 .snv{flex:1;padding:2px 4px;overflow-y:auto;display:flex;flex-direction:column;gap:0}
 .nb{width:100%;display:flex;align-items:center;gap:5px;padding:5px 8px;border-radius:6px;border:none;background:transparent;color:#64748b;font-size:11px;font-weight:600;text-align:left;transition:all .12s}
 .nb:hover{background:#243447;color:#f8fafc}
-.nb.act{background:#84CC16;color:#1B2B3A}
+.nb.act{background:#84CC16;color:#1B2B3A;font-size:12.5px;font-weight:800}
 .nbi{font-size:12px;flex-shrink:0;width:16px}
 .nbb{margin-left:auto;background:#ef4444;color:#fff;border-radius:99px;font-size:10px;font-weight:800;padding:1px 7px}
 .sft{padding:12px 16px;border-top:1px solid #243447;font-size:11px;color:#334155}
@@ -5073,7 +5073,20 @@ function tModal(){
    RENDER
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function render(){
-  var _scrollY=window.scrollY||0; /* sauvegarder position scroll */
+  /* La fenêtre ne scrolle pas (html,body{overflow:hidden}) : le scroll réel vit
+     dans #mc (contenu), .snv (nav) et le modal (.mob/.mbody). Reconstruire leur
+     innerHTML remet leur scrollTop à 0 → « saut vers le haut » quand on clique un
+     bouton/chip/sous-onglet. On sauvegarde et on restaure ces positions. Le
+     contenu ne se remet en haut que lors d'un vrai changement d'onglet principal. */
+  var _mcEl=document.getElementById('mc');
+  var _mcScroll=_mcEl?_mcEl.scrollTop:0;
+  var _snvEl=document.querySelector('#sb .snv');
+  var _snvScroll=_snvEl?_snvEl.scrollTop:0;
+  var _mdBox=document.querySelector('#md .mob,#md .mbox');
+  var _mdBoxScroll=_mdBox?_mdBox.scrollTop:0;
+  var _mdBody=document.querySelector('#md .mody,#md .mbody');
+  var _mdBodyScroll=_mdBody?_mdBody.scrollTop:0;
+  var _tabChanged=(S.tab!==S._lastTab);
   if(S._ks)S._ks._valid=false;
   if(!S.demo)saveLocal(); /* sauvegarde automatique — désactivée en mode démo */
   /* ═══ filtrage par rôle / directeur : on bascule sur la vue filtrée le temps du rendu ═══ */
@@ -5110,7 +5123,16 @@ function render(){
   /* on restaure les données maîtres (les handlers de bind() mutent l'ensemble complet) */
   S.cons=S._all.cons;S.miss=S._all.miss;S.lvs=S._all.lvs;
   bind();
-  window.scrollTo({top:_scrollY,behavior:'instant'}); /* restaurer scroll */
+  /* Restauration des scrolls (voir en tête de render) */
+  var _mc2=document.getElementById('mc');
+  if(_mc2)_mc2.scrollTop=_tabChanged?0:_mcScroll; /* nouvel onglet → haut ; sinon on garde la position */
+  var _snv2=document.querySelector('#sb .snv');
+  if(_snv2)_snv2.scrollTop=_snvScroll; /* on ne perd jamais sa place dans la nav */
+  var _mdBox2=document.querySelector('#md .mob,#md .mbox');
+  if(_mdBox2&&_mdBoxScroll)_mdBox2.scrollTop=_mdBoxScroll; /* modal : garde la position dans le formulaire */
+  var _mdBody2=document.querySelector('#md .mody,#md .mbody');
+  if(_mdBody2&&_mdBodyScroll)_mdBody2.scrollTop=_mdBodyScroll;
+  S._lastTab=S.tab;
 }
 
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
