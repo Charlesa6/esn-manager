@@ -50,7 +50,7 @@ function importJSON(file){
    SUPABASE - helpers (synchronisation non-bloquante)
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function mapC(r){return{id:r.id,name:r.name,title:r.title||'',scr:r.scr||0,email:r.email||'',dir:r.directeur||'',managerId:r.manager_id||null,buId:r.bu_id||null,region:r.region||'',mobility:Array.isArray(r.mobility)?r.mobility:[],arrive:r.arrive||null,depart:r.depart||null,expertise:r.expertise||[],sectors:r.sectors||[],contract:r.contract||'salarie',grade:r.grade||''};}
-function mapM(r){return{id:r.id,cid:r.consultant_id,name:r.name,cli:r.client_name||'',tjm:r.tjm||0,sd:r.start_date,ed:r.end_date||null,loc:r.location||'',mgr:r.manager_name||'',ccn:r.client_contact_name||'',ccr:r.client_contact_role||'',pcode:r.code_projet||'',btype:r.billing_type||'at',wdays:(Array.isArray(r.work_days)?r.work_days:(r.work_days?String(r.work_days).split(',').map(Number):[1,2,3,4,5])),deal:r.deal_amount||0,tmar:(r.target_margin!=null?r.target_margin:null),team:r.team||[]};}
+function mapM(r){return{id:r.id,cid:r.consultant_id,name:r.name,cli:r.client_name||'',tjm:r.tjm||0,sd:r.start_date,ed:r.end_date||null,loc:r.location||'',mgr:r.manager_name||'',ccn:r.client_contact_name||'',ccr:r.client_contact_role||'',pcode:r.code_projet||'',btype:r.billing_type||'at',wdays:(Array.isArray(r.work_days)?r.work_days:(r.work_days?String(r.work_days).split(',').map(Number):[1,2,3,4,5])),wmode:r.wmode||'rec',manualDays:(Array.isArray(r.manual_days)?r.manual_days:[]),deal:r.deal_amount||0,tmar:(r.target_margin!=null?r.target_margin:null),team:r.team||[]};}
 function mapL(r){return{id:r.id,cid:r.consultant_id,type:r.type||'Congé payé',s:r.start_date,e:r.end_date};}
 function mapCand(r){return{
   id:r.id,name:r.name,email:r.email||'',phone:r.phone||'',
@@ -66,7 +66,8 @@ function mapCand(r){return{
   /* Migrer anciens IDs vers nouveaux si nécessaire */
   status:(function(s){var m={'dmr_a':'rh_a','dmr_ec':'rh_ec','nogo_cgi':'nogo','offre':'pipe','recrute(e)':'recrute'};return m[s]||s||'rh_a';})( r.status||'rh_a'),
   createdBy:r.created_by||'',feedbacks:Array.isArray(r.feedbacks)?r.feedbacks:[],
-  recruiter:r.recruiter||''
+  recruiter:r.recruiter||'',
+  recruited:!!r.recruited,recruitStart:r.recruit_start||'',recruitPoste:r.recruit_poste||'',recruitDir:r.recruit_dir||'',consId:r.cons_id||null
 };}
 
 /* Écran plein affiché quand l'entreprise n'est pas encore payée (inactive).
@@ -273,7 +274,7 @@ async function sbUpsertCons(c){
 async function sbUpsertMiss(m){
   if(!sb)return;
   if(!SB_CID)throw new Error('SB_CID null — reconnectez-vous');
-  var res=await sb.from('missions').upsert({id:m.id,company_id:SB_CID,consultant_id:m.cid,name:m.name,client_name:m.cli,tjm:m.tjm,start_date:m.sd,end_date:m.ed||null,location:m.loc,manager_name:m.mgr,client_contact_name:m.ccn,client_contact_role:m.ccr,billing_type:m.btype||'at',work_days:(m.wdays&&m.wdays.length?m.wdays:[1,2,3,4,5]),deal_amount:(m.deal||null),target_margin:((m.tmar!=null&&m.tmar!=='')?m.tmar:null),code_projet:m.pcode||null,team:m.team||null});
+  var res=await sb.from('missions').upsert({id:m.id,company_id:SB_CID,consultant_id:m.cid,name:m.name,client_name:m.cli,tjm:m.tjm,start_date:m.sd,end_date:m.ed||null,location:m.loc,manager_name:m.mgr,client_contact_name:m.ccn,client_contact_role:m.ccr,billing_type:m.btype||'at',work_days:(m.wdays&&m.wdays.length?m.wdays:[1,2,3,4,5]),wmode:m.wmode||'rec',manual_days:(Array.isArray(m.manualDays)?m.manualDays:[]),deal_amount:(m.deal||null),target_margin:((m.tmar!=null&&m.tmar!=='')?m.tmar:null),code_projet:m.pcode||null,team:m.team||null});
   if(res.error)throw new Error(m.name+': '+res.error.message);
 }
 async function sbUpsertLeave(l){
@@ -294,7 +295,8 @@ async function sbUpsertCand(c){
     cgi_meetings:c.cgiMeetings||[],
     margin_pct:(c.marginPct!=null?c.marginPct:25),status:c.status||'nouveau',
     created_by:c.createdBy||null,feedbacks:c.feedbacks||[],
-    recruiter:c.recruiter||null
+    recruiter:c.recruiter||null,
+    recruited:!!c.recruited,recruit_start:c.recruitStart||null,recruit_poste:c.recruitPoste||null,recruit_dir:c.recruitDir||null,cons_id:c.consId||null
   });
   if(res.error)throw new Error(c.name+': '+res.error.message);
 }
