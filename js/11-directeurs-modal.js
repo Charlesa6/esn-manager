@@ -40,41 +40,6 @@ function tAdmin(){
     +'</div>';
 }
 
-function tDirecteurs(){
-  if(S.role!=='admin'&&S.role!=='super_admin')return '<div class="emp">Accès réservé.</div>';
-  var sbOn=!!(sb&&SB_CID);
-  var allC=(S._all&&S._all.cons)||S.cons;
-  var _d=[];allC.forEach(function(c){var x=c.dir||'';if(x&&_d.indexOf(x)<0)_d.push(x);});_d.sort();
-  var dlOpts=_d.map(function(x){return '<option value="'+esc(x)+'">';}).join('');
-  var teams={};allC.forEach(function(c){var d=c.dir||'(Sans directeur)';teams[d]=(teams[d]||0)+1;});
-  var teamRows=Object.keys(teams).sort().map(function(d){
-    return '<tr><td style="font-weight:600">'+esc(d)+'</td><td class="tc">'+teams[d]+'</td></tr>';
-  }).join('');
-  var invRows=(S.invites||[]).map(function(iv){
-    var st=iv.status==='active'?'<span class="badge bgrn">✓ Compte créé</span>':'<span class="badge bamb">⏳ En attente</span>';
-    return '<tr><td>'+esc(iv.email)+'</td><td style="font-weight:600">'+esc(iv.directeur_name||'')+'</td><td>'+st+'</td>'
-      +'<td class="tr"><button class="lr" data-act="inv-del" data-id="'+esc(iv.id)+'">Suppr.</button></td></tr>';
-  }).join('');
-  return '<div class="vw">'
-    +'<div><div class="pt">Directeurs & accès</div><div class="ps">Gérez les comptes directeurs · le '+rLabel('admin')+'  voit toutes les équipes</div></div>'
-    +'<div class="card" style="padding:20px">'
-    +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">Inviter un directeur</h3>'
-    +(sbOn?'':'<div class="ac acs" style="margin-bottom:14px"><div style="font-size:12px">Connectez Supabase (voir esn_login.html) pour créer des comptes. En mode démo, cette section est en prévisualisation seule.</div></div>')
-    +'<div class="g2">'
-    +'<div class="fd"><label class="fl">Email du directeur *</label><input class="ic" id="inv-email" type="email" placeholder="prenom.nom@cgi.com"></div>'
-    +'<div class="fd"><label class="fl">Nom du directeur *</label><input class="ic" id="inv-name" list="esn-inv-dirs" placeholder="ex : David Soriano"><datalist id="esn-inv-dirs">'+dlOpts+'</datalist><p class="fh">Doit correspondre exactement au champ « Directeur » de ses consultants</p></div>'
-    +'</div>'
-    +'<button class="bp" data-act="inv-add"'+(sbOn?'':' disabled style="opacity:.5;cursor:not-allowed"')+'>+ Inviter ce directeur</button>'
-    +'<p class="fh" style="margin-top:8px">Le directeur finalise son inscription avec cet email et choisit son mot de passe ; il est alors rattaché automatiquement à votre entreprise avec un accès limité à son équipe.</p>'
-    +'</div>'
-    +'<div class="card ov"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">Comptes directeurs</div>'
-    +'<table><thead><tr><th>Email</th><th>'+rLabel('gestionnaire')+'</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
-    +'<tbody>'+invRows+((S.invites&&S.invites.length)?'':'<tr><td colspan="4" class="emp">Aucun directeur invité pour le moment.</td></tr>')+'</tbody></table></div>'
-    +'<div class="card ov"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">Équipes (d\'après le champ Directeur des consultants)</div>'
-    +'<table><thead><tr><th>Directeur</th><th class="tc">Consultants</th></tr></thead>'
-    +'<tbody>'+teamRows+(teamRows?'':'<tr><td colspan="2" class="emp">Aucune équipe définie.</td></tr>')+'</tbody></table></div>'
-    +'</div>';
-}
 
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    TEMPLATE - MODAL

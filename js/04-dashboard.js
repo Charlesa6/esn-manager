@@ -33,6 +33,7 @@ function tDash(){
   var icRows='';
   var icCons=S.cons.filter(function(c){
     if(isGone(c))return false;
+    if(c.arrive&&c.arrive>TODAY)return false; /* futur arrivant : pas encore en inter-contrat */
     if(leaveOnDay(c.id,TODAY))return false;
     if(missOnDay(c.id,TODAY))return false;
     return true;

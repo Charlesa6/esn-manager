@@ -5,16 +5,6 @@
 
 /* ── Constantes CRM ── */
 
-/* Taux de staffing → jours travaillés sur la mission */
-var STAFFING_WDAYS={
-  20:[1,2],       /* lundi+mardi */
-  40:[1,2,3],     /* lun+mar+mer */
-  60:[1,2,3,4],   /* lun+mar+mer+jeu */
-  80:[1,2,3,4,5], /* lun to ven */
-  100:[1,2,3,4,5] /* fully staffed */
-};
-var STAFFING_OPTIONS=[20,40,60,80,100];
-
 var OPP_STATUS=[
   {id:'identification',lb:'Identification', bg:'#f0f9ff',fg:'#0369a1'},
   {id:'qualification',  lb:'Qualification',  bg:'#fef3c7',fg:'#92400e'},
@@ -516,7 +506,7 @@ function tBizPipeline(){
     +kbCard('Pipeline pondéré',fEur(pipeline_val),'Probabilité × CA potentiel','#1B2B3A')
     +kbCard('CA potentiel total',fEur(total_pot),active.length+' opportunités actives','#243447')
     +kbCard('CA gagné',fEur(ca_won),won.length+' opportunités gagnées','#065f46')
-    +kbCard('Taux de conv.',S.bizOpps.length?Math.round(won.length/S.bizOpps.length*100)+'%':'—','Total opportunités','#5b21b6')
+    +kbCard('Taux de conv.',visibleOpps().length?Math.round(won.length/visibleOpps().length*100)+'%':'—','Total opportunités','#5b21b6')
     +'</div>';
 
   /* Filtres */
@@ -532,7 +522,7 @@ function tBizPipeline(){
     +(expList.length?'<select class="ic" id="biz-fexp" style="min-width:180px;font-size:13px">'+expOpts+'</select>':'')
     +'</div>';
 
-  if(!opps.length)return kbar+filters+(fst!=='all'||facc||fexp)?'<div class="emp">Aucune opportunité avec ces filtres</div>':tEmpty('💼','Aucune opportunité','Créez votre première opportunité pour alimenter le pipeline commercial et le prévisionnel.','<button class="bp" data-act="biz-new">+ Nouvelle opportunité</button>');
+  if(!opps.length)return kbar+filters+((fst!=='all'||facc||fexp)?'<div class="emp">Aucune opportunité avec ces filtres</div>':tEmpty('💼','Aucune opportunité','Créez votre première opportunité pour alimenter le pipeline commercial et le prévisionnel.','<button class="bp" data-act="biz-new">+ Nouvelle opportunité</button>'));
 
   var thead='<thead><tr>'
     +'<th>Opportunité</th><th>Compte</th><th>Contact</th>'
@@ -641,11 +631,12 @@ function tBizActivites(){
 
 /* ── KPIs Business ── */
 function tBizKpis(){
+  var vo=visibleOpps(); /* périmètre limité au rôle courant */
   var byStatus={};OPP_STATUS.forEach(function(s){byStatus[s.id]={count:0,ca:0};});
-  S.bizOpps.forEach(function(o){if(byStatus[o.status]){byStatus[o.status].count++;byStatus[o.status].ca+=caPot(o);}});
-  var total=S.bizOpps.length;
-  var pipeline=S.bizOpps.filter(function(o){return o.status!=='gagne'&&o.status!=='perdu';});
-  var won=S.bizOpps.filter(function(o){return o.status==='gagne';});
+  vo.forEach(function(o){if(byStatus[o.status]){byStatus[o.status].count++;byStatus[o.status].ca+=caPot(o);}});
+  var total=vo.length;
+  var pipeline=vo.filter(function(o){return o.status!=='gagne'&&o.status!=='perdu';});
+  var won=vo.filter(function(o){return o.status==='gagne';});
   var pipeline_pond=pipeline.reduce(function(s,o){return s+caPot(o)*(o.probability||0)/100;},0);
 
   var funnelHtml='<div class="card" style="padding:24px;margin-bottom:16px"><div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:16px">Entonnoir de conversion</div>'
@@ -661,7 +652,7 @@ function tBizKpis(){
     +'</div>';
 
   /* Top comptes par CA potentiel */
-  var accCA={};S.bizOpps.forEach(function(o){accCA[o.account_id]=(accCA[o.account_id]||0)+caPot(o);});
+  var accCA={};vo.forEach(function(o){accCA[o.account_id]=(accCA[o.account_id]||0)+caPot(o);});
   var topAcc=Object.keys(accCA).sort(function(a,b){return accCA[b]-accCA[a];}).slice(0,5);
   var topHtml=topAcc.length?'<div class="card" style="padding:24px"><div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:14px">Top 5 comptes — CA potentiel</div>'
     +topAcc.map(function(aid,i){

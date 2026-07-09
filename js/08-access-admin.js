@@ -305,26 +305,6 @@ function tRegionsCard(){
     +'</div>';
 }
 
-function tSalesInvitePaywall(){
-  return '<div style="background:#f8fafc;border:2px dashed #e2e8f0;border-radius:10px;padding:16px;margin-bottom:12px">'
-    +'<div style="display:flex;align-items:center;gap:10px">'
-    +'<span style="font-size:24px">&#x1F4BC;</span>'
-    +'<div style="flex:1"><div style="font-weight:700;color:#1B2B3A;font-size:13px">Licence Business Manager — Business Développement requis</div>'
-    +'<div style="font-size:12px;color:#64748b">Activez le module Business pour inviter des Business Manager.</div></div>'
-    +'<a href="mailto:contact@konsilys.fr?subject=Business Développement" style="background:#84CC16;color:#1B2B3A;padding:8px 14px;border-radius:8px;font-weight:800;font-size:12px;text-decoration:none">Activer</a>'
-    +'</div></div>';
-}
-function tRecruteurPaywall(){
-  return '<div style="background:#f8fafc;border:2px dashed #e2e8f0;border-radius:14px;padding:24px;margin-bottom:16px">'
-    +'<div style="display:flex;align-items:center;gap:14px">'
-    +'<div style="font-size:36px">🎯</div>'
-    +'<div style="flex:1">'
-    +'<div style="font-weight:800;color:#1B2B3A;font-size:15px">Add-on Recruteur — non activé</div>'
-    +'<div style="font-size:13px;color:#64748b;margin-top:4px">Pipeline candidats, 8 statuts personnalisables, suivi par recruteur, conversion automatique en Utilisateur.</div>'
-    +'</div>'
-    +'<a href="mailto:contact@konsilys.fr?subject=Activation add-on Recruteur" style="background:#84CC16;color:#1B2B3A;padding:10px 20px;border-radius:8px;font-weight:800;font-size:13px;text-decoration:none;white-space:nowrap">Activer →</a>'
-    +'</div></div>';
-}
 function tSVPAcces(){
   if(!['super_admin','admin','gestionnaire'].includes(S.role))return '<div class="emp">Accès non autorisé.</div>';
   var sbOn=!!(sb&&SB_CID);

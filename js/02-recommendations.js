@@ -5,9 +5,6 @@
 function genRecs(goal){
   var ks=buildKS();
   var totR=ks.reduce(function(s,x){return s+x.k.rev;},0);
-  var totCost=ks.reduce(function(s,x){return s+x.k.cost;},0);
-  /* Coût salarial annuel estimé (SCR × jours ouvrables × charges) */
-  var totSalaryAnnuel=S.cons.reduce(function(s,cc){return s+(cc.scr||0)*113.35*1.25;},0)/260*(S.cons.length>0?260:1);
   var totBill=ks.reduce(function(s,x){return s+x.k.bill;},0);
   var _aktWD=ks.reduce(function(s,x){return s+(x.k.tWD||0);},0);
   var avgSr=_aktWD>0?ks.reduce(function(s,x){return s+x.k.sr*(x.k.tWD||0);},0)/_aktWD:0;
