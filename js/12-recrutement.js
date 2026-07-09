@@ -700,9 +700,12 @@ function tModal(){
     var bt=(it&&it.btype)||'at';
     var wdsel=(it&&it.wdays&&it.wdays.length)?it.wdays:[1,2,3,4,5];
     var WLBL=[['1','Lun'],['2','Mar'],['3','Mer'],['4','Jeu'],['5','Ven']];
-    body='<div class="g2"><div class="cs2"><div class="fd"><label class="fl">Consultant *</label><select class="ic" id="mcid">'+co+'</select></div></div>'
-      +'<div class="cs2"><div class="fd"><label class="fl">Nom de la mission *</label><input class="ic" id="mmn" value="'+esc(it?it.name:'')+'" placeholder="ex\u00a0: Transformation Digitale SI"></div></div>'
-      +'<div class="cs2"><div class="fd"><label class="fl">Code projet</label><input class="ic" id="mpcd" value="'+(it&&it.pcode?esc(it.pcode):'')+'" placeholder="ex\\u00a0: 300000000106376"><p class="fh">Code de facturation PSA/SAP \\u2014 utilis\\u00e9 pour le recoupement des imputations import\\u00e9es</p></div></div>'
+    body='<div class="g2"><div class="cs2"><div class="fd"><label class="fl">Consultant *</label>'
+      +(it?'<select class="ic" id="mcid">'+co+'</select>'
+          :'<select class="ic" id="mcid" multiple size="5" style="min-height:118px">'+co+'</select><p class="fh">S\u00e9lectionnez un ou plusieurs consultants (Ctrl/Cmd pour en choisir plusieurs) \u2014 une mission (Assistance technique) sera cr\u00e9\u00e9e pour chacun.</p>')
+      +'</div></div>'
+      +'<div class="cs2"><div class="fd"><label class="fl">Nom de la mission *</label><input class="ic" id="mmn" list="mmn-list" value="'+esc(it?it.name:'')+'" placeholder="ex\u00a0: Transformation Digitale SI" onchange="missPrefillFromName()"><datalist id="mmn-list">'+missNameDatalistOpts()+'</datalist><p class="fh">Choisissez une mission existante pour affecter un consultant \u00e0 la m\u00eame mission \u2014 le client et les d\u00e9tails se pr\u00e9-remplissent.</p></div></div>'
+      +'<div class="cs2"><div class="fd"><label class="fl">Code projet</label><input class="ic" id="mpcd" value="'+(it&&it.pcode?esc(it.pcode):'')+'" placeholder="ex\u00a0: 300000000106376"><p class="fh">Code de facturation PSA/SAP \u2014 utilis\u00e9 pour le recoupement des imputations import\u00e9es</p></div></div>'
       +'<div class="cs2"><div class="fd"><label class="fl">Nom du client *</label><input class="ic" id="mcl" value="'+esc(it?it.cli:'')+'" placeholder="ex\u00a0: BNP Paribas"></div></div>'
       +(S.role!=='utilisateur'?'<div class="fd"><label class="fl">TJM factur\u00e9 (\u20ac)</label><input class="ic" id="mtj" type="number" min="0" value="'+esc(it?String(it.tjm):'')+'" placeholder="750"><p class="fh">Prix journalier de vente (Assistance technique)</p></div>':'<input type="hidden" id="mtj" value="0">')
       +'<div class="cs2"><div class="fd"><label class="fl">Type de mission *</label>'

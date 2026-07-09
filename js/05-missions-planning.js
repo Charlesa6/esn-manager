@@ -2,9 +2,30 @@
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    TEMPLATE - MISSIONS
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+/* Noms de missions distincts (autocomplétion + filtre) */
+function missNamesDistinct(){
+  var seen={},out=[];
+  (S.miss||[]).forEach(function(m){var n=(m.name||'').trim();if(n&&!seen[n.toLowerCase()]){seen[n.toLowerCase()]=1;out.push(n);}});
+  out.sort(function(a,b){return a.localeCompare(b);});
+  return out;
+}
+function missNameDatalistOpts(){
+  return missNamesDistinct().map(function(n){return '<option value="'+esc(n)+'"></option>';}).join('');
+}
+/* Pré-remplit les champs vides du formulaire mission à partir d'une mission existante de même nom */
+function missPrefillFromName(){
+  var el=document.getElementById('mmn');if(!el)return;
+  var nm=(el.value||'').trim().toLowerCase();if(!nm)return;
+  var m=(S.miss||[]).find(function(x){return (x.name||'').trim().toLowerCase()===nm;});
+  if(!m)return;
+  function setIfEmpty(id,val){var e=document.getElementById(id);if(e&&!e.value&&val!=null&&val!=='')e.value=String(val);}
+  setIfEmpty('mcl',m.cli);setIfEmpty('mpcd',m.pcode);setIfEmpty('mtj',m.tjm?m.tjm:'');
+  setIfEmpty('mlo',m.loc);setIfEmpty('mmg',m.mgr);setIfEmpty('mcc',m.ccn);setIfEmpty('mcr',m.ccr);
+  setIfEmpty('msd',m.sd);setIfEmpty('med',m.ed);
+}
 function tMiss(){
   var ORD=['critical','soon','active','future','ended'];
-  var fil=S.miss.filter(function(m){return(S.fmc==='all'||m.cid===S.fmc)&&(S.fms==='all'||mSt(m)===S.fms)&&(S.fmt==='all'||(m.btype||'at')===S.fmt);}).sort(function(a,b){return ORD.indexOf(mSt(a))-ORD.indexOf(mSt(b));});
+  var fil=S.miss.filter(function(m){return(S.fmc==='all'||m.cid===S.fmc)&&(S.fms==='all'||mSt(m)===S.fms)&&(S.fmt==='all'||(m.btype||'at')===S.fmt)&&(!S.fmn||S.fmn==='all'||(m.name||'')===S.fmn);}).sort(function(a,b){return ORD.indexOf(mSt(a))-ORD.indexOf(mSt(b));});
   var co='<option value="all">Tous les consultants</option>'+S.cons.map(function(c){return '<option value="'+c.id+'"'+(c.id===S.fmc?' selected':'')+'>'+esc(c.name)+'</option>';}).join('');
   var cards=fil.map(function(m){
     var c=S.cons.find(function(c){return c.id===m.cid;});
@@ -90,7 +111,11 @@ function tMiss(){
     +'<select class="ic" style="max-width:170px" id="fmt">'
     +'<option value="all"'+(S.fmt==='all'?' selected':'')+'>Tous types</option>'
     +'<option value="at"'+(S.fmt==='at'?' selected':'')+'>Assistance technique</option>'
-    +'<option value="forfait"'+(S.fmt==='forfait'?' selected':'')+'>Forfait</option></select></div>'
+    +'<option value="forfait"'+(S.fmt==='forfait'?' selected':'')+'>Forfait</option></select>'
+    +'<select class="ic" style="max-width:220px" id="fmn">'
+    +'<option value="all"'+((!S.fmn||S.fmn==='all')?' selected':'')+'>Toutes les missions</option>'
+    +missNamesDistinct().map(function(n){return '<option value="'+esc(n)+'"'+(S.fmn===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')
+    +'</select></div>'
     +'<div style="display:flex;flex-direction:column;gap:12px">'+(cards||'<div class="card" style="padding:48px;text-align:center;color:#94a3b8;font-size:13px">Aucune mission pour cette s\u00e9lection</div>')+'</div></div>';
 }
 
