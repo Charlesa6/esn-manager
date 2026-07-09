@@ -1754,57 +1754,53 @@ async function sbUpsertApproval(req){
 
 /* ─── Vue Approbations pour le CONSULTANT ─── */
 function tApprovals(){
-  /* Déterminer les approval_roles que je peux valider */
-  /* Modèle par identité : je vois les demandes dont JE suis l'approbateur effectif.
-     Cela inclut : les demandes routées vers moi directement, + celles déléguées à moi. */
-  var myApprovalRoles=S.role==='super_admin'?['super_admin']:S.role==='admin'?['admin']:S.role==='gestionnaire'?['gestionnaire']:[]; /* legacy fallback */
+  var myApprovalRoles=S.role==='super_admin'?['super_admin']:S.role==='admin'?['admin']:S.role==='gestionnaire'?['gestionnaire']:[];
   function _isMyApproval(rec){
-    /* Nouveau : approver_id/approverId pointe sur moi */
     var aid=rec.approver_id||rec.approverId||(rec.payload&&rec.payload.approver_id);
     if(aid)return aid===S._userId;
-    /* Fallback legacy : ancien routage par rôle (demandes créées avant migration) */
     if(rec.approval_role)return myApprovalRoles.indexOf(rec.approval_role)>=0;
     return false;
   }
   var isValidator=myApprovalRoles.length>0;
 
+  /* ── Bloc VALIDATEUR : demandes que je dois valider ── */
+  var validatorHtml='';
   if(isValidator){
     var allLvs=(S._all&&S._all.lvs)||S.lvs;
     var pendingLv=allLvs.filter(function(lv){return _isMyApproval(lv)&&lv.approved===false;});
     var pending=S.approvals.filter(function(r){return r.status==='pending'&&_isMyApproval(r);}).sort(function(a,b){return b.createdAt.localeCompare(a.createdAt);});
-    if(!pending.length&&!pendingLv.length)return '<div class="vw"><div class="ph"><div class="pt">\uD83D\uDD14 Approbations</div><div class="ps">Demandes en attente de validation</div></div><div class="emp">Aucune demande en attente.</div></div>';
     var lvRows=pendingLv.map(function(lv){
       var who=((S._all&&S._all.cons)||S.cons).find(function(c){return c.id===lv.cid;});
       var roleLabel=lv.user_role?rLabel(lv.user_role):'?';
       return '<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px">'
-        +'<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#0f172a">Absence '+esc(roleLabel)+' \u2014 '+esc(lv.type)+'</div>'
-        +'<div style="font-size:12px;color:#64748b;margin-top:3px">'+esc(who?who.name:lv.user_name||'?')+' \u00b7 du '+fDt(lv.s)+' au '+fDt(lv.e)+'</div></div>'
+        +'<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#0f172a">Absence '+esc(roleLabel)+' — '+esc(lv.type)+'</div>'
+        +'<div style="font-size:12px;color:#64748b;margin-top:3px">'+esc(who?who.name:lv.user_name||'?')+' · du '+fDt(lv.s)+' au '+fDt(lv.e)+'</div></div>'
         +'<div style="display:flex;gap:8px">'
-        +'<button class="bp" style="background:#16a34a;font-size:12px;padding:6px 12px" onclick="approveLv(\''+lv.id+'\',true)">\u2713 Approuver</button>'
-        +'<button class="bp" style="background:#dc2626;font-size:12px;padding:6px 12px" onclick="approveLv(\''+lv.id+'\',false)">\u2717 Refuser</button>'
+        +'<button class="bp" style="background:#16a34a;font-size:12px;padding:6px 12px" onclick="approveLv(\''+lv.id+'\',true)">✓ Approuver</button>'
+        +'<button class="bp" style="background:#dc2626;font-size:12px;padding:6px 12px" onclick="approveLv(\''+lv.id+'\',false)">✗ Refuser</button>'
         +'</div></div>';
     }).join('');
-    return '<div class="vw"><div class="ph"><div class="pt">\uD83D\uDD14 Approbations</div><div class="ps">Demandes en attente de validation</div></div>'
-      +(lvRows?'<div class="card" style="padding:20px;margin-bottom:16px"><div style="font-weight:700;color:#0f172a;margin-bottom:12px">\u23f3 Absences en attente ('+pendingLv.length+')</div>'+lvRows+'</div>':'')
-      +(pending.length?'<div class="card" style="padding:20px"><div style="font-weight:700;color:#0f172a;margin-bottom:12px">\u23f3 Demandes en attente ('+pending.length+')</div>'
-        +pending.map(function(r){
-          var dt=r.createdAt?new Date(r.createdAt).toLocaleDateString('fr-FR'):'';
-          return '<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px 16px;margin-bottom:10px">'
-            +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">'
-            +'<div style="flex:1">'
-            +'<div style="font-size:13px;font-weight:700;color:#0f172a">'+esc(r.consName||'')+' \u2014 '+esc(APPROVAL_LABELS[r.type]||r.type)+'</div>'
-            +'<div style="font-size:12px;color:#64748b;margin-top:3px">'+esc(r.applyDesc||'')+'</div>'
-            +(dt?'<div style="font-size:11px;color:#94a3b8;margin-top:2px">Soumise le '+dt+'</div>':'')
-            +'</div>'
-            +'<div style="display:flex;gap:8px;flex-shrink:0">'
-            +'<button class="bp" style="padding:6px 14px;font-size:12px" data-act="appr-ok" data-id="'+r.id+'">Approuver</button>'
-            +'<button class="bg" style="padding:6px 14px;font-size:12px;color:#b91c1c;border-color:#fecdd3" data-act="appr-ko" data-id="'+r.id+'">Refuser</button>'
-            +'</div></div></div>';
-        }).join('')+'</div>':'')
-      +'</div>';
+    var apprRows=pending.map(function(r){
+      var dt=r.createdAt?new Date(r.createdAt).toLocaleDateString('fr-FR'):'';
+      return '<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px 16px;margin-bottom:10px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">'
+        +'<div style="flex:1">'
+        +'<div style="font-size:13px;font-weight:700;color:#0f172a">'+esc(r.consName||'')+' — '+esc(APPROVAL_LABELS[r.type]||r.type)+'</div>'
+        +'<div style="font-size:12px;color:#64748b;margin-top:3px">'+esc(r.applyDesc||'')+'</div>'
+        +(dt?'<div style="font-size:11px;color:#94a3b8;margin-top:2px">Soumise le '+dt+'</div>':'')
+        +'</div>'
+        +'<div style="display:flex;gap:8px;flex-shrink:0">'
+        +'<button class="bp" style="padding:6px 14px;font-size:12px" data-act="appr-ok" data-id="'+r.id+'">Approuver</button>'
+        +'<button class="bg" style="padding:6px 14px;font-size:12px;color:#b91c1c;border-color:#fecdd3" data-act="appr-ko" data-id="'+r.id+'">Refuser</button>'
+        +'</div></div></div>';
+    }).join('');
+    validatorHtml=
+      (lvRows?'<div class="card" style="padding:20px;margin-bottom:16px"><div style="font-weight:700;color:#0f172a;margin-bottom:12px">⏳ Absences en attente ('+pendingLv.length+')</div>'+lvRows+'</div>':'')
+      +(apprRows?'<div class="card" style="padding:20px;margin-bottom:16px"><div style="font-weight:700;color:#0f172a;margin-bottom:12px">⏳ Demandes en attente ('+pending.length+')</div>'+apprRows+'</div>':'')
+      +((!lvRows&&!apprRows)?'<div class="emp" style="margin-bottom:8px">Aucune demande en attente de votre validation.</div>':'');
   }
 
-  /* Vue Utilisateur/Recruteur/Business Manager : ses propres approbations */
+  /* ── Bloc DEMANDEUR : mes propres demandes (tous rôles, y compris validateurs) ── */
   var mine=S.approvals.filter(function(r){return r.consId===S.consId;})
     .sort(function(a,b){return b.createdAt.localeCompare(a.createdAt);});
   var pending2=mine.filter(function(r){return r.status==='pending';});
@@ -1814,34 +1810,37 @@ function tApprovals(){
   function apRow(r){
     var bgCol=r.status==='approved'?'#f0fdf4':r.status==='rejected'?'#fff1f2':'#fffbeb';
     var bdCol=r.status==='approved'?'#bbf7d0':r.status==='rejected'?'#fecdd3':'#fde68a';
-    var icon=r.status==='approved'?'\u2713':r.status==='rejected'?'\u2715':'\u23f3';
+    var icon=r.status==='approved'?'✓':r.status==='rejected'?'✕':'⏳';
     var ic2=r.status==='approved'?'#15803d':r.status==='rejected'?'#b91c1c':'#92400e';
     var dt=r.createdAt?new Date(r.createdAt).toLocaleDateString('fr-FR'):'';
     return '<div style="background:'+bgCol+';border:1px solid '+bdCol+';border-radius:10px;padding:14px 16px;margin-bottom:10px">'
       +'<div style="display:flex;justify-content:space-between;align-items:center">'
       +'<div><div style="font-size:13px;font-weight:700;color:#0f172a">'+esc(APPROVAL_LABELS[r.type]||r.type)+'</div>'
       +'<div style="font-size:12px;color:#64748b;margin-top:3px">'+esc(r.applyDesc)+'</div>'
-      +'<div style="font-size:11px;color:#94a3b8;margin-top:2px">Envoy\u00e9e le '+dt+'</div>'
-      +(r.status==='rejected'&&r.rejectionReason?'<div style="margin-top:8px;padding:8px 12px;background:#ffe4e6;border-radius:6px;font-size:12px;color:#b91c1c"><strong>Motif du refus\u00a0:</strong> '+esc(r.rejectionReason)+'</div>':'')
+      +'<div style="font-size:11px;color:#94a3b8;margin-top:2px">Envoyée le '+dt+'</div>'
+      +(r.status==='rejected'&&r.rejectionReason?'<div style="margin-top:8px;padding:8px 12px;background:#ffe4e6;border-radius:6px;font-size:12px;color:#b91c1c"><strong>Motif du refus :</strong> '+esc(r.rejectionReason)+'</div>':'')
       +'</div>'
       +'<div style="font-size:22px;font-weight:900;color:'+ic2+'">'+icon+'</div></div></div>';
   }
-
   function section(title,list,emptyMsg){
     return '<div style="margin-bottom:24px">'
       +'<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:12px">'+title+' ('+list.length+')</div>'
       +(list.length?list.map(apRow).join(''):'<div style="color:#94a3b8;font-size:13px;padding:8px 0">'+emptyMsg+'</div>')
       +'</div>';
   }
+  var mineHtml='<div class="card" style="padding:24px">'
+    +section('⏳ En cours d’analyse',pending2,'Aucune demande en attente.')
+    +section('✓ Approuvées',approved,'Aucune demande approuvée.')
+    +section('✕ Refusées',rejected,'Aucune demande refusée.')
+    +'</div>';
 
   return '<div class="vw">'
-    +'<div class="ph"><div><div class="pt">\uD83D\uDD14 Mes approbations</div>'
-    +'<div class="ps">Demandes de modifications soumises \u00e0 votre gestionnaire</div></div></div>'
-    +'<div class="card" style="padding:24px">'
-    +section('\u23f3 En cours d\u2019analyse',pending2,'Aucune demande en attente.')
-    +section('\u2713 Approuv\u00e9es',approved,'Aucune demande approuv\u00e9e.')
-    +section('\u2715 Refus\u00e9es',rejected,'Aucune demande refus\u00e9e.')
-    +'</div></div>';
+    +'<div class="ph"><div><div class="pt">🔔 Approbations</div>'
+    +'<div class="ps">'+(isValidator?'Demandes à valider, et suivi de vos propres demandes':'Suivi de vos demandes (en cours, approuvées, refusées)')+'</div></div></div>'
+    +(isValidator?'<div style="font-size:14px;font-weight:800;color:#0f172a;margin:6px 0 12px">À valider</div>'+validatorHtml
+        +'<div style="font-size:14px;font-weight:800;color:#0f172a;margin:24px 0 12px">Mes demandes</div>':'')
+    +mineHtml
+    +'</div>';
 }
 
 /* ─── Modal "demande envoyée" ─── */

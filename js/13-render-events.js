@@ -390,9 +390,12 @@ function bind(){
         var it=S.modal.item;
         /* Qui est mon approbateur ? = mon N+1 effectif (suit délégation, remonte au N+2 si absent) */
         var approverId=resolveApprover(S._userId);
+        /* R\u00e8gle : seule une demande de cong\u00e9s POUR SOI-M\u00caME passe par l'approbation du N+1.
+           Un manager qui pose un cong\u00e9 pour un membre de son \u00e9quipe l'applique directement. */
+        var isSelfLeave=!!(S.consId&&lci===S.consId);
         var descL=(it?'Modification':'Ajout')+' d\u2019absence \u2014 '+esc(lt)+' du '+fDt(ls)+' au '+fDt(le);
-        if(!approverId){
-          /* Pas de N+1 (Super Admin tout en haut) → application directe, sans validation */
+        if(!approverId||!isSelfLeave){
+          /* Pas de N+1 (Super Admin tout en haut), OU cong\u00e9 pour l\u2019\u00e9quipe (Super Admin tout en haut) → application directe, sans validation */
           var nl;
           if(it){S.lvs=S.lvs.map(function(l){if(l.id===it.id){nl=Object.assign({},l,{cid:lci,type:lt,s:ls,e:le});return nl;}return l;});}
           else{nl={id:uid(),cid:lci,type:lt,s:ls,e:le};S.lvs=S.lvs.concat([nl]);}
