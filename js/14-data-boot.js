@@ -153,6 +153,30 @@ async function loadSubscription(){
   }catch(e){console.warn('subscription load:',e);}
 }
 
+/* ── Lecture paginée « tout » ───────────────────────────────────────────────
+   PostgREST plafonne SILENCIEUSEMENT chaque `.select()` à 1000 lignes. À grande
+   échelle (ex : CGI), les consultants/missions/absences seraient tronqués sans
+   erreur. sbFetchAll rejoue la requête par pages de 1000 via `.range()` jusqu'à
+   épuisement et renvoie l'ensemble complet — même forme {data,error} qu'un await
+   de requête. `makeQuery` DOIT reconstruire une requête neuve à chaque appel (les
+   builders Supabase ne sont pas réutilisables) et porter un tri déterministe
+   (…order(...).order('id')) pour que la pagination soit stable.
+   Pour <1000 lignes (cas courant), un seul aller-retour : comportement inchangé. */
+async function sbFetchAll(makeQuery, pageSize){
+  pageSize=pageSize||1000;
+  var all=[], from=0;
+  for(;;){
+    var r=await makeQuery().range(from, from+pageSize-1);
+    if(r.error)return {data:(all.length?all:null), error:r.error};
+    var batch=r.data||[];
+    all=all.concat(batch);
+    if(batch.length<pageSize)break;      /* dernière page atteinte */
+    from+=pageSize;
+    if(from>500000)break;                /* garde-fou anti-boucle */
+  }
+  return {data:all, error:null};
+}
+
 async function loadSB(){
   if(!sb||!SB_CID)return false;
   try{
@@ -184,7 +208,7 @@ async function loadSB(){
        Nécessaire pour : résoudre le N+1, lister les pairs (délégation),
        remonter au N+2 si l'approbateur est absent. */
     try{
-      var opr=await sb.from('profiles').select('id,first_name,last_name,role,manager_id,cons_id,bu_id,approval_delegate_to,approval_delegate_until').eq('company_id',SB_CID);
+      var opr=await sbFetchAll(function(){return sb.from('profiles').select('id,first_name,last_name,role,manager_id,cons_id,bu_id,approval_delegate_to,approval_delegate_until').eq('company_id',SB_CID).order('id');});
       if(opr.data)S.orgProfiles=opr.data;
     }catch(e){console.warn('orgProfiles load:',e);S.orgProfiles=[];}
 
@@ -194,8 +218,7 @@ async function loadSB(){
     applyRecStatuses(); /* Statuts recrutement custom */
     H=fyHols(S.year=S.year||CFY); /* réinitialiser les jours fériés avec le bon FY */
     /* un directeur ne charge que les consultants de son équipe (puis leurs missions/absences) */
-    var cq=sb.from('consultants').select('*').eq('company_id',SB_CID).order('name');
-    var cr=await cq;
+    var cr=await sbFetchAll(function(){return sb.from('consultants').select('*').eq('company_id',SB_CID).order('name').order('id');});
     var cons=(cr.data||[]).map(mapC);
 
     /* ── Migration douce : peupler consultants.manager_id ──
@@ -226,19 +249,19 @@ async function loadSB(){
     if(S.role==='sales'||S.role==='recruteur'||S.role==='utilisateur'){
       cons=cons.filter(function(cc){ return cc.id===S.consId || cc.email===S._userEmail; });
     }
-    var mq=sb.from('missions').select('*').eq('company_id',SB_CID);
-    var lq=sb.from('leaves').select('*').eq('company_id',SB_CID);
+    /* Gestionnaire : missions/absences limitees a son equipe (ids). */
+    var idsG=null;
+    if(S.role==='gestionnaire'){
+      idsG=cons.map(function(c){return c.id;});
+      if(!idsG.length){S.cons=[];S.miss=[];S.lvs=[];return false;}
+    }
+    var _missB=function(){var q=sb.from('missions').select('*').eq('company_id',SB_CID);if(idsG)q=q.in('consultant_id',idsG);return q.order('id');};
+    var _lvB=function(){var q=sb.from('leaves').select('*').eq('company_id',SB_CID);if(idsG)q=q.in('consultant_id',idsG);return q.order('id');};
     /* Recrutement : TOUJOURS visible pour toute l'entreprise, quel que soit le rôle
        ou le directeur connecté \u2014 jamais filtré par équipe */
-    var rq=sb.from('candidates').select('*').eq('company_id',SB_CID).order('created_at',{ascending:false});
+    var _candB=function(){return sb.from('candidates').select('*').eq('company_id',SB_CID).order('created_at',{ascending:false}).order('id',{ascending:false});};
     /* P&L Budget (Pilotage financier) : company-wide \u00e9galement */
-    var pq=sb.from('pnl_budget').select('*').eq('company_id',SB_CID);
-    if(S.role==='gestionnaire'){
-      var ids=cons.map(function(c){return c.id;});
-      if(!ids.length){S.cons=[];S.miss=[];S.lvs=[];return false;}
-      mq=mq.in('consultant_id',ids);lq=lq.in('consultant_id',ids);
-    }
-    var res=await Promise.all([mq,lq,rq]);
+    var res=await Promise.all([sbFetchAll(_missB),sbFetchAll(_lvB),sbFetchAll(_candB)]);
     S.cons=cons;
     if(res[0].data)S.miss=res[0].data.map(mapM);
     if(res[1].data)S.lvs=res[1].data.map(mapL);
