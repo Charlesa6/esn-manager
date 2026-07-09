@@ -90,6 +90,9 @@ function tSettings(){
     /* ── Régions & villes de mobilité ── */
     +tRegionsCard()
 
+    /* ── Template CV entreprise (dossier de compétences) ── */
+    +tCvTemplateCard()
+
     /* ── Bouton sauvegarder ── */
     +'<div class="card" style="padding:24px;margin-bottom:16px">'
     +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:14px">📌 Modules &amp; Add-ons</h3>'
@@ -111,6 +114,53 @@ function tSettings(){
     +'</div>';
 }
 
+/* ── Template CV entreprise : carte de configuration (super_admin) ── */
+function tCvTemplateCard(){
+  var t=(S.settings&&S.settings.cvTemplate)||{};
+  return '<div class="card" style="padding:24px;margin-bottom:16px">'
+    +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:6px">📄 Template CV entreprise</h3>'
+    +'<p style="font-size:12px;color:#94a3b8;margin-bottom:16px">Identité de votre dossier de compétences. Chaque candidat disposera d\'un « CV Entreprise » généré à ce format à partir de ses expériences.</p>'
+    +'<div class="g2">'
+    +'<div class="fd"><label class="fl">Nom affiché (en-tête)</label><input class="ic" id="cvt-name" value="'+esc(t.name||'')+'" placeholder="Ma société"></div>'
+    +'<div class="fd"><label class="fl">Couleur principale</label><input type="color" class="ic" id="cvt-color" value="'+esc(t.color||'#1B2B3A')+'" style="height:42px;padding:4px"></div>'
+    +'</div>'
+    +'<div class="fd"><label class="fl">Logo <span style="font-weight:400;color:#94a3b8">(PNG/JPG, max 150 Ko)</span></label>'
+    +'<input class="ic" type="file" id="cvt-logo" accept="image/*" onchange="cvLogoUpload(this)">'
+    +'<div id="cvt-logo-prev" style="margin-top:8px">'+(t.logo?'<img src="'+t.logo+'" alt="logo" style="max-height:52px;border-radius:6px;border:1px solid #e2e8f0;padding:4px;background:#fff">':'<span class="fh">Aucun logo</span>')+'</div></div>'
+    +'<div class="fd"><label class="fl">Pied de page / mentions</label><textarea class="ic" id="cvt-footer" rows="2" placeholder="Confidentiel · Ma société · contact@masociete.fr">'+esc(t.footer||'')+'</textarea></div>'
+    +'<button class="bp" onclick="saveCvTemplate()">💾 Enregistrer le template</button>'
+    +'<span id="cvt-msg" style="font-size:12px;margin-left:12px;font-weight:600"></span>'
+    +'</div>';
+}
+function cvLogoUpload(input){
+  var f=input.files&&input.files[0];if(!f)return;
+  if(f.size>150*1024){alert('Logo trop volumineux (max 150 Ko). Réduisez l\'image.');input.value='';return;}
+  var rd=new FileReader();
+  rd.onload=function(){
+    if(!S.settings)S.settings={};if(!S.settings.cvTemplate)S.settings.cvTemplate={};
+    S.settings.cvTemplate.logo=rd.result;
+    var pv=document.getElementById('cvt-logo-prev');
+    if(pv)pv.innerHTML='<img src="'+rd.result+'" alt="logo" style="max-height:52px;border-radius:6px;border:1px solid #e2e8f0;padding:4px;background:#fff">';
+  };
+  rd.readAsDataURL(f);
+}
+function saveCvTemplate(){
+  if(!S.settings)S.settings={};
+  var t=S.settings.cvTemplate||{};
+  var _n=document.getElementById('cvt-name'),_c=document.getElementById('cvt-color'),_f=document.getElementById('cvt-footer');
+  t.name=(_n?_n.value:'').trim();
+  t.color=(_c?_c.value:'')||'#1B2B3A';
+  t.footer=(_f?_f.value:'').trim();
+  S.settings.cvTemplate=t; /* t.logo déjà renseigné par cvLogoUpload */
+  try{localStorage.setItem('esn_settings_'+SB_CID,JSON.stringify(S.settings));}catch(e){}
+  var msg=document.getElementById('cvt-msg');
+  if(sb&&SB_CID){
+    var _p=Object.assign({},S.settings);delete _p.hasBusinessModule;delete _p.hasRecrutementModule;
+    sb.from('company_settings').upsert({company_id:SB_CID,settings:_p,updated_at:new Date().toISOString()},{onConflict:'company_id'}).then(function(r){
+      if(msg){msg.style.color=r.error?'#ef4444':'#16a34a';msg.textContent=r.error?('⚠ '+r.error.message):'✓ Template enregistré';}
+    });
+  }else if(msg){msg.style.color='#16a34a';msg.textContent='✓ Template enregistré (local)';}
+}
 var _REC_COLORS={
   blue:{bg:'#eff6ff',fg:'#1e40af'},orange:{bg:'#fff7ed',fg:'#c2410c'},
   purple:{bg:'#ede9fe',fg:'#5b21b6'},teal:{bg:'#d1fae5',fg:'#065f46'},

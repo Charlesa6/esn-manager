@@ -696,6 +696,10 @@ function bind(){
         var cvEntryV=(cdCvW.cvFiles||[]).find(function(f){return f.id===fb;});
         if(cvEntryV&&cvEntryV.filePath)openCvPreview(cvEntryV.filePath,cvEntryV.fileName);
       }
+      else if(a==='cvexp-add'){cvExpAdd(id);}
+      else if(a==='cvexp-del'){cvExpDel(id,+fb);}
+      else if(a==='cvexp-save'){cvExpSave(id);}
+      else if(a==='cv-entreprise'){openCvEntreprise(id);}
       /* inviter / supprimer un directeur */
       else if(a==='svp-add-vp'){
         alert('La création de compte se fait désormais en payant la licence.\nAllez dans « Gestion des accès → Ajouter des membres » pour créer cet accès.');
