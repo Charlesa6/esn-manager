@@ -114,52 +114,96 @@ function tSettings(){
     +'</div>';
 }
 
-/* ── Template CV entreprise : carte de configuration (super_admin) ── */
+/* ── Template CV entreprise : dépôt du modèle Word/PDF (super_admin) ──
+   Le super admin dépose le modèle .docx de l'entreprise (contenant des balises)
+   et, en option, sa version PDF de référence. Chaque candidat pourra ensuite
+   générer son CV rempli à ce format exact (voir js/14 : genCvWord / genCvPdf). */
+function _cvtRow(t,kind){
+  var isDocx=(kind==='docx');
+  var path=isDocx?t.docxPath:t.pdfPath, name=isDocx?t.docxName:t.pdfName;
+  var lbl=isDocx?'Modèle Word (.docx) — obligatoire':'Version PDF de référence (optionnel)';
+  var accept=isDocx?'.docx':'.pdf';
+  var cur=path
+    ? '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px">'
+        +'<span style="font-size:12px;color:#0f172a;font-weight:600">📎 '+esc(name||'fichier')+'</span>'
+        +'<button class="lr" onclick="downloadCandFile(\''+esc(path)+'\',\''+esc(name||'modele')+'\')" style="padding:4px 10px">⬇ Télécharger</button>'
+        +'<button class="lr" onclick="cvTplRemove(\''+kind+'\')" style="padding:4px 10px;color:#b91c1c">Retirer</button></div>'
+    : '<div style="font-size:12px;color:'+(isDocx?'#b45309':'#94a3b8')+';margin-top:6px">'+(isDocx?'⚠ Aucun modèle Word déposé — requis pour générer les CV.':'Aucun PDF déposé.')+'</div>';
+  return '<div class="fd" style="margin-bottom:12px"><label class="fl">'+lbl+'</label>'
+    +'<input class="ic" type="file" id="cvt-'+kind+'" accept="'+accept+'" onchange="cvTplUpload(this,\''+kind+'\')">'
+    +cur+'</div>';
+}
 function tCvTemplateCard(){
   var t=(S.settings&&S.settings.cvTemplate)||{};
+  var tags=[
+    ['{nom}','Nom du candidat'],['{titre}','Titre / fonction'],['{annees}','Années d\'expérience'],
+    ['{profil}','Résumé / profil'],['{secteurs}','Secteurs'],['{competencesCles}','Compétences clés'],
+    ['{outils}','Outils & logiciels'],['{environnements}','Environnements techniques'],['{langues}','Langues'],
+    ['{formation}','Formation'],['{specialisations}','Spécialisations'],['{email}','Email'],
+    ['{telephone}','Téléphone'],['{localisation}','Localisation']
+  ];
+  var tagRows=tags.map(function(x){return '<tr><td style="padding:3px 10px 3px 0;font-family:monospace;color:#0369a1;white-space:nowrap">'+esc(x[0])+'</td><td style="padding:3px 0;color:#475569">'+esc(x[1])+'</td></tr>';}).join('');
   return '<div class="card" style="padding:24px;margin-bottom:16px">'
     +'<h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:6px">📄 Template CV entreprise</h3>'
-    +'<p style="font-size:12px;color:#94a3b8;margin-bottom:16px">Identité de votre dossier de compétences. Chaque candidat disposera d\'un « CV Entreprise » généré à ce format à partir de ses expériences.</p>'
-    +'<div class="g2">'
-    +'<div class="fd"><label class="fl">Nom affiché (en-tête)</label><input class="ic" id="cvt-name" value="'+esc(t.name||'')+'" placeholder="Ma société"></div>'
-    +'<div class="fd"><label class="fl">Couleur principale</label><input type="color" class="ic" id="cvt-color" value="'+esc(t.color||'#1B2B3A')+'" style="height:42px;padding:4px"></div>'
-    +'</div>'
-    +'<div class="fd"><label class="fl">Logo <span style="font-weight:400;color:#94a3b8">(PNG/JPG, max 150 Ko)</span></label>'
-    +'<input class="ic" type="file" id="cvt-logo" accept="image/*" onchange="cvLogoUpload(this)">'
-    +'<div id="cvt-logo-prev" style="margin-top:8px">'+(t.logo?'<img src="'+t.logo+'" alt="logo" style="max-height:52px;border-radius:6px;border:1px solid #e2e8f0;padding:4px;background:#fff">':'<span class="fh">Aucun logo</span>')+'</div></div>'
-    +'<div class="fd"><label class="fl">Pied de page / mentions</label><textarea class="ic" id="cvt-footer" rows="2" placeholder="Confidentiel · Ma société · contact@masociete.fr">'+esc(t.footer||'')+'</textarea></div>'
-    +'<button class="bp" onclick="saveCvTemplate()">💾 Enregistrer le template</button>'
-    +'<span id="cvt-msg" style="font-size:12px;margin-left:12px;font-weight:600"></span>'
+    +'<p style="font-size:12px;color:#94a3b8;margin-bottom:16px">Déposez le modèle Word de votre dossier de compétences. Chaque candidat pourra générer son CV rempli à ce format exact (Word et PDF), à partir de ses expériences.</p>'
+    +_cvtRow(t,'docx')
+    +_cvtRow(t,'pdf')
+    +'<span id="cvt-msg" style="font-size:12px;font-weight:600;display:block;margin-top:4px"></span>'
+    +'<details style="margin-top:14px;border-top:1px solid #eef2f7;padding-top:12px">'
+    +'<summary style="cursor:pointer;font-size:12px;font-weight:700;color:#0f172a">📌 Comment préparer votre modèle Word ? (balises à insérer)</summary>'
+    +'<div style="margin-top:10px;font-size:12px;color:#475569;line-height:1.6">'
+    +'<p style="margin-bottom:8px">Ouvrez votre <strong>.docx</strong> et écrivez ces <strong>balises</strong> aux endroits à remplir. Elles seront remplacées par les infos du candidat.</p>'
+    +'<table style="border-collapse:collapse;margin-bottom:12px">'+tagRows+'</table>'
+    +'<p style="margin-bottom:6px"><strong>Boucle « expériences »</strong> (se répète pour chaque expérience) :</p>'
+    +'<pre style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px;font-size:11.5px;white-space:pre-wrap;color:#0f172a">{#experiences}\n{client} — {poste}   ({dates})\n{description}\nEnvironnement : {technos}\n{/experiences}</pre>'
+    +'<p style="margin:10px 0 6px"><strong>Boucle « compétences »</strong> (grille de niveaux — idéale dans un tableau) :</p>'
+    +'<pre style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px;font-size:11.5px;white-space:pre-wrap;color:#0f172a">{#competences}\n{competence} | {nbAnnees} ans | Niveau {niveau} — {niveauLabel}\n{/competences}</pre>'
+    +'<p style="margin-top:10px;color:#94a3b8">Astuce : dans un tableau Word, placez <code>{#competences}</code> au début de la 1re cellule de la ligne modèle et <code>{/competences}</code> à la fin de la dernière cellule de cette même ligne.</p>'
+    +'</div></details>'
     +'</div>';
 }
-function cvLogoUpload(input){
+/* Dépose un fichier modèle (docx/pdf) dans Storage et enregistre son chemin. */
+function cvTplUpload(input,kind){
   var f=input.files&&input.files[0];if(!f)return;
-  if(f.size>150*1024){alert('Logo trop volumineux (max 150 Ko). Réduisez l\'image.');input.value='';return;}
-  var rd=new FileReader();
-  rd.onload=function(){
-    if(!S.settings)S.settings={};if(!S.settings.cvTemplate)S.settings.cvTemplate={};
-    S.settings.cvTemplate.logo=rd.result;
-    var pv=document.getElementById('cvt-logo-prev');
-    if(pv)pv.innerHTML='<img src="'+rd.result+'" alt="logo" style="max-height:52px;border-radius:6px;border:1px solid #e2e8f0;padding:4px;background:#fff">';
-  };
-  rd.readAsDataURL(f);
-}
-function saveCvTemplate(){
-  if(!S.settings)S.settings={};
-  var t=S.settings.cvTemplate||{};
-  var _n=document.getElementById('cvt-name'),_c=document.getElementById('cvt-color'),_f=document.getElementById('cvt-footer');
-  t.name=(_n?_n.value:'').trim();
-  t.color=(_c?_c.value:'')||'#1B2B3A';
-  t.footer=(_f?_f.value:'').trim();
-  S.settings.cvTemplate=t; /* t.logo déjà renseigné par cvLogoUpload */
-  try{localStorage.setItem('esn_settings_'+SB_CID,JSON.stringify(S.settings));}catch(e){}
   var msg=document.getElementById('cvt-msg');
+  function say(txt,ok){if(msg){msg.style.color=ok?'#16a34a':'#ef4444';msg.textContent=txt;}}
+  var ext=(f.name.split('.').pop()||'').toLowerCase();
+  if(kind==='docx'&&ext!=='docx'){say('⚠ Le modèle doit être un fichier .docx (Word).',false);input.value='';return;}
+  if(kind==='pdf'&&ext!=='pdf'){say('⚠ Merci de déposer un fichier .pdf.',false);input.value='';return;}
+  if(f.size>10*1024*1024){say('⚠ Fichier trop volumineux (max 10 Mo).',false);input.value='';return;}
+  if(!sb||!SB_CID){say('⚠ Supabase non connecté.',false);return;}
+  say('Téléversement…',true);if(msg)msg.style.color='#94a3b8';
+  var safe=String(f.name).replace(/[^a-zA-Z0-9._-]/g,'_').slice(0,80);
+  var path=SB_CID+'/_cv-template/'+kind+'_'+Date.now()+'_'+safe;
+  if(!S.settings)S.settings={};if(!S.settings.cvTemplate)S.settings.cvTemplate={};
+  var t=S.settings.cvTemplate, oldPath=(kind==='docx')?t.docxPath:t.pdfPath;
+  sb.storage.from('candidate-files').upload(path,f,{upsert:true}).then(function(r){
+    if(r.error){say('⚠ Échec du téléversement : '+r.error.message,false);return;}
+    if(kind==='docx'){t.docxPath=path;t.docxName=f.name;}else{t.pdfPath=path;t.pdfName=f.name;}
+    if(oldPath&&oldPath!==path){sb.storage.from('candidate-files').remove([oldPath]).then(function(){},function(){});}
+    _persistCvTemplate(function(err){
+      if(err){say('⚠ Fichier déposé mais enregistrement échoué : '+err,false);return;}
+      say('✓ Modèle '+(kind==='docx'?'Word':'PDF')+' enregistré',true);render();
+    });
+  },function(e){say('⚠ Échec du téléversement : '+(e&&e.message||e),false);});
+}
+function cvTplRemove(kind){
+  if(!confirm('Retirer ce modèle ?'))return;
+  if(!S.settings||!S.settings.cvTemplate)return;
+  var t=S.settings.cvTemplate, path=(kind==='docx')?t.docxPath:t.pdfPath;
+  if(kind==='docx'){delete t.docxPath;delete t.docxName;}else{delete t.pdfPath;delete t.pdfName;}
+  if(path&&sb)sb.storage.from('candidate-files').remove([path]).then(function(){},function(){});
+  _persistCvTemplate(function(){render();});
+}
+/* Persiste S.settings (dont cvTemplate) côté Supabase + cache local. */
+function _persistCvTemplate(cb){
+  try{localStorage.setItem('esn_settings_'+SB_CID,JSON.stringify(S.settings));}catch(e){}
   if(sb&&SB_CID){
     var _p=Object.assign({},S.settings);delete _p.hasBusinessModule;delete _p.hasRecrutementModule;
     sb.from('company_settings').upsert({company_id:SB_CID,settings:_p,updated_at:new Date().toISOString()},{onConflict:'company_id'}).then(function(r){
-      if(msg){msg.style.color=r.error?'#ef4444':'#16a34a';msg.textContent=r.error?('⚠ '+r.error.message):'✓ Template enregistré';}
+      cb&&cb(r.error?r.error.message:null);
     });
-  }else if(msg){msg.style.color='#16a34a';msg.textContent='✓ Template enregistré (local)';}
+  }else{cb&&cb(null);}
 }
 var _REC_COLORS={
   blue:{bg:'#eff6ff',fg:'#1e40af'},orange:{bg:'#fff7ed',fg:'#c2410c'},
