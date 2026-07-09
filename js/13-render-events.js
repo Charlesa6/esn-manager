@@ -696,6 +696,7 @@ function bind(){
         var cvEntryV=(cdCvW.cvFiles||[]).find(function(f){return f.id===fb;});
         if(cvEntryV&&cvEntryV.filePath)openCvPreview(cvEntryV.filePath,cvEntryV.fileName);
       }
+      else if(a==='cvexp-ai'){extractCvIA(id);}
       else if(a==='cvexp-add'){cvExpAdd(id);}
       else if(a==='cvexp-del'){cvExpDel(id,+fb);}
       else if(a==='cvexp-save'){cvExpSave(id);}

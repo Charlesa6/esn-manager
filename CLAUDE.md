@@ -52,6 +52,7 @@ Functions in `supabase/functions/`:
 - `billing-portal` — opens the Stripe Customer Portal (auto-creates the portal config if missing).
 - `retry-seats` — re-runs provisioning for pending/errored seats (admin only).
 - `create-checkout` — legacy, superseded by `seats-checkout`.
+- `extract-cv` — reads a candidate's PDF CV (from `candidate-files` storage) and asks the Anthropic API to extract structured work experiences (forced tool-use schema), returned to the app to pre-fill the candidate's "Expériences" (for the CV Entreprise). **Requires the `ANTHROPIC_API_KEY` secret** (optional `CV_MODEL`). ⚠ Sends CV content to Anthropic (outside the EU) — RGPD arbitrage needed before enabling. `verify_jwt=true`.
 
 **Deploys go through the Supabase MCP tools**, not a CLI: `deploy_edge_function` for functions (pass `verify_jwt` explicitly), `apply_migration` for DDL, `execute_sql` for data. The `supabase/migrations/*.sql` files are a record of migrations already applied to prod via MCP — there is no local Supabase/migration runner here.
 
