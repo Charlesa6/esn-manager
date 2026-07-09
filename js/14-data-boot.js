@@ -68,7 +68,8 @@ function mapCand(r){return{
   createdBy:r.created_by||'',feedbacks:Array.isArray(r.feedbacks)?r.feedbacks:[],
   recruiter:r.recruiter||'',
   recruited:!!r.recruited,recruitStart:r.recruit_start||'',recruitPoste:r.recruit_poste||'',recruitDir:r.recruit_dir||'',consId:r.cons_id||null,
-  buId:r.bu_id||null
+  buId:r.bu_id||null,
+  experiences:Array.isArray(r.experiences)?r.experiences:[]
 };}
 
 /* Écran plein affiché quand l'entreprise n'est pas encore payée (inactive).
@@ -298,7 +299,8 @@ async function sbUpsertCand(c){
     created_by:c.createdBy||null,feedbacks:c.feedbacks||[],
     recruiter:c.recruiter||null,
     recruited:!!c.recruited,recruit_start:c.recruitStart||null,recruit_poste:c.recruitPoste||null,recruit_dir:c.recruitDir||null,cons_id:c.consId||null,
-    bu_id:c.buId||null
+    bu_id:c.buId||null,
+    experiences:Array.isArray(c.experiences)?c.experiences:[]
   });
   if(res.error)throw new Error(c.name+': '+res.error.message);
 }
@@ -710,6 +712,103 @@ function openCvPreview(path,name){
       +'<button onclick="closeCvPreview()" aria-label="Fermer" style="background:rgba(255,255,255,.08);color:#e8eef6;border:none;border-radius:8px;width:32px;height:32px;font-size:15px;cursor:pointer">✕</button>'
       +'</div>'+inner+'</div></div>';
   });
+}
+
+/* ══ CV Entreprise : expériences structurées + génération au format de l'entreprise ══ */
+function cvExpAdd(candId){var c=S.cands.find(function(x){return x.id===candId;});if(!c)return;if(!Array.isArray(c.experiences))c.experiences=[];c.experiences.push({poste:'',client:'',dateStart:'',dateEnd:'',current:false,description:'',technos:''});render();}
+function cvExpDel(candId,idx){var c=S.cands.find(function(x){return x.id===candId;});if(!c||!Array.isArray(c.experiences))return;c.experiences.splice(idx,1);render();}
+function cvExpSet(candId,idx,field,val){var c=S.cands.find(function(x){return x.id===candId;});if(!c||!Array.isArray(c.experiences)||!c.experiences[idx])return;c.experiences[idx][field]=val;}
+function cvExpSave(candId){var c=S.cands.find(function(x){return x.id===candId;});if(!c)return;
+  if(sb){sbUpsertCand(c).then(function(){toast('Expériences enregistrées');}).catch(function(e){toast('Échec : '+e.message,'error');});}
+  else{toast('Expériences enregistrées (démo)');}
+}
+function cvExpSection(c){
+  var exps=Array.isArray(c.experiences)?c.experiences:[];
+  var cards=exps.map(function(e,i){
+    var cid="'"+c.id+"',"+i;
+    return '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:10px;background:#fafbfc">'
+      +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
+      +'<div style="flex:1;min-width:180px"><label class="fl">Poste</label><input class="ic" value="'+esc(e.poste||'')+'" placeholder="Développeur Full-Stack" onchange="cvExpSet('+cid+',\'poste\',this.value)"></div>'
+      +'<div style="flex:1;min-width:180px"><label class="fl">Client / entreprise</label><input class="ic" value="'+esc(e.client||'')+'" placeholder="BNP Paribas" onchange="cvExpSet('+cid+',\'client\',this.value)"></div>'
+      +'</div>'
+      +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;align-items:flex-end">'
+      +'<div><label class="fl">Début</label><input class="ic" type="month" value="'+esc(e.dateStart||'')+'" onchange="cvExpSet('+cid+',\'dateStart\',this.value)"></div>'
+      +'<div><label class="fl">Fin</label><input class="ic" type="month" value="'+esc(e.dateEnd||'')+'"'+(e.current?' disabled':'')+' onchange="cvExpSet('+cid+',\'dateEnd\',this.value)"></div>'
+      +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#475569;padding-bottom:9px;cursor:pointer"><input type="checkbox"'+(e.current?' checked':'')+' onchange="cvExpSet('+cid+',\'current\',this.checked);render()"> En poste</label>'
+      +'</div>'
+      +'<div style="margin-top:8px"><label class="fl">Description / missions</label><textarea class="ic" rows="3" placeholder="Missions, réalisations, contexte..." onchange="cvExpSet('+cid+',\'description\',this.value)">'+esc(e.description||'')+'</textarea></div>'
+      +'<div style="margin-top:8px"><label class="fl">Technologies / compétences</label><input class="ic" value="'+esc(e.technos||'')+'" placeholder="React, Node.js, AWS..." onchange="cvExpSet('+cid+',\'technos\',this.value)"></div>'
+      +'<div style="text-align:right;margin-top:8px"><button class="lr" data-act="cvexp-del" data-id="'+c.id+'" data-fb="'+i+'">Supprimer</button></div>'
+      +'</div>';
+  }).join('');
+  var tpl=(S.settings&&S.settings.cvTemplate)||{};
+  var hasTpl=!!(tpl.name||tpl.logo);
+  return '<div class="card" style="padding:24px;margin-top:18px;margin-bottom:18px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">'
+    +'<div style="font-size:13px;font-weight:800;color:#0f172a">Expériences ('+exps.length+') — dossier de compétences</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +'<button class="bg" data-act="cvexp-add" data-id="'+c.id+'">+ Ajouter une expérience</button>'
+    +'<button class="bg" data-act="cvexp-save" data-id="'+c.id+'">💾 Enregistrer</button>'
+    +'<button class="bp" data-act="cv-entreprise" data-id="'+c.id+'">📄 CV Entreprise</button>'
+    +'</div></div>'
+    +(hasTpl?'':'<div style="font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;margin-bottom:12px">⚠ Aucun template CV configuré. Le super admin peut le définir dans Paramètres → Template CV entreprise.</div>')
+    +(cards||'<div class="emp">Aucune expérience. Ajoutez-en pour générer le CV Entreprise.</div>')
+    +'</div>';
+}
+function _cvExpDate(e){
+  var mm=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+  function m(v){if(!v)return '';var p=(''+v).split('-');return (mm[(+p[1]||1)-1]||'')+' '+(p[0]||'');}
+  var s=m(e.dateStart), en=e.current?'aujourd\'hui':m(e.dateEnd);
+  return s&&en?(s+' → '+en):(s||en||'');
+}
+function cvEntrepriseDoc(c){
+  var t=(S.settings&&S.settings.cvTemplate)||{}, color=t.color||'#1B2B3A';
+  var exps=Array.isArray(c.experiences)?c.experiences:[];
+  var expHtml=exps.map(function(e){
+    return '<div class="exp"><div class="exp-h"><span class="exp-poste">'+esc(e.poste||'Poste')+'</span><span class="exp-date">'+esc(_cvExpDate(e))+'</span></div>'
+      +(e.client?'<div class="exp-cli">'+esc(e.client)+'</div>':'')
+      +(e.description?'<div class="exp-desc">'+esc(e.description)+'</div>':'')
+      +(e.technos?'<div class="exp-tech">'+esc(e.technos)+'</div>':'')
+      +'</div>';
+  }).join('')||'<div style="color:#94a3b8">Aucune expérience renseignée.</div>';
+  var exp=(c.expertise||[]).map(function(x){return '<span class="tag">'+esc(x)+'</span>';}).join('');
+  var sec=(c.sectors||[]).map(function(x){return '<span class="tag">'+esc(x)+'</span>';}).join('');
+  return '<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>CV — '+esc(c.name||'')+'</title><style>'
+    +'*{box-sizing:border-box;margin:0;padding:0}body{font-family:Inter,Arial,sans-serif;color:#1e293b;font-size:13px;line-height:1.55;background:#fff}'
+    +'.pg{max-width:800px;margin:0 auto;padding:32px}'
+    +'.top{display:flex;align-items:center;gap:16px;border-bottom:3px solid '+color+';padding-bottom:16px;margin-bottom:20px}'
+    +'.top img{max-height:52px}.top .co{font-size:20px;font-weight:800;color:'+color+'}'
+    +'.name{font-size:26px;font-weight:800;color:'+color+'}.role{color:#64748b;font-size:14px;margin-top:2px}'
+    +'.meta{display:flex;gap:18px;flex-wrap:wrap;color:#64748b;font-size:12px;margin-top:8px}'
+    +'.sec{margin-top:22px}.sec-t{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:'+color+';border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:10px}'
+    +'.tag{display:inline-block;background:#f1f5f9;border-radius:99px;padding:3px 10px;font-size:11px;margin:0 4px 4px 0}'
+    +'.exp{margin-bottom:14px;padding-left:12px;border-left:2px solid '+color+'}'
+    +'.exp-h{display:flex;justify-content:space-between;gap:10px}.exp-poste{font-weight:700}.exp-date{color:#64748b;font-size:11px;white-space:nowrap}'
+    +'.exp-cli{color:'+color+';font-weight:600;font-size:12px}.exp-desc{margin-top:4px;white-space:pre-line}.exp-tech{margin-top:4px;color:#64748b;font-size:11px;font-style:italic}'
+    +'.foot{margin-top:28px;border-top:1px solid #e2e8f0;padding-top:10px;color:#94a3b8;font-size:10px;text-align:center}'
+    +'.bar{position:fixed;top:0;left:0;right:0;background:#1B2B3A;color:#fff;padding:9px;text-align:center;font-size:13px;font-weight:600}'
+    +'.bar button{background:#84CC16;color:#16240a;border:none;border-radius:6px;padding:6px 16px;font-weight:800;cursor:pointer;margin-left:10px}'
+    +'@media print{.bar{display:none}.pg{padding:8px;margin-top:0}}'
+    +'</style></head><body>'
+    +'<div class="bar">Aperçu du CV Entreprise — vérifiez avant diffusion <button onclick="window.print()">Imprimer / PDF</button></div>'
+    +'<div class="pg" style="margin-top:52px">'
+    +'<div class="top">'+(t.logo?'<img src="'+t.logo+'" alt="logo">':'')+(t.name?'<span class="co">'+esc(t.name)+'</span>':'')+'</div>'
+    +'<div class="name">'+esc(c.name||'Candidat')+'</div>'
+    +((c.recruitPoste||(exps[0]&&exps[0].poste))?'<div class="role">'+esc(c.recruitPoste||exps[0].poste)+'</div>':'')
+    +'<div class="meta">'+(c.yearsExp?'<span>'+esc(String(c.yearsExp))+' ans d\'expérience</span>':'')
+      +((c.locTarget||(c.locations||[])[0])?'<span>'+esc(c.locTarget||c.locations[0])+'</span>':'')
+      +(c.mobileFrance?'<span>Mobilité France entière</span>':'')+'</div>'
+    +(exp?'<div class="sec"><div class="sec-t">Compétences clés</div>'+exp+'</div>':'')
+    +(sec?'<div class="sec"><div class="sec-t">Secteurs</div>'+sec+'</div>':'')
+    +'<div class="sec"><div class="sec-t">Expériences</div>'+expHtml+'</div>'
+    +(t.footer?'<div class="foot">'+esc(t.footer)+'</div>':'')
+    +'</div></body></html>';
+}
+function openCvEntreprise(candId){
+  var c=S.cands.find(function(x){return x.id===candId;});if(!c)return;
+  var w=window.open('','_blank');
+  if(!w){alert('Autorisez les pop-ups pour afficher le CV Entreprise.');return;}
+  w.document.open();w.document.write(cvEntrepriseDoc(c));w.document.close();
 }
 
 function loadXLSX(cb){

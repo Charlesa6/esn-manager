@@ -285,6 +285,7 @@ function tCandDetail(c){
     +addCvForm
     +(cvHtml||'<div class="emp">Aucun CV importé pour le moment.</div>')
     +'</div>'
+    +cvExpSection(c)
 
     +'<div class="card" style="padding:24px;margin-bottom:18px">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
