@@ -46,6 +46,13 @@ La création d'un espace se fait uniquement via la souscription payante en ligne
 
 Souscription en ligne → import des consultants depuis Excel/CSV → ajout de l'équipe (chacun définit son mot de passe) → pilotage immédiat. Aucune installation ; accessible depuis un navigateur, sur mobile et desktop.
 
+## Ressources (blog)
+
+- Blog : https://konsilys.fr/blog/
+- Logiciel de staffing pour ESN : anticiper l'inter-contrat — https://konsilys.fr/blog/logiciel-staffing-esn.html
+- Suivre la marge d'une mission en ESN (TJM, coûts, contribution) — https://konsilys.fr/blog/suivre-marge-mission-esn.html
+- Connecter votre ESN à votre SIRH, votre paie et votre facturation — https://konsilys.fr/blog/integrations-sirh-paie-facturation.html
+
 ## Liens
 
 - Accueil : https://konsilys.fr/
