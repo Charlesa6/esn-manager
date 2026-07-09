@@ -702,7 +702,14 @@ function tModal(){
     var WLBL=[['1','Lun'],['2','Mar'],['3','Mer'],['4','Jeu'],['5','Ven']];
     body='<div class="g2"><div class="cs2"><div class="fd"><label class="fl">Consultant *</label>'
       +(it?'<select class="ic" id="mcid">'+co+'</select>'
-          :'<select class="ic" id="mcid" multiple size="5" style="min-height:118px">'+co+'</select><p class="fh">S\u00e9lectionnez un ou plusieurs consultants (Ctrl/Cmd pour en choisir plusieurs) \u2014 une mission (Assistance technique) sera cr\u00e9\u00e9e pour chacun.</p>')
+          :('<input class="ic" id="mcid-search" placeholder="Rechercher un consultant\u2026" oninput="missConsFilter(this.value)" style="margin-bottom:6px">'
+            +'<div id="mcid-multi" style="max-height:190px;overflow:auto;border:1px solid #e2e8f0;border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:2px;background:#fff">'
+            +S.cons.filter(function(c){return c.grade!=='sales_grade';}).map(function(c){
+                return '<label class="mcid-opt" data-name="'+esc((c.name||'').toLowerCase())+'" onmouseover="this.style.background=&quot;#f1f5f9&quot;" onmouseout="this.style.background=&quot;&quot;" style="display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:13px"><input type="checkbox" class="mcid-chk" value="'+c.id+'" style="accent-color:#84CC16;width:15px;height:15px;cursor:pointer"> '+esc(c.name)+'</label>';
+              }).join('')
+            +'</div>'
+            +'<p class="fh">Cochez un ou plusieurs consultants \u2014 une mission (Assistance technique) sera cr\u00e9\u00e9e pour chacun.</p>')
+          )
       +'</div></div>'
       +'<div class="cs2"><div class="fd"><label class="fl">Nom de la mission *</label><input class="ic" id="mmn" list="mmn-list" value="'+esc(it?it.name:'')+'" placeholder="ex\u00a0: Transformation Digitale SI" onchange="missPrefillFromName()"><datalist id="mmn-list">'+missNameDatalistOpts()+'</datalist><p class="fh">Choisissez une mission existante pour affecter un consultant \u00e0 la m\u00eame mission \u2014 le client et les d\u00e9tails se pr\u00e9-remplissent.</p></div></div>'
       +'<div class="cs2"><div class="fd"><label class="fl">Code projet</label><input class="ic" id="mpcd" value="'+(it&&it.pcode?esc(it.pcode):'')+'" placeholder="ex\u00a0: 300000000106376"><p class="fh">Code de facturation PSA/SAP \u2014 utilis\u00e9 pour le recoupement des imputations import\u00e9es</p></div></div>'

@@ -351,8 +351,10 @@ function bind(){
       }
       /* save mission */
       else if(a==='sm'){
-        var _mcidEl=document.getElementById('mcid');
-        var selCids=(_mcidEl&&_mcidEl.multiple)?Array.prototype.slice.call(_mcidEl.selectedOptions).map(function(o){return o.value;}).filter(Boolean):((_mcidEl&&_mcidEl.value)?[_mcidEl.value]:[]);
+        var _chk=document.querySelectorAll('.mcid-chk');
+        var selCids;
+        if(_chk.length){selCids=Array.prototype.slice.call(document.querySelectorAll('.mcid-chk:checked')).map(function(o){return o.value;}).filter(Boolean);}
+        else{var _mcidEl=document.getElementById('mcid');selCids=(_mcidEl&&_mcidEl.value)?[_mcidEl.value]:[];}
         var cid=selCids[0]||'';
         var mn=gv('mmn'),cl=gv('mcl'),tj=+gv('mtj'),sd=gv('msd'),ed=gv('med')||null;
         var lo=gv('mlo'),mg=gv('mmg'),cc=gv('mcc'),cr=gv('mcr');
