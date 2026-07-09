@@ -16,7 +16,7 @@ const SUPA_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
 const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
-const CV_MODEL = Deno.env.get("CV_MODEL") || "claude-3-5-sonnet-20241022";
+const CV_MODEL = Deno.env.get("CV_MODEL") || "claude-sonnet-5";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
