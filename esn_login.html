@@ -239,6 +239,19 @@ label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:
     <div id="f-login">
       
       <p class="card-sub">Acc&eacute;dez &agrave; votre espace</p>
+
+      <!-- SSO entreprise (ex : CGI / Microsoft Entra) — masqué tant que SSO_CONFIG.enabled est faux -->
+      <div id="sso-block" style="display:none">
+        <button class="btn" id="b-sso" type="button" onclick="doSSO()" style="background:#2f2f2f;display:flex;align-items:center;justify-content:center;gap:9px">
+          <svg width="16" height="16" viewBox="0 0 23 23" aria-hidden="true"><rect x="1" y="1" width="10" height="10" fill="#F25022"/><rect x="12" y="1" width="10" height="10" fill="#7FBA00"/><rect x="1" y="12" width="10" height="10" fill="#00A4EF"/><rect x="12" y="12" width="10" height="10" fill="#FFB900"/></svg>
+          <span id="lb-sso">Se connecter avec Microsoft</span>
+          <div class="spin" id="sp-sso"></div>
+        </button>
+        <div style="display:flex;align-items:center;gap:10px;margin:14px 0;color:#94a3b8;font-size:12px">
+          <span style="flex:1;height:1px;background:#e2e8f0"></span>ou<span style="flex:1;height:1px;background:#e2e8f0"></span>
+        </div>
+      </div>
+
       <div class="fd">
         <label for="l-email">Email</label>
         <input class="inp" type="email" id="l-email" placeholder="vous@votreesn.com" autocomplete="email">
@@ -318,8 +331,51 @@ var K_LINK_TYPE = ((window.location.hash || '') + ' ' + (window.location.search 
 var sb = (typeof supabase !== 'undefined' && SUPABASE_URL && SUPABASE_KEY && SUPABASE_URL.indexOf('supabase.co') > 0)
   ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
+/* ── SSO entreprise (ex : CGI / Microsoft Entra) ──────────────────────────────
+   DÉSACTIVÉ par défaut : le login email/mot de passe reste STRICTEMENT inchangé
+   (le bouton SSO n'apparaît même pas). Pour l'activer chez un client, passer
+   SSO_CONFIG.enabled=true et renseigner le fournisseur :
+     - protocol 'oidc' → Azure OAuth (aucun add-on Supabase payant requis) ;
+     - protocol 'saml' → Supabase Enterprise SSO (add-on payant), via le domaine.
+   Le fournisseur d'identité (Entra/Okta) et le provider Supabase doivent être
+   configurés au préalable — voir docs/SSO_CGI.md. */
+var SSO_CONFIG = {
+  enabled: false,                 // ← passer à true une fois Entra + Supabase configurés
+  label: 'Se connecter avec Microsoft',
+  protocol: 'oidc',               // 'oidc' (Azure OAuth) | 'saml' (Enterprise SSO)
+  provider: 'azure',              // pour OIDC
+  domain: '',                     // pour SAML, ex : 'cgi.com'
+  scopes: 'email openid profile'
+};
+function initSSO() {
+  if (!SSO_CONFIG.enabled) return;              // désactivé → on ne touche à rien
+  var blk = document.getElementById('sso-block'); if (blk) blk.style.display = 'block';
+  var lb = document.getElementById('lb-sso'); if (lb && SSO_CONFIG.label) lb.textContent = SSO_CONFIG.label;
+}
+async function doSSO() {
+  if (!sb) { showBanner('err', 'Service indisponible pour le moment.'); return; }
+  loading('b-sso', 'sp-sso', 'lb-sso', true);
+  try {
+    var redirect = window.location.origin + '/app';
+    var res;
+    if (SSO_CONFIG.protocol === 'saml') {
+      res = await sb.auth.signInWithSSO({ domain: SSO_CONFIG.domain, options: { redirectTo: redirect } });
+    } else {
+      res = await sb.auth.signInWithOAuth({ provider: SSO_CONFIG.provider, options: { redirectTo: redirect, scopes: SSO_CONFIG.scopes } });
+    }
+    if (res && res.error) { loading('b-sso', 'sp-sso', 'lb-sso', false); showBanner('err', 'SSO : ' + res.error.message); return; }
+    if (res && res.data && res.data.url) { window.location.href = res.data.url; return; }
+    /* OIDC redirige tout seul ; si on arrive ici sans URL, on relâche le bouton. */
+    loading('b-sso', 'sp-sso', 'lb-sso', false);
+  } catch (e) {
+    loading('b-sso', 'sp-sso', 'lb-sso', false);
+    showBanner('err', 'SSO indisponible : ' + (e && e.message || e));
+  }
+}
+
 /* Pré-remplir l'email sauvegardé */
 document.addEventListener('DOMContentLoaded', function() {
+  initSSO();
   var saved = localStorage.getItem('esn_saved_emails');
   if (saved) {
     try {
