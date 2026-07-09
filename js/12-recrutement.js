@@ -37,7 +37,7 @@ function recListBody(){
      l'entreprise. Le cloisonnement inter-entreprises est assuré par la RLS.
      L'affinage se fait via les filtres ci-dessous (Mes candidats, localisation,
      expertise) — un recruteur de Nice voit et filtre les candidats de Lyon. */
-  var visibleCands=S.cands.slice();
+  var visibleCands=S.cands.filter(candVisibleForRole);
   var _myName=(S.profileFirstName+' '+(S.profileLastName||'')).trim();
   var expF=S.recF.exp||[];
   var list=visibleCands.filter(function(c){
