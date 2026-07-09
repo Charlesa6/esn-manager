@@ -747,7 +747,8 @@ function cvExpSection(c){
     +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">'
     +'<div style="font-size:13px;font-weight:800;color:#0f172a">Expériences ('+exps.length+') — dossier de compétences</div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
-    +'<button class="bg" data-act="cvexp-add" data-id="'+c.id+'">+ Ajouter une expérience</button>'
+    +'<button class="bg" data-act="cvexp-ai" data-id="'+c.id+'" title="Analyse le CV PDF joint et pré-remplit les expériences (IA)">✨ Pré-remplir depuis le CV (IA)</button>'
+    +'<button class="bg" data-act="cvexp-add" data-id="'+c.id+'">+ Ajouter</button>'
     +'<button class="bg" data-act="cvexp-save" data-id="'+c.id+'">💾 Enregistrer</button>'
     +'<button class="bp" data-act="cv-entreprise" data-id="'+c.id+'">📄 CV Entreprise</button>'
     +'</div></div>'
@@ -809,6 +810,31 @@ function openCvEntreprise(candId){
   var w=window.open('','_blank');
   if(!w){alert('Autorisez les pop-ups pour afficher le CV Entreprise.');return;}
   w.document.open();w.document.write(cvEntrepriseDoc(c));w.document.close();
+}
+/* Extraction IA : envoie le CV PDF à l'Edge Function extract-cv, qui interroge le
+   modèle et renvoie des expériences structurées. Elles sont AJOUTÉES à la fiche
+   (l'utilisateur relit puis enregistre). Nécessite ANTHROPIC_API_KEY côté serveur. */
+async function extractCvIA(candId){
+  var c=S.cands.find(function(x){return x.id===candId;});if(!c)return;
+  if(!sb){toast('Extraction IA indisponible en mode démo','error');return;}
+  var hasPdf=(c.cvFiles||[]).some(function(f){return /\.pdf$/i.test(f.fileName||f.filePath||'');});
+  if(!hasPdf){toast('Joignez d\'abord un CV au format PDF','error');return;}
+  toast('Analyse du CV en cours…');
+  try{
+    var ses=await sb.auth.getSession();
+    var tok=(ses&&ses.data&&ses.data.session)?ses.data.session.access_token:'';
+    var r=await fetch('https://rwmstlesxnglpblrurqj.supabase.co/functions/v1/extract-cv',{
+      method:'POST',headers:{'content-type':'application/json','Authorization':'Bearer '+tok},
+      body:JSON.stringify({candId:candId})
+    });
+    var d=await r.json().catch(function(){return{};});
+    if(!r.ok||d.error){toast('Extraction : '+(d.error||('erreur '+r.status)),'error');return;}
+    var exps=Array.isArray(d.experiences)?d.experiences:[];
+    if(!exps.length){toast('Aucune expérience détectée dans le CV','error');return;}
+    c.experiences=(Array.isArray(c.experiences)?c.experiences:[]).concat(exps);
+    render();
+    toast(exps.length+' expérience(s) pré-remplie(s) — relisez puis « Enregistrer »');
+  }catch(e){toast('Erreur réseau : '+(e&&e.message||e),'error');}
 }
 
 function loadXLSX(cb){
