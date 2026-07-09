@@ -156,11 +156,30 @@ tr:nth-child(even) td{background:#F7F9FB}
 <ul><li>Protection contre les mots de passe compromis (vérification HaveIBeenPwned) : option disponible avec le plan Pro de la plateforme d'authentification, à activer le moment venu. Une longueur minimale de mot de passe est déjà imposée côté client.</li>
 <li>Poursuivre la revue des fonctions à privilèges héritées et retirer celles devenues inutiles.</li></ul>
 
-<h1>10. Intégrations</h1>
-<p>Intégration Microsoft Teams via Microsoft Graph : synchronisation permettant de retrouver planning et absences directement dans Teams. L'architecture (API REST et Edge Functions) permet d'étendre les intégrations (RH/paie, signature, exports comptables).</p>
+<h1>10. Intégrations (connecteurs API)</h1>
+<p>Konsilys expose une couche de connecteurs vers les outils du marché, pilotée par un onglet <b>Intégrations</b> réservé au super administrateur. Chaque connecteur est <b>désactivé par défaut</b> : aucune donnée n'est transmise à un tiers tant que les identifiants n'ont pas été saisis et la connexion testée.</p>
+<h2>10.1 Catalogue des connecteurs</h2>
+<table><thead><tr><th>Catégorie</th><th>Connecteurs</th></tr></thead><tbody>
+<tr><td>Identité / annuaire</td><td>Microsoft 365 / Entra ID (Azure AD)</td></tr>
+<tr><td>SIRH (RH)</td><td>Workday, SAP SuccessFactors, Lucca, BambooHR</td></tr>
+<tr><td>Paie</td><td>Silae, PayFit, ADP</td></tr>
+<tr><td>Facturation</td><td>Pennylane, Sage Business Cloud, Sellsy, QuickBooks Online</td></tr>
+</tbody></table>
+<h2>10.2 Architecture</h2>
+<ul>
+<li><b class="lead">Edge Function <code>integrations</code></b> (verify_jwt, super administrateur) — actions <code>list</code> (catalogue + connecteurs enregistrés), <code>save</code>, <code>test</code>, <code>sync</code> (aperçu lecture seule), <code>people</code> (collaborateurs normalisés pour l'import) et <code>remove</code>. Adaptateurs par fournisseur (OAuth2 client-credentials, Basic, Bearer).</li>
+<li><b class="lead">Tables <code>company_integrations</code> et <code>integration_logs</code></b> — une ligne par (entreprise, connecteur) ; RLS cloisonnée par entreprise, lecture réservée au super administrateur, écritures via l'Edge Function (service role).</li>
+<li><b class="lead">Interface</b> — catalogue par catégorie, formulaires de configuration, boutons Tester / Aperçu / Activer / Importer, et journal des connexions.</li>
+</ul>
+<h2>10.3 Import des collaborateurs</h2>
+<p>Les connecteurs annuaire et SIRH peuvent <b>importer les collaborateurs comme consultants</b> : Konsilys récupère les collaborateurs (nom, email, intitulé), affiche un <b>aperçu</b> (« X à créer / Y déjà présents »), <b>dédoublonne par email puis par nom</b>, puis crée les fiches après confirmation. Aucune écriture sans validation, aucun doublon. La synchronisation de facturation reste en <b>lecture seule</b> à ce stade (rapprochement, sans écriture).</p>
+<h2>10.4 SSO d'entreprise (Microsoft Entra)</h2>
+<p>La page de connexion embarque un socle <b>SSO</b> gouverné par une configuration, <b>désactivé par défaut</b> (le login email/mot de passe reste inchangé et le bouton n'apparaît pas). Deux protocoles : <b>OIDC</b> (Azure OAuth, sans add-on) ou <b>SAML</b> (add-on Enterprise SSO). Le SSO contournant le tunnel de paiement, une décision de provisioning (membres déjà provisionnés vs. création à la volée) est à trancher avant activation en production.</p>
+<h2>10.5 Sécurité des connecteurs</h2>
+<p>Les clés secrètes sont stockées côté serveur et <b>ne sont jamais renvoyées</b> au navigateur (masquées en lecture, conservées si laissées vides à l'enregistrement). Recommandation pour un déploiement à grande échelle : chiffrement au repos (Supabase Vault / pgsodium) et flux OAuth avec <i>refresh tokens</i> gérés côté serveur.</p>
 
 <h1>11. Exigences non-fonctionnelles</h1>
-<table><thead><tr><th>Exigence</th><th>Description</th></tr></thead><tbody><tr><td>Disponibilité</td><td>Front diffusé en CDN (Vercel), base managée (Supabase) avec sauvegardes.</td></tr><tr><td>Performance</td><td>API auto-générée et temps réel ; affichage optimisé côté client.</td></tr><tr><td>Compatibilité</td><td>Navigateurs modernes ; interface responsive mobile et desktop.</td></tr><tr><td>Sécurité</td><td>JWT, RLS, HTTPS, paiement délégué à Stripe.</td></tr><tr><td>Scalabilité</td><td>Modèle multi-tenant : ajout d'entreprises et de sièges sans redéploiement.</td></tr><tr><td>Conformité</td><td>Hébergement en Europe, logique RGPD, données bancaires externalisées.</td></tr></tbody></table>
+<table><thead><tr><th>Exigence</th><th>Description</th></tr></thead><tbody><tr><td>Disponibilité</td><td>Front diffusé en CDN (Vercel), base managée (Supabase) avec sauvegardes.</td></tr><tr><td>Performance</td><td>API auto-générée et temps réel ; affichage optimisé côté client.</td></tr><tr><td>Compatibilité</td><td>Navigateurs modernes ; interface responsive mobile et desktop.</td></tr><tr><td>Sécurité</td><td>JWT, RLS, HTTPS, paiement délégué à Stripe.</td></tr><tr><td>Scalabilité</td><td>Modèle multi-tenant : ajout d'entreprises et de sièges sans redéploiement. Lecture des données paginée (par lots de 1 000 via <code>range</code>) pour lever le plafond silencieux de l'API REST et rester exact à grande échelle.</td></tr><tr><td>Conformité</td><td>Hébergement en Europe, logique RGPD, données bancaires externalisées.</td></tr></tbody></table>
 
 <h1>12. Annexes</h1>
 <h2>12.1 Récapitulatif tarifaire</h2>
@@ -191,4 +210,11 @@ tr:nth-child(even) td{background:#F7F9FB}
 <li>Mobilité régionale des consultants : villes de la région définies par le super administrateur dans les Paramètres.</li></ul>
 <h2>13.5 Qualité et robustesse</h2>
 <p>Application produit découpée en modules (sans étape de build) et suite de tests de bout-en-bout (Playwright, hors-ligne) prévenant les régressions.</p>
+<h2>13.6 Intégrations, SSO et montée en charge</h2>
+<ul>
+<li><b class="lead">Couche de connecteurs API</b> (cf. §10) : Microsoft 365 / Entra ID, SIRH (Workday, SuccessFactors, Lucca, BambooHR), paie (Silae, PayFit, ADP) et facturation (Pennylane, Sage, Sellsy, QuickBooks) — désactivés par défaut, secrets côté serveur, cloisonnés par entreprise.</li>
+<li><b class="lead">Import des collaborateurs → consultants</b> : aperçu avant écriture et dédoublonnage par email/nom depuis les connecteurs annuaire et SIRH.</li>
+<li><b class="lead">SSO Microsoft Entra</b> : socle sur la page de connexion, désactivé par défaut (login inchangé), OIDC ou SAML selon configuration.</li>
+<li><b class="lead">Lecture paginée</b> : le chargement des consultants, missions, absences, candidats et membres pagine par lots de 1 000 lignes, levant le plafond silencieux de l'API REST pour rester exact à grande échelle — sans changer le modèle ni les vues.</li>
+</ul>
 </body></html>
