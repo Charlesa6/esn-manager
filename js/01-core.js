@@ -214,7 +214,7 @@ function kpi(c,miss,lvs,y,H,rangeOverride){
     return Object.assign({},m,{days:d,rev:r,mar:mar});
   });
   var sr=tWD>0?(bill+sickD)/tWD*100:0,avgT=bill>0?rev/bill:0;
-  var om=bill>0&&avgT>0?(avgT-c.scr*EMPLOYER_FACTOR)/avgT*100:null; /* \u2190 nouvelle formule */
+  var om=bill>0&&avgT>0?(avgT-c.scr*(c.contract==='freelance'?1:EMPLOYER_FACTOR))/avgT*100:null; /* freelance : pas de charges patronales */
   return{tWD:tWD,lvD:lvD,avD:avD,sickD:sickD,bill:bill,rev:rev,sr:sr,avgT:avgT,om:om,pm:pm,cs:cs,ce:ce};
 }
 
@@ -325,13 +325,14 @@ function loadDemoData(){
     {id:'d4',name:'Karim Belhaj',    title:'Chef de projet',    scr:560,email:'k.belhaj@demo.fr',   dir:'Marie Lefebvre',arrive:'2024-10-01',depart:null},
     {id:'d5',name:'Claire Morin',    title:'Développeuse BI',   scr:450,email:'c.morin@demo.fr',    dir:'Thomas Bernard',arrive:'2025-04-01',depart:null}
   ];
+  /* Format aligné sur mapM (cli/name/btype/wdays…) pour un rendu correct partout. */
   S.miss=[
-    {id:'m1',cid:'d1',client:'BNP Paribas',   code:'300100001',tjm:780,sd:'2025-10-01',ed:'2026-03-31',type:'Régie'},
-    {id:'m2',cid:'d2',client:'Société Générale',code:'300100002',tjm:920,sd:'2025-10-01',ed:'2026-09-30',type:'Régie'},
-    {id:'m3',cid:'d3',client:'AXA',            code:'300100003',tjm:720,sd:'2025-10-01',ed:'2026-06-30',type:'Régie'},
-    {id:'m4',cid:'d4',client:'SNCF',           code:'300100004',tjm:840,sd:'2025-10-01',ed:'2026-03-31',type:'Forfait'},
-    {id:'m5',cid:'d5',client:'TotalEnergies',  code:'300100005',tjm:680,sd:'2025-10-01',ed:'2026-09-30',type:'Régie'},
-    {id:'m6',cid:'d1',client:'BNP Paribas',    code:'300100006',tjm:800,sd:'2026-04-01',ed:'2026-09-30',type:'Régie'}
+    {id:'m1',cid:'d1',cli:'BNP Paribas',       name:'TMA SI Risques',   pcode:'300100001',tjm:780,sd:'2025-10-01',ed:'2026-03-31',btype:'at',     wdays:[1,2,3,4,5]},
+    {id:'m2',cid:'d2',cli:'Société Générale',  name:'Migration Cloud',  pcode:'300100002',tjm:920,sd:'2025-10-01',ed:'2026-09-30',btype:'at',     wdays:[1,2,3,4,5]},
+    {id:'m3',cid:'d3',cli:'AXA',               name:'Data Platform',    pcode:'300100003',tjm:720,sd:'2025-10-01',ed:'2026-06-30',btype:'at',     wdays:[1,2,3,4,5]},
+    {id:'m4',cid:'d4',cli:'SNCF',              name:'Pilotage forfait', pcode:'300100004',tjm:840,sd:'2025-10-01',ed:'2026-03-31',btype:'forfait',deal:180000,wdays:[1,2,3,4,5]},
+    {id:'m5',cid:'d5',cli:'TotalEnergies',     name:'Reporting BI',     pcode:'300100005',tjm:680,sd:'2025-10-01',ed:'2026-09-30',btype:'at',     wdays:[1,2,3,4,5]},
+    {id:'m6',cid:'d1',cli:'BNP Paribas',       name:'Phase 2 Risques',  pcode:'300100006',tjm:800,sd:'2026-04-01',ed:'2026-09-30',btype:'at',     wdays:[1,2,3,4,5]}
   ];
   S.lvs=[
     {id:'v1',cid:'d1',type:'Congé payé',s:'2025-12-22',e:'2026-01-03'},

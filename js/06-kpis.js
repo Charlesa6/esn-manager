@@ -496,7 +496,7 @@ function tKPIsSVPSection(){
   var vpCards=vpList.map(function(vp){
     var a=vp.agg,mc=fmtMarge(a.marge);
     var vpOpen=!!(S.kpiVPOpen&&S.kpiVPOpen[vp.name]);
-    var vKey=vp.name.replace(/'/g,"'");
+    var vKey=vp.name.replace(/'/g,"\\'");
 
     /* Directeurs dans ce VP */
     var dirList=Object.keys(vp.dirs).map(function(dirName){
@@ -508,7 +508,7 @@ function tKPIsSVPSection(){
 
     var dirCards=dirList.map(function(dir){
       var da=dir.agg,dmc=fmtMarge(da.marge);
-      var dirKey=(vp.name+'|||'+dir.name).replace(/'/g,"'");
+      var dirKey=(vp.name+'|||'+dir.name).replace(/'/g,"\\'");
       var dirOpen=!!(S.kpiDirDirOpen&&S.kpiDirDirOpen[vp.name+'|||'+dir.name]);
 
       /* Consultants dans ce directeur */
@@ -650,8 +650,8 @@ function tKPIsDirSection(){
     var isOpen=!!(S.kpiDirOpen&&S.kpiDirOpen[d.name]);
     var srBg2=d.sr>=80?'#f0fdf4':d.sr>=50?'#fffbeb':'#fff1f2';
     var srFg2=d.sr>=80?'#16a34a':d.sr>=50?'#d97706':'#dc2626';
-    var dKey=d.name.replace(/'/g,"'");
-    return '<details'+(isOpen?' open':'')+' ontoggle="if(!S.kpiDirOpen)S.kpiDirOpen={};S.kpiDirOpen[\''+dKey+'\'\']=this.open">'
+    var dKey=d.name.replace(/'/g,"\\'");
+    return '<details'+(isOpen?' open':'')+' ontoggle="if(!S.kpiDirOpen)S.kpiDirOpen={};S.kpiDirOpen[\''+dKey+'\']=this.open">'
       +'<summary style="'+colDef+';padding:14px 16px;cursor:pointer;list-style:none;border-top:1px solid #e2e8f0" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'
       +'<div><div style="font-weight:700;color:#0f172a;font-size:13px">'+esc(d.name)+'</div>'
       +'<div style="font-size:11px;color:#94a3b8">'+d.count+' consultant'+(d.count>1?'s':'')+'</div></div>'
