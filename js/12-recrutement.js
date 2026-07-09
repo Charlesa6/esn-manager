@@ -249,8 +249,10 @@ function tCandDetail(c){
 
   /* ── CV : un ou plusieurs fichiers, importables depuis la fiche également ── */
   var cvHtml=(c.cvFiles||[]).map(function(cv){
-    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#f8fafc;border-radius:8px;margin-bottom:6px;border:1px solid #e2e8f0">'
-      +'<button class="lb" data-act="reccvdl" data-id="'+c.id+'" data-fb="'+cv.id+'">\uD83D\uDCCE '+esc(cv.fileName)+'</button>'
+    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f8fafc;border-radius:8px;margin-bottom:6px;border:1px solid #e2e8f0">'
+      +'<button class="lb" data-act="reccvview" data-id="'+c.id+'" data-fb="'+cv.id+'" style="flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="Aper\u00E7u">\uD83D\uDCCE '+esc(cv.fileName)+'</button>'
+      +'<button class="lb" data-act="reccvview" data-id="'+c.id+'" data-fb="'+cv.id+'">\uD83D\uDC41 Voir</button>'
+      +'<button class="lb" data-act="reccvdl" data-id="'+c.id+'" data-fb="'+cv.id+'">\u2B07 T\u00E9l\u00E9charger</button>'
       +'<button class="lr" data-act="reccvdel" data-id="'+c.id+'" data-fb="'+cv.id+'">Suppr.</button>'
       +'</div>';
   }).join('');
@@ -558,6 +560,7 @@ function tModal(){
       +'<div class="fd"><label class="fl">Nationalité</label><input class="ic" id="rcnat" value="'+esc(it?it.nationality||'':'')+'" placeholder="Française"></div>'
       +'<div class="fd"><label class="fl">Date de disponibilité</label><input class="ic" id="rcav" type="date" value="'+(it?esc(it.availDate||''):'')+'"></div>'
       +'<div class="fd"><label class="fl">Années d\u2019expérience</label><input class="ic" id="rcyrs" type="number" min="0" step="0.5" value="'+(it&&it.yearsExp?esc(String(it.yearsExp)):'')+'" placeholder="5"></div>'
+      +'<div class="fd cs2"><label class="fl">Unité cible <span style="font-weight:400;color:#94a3b8">(optionnel)</span></label><select class="ic" id="rc-bu"><option value="">— Non définie —</option>'+buNodes().slice().sort(function(a,b){return buPathLabel(a.id).localeCompare(buPathLabel(b.id),'fr');}).map(function(n){var cur=it?(it.buId||''):(myBuId()||'');return '<option value="'+n.id+'"'+(cur===n.id?' selected':'')+'>'+esc(buPathLabel(n.id))+'</option>';}).join('')+'</select><p class="fh">Par défaut votre unité ; à l\'affectation d\'un directeur, elle devient la sienne.</p></div>'
       +'<div class="fd cs2"><label class="fl">Expertises</label><div id="exp-wrap">'+expPickerHTML()+'</div></div>'
       +'<div class="fd cs2"><label class="fl">Connaissance secteur</label><div id="sec-wrap">'+secPickerHTML()+'</div></div>'
       +'<div class="fd cs2"><label class="fl">CV — un ou plusieurs fichiers</label><input class="ic" type="file" id="rccv" accept=".pdf,.doc,.docx,.odt" multiple>'
