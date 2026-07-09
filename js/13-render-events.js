@@ -96,6 +96,7 @@ function bind(){
   var fc=el('fmc');if(fc)fc.onchange=function(){S.fmc=this.value;render();};
   var fs=el('fms');if(fs)fs.onchange=function(){S.fms=this.value;render();};
   var ftf=el('fmt');if(ftf)ftf.onchange=function(){S.fmt=this.value;render();};
+  var fmn=el('fmn');if(fmn)fmn.onchange=function(){S.fmn=this.value;render();};
   var acc=el('act-cid');if(acc)acc.onchange=function(){S.actCid=this.value;render();};
   var lc=el('flc');if(lc)lc.onchange=function(){S.flc=this.value;render();};
   var rq=el('recq');
@@ -350,7 +351,10 @@ function bind(){
       }
       /* save mission */
       else if(a==='sm'){
-        var cid=gv('mcid'),mn=gv('mmn'),cl=gv('mcl'),tj=+gv('mtj'),sd=gv('msd'),ed=gv('med')||null;
+        var _mcidEl=document.getElementById('mcid');
+        var selCids=(_mcidEl&&_mcidEl.multiple)?Array.prototype.slice.call(_mcidEl.selectedOptions).map(function(o){return o.value;}).filter(Boolean):((_mcidEl&&_mcidEl.value)?[_mcidEl.value]:[]);
+        var cid=selCids[0]||'';
+        var mn=gv('mmn'),cl=gv('mcl'),tj=+gv('mtj'),sd=gv('msd'),ed=gv('med')||null;
         var lo=gv('mlo'),mg=gv('mmg'),cc=gv('mcc'),cr=gv('mcr');
         var btEl=document.querySelector('input[name="mbt"]:checked');
         var bt=btEl?btEl.value:'at';
@@ -359,7 +363,7 @@ function bind(){
         var wmode2=(S.modal&&S.modal.wmode==='man')?'man':'rec';
         var manualDays2=(wmode2==='man'&&S.modal&&S.modal.manualDays)?S.modal.manualDays.slice():[];
         var deal=+gv('mdeal')||0,tmar=(gv('mtmar')===''?null:+gv('mtmar'));var missTeam=readMissTeam();
-        if(!cid||!mn||!cl||!sd){alert('Veuillez remplir les champs obligatoires (*).');return;}
+        if(!selCids.length||!mn||!cl||!sd){alert('Veuillez remplir les champs obligatoires (*) et s\u00e9lectionner au moins un consultant.');return;}
         /* Consultant : TJM saisi à 0, le directeur le renseigne lors de l'approbation */
         if(S.role!=='utilisateur'){
           if(bt==='forfait'){
@@ -376,10 +380,16 @@ function bind(){
           var mPl=it?Object.assign({},it,d,{approver_id:resolveApprover(S._userId)}):Object.assign({id:uid(),approver_id:resolveApprover(S._userId)},d);
           submitApproval(it?'miss_edit':'miss_add',mPl,mDesc);
         }else{
-          var nm;
-          if(it){S.miss=S.miss.map(function(m){if(m.id===it.id){nm=Object.assign({},m,d);return nm;}return m;});}
-          else{nm=Object.assign({id:uid()},d);S.miss=S.miss.concat([nm]);}
-          sbUpsertMiss(nm);
+          if(it){
+            /* Édition : une seule ligne mission = un consultant */
+            var nm=null;
+            S.miss=S.miss.map(function(m){if(m.id===it.id){nm=Object.assign({},m,d,{cid:cid});return nm;}return m;});
+            if(nm)sbUpsertMiss(nm);
+          }else{
+            /* Création : une mission par consultant sélectionné (AT). En forfait, un seul évite de dédupliquer le CA. */
+            var targets=(bt==='forfait')?[cid]:selCids;
+            targets.forEach(function(_c){var nmn=Object.assign({id:uid()},d,{cid:_c});S.miss=S.miss.concat([nmn]);sbUpsertMiss(nmn);});
+          }
           S.modal=null;render();
         }
       }
