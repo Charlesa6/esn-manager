@@ -129,7 +129,6 @@ function curRangeLbl(){return S.quarter?(QUARTERS.find(function(q){return q.id==
 /* Libell\u00e9 combin\u00e9 \u00ab FY26 \u00bb ou \u00ab FY26 \u00b7 T2 (Janv-Mars) \u00bb selon le trimestre actif */
 function curLbl(){return fyLbl(S.year)+(S.quarter?' \u00b7 '+curRangeLbl():'');}
 /* Mois fiscaux dans l'ordre Oct\u2192Sept, et bornes ISO d'un mois donn\u00e9 dans un FY */
-function monthLbl(month){return MOIS_ABR[month];}
 /* Liste des mois \u00e0 afficher selon la s\u00e9lection courante (ann\u00e9e enti\u00e8re ou trimestre) */
 function fEur(n){
   var cur=(S&&S.settings&&S.settings.currency)||'EUR';
@@ -370,8 +369,8 @@ function applyRecStatuses(){
 }
 /* Label d'un statut — lit dans REC_STATUS courant (peut être custom) */
 function recStLb(id){var s=REC_STATUS.find(function(x){return x.id===id;});return s?s.lb:id;}
-/* Label avec renommage custom (retro-compat) — délègue à recStLb */
 function recStLbD(id){return recStLb(id);}
+/* Label avec renommage custom (retro-compat) — délègue à recStLb */
 function recStCol(id){var s=REC_STATUS.find(function(x){return x.id===id;});return s?[s.bg,s.fg]:['#f1f5f9','#475569'];}
 function recScr(sal){return sal>0?sal/SCR_FACTOR:0;}
 function recTjm(sal,mar){var scr=recScr(sal);return scr>0?scr/(1-(mar||25)/100):0;}

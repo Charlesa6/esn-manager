@@ -5,16 +5,6 @@
 
 /* ── Constantes CRM ── */
 
-/* Taux de staffing → jours travaillés sur la mission */
-var STAFFING_WDAYS={
-  20:[1,2],       /* lundi+mardi */
-  40:[1,2,3],     /* lun+mar+mer */
-  60:[1,2,3,4],   /* lun+mar+mer+jeu */
-  80:[1,2,3,4,5], /* lun to ven */
-  100:[1,2,3,4,5] /* fully staffed */
-};
-var STAFFING_OPTIONS=[20,40,60,80,100];
-
 var OPP_STATUS=[
   {id:'identification',lb:'Identification', bg:'#f0f9ff',fg:'#0369a1'},
   {id:'qualification',  lb:'Qualification',  bg:'#fef3c7',fg:'#92400e'},
