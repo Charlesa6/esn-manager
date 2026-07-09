@@ -69,7 +69,8 @@ function mapCand(r){return{
   recruiter:r.recruiter||'',
   recruited:!!r.recruited,recruitStart:r.recruit_start||'',recruitPoste:r.recruit_poste||'',recruitDir:r.recruit_dir||'',consId:r.cons_id||null,
   buId:r.bu_id||null,
-  experiences:Array.isArray(r.experiences)?r.experiences:[]
+  experiences:Array.isArray(r.experiences)?r.experiences:[],
+  cvProfile:(r.cv_profile&&typeof r.cv_profile==='object')?r.cv_profile:{}
 };}
 
 /* Écran plein affiché quand l'entreprise n'est pas encore payée (inactive).
@@ -300,7 +301,8 @@ async function sbUpsertCand(c){
     recruiter:c.recruiter||null,
     recruited:!!c.recruited,recruit_start:c.recruitStart||null,recruit_poste:c.recruitPoste||null,recruit_dir:c.recruitDir||null,cons_id:c.consId||null,
     bu_id:c.buId||null,
-    experiences:Array.isArray(c.experiences)?c.experiences:[]
+    experiences:Array.isArray(c.experiences)?c.experiences:[],
+    cv_profile:(c.cvProfile&&typeof c.cvProfile==='object')?c.cvProfile:{}
   });
   if(res.error)throw new Error(c.name+': '+res.error.message);
 }
@@ -722,6 +724,44 @@ function cvExpSave(candId){var c=S.cands.find(function(x){return x.id===candId;}
   if(sb){sbUpsertCand(c).then(function(){toast('Expériences enregistrées');}).catch(function(e){toast('Échec : '+e.message,'error');});}
   else{toast('Expériences enregistrées (démo)');}
 }
+/* Profil du dossier de compétences (structure CGI) : titre, résumé, outils,
+   environnements, langues, formation, spécialisations, et tableau « Résumé des
+   compétences » (compétence / nombre d'années / niveau 1-4). Stocké dans cv_profile. */
+function cvProf(c){if(!c.cvProfile||typeof c.cvProfile!=='object')c.cvProfile={};return c.cvProfile;}
+function cvProfSet(candId,field,val){var c=S.cands.find(function(x){return x.id===candId;});if(!c)return;cvProf(c)[field]=val;}
+function cvSkillAdd(candId){var c=S.cands.find(function(x){return x.id===candId;});if(!c)return;var p=cvProf(c);if(!Array.isArray(p.skills))p.skills=[];p.skills.push({skill:'',years:'',level:3});render();}
+function cvSkillDel(candId,idx){var c=S.cands.find(function(x){return x.id===candId;});if(!c)return;var p=cvProf(c);if(!Array.isArray(p.skills))return;p.skills.splice(idx,1);render();}
+function cvSkillSet(candId,idx,field,val){var c=S.cands.find(function(x){return x.id===candId;});if(!c)return;var p=cvProf(c);if(!Array.isArray(p.skills)||!p.skills[idx])return;p.skills[idx][field]=(field==='level'||field==='years')?(val===''?'':+val):val;}
+function _lvlLbl(n){return['','Notions','Intermédiaire','Confirmé','Expert'][+n||3]||'Confirmé';}
+function cvProfileFields(c){
+  var p=cvProf(c);
+  var skills=Array.isArray(p.skills)?p.skills:[];
+  var q="'"+c.id+"'";
+  function ta(field,label,ph,rows){return '<div style="margin-top:10px"><label class="fl">'+label+'</label><textarea class="ic" rows="'+(rows||2)+'" placeholder="'+ph+'" onchange="cvProfSet('+q+',\''+field+'\',this.value)">'+esc(p[field]||'')+'</textarea></div>';}
+  function ip(field,label,ph){return '<div style="flex:1;min-width:200px"><label class="fl">'+label+'</label><input class="ic" value="'+esc(p[field]||'')+'" placeholder="'+ph+'" onchange="cvProfSet('+q+',\''+field+'\',this.value)"></div>';}
+  var skillRows=skills.map(function(s,i){
+    var lv=+s.level||3;
+    var opts=[1,2,3,4].map(function(n){return '<option value="'+n+'"'+(lv===n?' selected':'')+'>'+n+' — '+_lvlLbl(n)+'</option>';}).join('');
+    return '<tr>'
+      +'<td style="padding:4px"><input class="ic" style="margin:0" value="'+esc(s.skill||'')+'" placeholder="Java, Gestion de projet…" onchange="cvSkillSet('+q+','+i+',\'skill\',this.value)"></td>'
+      +'<td style="padding:4px;width:110px"><input class="ic" style="margin:0" type="number" min="0" step="1" value="'+esc(s.years===0||s.years?String(s.years):'')+'" placeholder="ans" onchange="cvSkillSet('+q+','+i+',\'years\',this.value)"></td>'
+      +'<td style="padding:4px;width:190px"><select class="ic" style="margin:0" onchange="cvSkillSet('+q+','+i+',\'level\',this.value)">'+opts+'</select></td>'
+      +'<td style="padding:4px;width:36px;text-align:center"><button class="lr" onclick="cvSkillDel('+q+','+i+')" title="Supprimer" style="padding:4px 8px">✕</button></td>'
+      +'</tr>';
+  }).join('');
+  return '<details style="margin-bottom:12px;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;background:#fafbfc">'
+    +'<summary style="cursor:pointer;font-size:13px;font-weight:800;color:#0f172a">🗂️ Profil du dossier de compétences <span style="font-weight:500;color:#94a3b8">(titre, synthèse, outils, langues, formation, niveaux)</span></summary>'
+    +'<div style="margin-top:12px">'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+ip('title','Titre / fonction','Consultant Data — Chef de projet')+ip('sectorExp','Secteur(s) d\'expérience','Banque, Assurance, Secteur public')+'</div>'
+    +ta('summary','Profil (synthèse)','Résumé du parcours, points forts, posture…',3)
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">'+ip('tools','Outils & logiciels','Jira, Power BI, SAP, Office…')+ip('environments','Environnements techniques','Java, Spring, Azure, Docker…')+'</div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">'+ip('languages','Langues','Français (natif), Anglais (courant)…')+ip('specializations','Spécialisations techniques','Data engineering, DevOps…')+'</div>'
+    +ta('formation','Formation','Diplômes, écoles, années, certifications…',2)
+    +'<div style="margin-top:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><label class="fl" style="margin:0">Résumé des compétences (niveau 1 à 4)</label><button class="bg" onclick="cvSkillAdd('+q+')" style="padding:5px 12px">+ Compétence</button></div>'
+    +(skills.length?'<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="text-align:left;color:#64748b"><th style="padding:4px;font-weight:700">Compétence</th><th style="padding:4px;font-weight:700">Années</th><th style="padding:4px;font-weight:700">Niveau</th><th></th></tr></thead><tbody>'+skillRows+'</tbody></table>':'<div style="font-size:12px;color:#94a3b8">Aucune compétence notée. Ajoutez-en pour la grille de synthèse du CV.</div>')
+    +'</div>'
+    +'</div></details>';
+}
 function cvExpSection(c){
   var exps=Array.isArray(c.experiences)?c.experiences:[];
   var cards=exps.map(function(e,i){
@@ -753,6 +793,7 @@ function cvExpSection(c){
     +'<button class="bp" data-act="cv-entreprise" data-id="'+c.id+'">📄 CV Entreprise</button>'
     +'</div></div>'
     +(hasTpl?'':'<div style="font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;margin-bottom:12px">⚠ Aucun template CV configuré. Le super admin peut le définir dans Paramètres → Template CV entreprise.</div>')
+    +cvProfileFields(c)
     +(cards||'<div class="emp">Aucune expérience. Ajoutez-en pour générer le CV Entreprise.</div>')
     +'</div>';
 }
@@ -762,48 +803,92 @@ function _cvExpDate(e){
   var s=m(e.dateStart), en=e.current?'aujourd\'hui':m(e.dateEnd);
   return s&&en?(s+' → '+en):(s||en||'');
 }
+/* Génère le CV « Entreprise » au format dossier de compétences (structure inspirée
+   du modèle CGI) : synthèse, expérience sectorielle, compétences, outils,
+   environnements, langues, profil, expériences détaillées, formation /
+   spécialisations, et grille « Résumé des compétences » (niveau 1 à 4). */
+function _csv(v){return String(v||'').split(/[,;\n]/).map(function(s){return s.trim();}).filter(Boolean);}
 function cvEntrepriseDoc(c){
-  var t=(S.settings&&S.settings.cvTemplate)||{}, color=t.color||'#1B2B3A';
+  var t=(S.settings&&S.settings.cvTemplate)||{}, color=t.color||'#E2001A';
+  var p=(c.cvProfile&&typeof c.cvProfile==='object')?c.cvProfile:{};
   var exps=Array.isArray(c.experiences)?c.experiences:[];
+  var title=p.title||c.recruitPoste||(exps[0]&&exps[0].poste)||'';
+  var sectors=(c.sectors&&c.sectors.length)?c.sectors:_csv(p.sectorExp);
+  function chips(arr){return arr.map(function(x){return '<span class="chip">'+esc(x)+'</span>';}).join('');}
+  function bullets(arr){return '<ul class="bl">'+arr.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul>';}
+  function block(t2,inner){return inner?'<section class="sec"><h2>'+t2+'</h2>'+inner+'</section>':'';}
+
   var expHtml=exps.map(function(e){
-    return '<div class="exp"><div class="exp-h"><span class="exp-poste">'+esc(e.poste||'Poste')+'</span><span class="exp-date">'+esc(_cvExpDate(e))+'</span></div>'
-      +(e.client?'<div class="exp-cli">'+esc(e.client)+'</div>':'')
-      +(e.description?'<div class="exp-desc">'+esc(e.description)+'</div>':'')
-      +(e.technos?'<div class="exp-tech">'+esc(e.technos)+'</div>':'')
+    var head=[e.client,e.poste].filter(Boolean).map(esc).join(' — ')||'Expérience';
+    return '<div class="exp">'
+      +'<div class="exp-h"><span class="exp-t">'+head+'</span><span class="exp-d">'+esc(_cvExpDate(e))+'</span></div>'
+      +(e.description?'<div class="exp-b">'+esc(e.description)+'</div>':'')
+      +(e.technos?'<div class="exp-tech"><strong>Environnement technique :</strong> '+esc(e.technos)+'</div>':'')
       +'</div>';
-  }).join('')||'<div style="color:#94a3b8">Aucune expérience renseignée.</div>';
-  var exp=(c.expertise||[]).map(function(x){return '<span class="tag">'+esc(x)+'</span>';}).join('');
-  var sec=(c.sectors||[]).map(function(x){return '<span class="tag">'+esc(x)+'</span>';}).join('');
-  return '<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>CV — '+esc(c.name||'')+'</title><style>'
-    +'*{box-sizing:border-box;margin:0;padding:0}body{font-family:Inter,Arial,sans-serif;color:#1e293b;font-size:13px;line-height:1.55;background:#fff}'
-    +'.pg{max-width:800px;margin:0 auto;padding:32px}'
-    +'.top{display:flex;align-items:center;gap:16px;border-bottom:3px solid '+color+';padding-bottom:16px;margin-bottom:20px}'
-    +'.top img{max-height:52px}.top .co{font-size:20px;font-weight:800;color:'+color+'}'
-    +'.name{font-size:26px;font-weight:800;color:'+color+'}.role{color:#64748b;font-size:14px;margin-top:2px}'
-    +'.meta{display:flex;gap:18px;flex-wrap:wrap;color:#64748b;font-size:12px;margin-top:8px}'
-    +'.sec{margin-top:22px}.sec-t{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:'+color+';border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:10px}'
-    +'.tag{display:inline-block;background:#f1f5f9;border-radius:99px;padding:3px 10px;font-size:11px;margin:0 4px 4px 0}'
-    +'.exp{margin-bottom:14px;padding-left:12px;border-left:2px solid '+color+'}'
-    +'.exp-h{display:flex;justify-content:space-between;gap:10px}.exp-poste{font-weight:700}.exp-date{color:#64748b;font-size:11px;white-space:nowrap}'
-    +'.exp-cli{color:'+color+';font-weight:600;font-size:12px}.exp-desc{margin-top:4px;white-space:pre-line}.exp-tech{margin-top:4px;color:#64748b;font-size:11px;font-style:italic}'
-    +'.foot{margin-top:28px;border-top:1px solid #e2e8f0;padding-top:10px;color:#94a3b8;font-size:10px;text-align:center}'
-    +'.bar{position:fixed;top:0;left:0;right:0;background:#1B2B3A;color:#fff;padding:9px;text-align:center;font-size:13px;font-weight:600}'
-    +'.bar button{background:#84CC16;color:#16240a;border:none;border-radius:6px;padding:6px 16px;font-weight:800;cursor:pointer;margin-left:10px}'
-    +'@media print{.bar{display:none}.pg{padding:8px;margin-top:0}}'
+  }).join('')||'<div class="muted">Aucune expérience renseignée.</div>';
+
+  var skills=Array.isArray(p.skills)?p.skills:[];
+  var skillTable=skills.length?('<table class="skt"><thead><tr><th>Compétence</th><th>Années</th><th>Niveau de compétence*</th></tr></thead><tbody>'
+    +skills.map(function(s){
+      var lv=Math.max(1,Math.min(4,+s.level||3));
+      var dots='';for(var i=1;i<=4;i++){dots+='<span class="dot'+(i<=lv?' on':'')+'"></span>';}
+      return '<tr><td>'+esc(s.skill||'')+'</td><td class="ctr">'+(s.years===0||s.years?esc(String(s.years)):'—')+'</td><td><span class="lvl">'+dots+'</span> <span class="lvl-n">'+lv+' — '+_lvlLbl(lv)+'</span></td></tr>';
+    }).join('')
+    +'</tbody></table><div class="skt-note">* Niveau : 1 Notions · 2 Intermédiaire · 3 Confirmé · 4 Expert</div>'):'';
+
+  var metaBits=[];
+  if(c.yearsExp)metaBits.push('<strong>'+esc(String(c.yearsExp))+'</strong> ans d\'expérience');
+  if(sectors.length)metaBits.push('secteur '+esc(sectors.join(', ')));
+  var metaLine=metaBits.length?'<div class="years">'+metaBits.join(' — ')+'</div>':'';
+
+  return '<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Dossier de compétences — '+esc(c.name||'')+'</title><style>'
+    +'*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Segoe UI",Calibri,Arial,sans-serif;color:#222;font-size:12.5px;line-height:1.5;background:#eef1f4}'
+    +'.pg{max-width:820px;margin:24px auto;background:#fff;box-shadow:0 6px 30px rgba(0,0,0,.12)}'
+    +'.hd{background:'+color+';color:#fff;padding:22px 34px;display:flex;align-items:center;gap:18px}'
+    +'.hd img{max-height:46px;background:#fff;padding:4px 8px;border-radius:4px}.hd .co{font-size:22px;font-weight:800;letter-spacing:.5px}'
+    +'.hd .co small{display:block;font-size:11px;font-weight:400;opacity:.85;letter-spacing:.06em;text-transform:uppercase}'
+    +'.id{padding:24px 34px 6px}.id .name{font-size:24px;font-weight:800;color:#111}.id .role{font-size:14px;color:'+color+';font-weight:700;margin-top:2px}'
+    +'.years{margin-top:6px;color:#555;font-size:12.5px}'
+    +'.body{padding:6px 34px 30px}'
+    +'.sec{margin-top:20px;page-break-inside:avoid}.sec h2{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:'+color+';padding-bottom:5px;border-bottom:2px solid '+color+';margin-bottom:10px}'
+    +'.chip{display:inline-block;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:4px;padding:3px 9px;font-size:11.5px;margin:0 5px 5px 0}'
+    +'.bl{margin:0;padding-left:18px}.bl li{margin:2px 0}'
+    +'.two{display:flex;gap:26px;flex-wrap:wrap}.two>div{flex:1;min-width:220px}'
+    +'.kv{margin:0;font-size:12.5px;white-space:pre-line}'
+    +'.exp{margin-bottom:15px;padding-bottom:12px;border-bottom:1px dashed #e5e7eb}.exp:last-child{border-bottom:none}'
+    +'.exp-h{display:flex;justify-content:space-between;gap:12px;align-items:baseline}.exp-t{font-weight:800;color:#111}.exp-d{color:#666;font-size:11.5px;white-space:nowrap}'
+    +'.exp-b{margin-top:4px;white-space:pre-line}.exp-tech{margin-top:5px;color:#444;font-size:11.5px}'
+    +'.skt{width:100%;border-collapse:collapse;font-size:12px}.skt th{background:'+color+';color:#fff;text-align:left;padding:7px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.04em}'
+    +'.skt td{padding:6px 10px;border-bottom:1px solid #eee}.skt tr:nth-child(even) td{background:#fafafa}.skt .ctr{text-align:center}'
+    +'.lvl{display:inline-flex;gap:3px;vertical-align:middle}.dot{width:11px;height:11px;border-radius:2px;background:#e5e7eb;display:inline-block}.dot.on{background:'+color+'}'
+    +'.lvl-n{font-size:11px;color:#555;margin-left:6px}.skt-note{margin-top:6px;font-size:10.5px;color:#888}'
+    +'.muted{color:#999}'
+    +'.foot{margin-top:26px;border-top:1px solid #eee;padding-top:10px;color:#999;font-size:10px;text-align:center}'
+    +'.bar{position:sticky;top:0;z-index:5;background:#111827;color:#fff;padding:10px;text-align:center;font-size:13px;font-weight:600}'
+    +'.bar button{background:'+color+';color:#fff;border:none;border-radius:6px;padding:6px 16px;font-weight:800;cursor:pointer;margin-left:10px}'
+    +'@media print{.bar{display:none}.pg{margin:0;box-shadow:none;max-width:none}body{background:#fff}}'
     +'</style></head><body>'
-    +'<div class="bar">Aperçu du CV Entreprise — vérifiez avant diffusion <button onclick="window.print()">Imprimer / PDF</button></div>'
-    +'<div class="pg" style="margin-top:52px">'
-    +'<div class="top">'+(t.logo?'<img src="'+t.logo+'" alt="logo">':'')+(t.name?'<span class="co">'+esc(t.name)+'</span>':'')+'</div>'
-    +'<div class="name">'+esc(c.name||'Candidat')+'</div>'
-    +((c.recruitPoste||(exps[0]&&exps[0].poste))?'<div class="role">'+esc(c.recruitPoste||exps[0].poste)+'</div>':'')
-    +'<div class="meta">'+(c.yearsExp?'<span>'+esc(String(c.yearsExp))+' ans d\'expérience</span>':'')
-      +((c.locTarget||(c.locations||[])[0])?'<span>'+esc(c.locTarget||c.locations[0])+'</span>':'')
-      +(c.mobileFrance?'<span>Mobilité France entière</span>':'')+'</div>'
-    +(exp?'<div class="sec"><div class="sec-t">Compétences clés</div>'+exp+'</div>':'')
-    +(sec?'<div class="sec"><div class="sec-t">Secteurs</div>'+sec+'</div>':'')
-    +'<div class="sec"><div class="sec-t">Expériences</div>'+expHtml+'</div>'
+    +'<div class="bar">Aperçu du CV Entreprise — vérifiez avant diffusion <button onclick="window.print()">Imprimer / Enregistrer en PDF</button></div>'
+    +'<div class="pg">'
+    +'<div class="hd">'+(t.logo?'<img src="'+t.logo+'" alt="logo">':'')+'<span class="co">'+esc(t.name||'Dossier de compétences')+'<small>Dossier de compétences</small></span></div>'
+    +'<div class="id"><div class="name">'+esc(c.name||'Candidat')+'</div>'
+    +(title?'<div class="role">'+esc(title)+'</div>':'')
+    +metaLine+'</div>'
+    +'<div class="body">'
+    +block('Profil',p.summary?'<div class="kv">'+esc(p.summary)+'</div>':'')
+    +block('Expérience sectorielle',sectors.length?chips(sectors):'')
+    +block('Compétences',(c.expertise&&c.expertise.length)?bullets(c.expertise):'')
+    +block('Outils et logiciels',_csv(p.tools).length?chips(_csv(p.tools)):'')
+    +block('Environnements techniques',_csv(p.environments).length?chips(_csv(p.environments)):'')
+    +block('Langues',_csv(p.languages).length?chips(_csv(p.languages)):'')
+    +block('Expériences professionnelles',expHtml)
+    +((p.formation||p.specializations)?('<section class="sec"><h2>Formation & spécialisations</h2><div class="two">'
+        +'<div><strong>Formation</strong><div class="kv">'+esc(p.formation||'—')+'</div></div>'
+        +'<div><strong>Spécialisations techniques</strong><div class="kv">'+(_csv(p.specializations).length?chips(_csv(p.specializations)):'—')+'</div></div>'
+        +'</div></section>'):'')
+    +block('Résumé des compétences',skillTable)
     +(t.footer?'<div class="foot">'+esc(t.footer)+'</div>':'')
-    +'</div></body></html>';
+    +'</div></div></body></html>';
 }
 function openCvEntreprise(candId){
   var c=S.cands.find(function(x){return x.id===candId;});if(!c)return;
@@ -830,10 +915,16 @@ async function extractCvIA(candId){
     var d=await r.json().catch(function(){return{};});
     if(!r.ok||d.error){toast('Extraction : '+(d.error||('erreur '+r.status)),'error');return;}
     var exps=Array.isArray(d.experiences)?d.experiences:[];
-    if(!exps.length){toast('Aucune expérience détectée dans le CV','error');return;}
+    var prof=(d.profile&&typeof d.profile==='object')?d.profile:null;
+    if(!exps.length&&!prof){toast('Aucune expérience détectée dans le CV','error');return;}
     c.experiences=(Array.isArray(c.experiences)?c.experiences:[]).concat(exps);
+    if(prof){
+      var p=cvProf(c);
+      ['title','summary','sectorExp','tools','environments','languages','formation','specializations'].forEach(function(k){if(prof[k]&&!p[k])p[k]=prof[k];});
+      if(Array.isArray(prof.skills)&&prof.skills.length){if(!Array.isArray(p.skills))p.skills=[];p.skills=p.skills.concat(prof.skills);}
+    }
     render();
-    toast(exps.length+' expérience(s) pré-remplie(s) — relisez puis « Enregistrer »');
+    toast(exps.length+' expérience(s)'+(prof?' + profil':'')+' pré-remplies — relisez puis « Enregistrer »');
   }catch(e){toast('Erreur réseau : '+(e&&e.message||e),'error');}
 }
 

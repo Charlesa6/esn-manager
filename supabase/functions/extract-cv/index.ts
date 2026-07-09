@@ -27,9 +27,11 @@ const json = (o: unknown, status = 200) =>
   new Response(JSON.stringify(o), { status, headers: { ...CORS, "content-type": "application/json" } });
 
 // Schéma imposé au modèle → sortie JSON déterministe (tool use forcé).
+// Remplit à la fois les expériences ET le profil du dossier de compétences
+// (structure inspirée du modèle CGI).
 const TOOL = {
-  name: "save_experiences",
-  description: "Enregistre les expériences professionnelles extraites du CV.",
+  name: "save_cv",
+  description: "Enregistre les expériences ET le profil (dossier de compétences) extraits du CV.",
   input_schema: {
     type: "object",
     properties: {
@@ -47,6 +49,33 @@ const TOOL = {
             technos: { type: "string", description: "Technologies/compétences, séparées par des virgules" },
           },
           required: ["poste"],
+        },
+      },
+      profile: {
+        type: "object",
+        description: "Profil synthétique du candidat pour le dossier de compétences.",
+        properties: {
+          title: { type: "string", description: "Titre / fonction principale (ex: Consultant Data)" },
+          summary: { type: "string", description: "Résumé du parcours en 2-4 phrases" },
+          sectorExp: { type: "string", description: "Secteurs d'activité, séparés par des virgules" },
+          tools: { type: "string", description: "Outils et logiciels, séparés par des virgules" },
+          environments: { type: "string", description: "Environnements/technologies techniques, séparés par des virgules" },
+          languages: { type: "string", description: "Langues parlées avec niveau, séparées par des virgules" },
+          formation: { type: "string", description: "Formation : diplômes, écoles, années, certifications" },
+          specializations: { type: "string", description: "Spécialisations techniques, séparées par des virgules" },
+          skills: {
+            type: "array",
+            description: "Compétences clés notées pour la grille de synthèse.",
+            items: {
+              type: "object",
+              properties: {
+                skill: { type: "string", description: "Nom de la compétence" },
+                years: { type: "number", description: "Nombre d'années d'expérience sur cette compétence (0 si inconnu)" },
+                level: { type: "number", description: "Niveau de 1 (notions) à 4 (expert)" },
+              },
+              required: ["skill"],
+            },
+          },
         },
       },
     },
@@ -102,11 +131,16 @@ Deno.serve(async (req) => {
     const data64 = b64(new Uint8Array(await dl.data.arrayBuffer()));
 
     const prompt =
-      "Tu es un assistant RH. Analyse ce CV et extrais UNIQUEMENT les expériences " +
-      "professionnelles (pas la formation). Pour chacune : poste, client/entreprise, " +
-      "dates début/fin au format YYYY-MM (current=true si poste en cours), une description " +
-      "concise des missions, et les technologies. N'invente rien ; laisse un champ vide si " +
-      "l'information est absente. Renvoie le résultat via l'outil save_experiences.";
+      "Tu es un assistant RH. Analyse ce CV et produis un dossier de compétences. " +
+      "1) Les EXPÉRIENCES professionnelles : pour chacune poste, client/entreprise, dates " +
+      "début/fin au format YYYY-MM (current=true si en cours), une description concise des " +
+      "missions, et les technologies. " +
+      "2) Le PROFIL de synthèse : title (fonction principale), summary (résumé du parcours), " +
+      "sectorExp (secteurs), tools (outils/logiciels), environments (technologies), languages " +
+      "(langues + niveau), formation (diplômes/certifications), specializations, et skills " +
+      "(compétences clés notées de 1 à 4 avec le nombre d'années). " +
+      "N'invente rien ; laisse un champ vide ou omets-le si l'information est absente. " +
+      "Renvoie le tout via l'outil save_cv.";
 
     const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -119,7 +153,7 @@ Deno.serve(async (req) => {
         model: CV_MODEL,
         max_tokens: 3000,
         tools: [TOOL],
-        tool_choice: { type: "tool", name: "save_experiences" },
+        tool_choice: { type: "tool", name: "save_cv" },
         messages: [{
           role: "user",
           content: [
@@ -149,7 +183,26 @@ Deno.serve(async (req) => {
       description: String(e.description || ""),
       technos: String(e.technos || ""),
     }));
-    return json({ experiences: clean });
+
+    const pr = (block?.input?.profile || {}) as Record<string, unknown>;
+    const str = (v: unknown) => String(v || "");
+    const rawSkills = Array.isArray(pr.skills) ? (pr.skills as Record<string, unknown>[]) : [];
+    const profile = {
+      title: str(pr.title),
+      summary: str(pr.summary),
+      sectorExp: str(pr.sectorExp),
+      tools: str(pr.tools),
+      environments: str(pr.environments),
+      languages: str(pr.languages),
+      formation: str(pr.formation),
+      specializations: str(pr.specializations),
+      skills: rawSkills.map((s) => ({
+        skill: str(s.skill),
+        years: Number(s.years) || 0,
+        level: Math.max(1, Math.min(4, Number(s.level) || 3)),
+      })).filter((s) => s.skill),
+    };
+    return json({ experiences: clean, profile });
   } catch (e) {
     return json({ error: "Erreur serveur : " + (e instanceof Error ? e.message : String(e)) }, 500);
   }
