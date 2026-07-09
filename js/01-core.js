@@ -538,6 +538,23 @@ function myBuId(){
   var p=(S.orgProfiles||[]).find(function(x){return x.id===S._userId;});
   return (p&&p.bu_id)||null;
 }
+/* Visibilité d'un candidat selon le rôle :
+   - recruteur & super_admin : tous les candidats de l'entreprise ;
+   - business manager (sales) : tous, uniquement si le module Recrutement est activé ;
+   - gestionnaire & admin : candidats de leur unité (BU) et de ses sous-unités.
+   Sans unité configurée pour l'utilisateur, aucune restriction (repli). */
+function candVisibleForRole(c){
+  if(S.role==='recruteur'||S.role==='super_admin')return true;
+  if(S.role==='sales')return !!(S.settings&&S.settings.hasRecrutementModule);
+  if(S.role==='admin'||S.role==='gestionnaire'){
+    var my=myBuId();
+    if(!my)return true;
+    var cb=c&&c.buId;
+    if(!cb)return false;
+    return buPath(cb).some(function(n){return n.id===my;});
+  }
+  return true;
+}
 /* memberId est-il un subordonné hiérarchique (N+1 transitif) de ancestorId ? */
 function isHierDescendant(memberId,ancestorId){
   if(!memberId||!ancestorId)return false;

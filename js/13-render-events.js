@@ -30,7 +30,7 @@ function render(){
     gestionnaire:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','approvals','svp_acces','param','help','profile','kpis_dir'],
     utilisateur:['activite','missions','planning','leaves','approvals','business','help','profile'],
     recruteur:['recrutement','activite','leaves','help','profile'],
-    sales:['business','activite','leaves','help','profile']
+    sales:['business','recrutement','activite','leaves','help','profile']
   };
   var _myTabs=_allowedTabs[S.role]||_allowedTabs.admin;
   if(_myTabs.indexOf(S.tab)<0){
@@ -487,7 +487,7 @@ function bind(){
           ncand=Object.assign({},itC,cfields);
           S.cands=S.cands.map(function(c){return c.id===itC.id?ncand:c;});
         }else{
-          ncand=Object.assign({id:candId,createdBy:S._userEmail||'',feedbacks:[],cgiMeetings:[]},cfields);
+          ncand=Object.assign({id:candId,createdBy:S._userEmail||'',feedbacks:[],cgiMeetings:[],buId:myBuId()},cfields);
           S.cands=S.cands.concat([ncand]);
         }
 
@@ -508,6 +508,7 @@ function bind(){
           ncand.recruitPoste=rcPoste;
           ncand.recruitDir=rcDirName;
           ncand.status='recrute';
+          if(_mgrAcc&&_mgrAcc.bu_id)ncand.buId=_mgrAcc.bu_id; /* rattache le candidat à l'unité du directeur assigné */
           /* Créer ou mettre à jour le profil consultant (ne crée qu'une seule fois) */
           if(!wasRecruited){
             var newCons={

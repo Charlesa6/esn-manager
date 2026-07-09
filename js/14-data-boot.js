@@ -67,7 +67,8 @@ function mapCand(r){return{
   status:(function(s){var m={'dmr_a':'rh_a','dmr_ec':'rh_ec','nogo_cgi':'nogo','offre':'pipe','recrute(e)':'recrute'};return m[s]||s||'rh_a';})( r.status||'rh_a'),
   createdBy:r.created_by||'',feedbacks:Array.isArray(r.feedbacks)?r.feedbacks:[],
   recruiter:r.recruiter||'',
-  recruited:!!r.recruited,recruitStart:r.recruit_start||'',recruitPoste:r.recruit_poste||'',recruitDir:r.recruit_dir||'',consId:r.cons_id||null
+  recruited:!!r.recruited,recruitStart:r.recruit_start||'',recruitPoste:r.recruit_poste||'',recruitDir:r.recruit_dir||'',consId:r.cons_id||null,
+  buId:r.bu_id||null
 };}
 
 /* Écran plein affiché quand l'entreprise n'est pas encore payée (inactive).
@@ -296,7 +297,8 @@ async function sbUpsertCand(c){
     margin_pct:(c.marginPct!=null?c.marginPct:25),status:c.status||'nouveau',
     created_by:c.createdBy||null,feedbacks:c.feedbacks||[],
     recruiter:c.recruiter||null,
-    recruited:!!c.recruited,recruit_start:c.recruitStart||null,recruit_poste:c.recruitPoste||null,recruit_dir:c.recruitDir||null,cons_id:c.consId||null
+    recruited:!!c.recruited,recruit_start:c.recruitStart||null,recruit_poste:c.recruitPoste||null,recruit_dir:c.recruitDir||null,cons_id:c.consId||null,
+    bu_id:c.buId||null
   });
   if(res.error)throw new Error(c.name+': '+res.error.message);
 }

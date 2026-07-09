@@ -21,6 +21,7 @@ function tSB(){
     /* Licence Business Manager : Business + Activité + Absences */
     NAV=[
       {id:'business',   ic:'\uD83D\uDCBC',lb:'Business'},
+      {id:'recrutement',ic:'\uD83C\uDFAF',lb:'Recrutement'},
       {id:'activite',   ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'},
       {id:'leaves',     ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
       {id:'help',      ic:'\u2753',lb:'Aide'}
