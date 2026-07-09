@@ -55,6 +55,7 @@ function tSB(){
     ];
     if(S.role==='admin'||S.role==='gestionnaire'||S.role==='super_admin')NAV.push({id:'svp_acces',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
     if(S.role==='super_admin')NAV.push({id:'svp_settings',ic:'\u2699',lb:'Param\u00e8tres'});
+    if(S.role==='super_admin')NAV.push({id:'svp_integrations',ic:'\ud83d\udd0c',lb:'Int\u00e9grations'});
     NAV.push({id:'help',ic:'\u2753',lb:'Aide'});
   }
   var alC=(function(){

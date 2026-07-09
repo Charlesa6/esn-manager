@@ -25,7 +25,7 @@ function render(){
   document.getElementById('sb').innerHTML=tSB();
   /* ── Contrôle d'accès central : chaque rôle a ses onglets autorisés ── */
   var _allowedTabs={
-    super_admin:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','approvals','svp_acces','svp_settings','param','help','profile','kpis_dir'],
+    super_admin:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','approvals','svp_acces','svp_settings','svp_integrations','param','help','profile','kpis_dir'],
     admin:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','approvals','svp_acces','param','help','profile','kpis_dir'],
     gestionnaire:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','approvals','svp_acces','param','help','profile','kpis_dir'],
     utilisateur:['activite','missions','planning','leaves','approvals','business','help','profile'],
@@ -37,7 +37,7 @@ function render(){
     /* Onglet non autorisé pour ce rôle → rediriger vers son onglet d'accueil */
     S.tab=(S.role==='sales')?'business':(S.role==='recruteur')?'recrutement':(S.role==='utilisateur')?'activite':'kpis';
   }
-  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tSVPAcces():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDirSection():S.tab==='svp_acces'?tSVPAcces():S.tab==='svp_settings'?tSettings():S.tab==='business'?tBusiness():S.tab==='help'?tHelp():tParam();
+  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tSVPAcces():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDirSection():S.tab==='svp_acces'?tSVPAcces():S.tab==='svp_settings'?tSettings():S.tab==='svp_integrations'?tIntegrations():S.tab==='business'?tBusiness():S.tab==='help'?tHelp():tParam();
   var _ini=function(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();};
   var _av=S._userEmail?_ini(S._userEmail.split('@')[0].replace(/[._]/g,' ')):'?';
   var _pfBtn=''; /* Profil déplacé dans la sidebar gauche */
