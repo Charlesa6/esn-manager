@@ -61,6 +61,15 @@ function mapCand(r){return{
   sectors:Array.isArray(r.sectors)?r.sectors:[],
   cvFiles:Array.isArray(r.cv_files)?r.cv_files:[],
   compteRendu:r.compte_rendu||'',compteRenduFilePath:r.compte_rendu_file_path||'',compteRenduFileName:r.compte_rendu_file_name||'',
+  /* Comptes rendus multiples ; migration one-shot de l'ancien compte rendu unique */
+  comptesRendus:(function(){
+    var arr=Array.isArray(r.comptes_rendus)?r.comptes_rendus.slice():[];
+    if(!arr.length&&(r.compte_rendu||r.compte_rendu_file_path)){
+      arr=[{id:'cr_legacy',date:(r.created_at?String(r.created_at).slice(0,10):''),author:r.created_by||'',
+        text:r.compte_rendu||'',fileName:r.compte_rendu_file_name||'',filePath:r.compte_rendu_file_path||''}];
+    }
+    return arr;
+  })(),
   cgiMeetings:Array.isArray(r.cgi_meetings)?r.cgi_meetings:[],
   marginPct:(r.margin_pct!=null?r.margin_pct:25),
   /* Migrer anciens IDs vers nouveaux si nécessaire */
@@ -294,7 +303,9 @@ async function sbUpsertCand(c){
     loc_target:c.locTarget||null,loc_secondary:c.locSecondary||[],mobile_france:!!c.mobileFrance,
     avail_date:c.availDate||null,req_salary:c.reqSalary||0,years_exp:c.yearsExp||0,
     expertise:c.expertise||[],sectors:c.sectors||[],cv_files:c.cvFiles||[],
-    compte_rendu:c.compteRendu||null,compte_rendu_file_path:c.compteRenduFilePath||null,compte_rendu_file_name:c.compteRenduFileName||null,
+    /* Legacy nullifié : la source de vérité est désormais comptes_rendus (évite une re-migration) */
+    compte_rendu:null,compte_rendu_file_path:null,compte_rendu_file_name:null,
+    comptes_rendus:Array.isArray(c.comptesRendus)?c.comptesRendus:[],
     cgi_meetings:c.cgiMeetings||[],
     margin_pct:(c.marginPct!=null?c.marginPct:25),status:c.status||'nouveau',
     created_by:c.createdBy||null,feedbacks:c.feedbacks||[],

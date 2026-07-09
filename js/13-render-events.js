@@ -150,7 +150,7 @@ function bind(){
         render();
       }
       else if(ra==='opp-see-cand'){S.bizModal=null;S.tab='recrutement';S.recSel=rid;render();}
-      else if(ra==='recopen'){S.recSel=rid;S.recAddMeet=false;S.recAddCgi=false;S.recAddCv=false;S.recEditMeetId=null;S.recEditCgiId=null;render();}
+      else if(ra==='recopen'){S.recSel=rid;S.recAddMeet=false;S.recAddCgi=false;S.recAddCv=false;S.recAddCr=false;S.recEditMeetId=null;S.recEditCgiId=null;S.recEditCrId=null;render();}
     };
   }
   /* widgets multi-sélection Expertises / Secteurs (uniquement si le modal candidat est ouvert) */
@@ -479,7 +479,6 @@ function bind(){
           locations:locArr,locTarget:_mobFr?'':_locTarget,locSecondary:_mobFr?[]:_locSec,mobileFrance:_mobFr,nationality:gv('rcnat')||'',
           availDate:gv('rcav')||'',reqSalary:+gv('rcsal')||0,
           yearsExp:+gv('rcyrs')||0,expertise:expArr,sectors:secArr,cvFiles:cvArr,
-          compteRendu:gv('rccr'),compteRenduFilePath:crFilePath,compteRenduFileName:crFileName,
           marginPct:marEl?+marEl.value:25,status:gv('rcst')||'nouveau',
           buId:(gv('rc-bu')||(itC?itC.buId:null)||myBuId())
         };
@@ -488,7 +487,12 @@ function bind(){
           ncand=Object.assign({},itC,cfields);
           S.cands=S.cands.map(function(c){return c.id===itC.id?ncand:c;});
         }else{
-          ncand=Object.assign({id:candId,createdBy:S._userEmail||'',feedbacks:[],cgiMeetings:[],buId:myBuId()},cfields);
+          ncand=Object.assign({id:candId,createdBy:S._userEmail||'',feedbacks:[],cgiMeetings:[],comptesRendus:[],buId:myBuId()},cfields);
+          /* Compte rendu initial (optionnel) saisi à la création → 1re entrée de la liste */
+          var _crTxt0=gv('rccr')||'';
+          if(_crTxt0||crFilePath){
+            ncand.comptesRendus=[{id:uid(),date:fD(new Date()),author:S._userEmail||'',text:_crTxt0,fileName:crFileName||'',filePath:crFilePath||''}];
+          }
           S.cands=S.cands.concat([ncand]);
         }
 
@@ -537,7 +541,7 @@ function bind(){
           setTimeout(function(){alert('\u2713 '+rn+' a \u00e9t\u00e9 ajout\u00e9(e) \u00e0 l\'\u00e9quipe.\nRetrouvez le profil dans l\'onglet \u00c9quipe pour compl\u00e9ter les informations (SCR, missions...).');},100);
         }
       }
-      else if(a==='recback'){S.recSel=null;S.recAddMeet=false;S.recAddCgi=false;S.recAddCv=false;S.recEditMeetId=null;S.recEditCgiId=null;render();}
+      else if(a==='recback'){S.recSel=null;S.recAddMeet=false;S.recAddCgi=false;S.recAddCv=false;S.recAddCr=false;S.recEditMeetId=null;S.recEditCgiId=null;S.recEditCrId=null;render();}
       else if(a==='recmtoggle'){S.recAddMeet=true;S.recEditMeetId=null;render();}
       else if(a==='recmcancel'){S.recAddMeet=false;S.recEditMeetId=null;render();}
       else if(a==='recmedit'){S.recEditMeetId=fb;S.recAddMeet=false;render();}
@@ -597,6 +601,57 @@ function bind(){
         }
         var mtEntry=(cdMv.feedbacks||[]).find(function(f){return f.id===fb;});
         if(mtEntry&&mtEntry.filePath)downloadCandFile(mtEntry.filePath,mtEntry.fileName);
+      }
+      /* ── Comptes rendus multiples ── */
+      else if(a==='recrtoggle'){S.recAddCr=true;S.recEditCrId=null;render();}
+      else if(a==='recrcancel'){S.recAddCr=false;S.recEditCrId=null;render();}
+      else if(a==='recredit'){S.recEditCrId=fb;S.recAddCr=false;render();}
+      else if(a==='recrsave'){
+        var crDate=gv('crf-date')||fD(new Date()),crText=gv('crf-text');
+        var crFileEl2=document.getElementById('crf-file');
+        var crFile2=(crFileEl2&&crFileEl2.files&&crFileEl2.files[0])?crFileEl2.files[0]:null;
+        if(!crText&&!crFile2){alert('Renseignez un compte rendu ou joignez un fichier.');return;}
+        var cdR=S.cands.find(function(c){return c.id===id;});
+        if(!cdR)return;
+        if(fb){
+          var existingR=(cdR.comptesRendus||[]).find(function(f){return f.id===fb;});
+          if(!existingR)return;
+          existingR.date=crDate;existingR.text=crText||'';
+          if(crFile2){
+            try{var rpath=await uploadCandFile(crFile2,id,'cr_'+fb);existingR.filePath=rpath;existingR.fileName=crFile2.name;}
+            catch(upErr){alert('⚠ '+upErr.message);return;}
+          }
+          cdR.comptesRendus=(cdR.comptesRendus||[]).map(function(f){return f.id===fb?existingR:f;});
+          S.recEditCrId=null;
+        }else{
+          var crId2=uid();
+          var rentry={id:crId2,date:crDate,author:S._userEmail||'',text:crText||''};
+          if(crFile2){
+            try{var rpath2=await uploadCandFile(crFile2,id,'cr_'+crId2);rentry.filePath=rpath2;rentry.fileName=crFile2.name;}
+            catch(upErr){alert('⚠ '+upErr.message);return;}
+          }
+          cdR.comptesRendus=(cdR.comptesRendus||[]).concat([rentry]);
+          S.recAddCr=false;
+        }
+        S.cands=S.cands.map(function(c){return c.id===id?cdR:c;});
+        sbUpsertCand(cdR).catch(function(err){console.warn('sbUpsertCand cr:',err);alert('⚠ Erreur de synchronisation : '+err.message);});
+        render();
+      }
+      else if(a==='recrdel'){
+        if(!confirm('Supprimer ce compte rendu ?'))return;
+        var cdRd=S.cands.find(function(c){return c.id===id;});
+        if(!cdRd)return;
+        cdRd.comptesRendus=(cdRd.comptesRendus||[]).filter(function(f){return f.id!==fb;});
+        S.cands=S.cands.map(function(c){return c.id===id?cdRd:c;});
+        if(S.recEditCrId===fb)S.recEditCrId=null;
+        sbUpsertCand(cdRd).catch(function(err){console.warn('sbUpsertCand crdel:',err);});
+        render();
+      }
+      else if(a==='recrdl'){
+        var cdRv=S.cands.find(function(c){return c.id===id;});
+        if(!cdRv)return;
+        var rEntry=(cdRv.comptesRendus||[]).find(function(f){return f.id===fb;});
+        if(rEntry&&rEntry.filePath)downloadCandFile(rEntry.filePath,rEntry.fileName);
       }
       else if(a==='recgtoggle'){S.recAddCgi=true;S.recEditCgiId=null;render();}
       else if(a==='recgcancel'){S.recAddCgi=false;S.recEditCgiId=null;render();}

@@ -171,11 +171,33 @@ function tCandDetail(c){
     +'<div><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase">TJM de revente (marge '+(c.marginPct!=null?c.marginPct:25)+'%)</div><div style="font-size:18px;font-weight:800;color:#2563eb">'+(tjm?tjm.toFixed(0)+' €':'—')+'</div></div>'
     +'</div>';
 
-  /* Compte rendu général (saisi à la création/édition du candidat) */
-  var crHtml=(c.compteRendu||c.compteRenduFilePath)
-    ? (c.compteRendu?'<div style="font-size:13px;color:#334155;white-space:pre-wrap;line-height:1.5;'+(c.compteRenduFilePath?'margin-bottom:8px':'')+'">'+esc(c.compteRendu)+'</div>':'')
-      +(c.compteRenduFilePath?'<button class="lb" data-act="recmdl" data-id="'+c.id+'" data-fb="__cr">\uD83D\uDCCE '+esc(c.compteRenduFileName||'Fichier joint')+'</button>':'')
-    : '<span style="color:#94a3b8;font-size:12px">Aucun compte rendu</span>';
+  /* ── Comptes rendus : entrées multiples (date + texte + fichier), éditables ── */
+  var crMeets=(c.comptesRendus||[]).slice().reverse();
+  var crMeetsHtml=crMeets.map(function(cr){
+    var hdr=cr.date?fDt(cr.date):'Compte rendu';
+    return '<div style="padding:14px 16px;background:#f8fafc;border-radius:10px;margin-bottom:10px;border:1px solid #e2e8f0">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:10px">'
+      +'<div style="font-size:12px;color:#0f172a;font-weight:700">'+esc(hdr)+'</div>'
+      +'<div style="display:flex;gap:10px;flex-shrink:0">'
+      +'<button class="lb" data-act="recredit" data-id="'+c.id+'" data-fb="'+cr.id+'">Modifier</button>'
+      +'<button class="lr" data-act="recrdel" data-id="'+c.id+'" data-fb="'+cr.id+'">Suppr.</button>'
+      +'</div></div>'
+      +(cr.text?'<div style="font-size:13px;color:#334155;white-space:pre-wrap;line-height:1.5">'+esc(cr.text)+'</div>':'')
+      +(cr.filePath?'<div style="margin-top:8px"><button class="lb" data-act="recrdl" data-id="'+c.id+'" data-fb="'+cr.id+'">📎 '+esc(cr.fileName||'Fichier joint')+'</button></div>':'')
+      +'</div>';
+  }).join('');
+  var editingCr=S.recEditCrId?(c.comptesRendus||[]).find(function(f){return f.id===S.recEditCrId;}):null;
+  var crFormOpen=S.recAddCr||!!editingCr;
+  var addCrForm=crFormOpen
+    ? '<div style="padding:16px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:14px">'
+      +(editingCr?'<div style="font-size:11px;color:#2563eb;font-weight:700;margin-bottom:10px">✐ Modification d’un compte rendu</div>':'')
+      +'<div class="fd"><label class="fl">Date</label><input class="ic" id="crf-date" type="date" value="'+esc(editingCr?editingCr.date||'':fD(new Date()))+'" style="max-width:220px"></div>'
+      +'<div class="fd"><label class="fl">Compte rendu</label><textarea class="ic" id="crf-text" rows="4" placeholder="Notes générales, échange, retour...">'+esc(editingCr?editingCr.text||'':'')+'</textarea></div>'
+      +'<div class="fd"><label class="fl">Joindre un fichier (Word, PDF...) — optionnel</label><input class="ic" type="file" id="crf-file" accept=".doc,.docx,.pdf,.txt,.odt,.eml,.msg">'
+      +(editingCr&&editingCr.fileName?'<p class="fh">Fichier actuel : '+esc(editingCr.fileName)+' — sélectionnez un nouveau fichier pour le remplacer.</p>':'')+'</div>'
+      +'<div class="br"><button class="bg" data-act="recrcancel">Annuler</button><button class="bp" data-act="recrsave" data-id="'+c.id+'"'+(editingCr?' data-fb="'+editingCr.id+'"':'')+'>'+(editingCr?'Enregistrer les modifications':'Enregistrer le compte rendu')+'</button></div>'
+      +'</div>'
+    : '';
 
   /* ── Rencontre CGI : entrées multiples (personne CGI + date + compte rendu + fichier), éditables ── */
   var cgiMeets=(c.cgiMeetings||[]).slice().reverse();
@@ -274,8 +296,16 @@ function tCandDetail(c){
     +'<div class="card" style="padding:24px;margin-bottom:18px">'+infoGrid
     +'<div style="margin-top:18px"><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Expertises</div>'+expHtml+'</div>'
     +'<div style="margin-top:14px"><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Connaissance secteur</div>'+secHtml+'</div>'
-    +'<div style="margin-top:14px"><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Compte rendu</div>'+crHtml+'</div>'
     +compCard+'</div>'
+
+    +'<div class="card" style="padding:24px;margin-bottom:18px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+    +'<div style="font-size:13px;font-weight:800;color:#0f172a">Comptes rendus ('+(c.comptesRendus||[]).length+')</div>'
+    +(!crFormOpen?'<button class="bp" data-act="recrtoggle">+ Ajouter un compte rendu</button>':'')
+    +'</div>'
+    +addCrForm
+    +(crMeetsHtml||'<div class="emp">Aucun compte rendu pour le moment.</div>')
+    +'</div>'
 
     +'<div class="card" style="padding:24px;margin-bottom:18px">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
@@ -566,9 +596,11 @@ function tModal(){
       +'<div class="fd cs2"><label class="fl">Connaissance secteur</label><div id="sec-wrap">'+secPickerHTML()+'</div></div>'
       +'<div class="fd cs2"><label class="fl">CV — un ou plusieurs fichiers</label><input class="ic" type="file" id="rccv" accept=".pdf,.doc,.docx,.odt" multiple>'
       +(it&&it.cvFiles&&it.cvFiles.length?'<p class="fh">'+it.cvFiles.length+' CV déjà joint(s) — les nouveaux fichiers s\u2019ajouteront aux existants (gérable depuis la fiche).</p>':'<p class="fh">Plusieurs fichiers peuvent être sélectionnés en même temps.</p>')+'</div>'
-      +'<div class="fd cs2"><label class="fl">Compte rendu</label><textarea class="ic" id="rccr" rows="4" placeholder="Notes générales sur le candidat (CV, premier échange...)">'+esc(it?it.compteRendu||'':'')+'</textarea></div>'
-      +'<div class="fd cs2"><label class="fl">Joindre un fichier (Word, PDF...) — optionnel</label><input class="ic" type="file" id="rccrfile" accept=".doc,.docx,.pdf,.txt,.odt">'
-      +(it&&it.compteRenduFileName?'<p class="fh">Fichier actuel : '+esc(it.compteRenduFileName)+' — sélectionnez un nouveau fichier pour le remplacer.</p>':'')+'</div>'
+      +(it
+        ? '<div class="fd cs2"><label class="fl">Comptes rendus</label><p class="fh" style="margin-top:0">Gérez les comptes rendus (ajout / suppression) directement depuis la fiche du candidat.</p></div>'
+        : '<div class="fd cs2"><label class="fl">Compte rendu (optionnel)</label><textarea class="ic" id="rccr" rows="4" placeholder="Notes générales sur le candidat (CV, premier échange...)">'+'</textarea></div>'
+          +'<div class="fd cs2"><label class="fl">Joindre un fichier (Word, PDF...) — optionnel</label><input class="ic" type="file" id="rccrfile" accept=".doc,.docx,.pdf,.txt,.odt">'
+          +'<p class="fh">Vous pourrez en ajouter d’autres depuis la fiche.</p></div>')
       +'<div class="fd"><label class="fl">Rémunération annuelle demandée (€)</label><input class="ic" id="rcsal" type="number" min="0" step="500" value="'+(sal0||'')+'" oninput="recCalcRefresh()" placeholder="45000"></div>'
       +'<div class="fd"><label class="fl">Marge cible TJM revente : <span id="rcMarVal" style="color:#2563eb;font-weight:800">'+mar0+'%</span></label>'
       +'<input type="range" id="rcmar" min="15" max="50" step="1" value="'+mar0+'" oninput="recCalcRefresh()" style="width:100%;accent-color:#84CC16;margin-top:8px"></div>'
