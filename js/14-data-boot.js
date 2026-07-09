@@ -939,6 +939,7 @@ function _cvTemplateData(c){
     profil:p.summary||'',
     secteurs:sectors.join(', '),
     competencesCles:(c.expertise||[]).join(', '),
+    competencesListe:(c.expertise||[]).slice(),
     outils:p.tools||'',
     environnements:p.environments||'',
     langues:p.languages||'',
@@ -1026,8 +1027,10 @@ function genCvPdf(candId){
 async function extractCvIA(candId){
   var c=S.cands.find(function(x){return x.id===candId;});if(!c)return;
   if(!sb){toast('Extraction IA indisponible en mode démo','error');return;}
-  var hasPdf=(c.cvFiles||[]).some(function(f){return /\.pdf$/i.test(f.fileName||f.filePath||'');});
-  if(!hasPdf){toast('Joignez d\'abord un CV au format PDF','error');return;}
+  var files=(c.cvFiles||[]);
+  if(!files.length){toast('Aucun CV joint à ce candidat. Ajoutez d\'abord le CV (PDF) dans la fiche, puis réessayez.','error');return;}
+  var hasPdf=files.some(function(f){return /\.pdf(\?|#|$)/i.test(f.fileName||f.filePath||'');});
+  if(!hasPdf){toast('L\'extraction IA nécessite un CV au format PDF. Fichier(s) joint(s) : '+files.map(function(f){return f.fileName||f.filePath||'?';}).join(', '),'error');return;}
   toast('Analyse du CV en cours…');
   try{
     var ses=await sb.auth.getSession();
