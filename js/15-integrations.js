@@ -108,10 +108,12 @@ function _intgCard(p) {
     + '<button class="bs" onclick="intgConfigure(\'' + p.id + '\')">' + (open ? 'Masquer' : (configured ? '⚙ Configurer' : '⚙ Configurer')) + '</button>'
     + (configured ? '<button class="bs" onclick="intgTest(\'' + p.id + '\')">🔌 Tester la connexion</button>' : '')
     + (configured ? '<button class="bs" onclick="intgSync(\'' + p.id + '\')" title="Lecture seule : récupère un échantillon d\'enregistrements">👁 Aperçu (lecture seule)</button>' : '')
+    + (configured && p.canImport ? '<button class="bs" onclick="intgImportPreview(\'' + p.id + '\')" style="color:#1d4ed8" title="Importer les collaborateurs comme consultants (aperçu avant écriture)">⬇ Importer les collaborateurs</button>' : '')
     + (configured ? '<button class="bs" onclick="intgToggle(\'' + p.id + '\',' + (enabled ? 'false' : 'true') + ')" style="' + (enabled ? 'color:#b45309' : 'color:#15803d') + '">' + (enabled ? '⏸ Désactiver' : '▶ Activer') + '</button>' : '')
     + (configured ? '<button class="lr" onclick="intgRemove(\'' + p.id + '\')" style="color:#b91c1c">Retirer</button>' : '')
     + '</div>'
     + (open ? _intgConfigForm(p) : '')
+    + (S.intgImportFor === p.id ? _intgImportPanel(p) : '')
     + '</div></div>';
 }
 
@@ -233,3 +235,90 @@ function intgRemove(id) {
     loadIntegrations().then(function () { render(); });
   }, function (e) { toast('⚠ ' + (e && e.message || e), 'error'); });
 }
+
+/* ── Import des collaborateurs → consultants ──
+   Aperçu (people via l'Edge Function) puis dédoublonnage par email/nom contre les
+   consultants existants, et écriture côté app (RLS) après confirmation. */
+function _intgImportPanel(p) {
+  var d = S.intgImportData;
+  if (!d || d.provider !== p.id) return '';
+  var wrap = function (inner) {
+    return '<div style="border-top:1px dashed #bfdbfe;margin-top:12px;padding-top:12px;background:#f8fbff;border-radius:8px;padding:12px">'
+      + '<div style="font-weight:800;font-size:13px;color:#0f172a;margin-bottom:8px">⬇ Import des collaborateurs → Consultants</div>'
+      + inner + '</div>';
+  };
+  if (d.loading) return wrap('<div style="font-size:12px;color:#64748b">Récupération des collaborateurs…</div>');
+  if (d.error) return wrap('<div style="font-size:12px;color:#b91c1c">⚠ ' + esc(d.error) + '</div>'
+    + '<button class="bs" onclick="intgImportCancel()">Fermer</button>');
+  var toCreate = d.toCreate || [];
+  var list = toCreate.slice(0, 30).map(function (r) {
+    return '<div style="font-size:12px;color:#0f172a;padding:2px 0">• ' + esc(r.name) + (r.email ? ' <span style="color:#94a3b8">' + esc(r.email) + '</span>' : '') + (r.title ? ' — <span style="color:#64748b">' + esc(r.title) + '</span>' : '') + '</div>';
+  }).join('');
+  return wrap(
+    '<div style="font-size:12px;color:#374151;margin-bottom:8px">'
+    + '<strong>' + toCreate.length + '</strong> à créer · <strong>' + d.existing + '</strong> déjà présent(s)'
+    + (d.skippedNoName ? ' · ' + d.skippedNoName + ' ignoré(s) (sans nom)' : '')
+    + '</div>'
+    + (toCreate.length ? '<div style="max-height:200px;overflow:auto;border:1px solid #e2e8f0;border-radius:8px;padding:8px;background:#fff;margin-bottom:10px">' + list + (toCreate.length > 30 ? '<div style="font-size:11px;color:#94a3b8;margin-top:4px">… et ' + (toCreate.length - 30) + ' autre(s)</div>' : '') + '</div>' : '<div style="font-size:12px;color:#64748b;margin-bottom:10px">Rien de nouveau à importer — tous les collaborateurs existent déjà.</div>')
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    + (toCreate.length ? '<button class="bp" onclick="intgImportCommit(\'' + p.id + '\')"' + (d.committing ? ' disabled style="opacity:.6"' : '') + '>' + (d.committing ? 'Import en cours…' : '✓ Créer ' + toCreate.length + ' consultant(s)') + '</button>' : '')
+    + '<button class="bs" onclick="intgImportCancel()">Annuler</button>'
+    + '</div>'
+    + '<div style="font-size:11px;color:#94a3b8;margin-top:8px">Les consultants sont créés avec nom, email et intitulé. Vous pourrez compléter TJM/BU/manager depuis l\'onglet Équipe.</div>'
+  );
+}
+
+function intgImportPreview(id) {
+  S.intgImportFor = id;
+  S.intgImportData = { provider: id, loading: true };
+  render();
+  if (!sb || !SB_CID) { S.intgImportData = { provider: id, error: 'Supabase non connecté.' }; render(); return; }
+  Promise.all([
+    intgCall({ action: 'people', provider: id }),
+    sb.from('consultants').select('name,email').eq('company_id', SB_CID)
+  ]).then(function (arr) {
+    var resp = arr[0].body || {};
+    if (!resp.ok) { S.intgImportData = { provider: id, error: resp.error || 'Récupération impossible' }; render(); return; }
+    var existing = (arr[1] && arr[1].data) || [];
+    var emailSet = {}, nameSet = {};
+    existing.forEach(function (c) {
+      if (c.email) emailSet[String(c.email).toLowerCase().trim()] = 1;
+      if (c.name) nameSet[String(c.name).toLowerCase().trim()] = 1;
+    });
+    var toCreate = [], nExisting = 0, nSkipped = 0, seen = {};
+    (resp.records || []).forEach(function (r) {
+      var name = (r.name || '').trim();
+      var email = (r.email || '').trim().toLowerCase();
+      if (!name && !email) { nSkipped++; return; }
+      if (!name) { nSkipped++; return; } /* un consultant sans nom n'a pas de sens */
+      var key = email || ('name:' + name.toLowerCase());
+      if (seen[key]) return; /* doublon dans le lot */
+      seen[key] = 1;
+      if ((email && emailSet[email]) || (!email && nameSet[name.toLowerCase()])) { nExisting++; return; }
+      toCreate.push({ name: name, email: r.email || '', title: r.title || '', start: r.start || '' });
+    });
+    S.intgImportData = { provider: id, toCreate: toCreate, existing: nExisting, skippedNoName: nSkipped };
+    render();
+  }, function (e) { S.intgImportData = { provider: id, error: (e && e.message) || String(e) }; render(); });
+}
+
+function intgImportCommit(id) {
+  var d = S.intgImportData;
+  if (!d || d.provider !== id || !(d.toCreate || []).length) return;
+  if (!sb || !SB_CID) { toast('⚠ Supabase non connecté.', 'error'); return; }
+  d.committing = true; render();
+  var rows = d.toCreate.map(function (r) {
+    return { company_id: SB_CID, name: r.name, email: r.email || null, title: r.title || null, arrive: r.start || null, contract: 'salarie' };
+  });
+  sb.from('consultants').insert(rows).then(function (res) {
+    if (res.error) { d.committing = false; toast('⚠ Import : ' + res.error.message, 'error'); render(); return; }
+    var n = rows.length;
+    S.intgImportFor = null; S.intgImportData = null;
+    toast('✓ ' + n + ' consultant(s) importé(s)');
+    /* Recharge les données de l\'entreprise pour refléter les nouveaux consultants. */
+    if (typeof loadSB === 'function') { loadSB().then(function () { render(); }, function () { render(); }); }
+    else render();
+  }, function (e) { d.committing = false; toast('⚠ ' + (e && e.message || e), 'error'); render(); });
+}
+
+function intgImportCancel() { S.intgImportFor = null; S.intgImportData = null; render(); }
