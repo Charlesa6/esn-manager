@@ -23,11 +23,7 @@ function missPrefillFromName(){
   setIfEmpty('mlo',m.loc);setIfEmpty('mmg',m.mgr);setIfEmpty('mcc',m.ccn);setIfEmpty('mcr',m.ccr);
   setIfEmpty('msd',m.sd);setIfEmpty('med',m.ed);
 }
-function tMiss(){
-  var ORD=['critical','soon','active','future','ended'];
-  var fil=S.miss.filter(function(m){return(S.fmc==='all'||m.cid===S.fmc)&&(S.fms==='all'||mSt(m)===S.fms)&&(S.fmt==='all'||(m.btype||'at')===S.fmt)&&(!S.fmn||S.fmn==='all'||(m.name||'')===S.fmn);}).sort(function(a,b){return ORD.indexOf(mSt(a))-ORD.indexOf(mSt(b));});
-  var co='<option value="all">Tous les consultants</option>'+S.cons.map(function(c){return '<option value="'+c.id+'"'+(c.id===S.fmc?' selected':'')+'>'+esc(c.name)+'</option>';}).join('');
-  var cards=fil.map(function(m){
+function _missCardSingle(m){
     var c=S.cons.find(function(c){return c.id===m.cid;});
     var st=mSt(m);var dl=m.ed?dL(m.ed):null;
     var isFf=m.btype==='forfait';
@@ -65,7 +61,46 @@ function tMiss(){
       +'<div class="gc3">'+flds.map(function(f){return '<div><span style="color:#94a3b8">'+esc(f[0])+' : </span><span style="font-weight:600;color:#243447">'+esc(f[1]||'\u2014')+'</span></div>';}).join('')+'</div>'+ffBlock+'</div>'
       +'<div style="display:flex;gap:10px;flex-shrink:0"><button class="lb" data-act="em" data-id="'+m.id+'">Modifier</button>'
       +'<button class="lr" data-act="dm" data-id="'+m.id+'">Suppr.</button></div></div></div>';
+}
+function _missCardGroup(list){
+  var first=list[0];var isFf=first.btype==='forfait';
+  var shared=[['Client',first.cli],['Type',isFf?'Forfait':'Assistance technique'],['Lieu',first.loc||'\u2014'],['Resp. mission',first.mgr||'\u2014'],['Contact client',first.ccn||'\u2014']];
+  var rows=list.map(function(m){
+    var c=S.cons.find(function(x){return x.id===m.cid;});
+    var st=mSt(m);var dl=m.ed?dL(m.ed):null;
+    var val=isFf?fEur((+m.deal)||0):(S.role!=='utilisateur'?fEur(m.tjm):'\u2014');
+    return '<tr style="border-top:1px solid #eef2f7">'
+      +'<td style="padding:8px 10px;font-weight:600;color:#0f172a">'+esc(c?c.name:'\u2014')+'</td>'
+      +'<td style="padding:8px 10px;color:#475569">'+fDt(m.sd)+'</td>'
+      +'<td style="padding:8px 10px;color:#475569">'+fDt(m.ed)+'</td>'
+      +'<td style="padding:8px 10px;font-weight:600;color:#243447">'+val+'</td>'
+      +'<td style="padding:8px 10px">'+badge(st,dl!=null&&dl>=0?dl:null)+'</td>'
+      +'<td style="padding:8px 10px;white-space:nowrap;text-align:right"><button class="lb" data-act="em" data-id="'+m.id+'">Modifier</button> <button class="lr" data-act="dm" data-id="'+m.id+'">Suppr.</button></td>'
+      +'</tr>';
   }).join('');
+  return '<div class="card" style="padding:18px">'
+    +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
+    +'<span style="font-weight:700;font-size:14px;color:#0f172a">'+esc(first.name)+'</span>'
+    +'<span class="badge '+(isFf?'bblu':'bgry')+'">'+(isFf?'Forfait':'AT')+'</span>'
+    +'<span style="font-size:12px;color:#64748b">'+esc(first.cli||'')+' \u00b7 '+list.length+' consultants</span></div>'
+    +'<div class="gc3" style="margin-bottom:12px">'+shared.map(function(f){return '<div><span style="color:#94a3b8">'+esc(f[0])+' : </span><span style="font-weight:600;color:#243447">'+esc(f[1]||'\u2014')+'</span></div>';}).join('')+'</div>'
+    +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+    +'<thead><tr style="text-align:left;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.04em"><th style="padding:6px 10px">Consultant</th><th style="padding:6px 10px">D\u00e9but</th><th style="padding:6px 10px">Fin</th><th style="padding:6px 10px">'+(isFf?'CA deal':'TJM')+'</th><th style="padding:6px 10px">Statut</th><th></th></tr></thead>'
+    +'<tbody>'+rows+'</tbody></table></div>'
+    +'</div>';
+}
+function missConsFilter(q){
+  q=(q||'').trim().toLowerCase();
+  var opts=document.querySelectorAll('#mcid-multi .mcid-opt');
+  for(var i=0;i<opts.length;i++){var n=opts[i].getAttribute('data-name')||'';opts[i].style.display=(!q||n.indexOf(q)>=0)?'flex':'none';}
+}
+function tMiss(){
+  var ORD=['critical','soon','active','future','ended'];
+  var fil=S.miss.filter(function(m){return(S.fmc==='all'||m.cid===S.fmc)&&(S.fms==='all'||mSt(m)===S.fms)&&(S.fmt==='all'||(m.btype||'at')===S.fmt)&&(!S.fmn||S.fmn==='all'||(m.name||'')===S.fmn);}).sort(function(a,b){return ORD.indexOf(mSt(a))-ORD.indexOf(mSt(b));});
+  var co='<option value="all">Tous les consultants</option>'+S.cons.map(function(c){return '<option value="'+c.id+'"'+(c.id===S.fmc?' selected':'')+'>'+esc(c.name)+'</option>';}).join('');
+  var _grp={},_order=[];
+  fil.forEach(function(m){var k=((m.name||'').trim().toLowerCase())+'\u00a6'+((m.cli||'').trim().toLowerCase());if(!_grp[k]){_grp[k]=[];_order.push(k);}_grp[k].push(m);});
+  var cards=_order.map(function(k){var g=_grp[k];return g.length>1?_missCardGroup(g):_missCardSingle(g[0]);}).join('');
   if(S.missImp!==null){
     var mi=S.missImp;
     if(!mi.headers){
@@ -94,7 +129,7 @@ function tMiss(){
       +'</div></div>';
   }
 
-  return '<div><div class="ph"><div><div class="pt">Missions</div><div class="ps">'+fil.length+' r\u00e9sultat'+(fil.length!==1?'s':'')+'</div></div>'
+  return '<div><div class="ph"><div><div class="pt">Missions</div><div class="ps">'+_order.length+' mission'+(_order.length!==1?'s':'')+'</div></div>'
     +'<div style="display:flex;gap:8px">'
     +'<button class="bp" data-act="am">+ Ajouter une mission</button>'
     +'<button class="bg" onclick="S.missImp={};render()">↑ Importer en masse</button>'
