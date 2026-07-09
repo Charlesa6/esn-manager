@@ -701,6 +701,8 @@ function bind(){
       else if(a==='cvexp-del'){cvExpDel(id,+fb);}
       else if(a==='cvexp-save'){cvExpSave(id);}
       else if(a==='cv-entreprise'){openCvEntreprise(id);}
+      else if(a==='cv-word'){genCvWord(id);}
+      else if(a==='cv-pdf'){genCvPdf(id);}
       /* inviter / supprimer un directeur */
       else if(a==='svp-add-vp'){
         alert('La création de compte se fait désormais en payant la licence.\nAllez dans « Gestion des accès → Ajouter des membres » pour créer cet accès.');

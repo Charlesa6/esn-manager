@@ -782,7 +782,7 @@ function cvExpSection(c){
       +'</div>';
   }).join('');
   var tpl=(S.settings&&S.settings.cvTemplate)||{};
-  var hasTpl=!!(tpl.name||tpl.logo);
+  var hasTpl=!!tpl.docxPath;
   return '<div class="card" style="padding:24px;margin-top:18px;margin-bottom:18px">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">'
     +'<div style="font-size:13px;font-weight:800;color:#0f172a">Expériences ('+exps.length+') — dossier de compétences</div>'
@@ -790,7 +790,9 @@ function cvExpSection(c){
     +'<button class="bg" data-act="cvexp-ai" data-id="'+c.id+'" title="Analyse le CV PDF joint et pré-remplit les expériences (IA)">✨ Pré-remplir depuis le CV (IA)</button>'
     +'<button class="bg" data-act="cvexp-add" data-id="'+c.id+'">+ Ajouter</button>'
     +'<button class="bg" data-act="cvexp-save" data-id="'+c.id+'">💾 Enregistrer</button>'
-    +'<button class="bp" data-act="cv-entreprise" data-id="'+c.id+'">📄 CV Entreprise</button>'
+    +(hasTpl?('<button class="bp" data-act="cv-word" data-id="'+c.id+'" title="Génère le CV au format du modèle Word de l\'entreprise">📄 CV Entreprise (Word)</button>'
+      +'<button class="bp" data-act="cv-pdf" data-id="'+c.id+'" title="Aperçu / export PDF au format du modèle" style="background:#334155">📄 PDF</button>')
+      :'<button class="bg" data-act="cv-entreprise" data-id="'+c.id+'" title="Aperçu générique (aucun modèle configuré)">📄 Aperçu CV</button>')
     +'</div></div>'
     +(hasTpl?'':'<div style="font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;margin-bottom:12px">⚠ Aucun template CV configuré. Le super admin peut le définir dans Paramètres → Template CV entreprise.</div>')
     +cvProfileFields(c)
@@ -895,6 +897,128 @@ function openCvEntreprise(candId){
   var w=window.open('','_blank');
   if(!w){alert('Autorisez les pop-ups pour afficher le CV Entreprise.');return;}
   w.document.open();w.document.write(cvEntrepriseDoc(c));w.document.close();
+}
+
+/* ══ Génération du CV au format du template Word de l'entreprise ══
+   Le super admin dépose un modèle .docx contenant des balises ({nom}, {titre},
+   {#experiences}…{/experiences}, etc.). On télécharge ce modèle, on le remplit
+   avec les données du candidat via docxtemplater (CDN), et on renvoie soit le
+   .docx rempli (fidèle à 100 %), soit un aperçu PDF (rendu via docx-preview). */
+function _loadScriptChain(urls,cb,err){
+  var i=0;
+  (function tryOne(){
+    if(i>=urls.length){if(err)err();return;}
+    var s=document.createElement('script');s.src=urls[i++];
+    s.onload=function(){cb();};
+    s.onerror=function(){tryOne();};
+    document.head.appendChild(s);
+  })();
+}
+function loadDocxLibs(cb,err){
+  if(window.PizZip&&window.docxtemplater){cb();return;}
+  _loadScriptChain(['https://cdn.jsdelivr.net/npm/pizzip@3.1.7/dist/pizzip.min.js','https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.7/pizzip.min.js'],function(){
+    _loadScriptChain(['https://cdn.jsdelivr.net/npm/docxtemplater@3.50.0/build/docxtemplater.js','https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.50.0/docxtemplater.js'],function(){cb();},err);
+  },err);
+}
+function _downloadBlob(blob,name){
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(function(){a.remove();URL.revokeObjectURL(url);},1500);
+}
+/* Construit l'objet de données injecté dans le template Word. Les clés = les
+   balises disponibles côté modèle (voir la référence affichée dans Paramètres). */
+function _cvTemplateData(c){
+  var p=(c.cvProfile&&typeof c.cvProfile==='object')?c.cvProfile:{};
+  var exps=Array.isArray(c.experiences)?c.experiences:[];
+  var sectors=(c.sectors&&c.sectors.length)?c.sectors:_csv(p.sectorExp);
+  var comps=Array.isArray(p.skills)?p.skills:[];
+  return {
+    nom:c.name||'',
+    titre:p.title||c.recruitPoste||(exps[0]&&exps[0].poste)||'',
+    annees:c.yearsExp?String(c.yearsExp):'',
+    profil:p.summary||'',
+    secteurs:sectors.join(', '),
+    competencesCles:(c.expertise||[]).join(', '),
+    outils:p.tools||'',
+    environnements:p.environments||'',
+    langues:p.languages||'',
+    formation:p.formation||'',
+    specialisations:p.specializations||'',
+    email:c.email||'',
+    telephone:c.phone||'',
+    localisation:c.locTarget||((c.locations||[])[0])||'',
+    experiences:exps.map(function(e){return {
+      poste:e.poste||'',client:e.client||'',dates:_cvExpDate(e),
+      debut:e.dateStart||'',fin:e.current?'aujourd\'hui':(e.dateEnd||''),
+      description:e.description||'',technos:e.technos||''
+    };}),
+    competences:comps.map(function(s){var lv=Math.max(1,Math.min(4,+s.level||3));return {
+      competence:s.skill||'',nbAnnees:(s.years===0||s.years)?String(s.years):'',niveau:String(lv),niveauLabel:_lvlLbl(lv)
+    };})
+  };
+}
+function _docxErrMsg(e){
+  try{
+    if(e&&e.properties&&Array.isArray(e.properties.errors)&&e.properties.errors.length){
+      return e.properties.errors.map(function(x){return (x.properties&&x.properties.explanation)||x.message;}).join(' ; ');
+    }
+  }catch(_){}
+  return (e&&e.message)||String(e);
+}
+/* Télécharge le modèle .docx, le remplit, renvoie un Blob .docx (Promise). */
+function _buildCvDocxBlob(c){
+  return new Promise(function(resolve,reject){
+    var t=(S.settings&&S.settings.cvTemplate)||{};
+    if(!t.docxPath){reject(new Error('Aucun modèle Word configuré. Paramètres → Template CV entreprise.'));return;}
+    if(!sb){reject(new Error('Indisponible en mode démo.'));return;}
+    sb.storage.from('candidate-files').download(t.docxPath).then(function(dl){
+      if(dl.error||!dl.data){reject(new Error('Modèle introuvable : '+(dl.error?dl.error.message:'')));return;}
+      dl.data.arrayBuffer().then(function(buf){
+        loadDocxLibs(function(){
+          try{
+            var zip=new window.PizZip(buf);
+            var doc=new window.docxtemplater(zip,{paragraphLoop:true,linebreaks:true});
+            doc.render(_cvTemplateData(c));
+            var blob=doc.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+            resolve(blob);
+          }catch(e){reject(new Error(_docxErrMsg(e)));}
+        },function(){reject(new Error('Bibliothèque Word inaccessible (CDN).'));});
+      },function(){reject(new Error('Lecture du modèle impossible.'));});
+    },function(e){reject(new Error(e&&e.message||'Téléchargement du modèle impossible.'));});
+  });
+}
+function genCvWord(candId){
+  var c=S.cands.find(function(x){return x.id===candId;});if(!c)return;
+  toast('Génération du CV Word…');
+  _buildCvDocxBlob(c).then(function(blob){
+    _downloadBlob(blob,'CV_'+String(c.name||'candidat').replace(/[^\w-]+/g,'_')+'.docx');
+    toast('CV Word généré ✓');
+  }).catch(function(e){toast('Échec : '+(e&&e.message||e),'error');});
+}
+function genCvPdf(candId){
+  var c=S.cands.find(function(x){return x.id===candId;});if(!c)return;
+  toast('Génération du CV (PDF)…');
+  _buildCvDocxBlob(c).then(function(blob){
+    window.__cvPdfBlob=blob;
+    var w=window.open('','_blank');
+    if(!w){toast('Autorisez les pop-ups pour l\'aperçu PDF.','error');return;}
+    var nm=esc(c.name||'CV');
+    var html='<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>CV — '+nm+'</title>'
+      +'<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"><\/script>'
+      +'<script src="https://cdn.jsdelivr.net/npm/docx-preview@0.3.5/dist/docx-preview.min.js"><\/script>'
+      +'<style>*{box-sizing:border-box}body{margin:0;background:#e9edf2;font-family:Arial,sans-serif}'
+      +'.bar{position:sticky;top:0;z-index:9;background:#111827;color:#fff;padding:10px;text-align:center;font-size:13px}'
+      +'.bar button{background:#E2001A;color:#fff;border:none;border-radius:6px;padding:7px 16px;font-weight:800;cursor:pointer;margin-left:10px}'
+      +'#c{padding:16px;display:flex;justify-content:center}#c .docx-wrapper{background:transparent;padding:0}'
+      +'#msg{padding:30px;text-align:center;color:#475569}'
+      +'@media print{.bar{display:none}body{background:#fff}#c{padding:0}}</style></head><body>'
+      +'<div class="bar">Aperçu du CV — vérifiez avant diffusion <button onclick="window.print()">Imprimer / Enregistrer en PDF</button></div>'
+      +'<div id="msg">Rendu du document…</div><div id="c"></div>'
+      +'<script>(function(){var n=0;function go(){n++;if(!window.docx||!window.JSZip){if(n>60){document.getElementById("msg").textContent="Aperçu indisponible. Téléchargez le Word et exportez-le en PDF.";return;}return setTimeout(go,100);}var b=window.opener&&window.opener.__cvPdfBlob;if(!b){document.getElementById("msg").textContent="Document indisponible (rouvrez depuis la fiche).";return;}window.docx.renderAsync(b,document.getElementById("c"),null,{inWrapper:true,ignoreWidth:false,ignoreHeight:false}).then(function(){document.getElementById("msg").style.display="none";}).catch(function(e){document.getElementById("msg").textContent="Erreur de rendu : "+e;});}go();})();<\/script>'
+      +'</body></html>';
+    w.document.open();w.document.write(html);w.document.close();
+    toast('Aperçu PDF ouvert');
+  }).catch(function(e){toast('Échec : '+(e&&e.message||e),'error');});
 }
 /* Extraction IA : envoie le CV PDF à l'Edge Function extract-cv, qui interroge le
    modèle et renvoie des expériences structurées. Elles sont AJOUTÉES à la fiche
