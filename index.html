@@ -435,9 +435,8 @@ footer{background:var(--dark);padding:48px 24px 32px}
 .intg-cat{margin-top:26px}
 .intg-cat h3{color:#84CC16;font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
 .intg-row{display:flex;flex-wrap:wrap;gap:12px}
-.intg-tile{display:flex;align-items:center;gap:12px;background:#161f2b;border:1px solid #223044;border-radius:12px;padding:12px 16px;min-width:190px}
-.intg-badge{flex:none;width:38px;height:38px;border-radius:9px;color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center}
-.intg-logo{flex:none;width:38px;height:38px;border-radius:9px;object-fit:contain;background:#fff;padding:4px}
+.intg-tile{display:inline-flex;align-items:center;gap:10px;background:#161f2b;border:1px solid #223044;border-radius:10px;padding:11px 18px}
+.intg-logo{flex:none;width:26px;height:26px;border-radius:6px;object-fit:contain;background:#fff;padding:3px}
 .intg-name{color:#E6EDF3;font-weight:700;font-size:15px;line-height:1.2}
 .intg-note{display:flex;flex-wrap:wrap;gap:16px;margin-top:30px}
 .intg-note>div{flex:1;min-width:230px;background:#161f2b;border:1px solid #223044;border-radius:12px;padding:16px 18px}
@@ -465,21 +464,18 @@ footer{background:var(--dark);padding:48px 24px 32px}
      officiels — voir assets/logos/README.md — pour remplacer les pastilles. */
   (function(){
     var C=[
-      {t:'Identité & annuaire',v:[{n:'Microsoft 365',s:'Entra ID · SSO',f:'microsoft',c:'#fff',m:'MS',ms:1}]},
-      {t:'SIRH (RH)',v:[{n:'Workday',f:'workday',c:'#0875E1',m:'W'},{n:'SAP SuccessFactors',f:'successfactors',c:'#0A6ED1',m:'SF'},{n:'Lucca',f:'lucca',c:'#6C3FA6',m:'L'},{n:'BambooHR',f:'bamboohr',c:'#6AB023',m:'B'}]},
-      {t:'Paie',v:[{n:'Silae',f:'silae',c:'#E2001A',m:'S'},{n:'PayFit',f:'payfit',c:'#0057FF',m:'P'},{n:'ADP',f:'adp',c:'#D0021B',m:'ADP'}]},
-      {t:'Facturation & compta',v:[{n:'Pennylane',f:'pennylane',c:'#0AAD8E',m:'P'},{n:'Sage',f:'sage',c:'#00875A',m:'S'},{n:'Sellsy',f:'sellsy',c:'#F26522',m:'S'},{n:'QuickBooks',f:'quickbooks',c:'#2CA01C',m:'qb'}]}
+      {t:'Identité & annuaire',v:[{n:'Microsoft 365 / Entra ID',f:'microsoft'}]},
+      {t:'SIRH (RH)',v:[{n:'Workday',f:'workday'},{n:'SAP SuccessFactors',f:'successfactors'},{n:'Lucca',f:'lucca'},{n:'BambooHR',f:'bamboohr'}]},
+      {t:'Paie',v:[{n:'Silae',f:'silae'},{n:'PayFit',f:'payfit'},{n:'ADP',f:'adp'}]},
+      {t:'Facturation & compta',v:[{n:'Pennylane',f:'pennylane'},{n:'Sage',f:'sage'},{n:'Sellsy',f:'sellsy'},{n:'QuickBooks',f:'quickbooks'}]}
     ];
-    var MS='<svg width="20" height="20" viewBox="0 0 23 23"><rect x="1" y="1" width="10" height="10" fill="#F25022"/><rect x="12" y="1" width="10" height="10" fill="#7FBA00"/><rect x="1" y="12" width="10" height="10" fill="#00A4EF"/><rect x="12" y="12" width="10" height="10" fill="#FFB900"/></svg>';
     function e(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
     var h='';
     for(var i=0;i<C.length;i++){var cat=C[i];h+='<div class="intg-cat"><h3>'+e(cat.t)+'</h3><div class="intg-row">';
       for(var j=0;j<cat.v.length;j++){var x=cat.v[j];
-        var fs=x.m.length>2?';font-size:11px':(x.m.length>1?';font-size:12px':'');
-        var badge='<span class="intg-badge" style="background:'+x.c+fs+'">'+(x.ms?MS:e(x.m))+'</span>';
-        var img='<img class="intg-logo" src="assets/logos/'+x.f+'.svg" alt="'+e(x.n)+'" onload="var b=this.parentNode.querySelector(\'.intg-badge\');if(b)b.style.display=\'none\'" onerror="this.remove()">';
-        var nm='<span class="intg-name">'+e(x.n)+(x.s?'<br><span style="color:#8A99A8;font-weight:600;font-size:12px">'+e(x.s)+'</span>':'')+'</span>';
-        h+='<div class="intg-tile">'+img+badge+nm+'</div>';
+        var img='<img class="intg-logo" src="assets/logos/'+x.f+'.svg" alt="'+e(x.n)+'" onerror="this.remove()">';
+        var nm='<span class="intg-name">'+e(x.n)+'</span>';
+        h+='<div class="intg-tile">'+img+nm+'</div>';
       }
       h+='</div></div>';
     }
