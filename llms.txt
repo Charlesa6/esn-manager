@@ -1,0 +1,54 @@
+# Konsilys
+
+> Konsilys est une plateforme SaaS française de pilotage pour les ESN (entreprises de services du numérique) et les sociétés de conseil. Elle centralise en temps réel le staffing, les missions et la marge, les absences, le recrutement et le CRM commercial — avec des intégrations vers les outils RH, paie et facturation du marché. Multi-tenant, isolation stricte par entreprise, données hébergées en Europe (RGPD).
+
+Site : https://konsilys.fr · Contact : contact@konsilys.fr · Langue : français
+
+## Ce que fait Konsilys
+
+- **Pilotage & KPIs** : staffing moyen, chiffre d'affaires, TJM, marge et contribution nette en temps réel, consolidés par unité (Business Unit / Practice), par exercice fiscal et par trimestre ; prévisionnel de CA sur 12 mois (backlog + pipeline pondéré).
+- **Missions & marge** : assistance technique (au TJM) et forfaits, avec calcul automatique du CA, de la marge et de la contribution.
+- **Planning & absences** : planning Gantt par consultant ; 9 types d'absences avec jours ouvrés (hors fériés) et validation par le responsable N+1.
+- **Recrutement (module)** : pipeline de candidats personnalisable, recruteur assigné, matching sur les opportunités, conversion automatique d'un candidat recruté en consultant.
+- **CRM Business (module)** : comptes, contacts, pipeline d'opportunités pondéré et KPIs commerciaux ; une opportunité gagnée crée automatiquement la mission.
+- **Multi-Business Units** : hiérarchie jusqu'à 6 niveaux (Monde › région › agence › équipe) avec héritage automatique.
+
+## Intégrations (API)
+
+- **Identité & annuaire** : Microsoft 365 / Entra ID (Azure AD), avec SSO.
+- **SIRH** : Workday, SAP SuccessFactors, Lucca, BambooHR.
+- **Paie** : Silae, PayFit, ADP.
+- **Facturation & comptabilité** : Pennylane, Sage, Sellsy, QuickBooks.
+- Import des collaborateurs en un clic (aperçu et dédoublonnage avant écriture). Connecteurs désactivés par défaut, clés chiffrées côté serveur, activation à la demande.
+
+## Tarifs
+
+Modèle par licence et par rôle (mensuel, sans engagement ; annuel = 2 mois offerts) :
+
+- Utilisateur : 8 €/mois
+- Business Manager : 22 €/mois
+- Recruteur : 22 €/mois
+- Gestionnaire : 29 €/mois
+- Admin : 39 €/mois (incluse à l'inscription)
+- Super Admin : 49 €/mois
+- Modules Recrutement et Business Développement : 59 €/mois par entreprise chacun
+
+La création d'un espace se fait uniquement via la souscription payante en ligne.
+
+## Sécurité & conformité
+
+- Isolation multi-tenant stricte par entreprise (sécurité au niveau des lignes, RLS).
+- Hébergement en Europe, conformité RGPD.
+- Paiement délégué à Stripe : aucune donnée bancaire stockée par Konsilys.
+- Journal d'audit horodaté des créations, modifications et suppressions.
+
+## Mise en route
+
+Souscription en ligne → import des consultants depuis Excel/CSV → ajout de l'équipe (chacun définit son mot de passe) → pilotage immédiat. Aucune installation ; accessible depuis un navigateur, sur mobile et desktop.
+
+## Liens
+
+- Accueil : https://konsilys.fr/
+- Connexion : https://konsilys.fr/login
+- Conditions générales : https://konsilys.fr/cgu
+- Contact : contact@konsilys.fr
