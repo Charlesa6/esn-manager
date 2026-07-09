@@ -480,7 +480,8 @@ function bind(){
           availDate:gv('rcav')||'',reqSalary:+gv('rcsal')||0,
           yearsExp:+gv('rcyrs')||0,expertise:expArr,sectors:secArr,cvFiles:cvArr,
           compteRendu:gv('rccr'),compteRenduFilePath:crFilePath,compteRenduFileName:crFileName,
-          marginPct:marEl?+marEl.value:25,status:gv('rcst')||'nouveau'
+          marginPct:marEl?+marEl.value:25,status:gv('rcst')||'nouveau',
+          buId:(gv('rc-bu')||(itC?itC.buId:null)||myBuId())
         };
         var ncand;
         if(itC){
@@ -688,6 +689,12 @@ function bind(){
         if(!cdCvV)return;
         var cvEntry=(cdCvV.cvFiles||[]).find(function(f){return f.id===fb;});
         if(cvEntry&&cvEntry.filePath)downloadCandFile(cvEntry.filePath,cvEntry.fileName);
+      }
+      else if(a==='reccvview'){
+        var cdCvW=S.cands.find(function(c){return c.id===id;});
+        if(!cdCvW)return;
+        var cvEntryV=(cdCvW.cvFiles||[]).find(function(f){return f.id===fb;});
+        if(cvEntryV&&cvEntryV.filePath)openCvPreview(cvEntryV.filePath,cvEntryV.fileName);
       }
       /* inviter / supprimer un directeur */
       else if(a==='svp-add-vp'){
