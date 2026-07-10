@@ -531,7 +531,7 @@ function addMissTeamRow(){
   var wrap=document.getElementById('miss-team');
   if(!wrap)return;
   var idx=wrap.querySelectorAll('.miss-team-row').length;
-  var tCons=S.cons.filter(function(c){return c.grade!=='sales_grade';});
+  var tCons=S.cons.filter(function(c){return c.grade!=='sales_grade'&&consInMyTeam(c);});
   var cOpts=tCons.map(function(c){return '<option value="'+c.id+'">'+esc(c.name)+'</option>';}).join('');
   var row=document.createElement('div');
   row.className='miss-team-row';row.style.cssText='display:flex;gap:8px;align-items:center';
@@ -558,7 +558,12 @@ function readMissTeam(){
 function tModal(){
   var m=S.modal;if(!m)return '';
   var tp=m.type,it=m.item,title='',body='',wide=false;
-  var defCid=(it&&it.cid)||(S.cons[0]&&S.cons[0].id)||'';
+  /* Staffing d'une mission : on ne peut staffer que soi-même et ses subordonnés
+     (N+1 transitif) — jamais quelqu'un au-dessus de soi. Le propriétaire staffe
+     toute l'entreprise. La sélection à l'édition (`co`) reste large pour toujours
+     pouvoir ré-afficher le consultant déjà affecté. */
+  var _teamCons=S.cons.filter(function(c){return c.grade!=='sales_grade'&&consInMyTeam(c);});
+  var defCid=(it&&it.cid)||(_teamCons[0]&&_teamCons[0].id)||(S.cons[0]&&S.cons[0].id)||'';
   var co=S.cons.filter(function(c){return c.grade!=='sales_grade';}).map(function(c){return '<option value="'+c.id+'"'+(c.id===defCid?' selected':'')+'>'+esc(c.name)+'</option>';}).join('');
 
   if(tp==='candidate'){
@@ -704,7 +709,7 @@ function tModal(){
       +(it?'<select class="ic" id="mcid">'+co+'</select>'
           :('<input class="ic" id="mcid-search" placeholder="Rechercher un consultant\u2026" oninput="missConsFilter(this.value)" style="margin-bottom:6px">'
             +'<div id="mcid-multi" style="max-height:190px;overflow:auto;border:1px solid #e2e8f0;border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:2px;background:#fff">'
-            +S.cons.filter(function(c){return c.grade!=='sales_grade';}).map(function(c){
+            +_teamCons.map(function(c){
                 return '<label class="mcid-opt" data-name="'+esc((c.name||'').toLowerCase())+'" onmouseover="this.style.background=&quot;#f1f5f9&quot;" onmouseout="this.style.background=&quot;&quot;" style="display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:13px"><input type="checkbox" class="mcid-chk" value="'+c.id+'" style="accent-color:#84CC16;width:15px;height:15px;cursor:pointer"> '+esc(c.name)+'</label>';
               }).join('')
             +'</div>'
@@ -727,7 +732,7 @@ function tModal(){
         +'<div class="fd cs2"><label class="fl">Consultants sur le forfait</label>'
         +'<div id="miss-team" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">'
         +((it&&it.team&&it.team.length?it.team:S.modal&&S.modal.team&&S.modal.team.length?S.modal.team:[{cid:defCid,taux:100}]).map(function(tm,idx){
-          var tCons=S.cons.filter(function(c){return c.grade!=='sales_grade';});
+          var tCons=_teamCons;
           var cOpts=tCons.map(function(c){return '<option value="'+c.id+'"'+(c.id===tm.cid?' selected':'')+'>'+esc(c.name)+'</option>';}).join('');
           return '<div class="miss-team-row" style="display:flex;gap:8px;align-items:center">'
             +'<select class="ic" style="flex:2" data-team-cid="'+idx+'"><option value="">— Consultant —</option>'+cOpts+'</select>'

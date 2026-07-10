@@ -599,6 +599,74 @@ function consBU(c){
   return null;
 }
 
+/* ═══ RÔLE & HIÉRARCHIE D'UNE FICHE CONSULTANT ═══
+   Le rôle (super_admin / admin / gestionnaire / sales / recruteur / utilisateur)
+   vit sur le compte (profiles / S.orgProfiles), la fiche vit dans S.cons. On relie
+   une fiche à son compte par cons_id, sinon par nom. */
+function consProfile(c){
+  if(!c)return null;
+  var p=(S.orgProfiles||[]).find(function(x){return x.cons_id===c.id;});
+  if(p)return p;
+  var nm=(c.name||'').trim().toLowerCase();
+  if(nm)return (S.orgProfiles||[]).find(function(x){return ((x.first_name||'')+' '+(x.last_name||'')).trim().toLowerCase()===nm;})||null;
+  return null;
+}
+/* Rôle effectif d'une fiche : rôle du compte lié, « utilisateur » par défaut
+   (fiche sans compte : consultant importé, freelance non provisionné…). */
+function consRole(c){var p=consProfile(c);return (p&&p.role)||'utilisateur';}
+/* La fiche c correspond-elle au compte connecté ? */
+function consIsSelf(c){
+  if(!c)return false;
+  if(S.consId&&c.id===S.consId)return true;
+  var p=consProfile(c);
+  return !!(p&&p.id===S._userId);
+}
+/* La fiche c reporte-t-elle (N+1 transitif) au compte ancestorPid ? On part du N+1
+   de la fiche (compte lié, sinon managerId de la fiche) puis on remonte la chaîne
+   manager_id des profils. */
+function consReportsToAccount(c,ancestorPid){
+  if(!c||!ancestorPid)return false;
+  var cp=consProfile(c);
+  var cur=(cp&&cp.manager_id)||c.managerId||null;
+  var byId={};(S.orgProfiles||[]).forEach(function(x){byId[x.id]=x;});
+  var guard=0;
+  while(cur&&guard<20){
+    if(cur===ancestorPid)return true;
+    cur=byId[cur]?byId[cur].manager_id:null;guard++;
+  }
+  return false;
+}
+/* Le compte connecté est-il le propriétaire au sommet ? (super_admin sans N+1) */
+function isRootOwner(){
+  if(S.role!=='super_admin')return false;
+  var p=(S.orgProfiles||[]).find(function(x){return x.id===S._userId;});
+  return !(p&&p.manager_id);
+}
+/* Périmètre « équipe » de l'utilisateur connecté : lui-même + tous ses subordonnés
+   (N+1 transitif). Le propriétaire voit tout ; tout compte ayant un N+1 (y compris
+   un Sénior VP rattaché à un autre) ne voit que sa descendance — jamais sa
+   hiérarchie au-dessus (donc ni le salaire de son patron). Repli legacy : fiches
+   rattachées par nom de directeur (dir === mon nom) sans manager_id. */
+function consInMyTeam(c){
+  if(!c)return false;
+  if(isRootOwner())return true;
+  if(consIsSelf(c))return true;
+  if(consReportsToAccount(c,S._userId))return true;
+  if(!c.managerId&&S.dirName&&(c.dir||'')===S.dirName)return true;
+  return false;
+}
+/* Rang de tri par grade : Manager < Sénior < Confirmé < Junior. Business Manager
+   en tête, grades inconnus en fin. */
+function gradeRank(g){
+  g=(g||'').toString().toLowerCase();
+  if(g.indexOf('business')>=0)return 0;
+  if(g.indexOf('manager')>=0)return 1;
+  if(g.indexOf('senior')>=0||g.indexOf('sénior')>=0)return 2;
+  if(g.indexOf('confirm')>=0)return 3;
+  if(g.indexOf('junior')>=0)return 4;
+  return 5;
+}
+
 /* État vide illustré et cohérent (icône + titre + sous-texte + CTA optionnel).
    Remplace les placeholders « .emp » ternes sur les écrans clés. */
 function tEmpty(icon,title,sub,ctaHtml){

@@ -345,11 +345,16 @@ function tTeams(){
      - visible en FY2026 (oct25-sep26) et Q4 FY2026 (jul-sep26) ✓
      - invisible en FY2027 (oct26-sep27) car il sera déjà arrivé avant ✓ */
   var _rT=curRange(S.year);var rTS=_rT[0],rTE=_rT[1];
-  var futurs=applyFilters(inFY.filter(function(c){
+  /* Périmètre hiérarchique : on ne montre que soi-même et ses subordonnés (N+1
+     transitif). Un compte au-dessus de l'utilisateur connecté (ex : son
+     super_admin) n'est jamais visible — donc son salaire non plus. Le
+     propriétaire (super_admin sans N+1) voit toute l'entreprise. */
+  var scoped=inFY.filter(consInMyTeam);
+  var futurs=applyFilters(scoped.filter(function(c){
     return c.arrive&&c.arrive>TODAY&&c.arrive>=rTS&&c.arrive<=rTE;
   })).sort(function(a,b){return a.arrive.localeCompare(b.arrive);});
-  var actifs=applyFilters(inFY.filter(function(c){return !isGone(c)&&!(c.arrive&&c.arrive>TODAY&&c.arrive>=rTS&&c.arrive<=rTE);}));
-  var partis=applyFilters(inFY.filter(function(c){return isGone(c);}));
+  var actifs=applyFilters(scoped.filter(function(c){return !isGone(c)&&!(c.arrive&&c.arrive>TODAY&&c.arrive>=rTS&&c.arrive<=rTE);}));
+  var partis=applyFilters(scoped.filter(function(c){return isGone(c);}));
 
   function makeRow(c,gone,futur){
     var am=getAct(c.id);var st=am?mSt(am):'none';
@@ -374,27 +379,56 @@ function tTeams(){
       +'<button class="lr" data-act="dc" data-id="'+c.id+'">Suppr.</button></td></tr>';
   }
 
-  var sepFutur=futurs.length?'<tr><td colspan="6" style="padding:4px 12px;background:#f0fdf4;border-bottom:1px solid #bbf7d0"><span style="font-size:11px;color:#15803d;font-weight:700">\uD83D\uDCC5 Prochaines arriv\u00e9es ('+futurs.length+')</span></td></tr>':'';
-  var sepActif=actifs.length&&futurs.length?'<tr><td colspan="6" style="padding:4px 12px;background:#f8fafc;border-bottom:1px solid #e2e8f0"><span style="font-size:11px;color:#64748b;font-weight:600">Consultants actifs ('+actifs.length+')</span></td></tr>':'';
-  var sepParti=partis.length?'<tr><td colspan="6" style="padding:4px 12px;background:#f8fafc;border-top:1px solid #e2e8f0"><span style="font-size:11px;color:#94a3b8;font-weight:600">Partis ce FY ('+partis.length+')</span></td></tr>':'';
+  /* Tri par grade : Manager < S\u00e9nior < Confirm\u00e9 < Junior (Business Manager en t\u00eate). */
+  function byGrade(a,b){var d=gradeRank(a.grade)-gradeRank(b.grade);return d||(a.name||'').localeCompare(b.name||'','fr');}
 
-  var rows=sepFutur+futurs.map(function(c){return makeRow(c,false,true);}).join('')
-    +sepActif+actifs.map(function(c){return makeRow(c,false,false);}).join('')
-    +sepParti+partis.map(function(c){return makeRow(c,true,false);}).join('');
+  /* Corps d'un tableau (arriv\u00e9es \u00e0 venir \u00b7 en poste tri\u00e9s par grade \u00b7 partis)
+     pour le sous-ensemble retenu par `pred`. */
+  function buildTbody(pred){
+    var f=futurs.filter(pred);
+    var a=actifs.filter(pred).sort(byGrade);
+    var p=partis.filter(pred).sort(byGrade);
+    var sF=f.length?'<tr><td colspan="6" style="padding:4px 12px;background:#f0fdf4;border-bottom:1px solid #bbf7d0"><span style="font-size:11px;color:#15803d;font-weight:700">\ud83d\uDCC5 Prochaines arriv\u00e9es ('+f.length+')</span></td></tr>':'';
+    var sA=a.length&&f.length?'<tr><td colspan="6" style="padding:4px 12px;background:#f8fafc;border-bottom:1px solid #e2e8f0"><span style="font-size:11px;color:#64748b;font-weight:600">En poste ('+a.length+')</span></td></tr>':'';
+    var sP=p.length?'<tr><td colspan="6" style="padding:4px 12px;background:#f8fafc;border-top:1px solid #e2e8f0"><span style="font-size:11px;color:#94a3b8;font-weight:600">Partis ce FY ('+p.length+')</span></td></tr>':'';
+    var body=sF+f.map(function(c){return makeRow(c,false,true);}).join('')
+      +sA+a.map(function(c){return makeRow(c,false,false);}).join('')
+      +sP+p.map(function(c){return makeRow(c,true,false);}).join('');
+    return {body:body,total:f.length+a.length+p.length};
+  }
+  function teamCard(title,icon,pred,emptyMsg){
+    var t=buildTbody(pred);
+    return '<div class="card ov" style="margin-bottom:16px">'
+      +'<div style="padding:14px 16px 0"><div style="font-size:14px;font-weight:800;color:#0f172a">'+icon+' '+esc(title)+' <span style="font-weight:500;color:#94a3b8;font-size:12px">\u2014 '+t.total+'</span></div></div>'
+      +'<table style="min-width:640px;margin-top:8px">'
+      +'<thead><tr><th>Membre</th><th>Poste</th><th>SCR/j</th><th>Mission actuelle</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
+      +'<tbody>'+t.body+(t.total?'':'<tr><td colspan="6" class="emp">'+esc(emptyMsg)+'</td></tr>')
+      +'</tbody></table></div>';
+  }
 
   var sub=actifs.length+' actif'+(actifs.length!==1?'s':'')
     +(futurs.length?' \u00b7 '+futurs.length+' \u00e0 venir':'')
     +' \u00b7 '+fyLbl(S.year)
     +(partis.length?' \u00b7 '+partis.length+' parti'+(partis.length!==1?'s':'')+' ce FY':'');
 
+  /* Deux tableaux : \u00ab Encadrement & support \u00bb (tous les r\u00f4les \u2260 utilisateur, soi
+     compris) puis \u00ab Utilisateurs \u00bb (consultants en d\u00e9livery). La distinction l\u00e8ve
+     la confusion utilisateur/gestionnaire et \u2014 combin\u00e9e au p\u00e9rim\u00e8tre hi\u00e9rarchique
+     ci-dessus \u2014 n'expose jamais l'encadrement situ\u00e9 au-dessus de soi. On ne scinde
+     que si l'annuaire des comptes est charg\u00e9 ; sinon (mode d\u00e9mo, annuaire vide) on
+     garde un tableau unique. */
+  function isAdminRow(c){return consIsSelf(c)||consRole(c)!=='utilisateur';}
+  var splitByRole=(S.orgProfiles&&S.orgProfiles.length>0);
+  var tables=splitByRole
+    ?teamCard('Encadrement & support','\ud83d\udee1\ufe0f',isAdminRow,'Aucun membre d\'encadrement sur ce p\u00e9rim\u00e8tre.')
+      +teamCard('Utilisateurs','\ud83d\udc65',function(c){return !isAdminRow(c);},'Aucun utilisateur sur ce p\u00e9rim\u00e8tre.')
+    :teamCard('\u00c9quipe','\ud83d\udc65',function(){return true;},'Aucun consultant sur ce FY.');
+
   return '<div><div class="ph"><div><div class="pt">\u00c9quipe</div><div class="ps">'+sub+'</div></div>'
     +'<div style="display:flex;gap:8px;flex-shrink:0">'
     +'<button class="bg" data-act="import-cons-open" title="Importer votre \u00e9quipe depuis un fichier Excel ou CSV">\ud83d\udce5 Importer (Excel/CSV)</button>'
     +'<button class="bp" data-act="ac">+ Ajouter un membre</button></div></div>'
     +filtersHtml
-    +'<div class="card ov"><table style="min-width:640px">'
-    +'<thead><tr><th>'+rLabel('utilisateur')+'</th><th>Poste</th><th>SCR/j</th><th>Mission actuelle</th><th>Statut</th><th class="tr">Actions</th></tr></thead>'
-    +'<tbody>'+rows+(inFY.length?'':'<tr><td colspan="6" class="emp">Aucun consultant sur ce FY.</td></tr>')
-    +'</tbody></table></div></div>';
+    +tables+'</div>';
 }
 
