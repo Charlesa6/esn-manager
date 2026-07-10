@@ -216,11 +216,34 @@ async function loadCompanyKpis(){
   return null;
 }
 
-/* Recharge l'agrégat serveur pour la fenêtre courante puis rafraîchit la vue.
-   Appelé quand l'utilisateur change d'exercice ou de trimestre (sans effet si
-   le drapeau est off — on garde le rendu synchrone habituel). */
+/* Page de cartes KPI par consultant, calculée côté serveur (montée en charge).
+   Renvoie une page (filtrée/triée/paginée) + le total + le top clients, sans
+   charger/recalculer tout le tenant dans le navigateur. Alimente S.kpiCards ;
+   sans effet tant que KPI_SERVER_AGG est off (jamais appelée). */
+async function loadKpiCardsPage(){
+  if(!sb||!SB_CID)return null;
+  try{
+    var fy=S.year||CFY, win=S.quarter?qRange(fy,S.quarter):[fyStart(fy),fyEnd(fy)];
+    var st=S.kpiCards||{};
+    var limit=st.limit||24, page=st.page||0, sort=st.sort||'name', dir=st.dir||'asc', search=st.search||'';
+    var pr=await sb.rpc('konsilys_consultant_kpis_page',{p_win_start:win[0],p_win_end:win[1],p_limit:limit,p_offset:page*limit,p_search:search||null,p_sort:sort,p_dir:dir});
+    if(pr.error||!pr.data)return null;
+    var tr=await sb.rpc('konsilys_top_clients',{p_win_start:win[0],p_win_end:win[1],p_limit:3});
+    S.kpiCards={rows:pr.data.rows||[],total:pr.data.total||0,limit:limit,page:page,sort:sort,dir:dir,search:search,
+      top:(tr&&!tr.error&&tr.data)?tr.data:[],
+      key:fy+'|'+(S.quarter||'')+'|'+page+'|'+sort+'|'+dir+'|'+search};
+    return S.kpiCards;
+  }catch(e){console.warn('kpi cards page:',e);return null;}
+}
+
+/* Recharge l'agrégat serveur (hero) + la page de cartes pour la fenêtre courante,
+   puis rafraîchit la vue. Appelé quand l'utilisateur change d'exercice ou de
+   trimestre (sans effet si le drapeau est off — rendu synchrone habituel).
+   Le changement de fenêtre réinitialise la pagination à la première page. */
 function refreshServerKpis(){
-  if(typeof KPI_SERVER_AGG!=='undefined'&&KPI_SERVER_AGG){loadCompanyKpis().then(function(){render();});}
+  if(typeof KPI_SERVER_AGG==='undefined'||!KPI_SERVER_AGG)return;
+  if(S.kpiCards)S.kpiCards.page=0;
+  Promise.all([loadCompanyKpis(),loadKpiCardsPage()]).then(function(){render();});
 }
 
 async function loadSB(){
@@ -344,7 +367,7 @@ async function loadSB(){
     await loadBiz();
     await loadActivityLog();
     /* Agrégats serveur (montée en charge) — sans effet tant que le drapeau est off. */
-    if(KPI_SERVER_AGG){await loadKpiSnapshot();await loadCompanyKpis();}
+    if(KPI_SERVER_AGG){await loadKpiSnapshot();await loadCompanyKpis();await loadKpiCardsPage();}
     return true;
   }catch(e){console.warn('Supabase load error:',e);return false;}
 }

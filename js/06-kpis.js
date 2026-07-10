@@ -27,8 +27,37 @@ function mergeCompanyAgg(js, srv){
     nCons: srv.nCons!=null?+srv.nCons:js.nCons
   };
 }
+/* Page de cartes serveur utilisable pour la vue courante : drapeau on + fenêtre
+   (exercice+trimestre) concordante. Le tri/page/recherche varient sans re-gating. */
+function serverKpiCards(){
+  if(typeof KPI_SERVER_AGG==='undefined'||!KPI_SERVER_AGG||!S.kpiCards)return null;
+  var winKey=(S.year||(typeof CFY!=='undefined'?CFY:S.year))+'|'+(S.quarter||'')+'|';
+  return (S.kpiCards.key&&S.kpiCards.key.indexOf(winKey)===0)?S.kpiCards:null;
+}
+/* Convertit une ligne de page serveur au format {c,k} attendu par les templates
+   KPIs (cartes, tableau par consultant, barres). pm inclus (client/jours/CA/marge). */
+function srvRowToKS(r){
+  var k=r.k||{};
+  return {c:{id:r.id,name:r.name||'',title:r.title||'',scr:+r.scr||0,contract:r.contract||'salarie',arrive:r.arrive||null,depart:r.depart||null},
+    k:{tWD:+k.tWD||0,bill:+k.bill||0,rev:+k.rev||0,sr:+k.sr||0,avgT:+k.avgT||0,om:(k.om==null?null:+k.om),
+       pm:(k.pm||[]).map(function(m){return{cli:m.cli||'',name:m.name||'',days:+m.days||0,tjm:+m.tjm||0,rev:+m.rev||0,mar:+m.mar||0};}),
+       cs:k.cs||null,ce:k.ce||null,lvD:0,avD:0,sickD:0}};
+}
 function tKPIs(){
-  var ks=buildKS();
+  /* Montée en charge : quand le drapeau est on ET que l'agrégat entreprise ET la
+     page de cartes serveur concordent avec la vue, on ne recalcule plus tout le
+     tenant dans le navigateur — les cartes/top clients viennent d'une page serveur
+     (paginée) et la hero-bande de l'agrégat entreprise. Sinon, calcul local complet. */
+  /* Périmètre : les fonctions serveur renvoient TOUT l'org (my_company_id), sans
+     filtrage d'équipe. On ne bascule donc en mode serveur que pour les rôles dont
+     le périmètre == l'org entier (admin / super_admin). Les rôles à périmètre
+     restreint (gestionnaire…) gardent le calcul local filtré — le périmètre serveur
+     par rôle est une brique ultérieure (chargement au périmètre utilisateur). */
+  var _srvCards=serverKpiCards();
+  var _srvAgg=serverCompanyKpis();
+  var _fullScope=(S.role==='admin'||S.role==='super_admin');
+  var _useCards=!!(_srvCards&&_srvAgg&&_fullScope);
+  var ks=_useCards?_srvCards.rows.map(srvRowToKS):buildKS();
   var totR=ks.reduce(function(s,x){return s+x.k.rev;},0);
   var totBill=ks.reduce(function(s,x){return s+x.k.bill;},0);
   var _aktWD=ks.reduce(function(s,x){return s+(x.k.tWD||0);},0);
@@ -52,7 +81,9 @@ function tKPIs(){
   );
   avgSr=_agg.avgSr;totR=_agg.totR;totBill=_agg.totBill;avgTJMv=_agg.avgTJM;
   avgM=_agg.avgM;totSalary=_agg.totSalary;netC=_agg.netC;
-  var top3=clientRev(ks).slice(0,3);
+  var top3=_useCards
+    ?(_srvCards.top||[]).slice(0,3).map(function(t){return{name:t.name||'',rev:+t.rev||0};})
+    :clientRev(ks).slice(0,3);
   var totRevP=Math.max(totR,1);
   var srBars=svgBars(ks.map(function(x){return{n:x.c.name.split(' ')[0],v:parseFloat(x.k.sr.toFixed(1))};}),function(v){return v>=80?'#16a34a':v>=50?'#d97706':'#dc2626';},'%');
 
@@ -64,7 +95,8 @@ function tKPIs(){
   /* totSalary (période) utilisé pour la carte KPI — calcul dans tModal salary_detail */
 
   /* Deltas vs exercice precedent (masques en vue trimestre pour rester comparable) */
-  var _showDelta=!S.quarter;
+  /* Deltas N-1 masqués en mode serveur (éviter de recalculer tout le tenant N-1). */
+  var _showDelta=!S.quarter&&!_useCards;
   var _prev=_showDelta?(function(){
     var yr=S.year-1,Hp=holRange(fyStart(yr),fyEnd(yr)),fyWDp=wDays(fyStart(yr),fyEnd(yr),Hp);
     var ca=0,bill=0,twd=0,srw=0,sal=0;
@@ -191,8 +223,11 @@ function tKPIs(){
 
   /* ── KPIs par consultant : tableau déroulable ── */
   /* ── KPIs par consultant : tableau déroulable + tri par colonne ── */
-  var kSort=S.kpiSort||null,kAsc=S.kpiSortAsc||false;
-  var ksSorted=ks.slice().sort(function(a,b){
+  /* Mode serveur : la page est déjà triée/paginée côté serveur (on ne re-trie pas).
+     Mode local : tri client par colonne (comportement historique). */
+  var kSort=_useCards?(_srvCards.sort==='name'?null:_srvCards.sort):(S.kpiSort||null);
+  var kAsc=_useCards?(_srvCards.dir==='asc'):(S.kpiSortAsc||false);
+  var ksSorted=_useCards?ks:ks.slice().sort(function(a,b){
     if(!kSort)return 0;
     var va=kSort==='ca'?a.k.rev:kSort==='marge'?(a.k.om!=null?a.k.om:-999):kSort==='tjm'?(a.k.avgT||0):a.k.sr;
     var vb=kSort==='ca'?b.k.rev:kSort==='marge'?(b.k.om!=null?b.k.om:-999):kSort==='tjm'?(b.k.avgT||0):b.k.sr;
@@ -201,6 +236,12 @@ function tKPIs(){
   function sortTh(col,label){
     var active=kSort===col;
     var arrow=active?(kAsc?' ▲':' ▼'):'';
+    /* En mode serveur, seules les colonnes triables serveur (ca/marge/sr) sont
+       cliquables ; le tri déclenche un rechargement de page (kpi-cards-sort). */
+    if(_useCards){
+      if(col==='tjm')return '<th class="tc" style="color:#94a3b8;font-weight:600">'+label+'</th>';
+      return '<th class="tc" style="cursor:pointer;user-select:none;color:'+(active?'#84CC16':'#94a3b8')+';font-weight:'+(active?800:600)+'" data-act="kpi-cards-sort" data-id="'+col+'">'+label+arrow+'</th>';
+    }
     return '<th class="tc" style="cursor:pointer;user-select:none;color:'+(active?'#84CC16':'#94a3b8')+';font-weight:'+(active?800:600)+'" data-act="kpi-sort" data-id="'+col+'">'+label+arrow+'</th>';
   }
   var consKpiRows=ksSorted.map(function(x){
@@ -216,15 +257,33 @@ function tKPIs(){
       +'</tr>';
   }).join('');
 
-  var consKpiSection='<details style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;overflow:hidden"'+(kSort?' open':'')+'>'  
-    +'<summary style="display:flex;align-items:center;gap:8px;padding:14px 18px;cursor:pointer;font-size:14px;font-weight:800;color:#0f172a;list-style:none;user-select:none" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'  
+  /* Barre recherche + pagination serveur (uniquement en mode page serveur). */
+  var _kc=_srvCards||{};
+  var _cntTotal=_useCards?(_kc.total||0):ks.length;
+  var _pages=Math.max(1,Math.ceil((_kc.total||0)/(_kc.limit||24)));
+  var _pg=(_kc.page||0)+1;
+  var srvSearchBar=_useCards
+    ?'<div style="display:flex;gap:8px;align-items:center;padding:10px 18px;border-bottom:1px solid #f1f5f9;flex-wrap:wrap">'
+      +'<input id="kpiCardsSearch" placeholder="Rechercher un consultant\u2026" value="'+esc(_kc.search||'')+'" style="flex:1;min-width:180px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px" />'
+      +'</div>'
+    :'';
+  var pager=_useCards&&_pages>1
+    ?'<div style="display:flex;gap:10px;align-items:center;justify-content:center;padding:12px 18px;border-top:1px solid #f1f5f9">'
+      +'<button data-act="kpi-cards-prev"'+((_kc.page||0)<=0?' disabled':'')+' style="padding:6px 14px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;cursor:'+((_kc.page||0)<=0?'default':'pointer')+';font-size:13px;color:'+((_kc.page||0)<=0?'#cbd5e1':'#374151')+'">\u2039 Pr\u00e9c\u00e9dent</button>'
+      +'<span style="font-size:12px;color:#64748b;font-weight:600">Page '+_pg+' / '+_pages+'</span>'
+      +'<button data-act="kpi-cards-next"'+(_pg>=_pages?' disabled':'')+' style="padding:6px 14px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;cursor:'+(_pg>=_pages?'default':'pointer')+';font-size:13px;color:'+(_pg>=_pages?'#cbd5e1':'#374151')+'">Suivant \u203A</button>'
+      +'</div>'
+    :'';
+  var consKpiSection='<details style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;overflow:hidden"'+((kSort||_useCards)?' open':'')+'>'
+    +'<summary style="display:flex;align-items:center;gap:8px;padding:14px 18px;cursor:pointer;font-size:14px;font-weight:800;color:#0f172a;list-style:none;user-select:none" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'
     +'\uD83D\uDCCB<span style="flex:1;margin-left:8px">KPIs par Consultant</span>'
-    +'<span style="font-size:11px;font-weight:700;background:#e2e8f0;color:#475569;padding:1px 8px;border-radius:99px;margin-right:6px">'+ks.length+' consultants</span>'
+    +'<span style="font-size:11px;font-weight:700;background:#e2e8f0;color:#475569;padding:1px 8px;border-radius:99px;margin-right:6px">'+_cntTotal+' consultants</span>'
     +'<span style="font-size:11px;color:#94a3b8">&#x25be;</span></summary>'
+    +srvSearchBar
     +'<div style="padding:0 0 4px"><table>'
     +'<thead><tr><th>'+rLabel('utilisateur')+'</th>'+sortTh('ca','CA')+sortTh('marge','Marge')+sortTh('tjm','TJM moy.')+sortTh('sr','Staffing')+'</tr></thead>'
     +'<tbody>'+consKpiRows+(consKpiRows?'':'<tr><td colspan="5" class="emp">Aucune donn\u00e9e sur la p\u00e9riode</td></tr>')
-    +'</tbody></table></div></details>';
+    +'</tbody></table></div>'+pager+'</details>';
 
   return '<div class="vw">'
     +'<div style="margin-bottom:24px"><div class="pt">KPIs &mdash; '+fyLbl(S.year)+(S.quarter?' \u00b7 '+curRangeLbl():'')+'</div></div>'
@@ -236,7 +295,7 @@ function tKPIs(){
     +srBars+'</div>'
     +'<div class="card" style="padding:16px"><div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:12px">Top clients &mdash; CA</div>'+clientHtml+'</div>'
     +'</div>'
-    +(S.role==='admin'?tKPIsDirSection():S.role==='super_admin'?tKPIsSVPSection():consKpiSection)
+    +(S.role==='admin'?tKPIsDirSection()+(_useCards?consKpiSection:''):S.role==='super_admin'?tKPIsSVPSection()+(_useCards?consKpiSection:''):consKpiSection)
     +'</div>';
 }
 

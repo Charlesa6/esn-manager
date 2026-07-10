@@ -76,8 +76,19 @@ Chacun garde la meilleure expérience selon sa taille.
        salarial reste proratisé sur l'exercice complet (dénominateur explicite).
        Fonctions déployées (`konsilys_kpi_core`, `konsilys_company_kpis`,
        `konsilys_company_kpis_range`) ; `loadCompanyKpis()` choisit la fenêtre selon
-       `S.quarter`. Drapeau `KPI_SERVER_AGG` encore off. Reste : découpage par BU,
-       refonte de l'écran pour lire l'agrégat (au lieu de `buildKS`), puis activation.
+       `S.quarter`. **Écran KPIs branché derrière le drapeau** : hero-bande depuis
+       l'agrégat serveur, **cartes/liste par consultant paginées côté serveur**
+       (`konsilys_consultant_kpis_page`) + top clients serveur (`konsilys_top_clients`),
+       avec recherche/tri/pagination — le navigateur ne recalcule plus tout le tenant.
+       `kpi_core` émet le détail par mission `pm` (parité prouvée) ; un correctif de
+       bord forfait-sans-fin (CA à tort en fenêtre vide) a été corrigé au passage.
+       Drapeau `KPI_SERVER_AGG` encore off. **Reste :**
+       - **Périmètre par rôle serveur** : les fonctions renvoient tout l'org ; le mode
+         serveur n'est donc activé que pour `admin`/`super_admin` (périmètre = org).
+         Pour les rôles restreints (gestionnaire…), il faut filtrer le périmètre côté
+         serveur (lié au point 5) avant de basculer — sinon calcul local conservé.
+       - **Découpage par BU** (vues VP/Directeur encore en `buildKS`).
+       - **Activation** de `KPI_SERVER_AGG` après test de charge.
 2. [ ] **Équipe** : pagination + recherche serveur, liste virtualisée.
 3. [ ] **Missions** : idem + filtres serveur.
 4. [ ] **Planning** : chargement par période/fenêtre visible.
