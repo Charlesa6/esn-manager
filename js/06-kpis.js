@@ -343,6 +343,16 @@ function tForecastSection(){
   /* Contributions DIRECTES par nœud BU (pour l'arbre hiérarchique repliable) :
      CA sécurisé (missions) et pipeline pondéré (opportunités), sur la période. */
   var secByNode={}, secNoBu={ca:0,cost:0}, pipeByNode={}, pipeNoBu=0;
+  /* Périmètre de visibilité : un compte rattaché à une BU ne voit que son unité
+     et ses sous-unités — prévisionnel, tuiles récapitulatives et graphe mensuel
+     compris, pas seulement la marge consolidée. Un compte sans BU (propriétaire
+     au sommet) voit tout. Les données hors BU ne sont visibles qu'en vue globale. */
+  var _myBU=myBuId();
+  function inScope(bid){
+    if(!_myBU)return true;          /* pas de BU affectée → aucune restriction */
+    if(!bid)return false;           /* donnée hors hiérarchie → hors périmètre */
+    return buPath(bid).some(function(n){return n.id===_myBU;});
+  }
   /* ── Backlog sécurisé (missions) ── */
   (S.miss||[]).forEach(function(m){
     var c=consById[m.cid];if(!c)return;
@@ -355,6 +365,7 @@ function tForecastSection(){
       bpath=_p.length>1?_p.slice(0,-1).map(function(n){return n.name;}).join(' › '):'';
       bkey='bu:'+_bid;}
     else{var _d=(c.dir||'').trim();bname=_d||'(Sans BU)';bpath='';bkey='dir:'+(_d||'none');}
+    if(!inScope(_bid))return;       /* mission hors du sous-arbre du VP : ignorée */
     months.forEach(function(mo){
       /* Tout le mois : le passé est compté comme réalisé (aucun clamp à aujourd'hui). */
       var a=mo.ms; if(m.sd>a)a=m.sd;
@@ -388,6 +399,7 @@ function tForecastSection(){
     var sd=pD(o.date_start||o.date_closing||TODAY);
     var per=val/dur;
     var obu=o.bu_id||null;
+    if(!inScope(obu))return;        /* opportunité hors du sous-arbre du VP : ignorée */
     for(var k=0;k<dur;k++){
       var dd=new Date(sd.getFullYear(),sd.getMonth()+k,1);
       for(var mi=0;mi<months.length;mi++){
@@ -472,11 +484,16 @@ function tForecastSection(){
       }).join('');
     };
     /* Chaque licence ne voit que son unité de rattachement et ses sous-unités —
-       jamais les unités au-dessus d'elle. Le super_admin (ou un compte sans BU) voit tout. */
+       jamais les unités au-dessus d'elle ni les unités sœurs. La visibilité dépend
+       UNIQUEMENT de la BU affectée (bu_id), pas du rôle : un Sénior VP rattaché à une
+       unité ne voit que son sous-arbre, même quand il reporte à un autre Sénior VP.
+       Seul un compte sans BU (typiquement le propriétaire au sommet) voit tout. */
     var _my=myBuId();
-    var roots=(S.role==='super_admin'||!_my)?buChildren(null):[buById(_my)].filter(Boolean);
+    var roots=!_my?buChildren(null):[buById(_my)].filter(Boolean);
     var treeRows=renderNodes(roots,0);
-    if(secNoBu.ca>0||pipeNoBu>0){
+    /* La ligne « Sans unité » agrège des données hors hiérarchie : réservée à la vue
+       globale (compte sans BU), sinon elle fuiterait au-delà du périmètre de l'unité. */
+    if(!_my&&(secNoBu.ca>0||pipeNoBu>0)){
       var mN=secNoBu.ca>0?(secNoBu.ca-secNoBu.cost)/secNoBu.ca*100:null;
       treeRows+='<tr><td style="padding:9px 14px 9px 33px;color:#94a3b8;font-style:italic">Sans unité</td>'
         +'<td class="tr" style="font-weight:700;color:#64748b">'+fEur(_round(secNoBu.ca))+'</td>'

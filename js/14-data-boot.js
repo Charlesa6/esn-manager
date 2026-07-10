@@ -273,6 +273,18 @@ async function loadSB(){
       }
     }catch(e){/* colonnes pas encore présentes : conserver les defaults */}
 
+    /* ── Business Units : source de vérité = table `business_units` (option
+       robuste). On reconstruit S.settings.buTree au format historique
+       [{id,name,parentId}] pour ne rien changer aux helpers buNodes()/buById()/
+       buChildren(). Repli silencieux sur le buTree JSON tant que la table est vide
+       (transition / entreprise sans BU). */
+    try{
+      var bur=await sb.from('business_units').select('id,name,parent_id').eq('company_id',SB_CID);
+      if(bur&&bur.data&&bur.data.length){
+        S.settings.buTree=bur.data.map(function(r){return {id:r.id,name:r.name,parentId:r.parent_id||null};});
+      }
+    }catch(e){/* table pas encore créée : repli sur le buTree JSON */}
+
     /* ── Charger l'annuaire des profils de l'organisation ──
        Nécessaire pour : résoudre le N+1, lister les pairs (délégation),
        remonter au N+2 si l'approbateur est absent. */

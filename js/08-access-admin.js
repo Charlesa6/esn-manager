@@ -275,11 +275,13 @@ function saveSettings(){
 }
 
 /* ═══ Business Units — éditeur d'arbre (Paramètres super_admin) ═══ */
+/* Persistance des réglages entreprise. Le buTree n'y figure plus : l'arbre BU vit
+   désormais dans la table `business_units` (option robuste), jamais dans le JSON. */
 function persistBUTree(){
   if(!S.settings)S.settings={};
   try{localStorage.setItem('esn_settings_'+SB_CID,JSON.stringify(S.settings));}catch(e){}
   if(sb&&SB_CID){
-    var _p=Object.assign({},S.settings);delete _p.hasBusinessModule;delete _p.hasRecrutementModule;
+    var _p=Object.assign({},S.settings);delete _p.hasBusinessModule;delete _p.hasRecrutementModule;delete _p.buTree;
     sb.from('company_settings').upsert({company_id:SB_CID,settings:_p,updated_at:new Date().toISOString()},{onConflict:'company_id'}).then(function(){});
   }
 }
@@ -290,22 +292,34 @@ function buAddNode(parentId){
   if(!name||!name.trim())return;
   if(!S.settings)S.settings={};
   if(!S.settings.buTree)S.settings.buTree=[];
-  S.settings.buTree.push({id:'bu_'+Date.now()+'_'+Math.floor(Math.random()*10000),name:name.trim(),parentId:parentId});
-  persistBUTree();render();
+  var node={id:'bu_'+Date.now()+'_'+Math.floor(Math.random()*10000),name:name.trim(),parentId:parentId};
+  S.settings.buTree.push(node); /* optimiste */
+  if(sb&&SB_CID){sb.from('business_units').insert({id:node.id,company_id:SB_CID,parent_id:parentId,name:node.name}).then(function(r){
+    if(r&&r.error){S.settings.buTree=buNodes().filter(function(n){return n.id!==node.id;});render();toast('Échec de création de la BU : '+r.error.message,'error');}
+  });}
+  render();
 }
 function buRenameNode(id,name){
-  var n=buById(id);if(!n)return;n.name=(name||'').trim()||n.name;persistBUTree();
+  var n=buById(id);if(!n)return;
+  var prev=n.name;n.name=(name||'').trim()||n.name;
+  if(sb&&SB_CID){sb.from('business_units').update({name:n.name}).eq('id',id).eq('company_id',SB_CID).then(function(r){
+    if(r&&r.error){n.name=prev;render();toast('Échec du renommage : '+r.error.message,'error');}
+  });}
 }
 function buDelNode(id){
   var toDel={};(function rec(x){toDel[x]=1;buChildren(x).forEach(function(c){rec(c.id);});})(id);
-  var nKids=Object.keys(toDel).length-1;
+  var ids=Object.keys(toDel);
+  var nKids=ids.length-1;
   var nMemb=(S.orgProfiles||[]).filter(function(p){return toDel[p.bu_id];}).length;
   var msg='Supprimer la BU « '+buLabel(id)+' »'+(nKids?' et ses '+nKids+' sous-BU':'');
   if(nMemb)msg+=' ? '+nMemb+' membre(s) affecté(s) seront détaché(s)';
   if(!confirm(msg+' ?'))return;
   (S.orgProfiles||[]).forEach(function(p){if(toDel[p.bu_id])setMemberBU(p.id,'',true);});
-  S.settings.buTree=buNodes().filter(function(n){return !toDel[n.id];});
-  persistBUTree();render();
+  S.settings.buTree=buNodes().filter(function(n){return !toDel[n.id];}); /* optimiste */
+  if(sb&&SB_CID){sb.from('business_units').delete().in('id',ids).eq('company_id',SB_CID).then(function(r){
+    if(r&&r.error){toast('Échec de suppression de la BU : '+r.error.message,'error');loadSB();}
+  });}
+  render();
 }
 /* Affecte une BU à un membre (RPC serveur : super_admin/admin, même entreprise) */
 function setMemberBU(memberId,buId,silent){
