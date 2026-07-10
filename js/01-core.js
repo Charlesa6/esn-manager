@@ -324,6 +324,10 @@ function loadDemoData(){
   S.year=2026;
   S.quarter=null;
   S.tab=S.role==='utilisateur'?'activite':S.role==='recruteur'?'recrutement':S.role==='sales'?'business':'kpis';
+  /* Modules activés en démo : Business (CRM) + Recrutement visibles dans la nav. */
+  S.settings=S.settings||{};
+  S.settings.hasBusinessModule=true;
+  S.settings.hasRecrutementModule=true;
   /* ── BU fictive « Rhône-Alpes » : 14 consultants, 3 practices (dir), pour une
      démo réaliste sans aucune donnée réelle. Regroupés par « dir » → l'onglet KPIs
      « Marge consolidée par unité » affiche 3 unités. 2 consultants en intercontrat
@@ -379,10 +383,51 @@ function loadDemoData(){
     {id:'v9',cid:'d14',type:'Congé payé',s:'2026-12-21',e:'2026-12-31'}
   ];
   S.cands=[
-    {id:'c1',name:'Sofiane Bouras',  expertise:['Python','Data Engineering'],sectors:['Banque & Finance'],locations:['Lyon'],    nationality:'Française',reqSalary:46000,yearsExp:3,status:'op_ec',marginPct:27,createdBy:'demo',feedbacks:[],cgiMeetings:[],cvFiles:[]},
-    {id:'c2',name:'Émilie Charpentier',expertise:['Kubernetes','DevOps'],    sectors:['Énergie'],         locations:['Lyon','Grenoble'],nationality:'Française',reqSalary:52000,yearsExp:6,status:'rh_ec',marginPct:30,createdBy:'demo',feedbacks:[],cgiMeetings:[],cvFiles:[]},
-    {id:'c3',name:'Victor Nguyen',   expertise:['SAP','Finance'],            sectors:['Pharma & Santé'],  locations:['Lyon'],    nationality:'Française',reqSalary:58000,yearsExp:9,status:'pipe', marginPct:32,createdBy:'demo',feedbacks:[],cgiMeetings:[],cvFiles:[]}
+    {id:'c1',name:'Sofiane Bouras',    expertise:['Python','Data Engineering'],       sectors:['Banque & Finance'],       locations:['Lyon'],           nationality:'Française',reqSalary:46000,yearsExp:3,status:'op_ec',marginPct:27,createdBy:'demo',feedbacks:[],cgiMeetings:[],cvFiles:[]},
+    {id:'c2',name:'Émilie Charpentier',expertise:['Kubernetes','DevOps'],             sectors:['Énergie'],                locations:['Lyon','Grenoble'],nationality:'Française',reqSalary:52000,yearsExp:6,status:'rh_ec',marginPct:30,createdBy:'demo',feedbacks:[],cgiMeetings:[],cvFiles:[]},
+    {id:'c3',name:'Victor Nguyen',     expertise:['SAP','Finance'],                   sectors:['Pharma & Santé'],         locations:['Lyon'],           nationality:'Française',reqSalary:58000,yearsExp:9,status:'pipe', marginPct:32,createdBy:'demo',feedbacks:[],cgiMeetings:[],cvFiles:[]},
+    {id:'c4',name:'Inès Lacroix',      expertise:['AI / Machine Learning','Python'],  sectors:['Industrie / Manufacturing'],locations:['Clermont-Ferrand','Lyon'],nationality:'Française',reqSalary:50000,yearsExp:5,status:'rh_a', marginPct:29,createdBy:'demo',feedbacks:[],cgiMeetings:[],cvFiles:[]},
+    {id:'c5',name:'Thomas Renaud',     expertise:['Data Science','Power BI'],         sectors:['Distribution & Retail'],  locations:['Lyon'],           nationality:'Française',reqSalary:44000,yearsExp:4,status:'op_a', marginPct:26,createdBy:'demo',feedbacks:[],cgiMeetings:[],cvFiles:[]},
+    {id:'c6',name:'Karim Aziz',        expertise:['DevOps','Docker'],                 sectors:['Énergie'],                locations:['Lyon'],           nationality:'Française',reqSalary:48000,yearsExp:5,status:'recrute',marginPct:30,createdBy:'demo',recruited:true,feedbacks:[],cgiMeetings:[],cvFiles:[]}
   ];
+
+  /* ── CRM Business (fictif) : comptes, contacts, pipeline d'opportunités et
+     activités. Le pipeline pondéré alimente aussi le prévisionnel de l'onglet KPIs. */
+  S.bizAccounts=[
+    {id:'a1',name:'AXA',              status:'client_actif',sector:'Assurance',      size:'Grand compte',website:'axa.fr'},
+    {id:'a2',name:'Société Générale', status:'client_actif',sector:'Banque/Finance', size:'Grand compte',website:'societegenerale.com'},
+    {id:'a3',name:'Michelin',         status:'client_actif',sector:'Industrie',      size:'Grand compte',website:'michelin.fr'},
+    {id:'a4',name:'Groupe SEB',       status:'prospect',    sector:'Industrie',      size:'ETI',         website:'groupeseb.com'},
+    {id:'a5',name:'bioMérieux',       status:'prospect',    sector:'Santé',          size:'ETI',         website:'biomerieux.com'},
+    {id:'a6',name:'Enedis',           status:'prospect',    sector:'Énergie',        size:'Grand compte',website:'enedis.fr'}
+  ];
+  S.bizContacts=[
+    {id:'ct1',first_name:'Isabelle',last_name:'Fournier',role_type:'decideur',    position:'DSI Adjointe',              account_id:'a1',email:'i.fournier@demo.fr',phone:'06 12 34 56 78'},
+    {id:'ct2',first_name:'Marc',    last_name:'Lemaître',role_type:'prescripteur',position:'Responsable Data',           account_id:'a2',email:'m.lemaitre@demo.fr',phone:'06 23 45 67 89'},
+    {id:'ct3',first_name:'Sandrine',last_name:'Petit',   role_type:'decideur',    position:'Directrice SI Industrielle', account_id:'a3',email:'s.petit@demo.fr',   phone:'06 34 56 78 90'},
+    {id:'ct4',first_name:'Olivier', last_name:'Garnier', role_type:'decideur',    position:'DSI',                        account_id:'a4',email:'o.garnier@demo.fr', phone:'06 45 67 89 01'},
+    {id:'ct5',first_name:'Nathalie',last_name:'Roche',   role_type:'prescripteur',position:'Head of Data',               account_id:'a5',email:'n.roche@demo.fr',   phone:'06 56 78 90 12'},
+    {id:'ct6',first_name:'Pierre',  last_name:'Vasseur', role_type:'decideur',    position:'Directeur Cloud',            account_id:'a6',email:'p.vasseur@demo.fr', phone:'06 67 89 01 23'}
+  ];
+  var _bown={owner_email:'demo@esn-manager.fr',owner_name:'Julien Astier',owner_role:'sales',assigned_to:'Julien Astier'};
+  S.bizOpps=[
+    Object.assign({id:'o1',name:'AXA — Extension Data Platform',   account_id:'a1',contact_id:'ct1',status:'negociation',  btype:'at',     tjm_cible:840,date_start:'2026-09-01',date_end:'2027-02-28',duree_mois:6,probability:70,date_closing:'2026-08-20',consultant_ids:['d1'],      req_expertise:['Data Engineering'],       location:'Lyon',            req_min_years:4,req_sector:'Assurance',              notes:'Extension confirmée verbalement, chiffrage en cours.'},_bown),
+    Object.assign({id:'o2',name:'Société Générale — Squad DevOps', account_id:'a2',contact_id:'ct2',status:'proposition',  btype:'at',     tjm_cible:880,date_start:'2026-08-01',date_end:'2026-12-31',duree_mois:5,probability:50,date_closing:'2026-07-25',consultant_ids:['d7','d8'], req_expertise:['DevOps','Kubernetes'],     location:'Lyon',            req_min_years:5,req_sector:'Banque & Finance',        notes:'Proposition envoyée, soutenance prévue.'},_bown),
+    Object.assign({id:'o3',name:'Michelin — MLOps Industrialisation',account_id:'a3',contact_id:'ct3',status:'qualification',btype:'at',    tjm_cible:720,date_start:'2026-10-01',date_end:'2027-03-31',duree_mois:6,probability:40,date_closing:'2026-09-15',consultant_ids:['d2','d4'], req_expertise:['AI / Machine Learning'],   location:'Clermont-Ferrand',req_min_years:5,req_sector:'Industrie / Manufacturing',notes:'Besoin qualifié, cadrage technique à planifier.'},_bown),
+    Object.assign({id:'o4',name:'Groupe SEB — Cadrage Data Gouvernance',account_id:'a4',contact_id:'ct4',status:'qualification',btype:'forfait',deal_amount:85000,date_start:'2026-09-15',date_end:'2026-12-15',duree_mois:3,probability:30,date_closing:'2026-09-01',consultant_ids:['d5'],  req_expertise:['Data Science'],            location:'Lyon',            req_min_years:3,req_sector:'Industrie / Manufacturing',notes:'Nouveau logo — démo réalisée, à transformer.'},_bown),
+    Object.assign({id:'o5',name:'bioMérieux — Roll-out SAP FICO',  account_id:'a5',contact_id:'ct5',status:'identification',btype:'at',     tjm_cible:900,date_start:'2026-11-01',date_end:'2027-06-30',duree_mois:8,probability:25,date_closing:'2026-10-10',consultant_ids:['d12'],     req_expertise:['SAP'],                     location:'Lyon',            req_min_years:6,req_sector:'Pharma & Santé',          notes:'Premier contact, budget à confirmer.'},_bown),
+    Object.assign({id:'o6',name:'Enedis — Plateforme Observabilité',account_id:'a6',contact_id:'ct6',status:'proposition',  btype:'forfait',deal_amount:150000,date_start:'2026-10-01',date_end:'2027-04-30',duree_mois:7,probability:35,date_closing:'2026-09-30',consultant_ids:['d9'],  req_expertise:['DevOps','Cloud Computing'],location:'Lyon',            req_min_years:5,req_sector:'Énergie',                notes:'Prospect stratégique, relance en cours.'},_bown),
+    Object.assign({id:'o7',name:'AXA — TMA Java',                  account_id:'a1',contact_id:'ct1',status:'gagne',        btype:'at',     tjm_cible:700,date_start:'2026-06-01',date_end:'2026-12-31',duree_mois:7,probability:100,date_closing:'2026-05-28',consultant_ids:['d14'],    req_expertise:['Java'],                    location:'Lyon',            req_min_years:3,req_sector:'Assurance',              notes:'Signé — à basculer en mission.'},_bown),
+    Object.assign({id:'o8',name:'Société Générale — POC IA Doc',   account_id:'a2',contact_id:'ct2',status:'perdu',        btype:'at',     tjm_cible:820,date_start:'2026-04-01',date_end:'2026-07-31',duree_mois:4,probability:0,  date_closing:'2026-05-15',consultant_ids:[],         req_expertise:['AI / Machine Learning'],   location:'Lyon',            req_min_years:4,req_sector:'Banque & Finance',        motif_perte:'Budget reporté en 2027.',notes:''},_bown)
+  ];
+  S.bizActivities=[
+    {id:'k1',type:'reunion',title:'Cadrage besoin Data Platform',   account_id:'a1',contact_id:'ct1',opportunity_id:'o1',date_realised:'2026-07-02',status:'realise', next_action:'Envoyer la proposition chiffrée',next_action_date:'2026-07-15'},
+    {id:'k2',type:'demo',   title:'Démo Konsilys — pilotage staffing',account_id:'a4',contact_id:'ct4',opportunity_id:'o4',date_realised:'2026-07-08',status:'realise', next_action:'Relancer sur le cadrage',        next_action_date:'2026-07-18'},
+    {id:'k3',type:'appel',  title:'Qualification besoin MLOps',      account_id:'a3',contact_id:'ct3',opportunity_id:'o3',date_realised:'2026-07-06',status:'realise', next_action:'Positionner Yanis Cherif',        next_action_date:'2026-07-14'},
+    {id:'k4',type:'email',  title:'Introduction offre DevOps',       account_id:'a2',contact_id:'ct2',opportunity_id:'o2',date_realised:'2026-07-03',status:'realise', next_action:'',                                next_action_date:null},
+    {id:'k5',type:'relance',title:'Relance proposition Observabilité',account_id:'a6',contact_id:'ct6',opportunity_id:'o6',date_realised:null,        status:'planifie',next_action:'Appel de relance',                next_action_date:'2026-07-20'}
+  ];
+
   H=fyHols(2026);
 }
 var SCR_FACTOR=113.35;   /* SCR × coeff = salaire brut annuel employé */
