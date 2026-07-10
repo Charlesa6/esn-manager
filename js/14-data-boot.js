@@ -189,6 +189,19 @@ async function loadKpiSnapshot(){
   return null;
 }
 
+/* Agrégat KPI entreprise calculé côté serveur (montée en charge), reproduisant
+   tKPIs() — parité prouvée. Alimente S.companyKpis quand KPI_SERVER_AGG est activé ;
+   ne remplace rien tant que le drapeau est off. */
+async function loadCompanyKpis(){
+  if(!sb||!SB_CID)return null;
+  try{
+    var fy=S.year||CFY;
+    var r=await sb.rpc('konsilys_company_kpis',{p_fy_start:fyStart(fy),p_fy_end:fyEnd(fy)});
+    if(!r.error&&r.data){S.companyKpis=r.data;return r.data;}
+  }catch(e){console.warn('company kpis:',e);}
+  return null;
+}
+
 async function loadSB(){
   if(!sb||!SB_CID)return false;
   try{
@@ -310,7 +323,7 @@ async function loadSB(){
     await loadBiz();
     await loadActivityLog();
     /* Agrégats serveur (montée en charge) — sans effet tant que le drapeau est off. */
-    if(KPI_SERVER_AGG){await loadKpiSnapshot();}
+    if(KPI_SERVER_AGG){await loadKpiSnapshot();await loadCompanyKpis();}
     return true;
   }catch(e){console.warn('Supabase load error:',e);return false;}
 }
