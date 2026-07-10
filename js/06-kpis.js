@@ -284,6 +284,16 @@ function tForecastSection(){
   /* Contributions DIRECTES par nœud BU (pour l'arbre hiérarchique repliable) :
      CA sécurisé (missions) et pipeline pondéré (opportunités), sur la période. */
   var secByNode={}, secNoBu={ca:0,cost:0}, pipeByNode={}, pipeNoBu=0;
+  /* Périmètre de visibilité : un compte rattaché à une BU ne voit que son unité
+     et ses sous-unités — prévisionnel, tuiles récapitulatives et graphe mensuel
+     compris, pas seulement la marge consolidée. Un compte sans BU (propriétaire
+     au sommet) voit tout. Les données hors BU ne sont visibles qu'en vue globale. */
+  var _myBU=myBuId();
+  function inScope(bid){
+    if(!_myBU)return true;          /* pas de BU affectée → aucune restriction */
+    if(!bid)return false;           /* donnée hors hiérarchie → hors périmètre */
+    return buPath(bid).some(function(n){return n.id===_myBU;});
+  }
   /* ── Backlog sécurisé (missions) ── */
   (S.miss||[]).forEach(function(m){
     var c=consById[m.cid];if(!c)return;
@@ -296,6 +306,7 @@ function tForecastSection(){
       bpath=_p.length>1?_p.slice(0,-1).map(function(n){return n.name;}).join(' › '):'';
       bkey='bu:'+_bid;}
     else{var _d=(c.dir||'').trim();bname=_d||'(Sans BU)';bpath='';bkey='dir:'+(_d||'none');}
+    if(!inScope(_bid))return;       /* mission hors du sous-arbre du VP : ignorée */
     months.forEach(function(mo){
       /* Tout le mois : le passé est compté comme réalisé (aucun clamp à aujourd'hui). */
       var a=mo.ms; if(m.sd>a)a=m.sd;
@@ -329,6 +340,7 @@ function tForecastSection(){
     var sd=pD(o.date_start||o.date_closing||TODAY);
     var per=val/dur;
     var obu=o.bu_id||null;
+    if(!inScope(obu))return;        /* opportunité hors du sous-arbre du VP : ignorée */
     for(var k=0;k<dur;k++){
       var dd=new Date(sd.getFullYear(),sd.getMonth()+k,1);
       for(var mi=0;mi<months.length;mi++){
