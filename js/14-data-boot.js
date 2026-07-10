@@ -177,6 +177,18 @@ async function sbFetchAll(makeQuery, pageSize){
   return {data:all, error:null};
 }
 
+/* Instantané d'agrégats exacts (montée en charge) — RPC company_kpi_snapshot.
+   Cloisonné par entreprise côté serveur. Ne remplace aucun KPI calculé côté
+   client ; alimente seulement S.kpiSnapshot quand KPI_SERVER_AGG est activé. */
+async function loadKpiSnapshot(){
+  if(!sb||!SB_CID)return null;
+  try{
+    var r=await sb.rpc('company_kpi_snapshot');
+    if(!r.error&&r.data){S.kpiSnapshot=r.data;return r.data;}
+  }catch(e){console.warn('kpi snapshot:',e);}
+  return null;
+}
+
 async function loadSB(){
   if(!sb||!SB_CID)return false;
   try{
@@ -297,6 +309,8 @@ async function loadSB(){
     /* Charger les données CRM Business */
     await loadBiz();
     await loadActivityLog();
+    /* Agrégats serveur (montée en charge) — sans effet tant que le drapeau est off. */
+    if(KPI_SERVER_AGG){await loadKpiSnapshot();}
     return true;
   }catch(e){console.warn('Supabase load error:',e);return false;}
 }
