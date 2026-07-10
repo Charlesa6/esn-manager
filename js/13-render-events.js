@@ -78,6 +78,15 @@ function render(){
 function bind(){
   var el=function(id){return document.getElementById(id);};
   var yr=el('yrs');if(yr)yr.onchange=function(){S.year=+this.value;H=fyHols(S.year);S.precs={};render();refreshServerKpis();};
+  /* Recherche serveur des cartes KPI (debounce ; conserve le focus/curseur). */
+  var kcs=el('kpiCardsSearch');if(kcs)kcs.oninput=function(){
+    var v=this.value;
+    if(window._kcTimer)clearTimeout(window._kcTimer);
+    window._kcTimer=setTimeout(function(){
+      S.kpiCards=S.kpiCards||{};S.kpiCards.search=v;S.kpiCards.page=0;
+      loadKpiCardsPage().then(function(){render();var f=document.getElementById('kpiCardsSearch');if(f){f.focus();var n=f.value.length;try{f.setSelectionRange(n,n);}catch(e){}}});
+    },350);
+  };
   /* nav */
   var nbs=document.querySelectorAll('[data-nav]');
   for(var i=0;i<nbs.length;i++){(function(b){b.onclick=function(){
@@ -90,6 +99,12 @@ function bind(){
     if(nv==='admin'){loadConsInvites().then(function(){render();});}
     else if(nv==='svp_acces'){loadPendingSeats().then(function(){render();});loadSubscription().then(function(){render();});loadSVPInvites().then(function(){render();});}
     else if(nv==='dashboard'&&S.role==='gestionnaire'){loadApprovals().then(function(){render();});}
+    /* Montée en charge : à l'entrée de l'onglet KPIs, (re)charger la page serveur
+       si le drapeau est on et que la page ne correspond pas à la vue courante. */
+    else if(nv==='kpis'&&typeof KPI_SERVER_AGG!=='undefined'&&KPI_SERVER_AGG){
+      render();
+      if(!serverKpiCards()){loadKpiCardsPage().then(function(){render();});}
+    }
     else{render();}
   };})(nbs[i]);}
   /* filters */
@@ -248,6 +263,22 @@ function bind(){
         if(S.kpiSort===id){S.kpiSortAsc=!S.kpiSortAsc;}
         else{S.kpiSort=id;S.kpiSortAsc=false;}
         render();
+      }
+      /* Montée en charge : tri/pagination serveur des cartes KPI (drapeau on). */
+      else if(a==='kpi-cards-sort'){
+        S.kpiCards=S.kpiCards||{};
+        if(S.kpiCards.sort===id){S.kpiCards.dir=(S.kpiCards.dir==='asc'?'desc':'asc');}
+        else{S.kpiCards.sort=id;S.kpiCards.dir='desc';}
+        S.kpiCards.page=0;
+        loadKpiCardsPage().then(function(){render();});
+      }
+      else if(a==='kpi-cards-prev'){
+        S.kpiCards=S.kpiCards||{};S.kpiCards.page=Math.max(0,(S.kpiCards.page||0)-1);
+        loadKpiCardsPage().then(function(){render();});
+      }
+      else if(a==='kpi-cards-next'){
+        S.kpiCards=S.kpiCards||{};S.kpiCards.page=(S.kpiCards.page||0)+1;
+        loadKpiCardsPage().then(function(){render();});
       }
       else if(a==='kpi-dir-sort'){
         if(S.kpiDirSort===id){S.kpiDirSortAsc=!S.kpiDirSortAsc;}

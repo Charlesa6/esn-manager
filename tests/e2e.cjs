@@ -164,6 +164,30 @@ async function newPage(browser) {
     const restored = await p.evaluate(() => { window.KPI_SERVER_AGG = false; render(); return document.body.innerText; });
     check('KPIs : retour au calcul local quand le drapeau repasse off', !/87[.,]6\s*%/.test(restored));
 
+    // Montée en charge : pagination serveur des cartes KPI (rôle à périmètre org).
+    const paged = await p.evaluate(() => {
+      var wk = (S.year || CFY) + '|' + (S.quarter || '');
+      window.KPI_SERVER_AGG = true;
+      S._roleBak = S.role; S.role = 'super_admin';
+      S.companyKpis = { avgSr: 50, totR: 1000000, totBill: 2000, avgTJM: 500, avgM: 20, totSalary: 600000, netC: 400000, nCons: 120 };
+      S.companyKpisKey = wk;
+      S.kpiCards = { total: 120, limit: 24, page: 0, sort: 'name', dir: 'asc', search: '',
+        top: [{ name: 'ClientAlphaXYZ', rev: 987654 }, { name: 'ClientBeta', rev: 123456 }],
+        key: wk + '|0|name|asc|',
+        rows: [
+          { id: 'z1', name: 'Zoe TestConsultant', title: 'Consultante', scr: 400, contract: 'salarie', arrive: null, depart: null, k: { tWD: 200, bill: 180, rev: 108000, sr: 90, avgT: 600, om: 25, pm: [{ cli: 'ClientAlphaXYZ', name: 'M', days: 180, tjm: 600, rev: 108000, mar: 25 }], cs: null, ce: null } },
+          { id: 'z2', name: 'Yann DemoConsultant', title: 'Dev', scr: 420, contract: 'salarie', arrive: null, depart: null, k: { tWD: 200, bill: 150, rev: 97500, sr: 75, avgT: 650, om: 20, pm: [], cs: null, ce: null } }
+        ] };
+      S.tab = 'kpis'; render();
+      return document.body.innerText;
+    });
+    check('KPIs paginé : consultant de la page serveur affiché', /Zoe TestConsultant/.test(paged));
+    check('KPIs paginé : total serveur affiché (120 consultants)', /120\s*consultants/.test(paged));
+    check('KPIs paginé : barre de pagination présente (Page 1 / 5)', /Page\s*1\s*\/\s*5/.test(paged));
+    check('KPIs paginé : top clients serveur affiché', /ClientAlphaXYZ/.test(paged));
+    // Restaurer l'état par défaut (drapeau off, rôle initial).
+    await p.evaluate(() => { window.KPI_SERVER_AGG = false; S.role = S._roleBak; S.kpiCards = null; render(); });
+
     check('aucune erreur JS fatale sur tout le parcours app', p._appErrors.length === 0, p._appErrors.join(' | '));
     await p.context().close();
   } catch (e) { check('app démo charge sans exception', false, e.message); }
