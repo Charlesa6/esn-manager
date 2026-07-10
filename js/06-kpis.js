@@ -413,11 +413,16 @@ function tForecastSection(){
       }).join('');
     };
     /* Chaque licence ne voit que son unité de rattachement et ses sous-unités —
-       jamais les unités au-dessus d'elle. Le super_admin (ou un compte sans BU) voit tout. */
+       jamais les unités au-dessus d'elle ni les unités sœurs. La visibilité dépend
+       UNIQUEMENT de la BU affectée (bu_id), pas du rôle : un Sénior VP rattaché à une
+       unité ne voit que son sous-arbre, même quand il reporte à un autre Sénior VP.
+       Seul un compte sans BU (typiquement le propriétaire au sommet) voit tout. */
     var _my=myBuId();
-    var roots=(S.role==='super_admin'||!_my)?buChildren(null):[buById(_my)].filter(Boolean);
+    var roots=!_my?buChildren(null):[buById(_my)].filter(Boolean);
     var treeRows=renderNodes(roots,0);
-    if(secNoBu.ca>0||pipeNoBu>0){
+    /* La ligne « Sans unité » agrège des données hors hiérarchie : réservée à la vue
+       globale (compte sans BU), sinon elle fuiterait au-delà du périmètre de l'unité. */
+    if(!_my&&(secNoBu.ca>0||pipeNoBu>0)){
       var mN=secNoBu.ca>0?(secNoBu.ca-secNoBu.cost)/secNoBu.ca*100:null;
       treeRows+='<tr><td style="padding:9px 14px 9px 33px;color:#94a3b8;font-style:italic">Sans unité</td>'
         +'<td class="tr" style="font-weight:700;color:#64748b">'+fEur(_round(secNoBu.ca))+'</td>'
