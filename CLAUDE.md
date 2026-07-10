@@ -60,7 +60,9 @@ Functions in `supabase/functions/`:
 
 **Deploys go through the Supabase MCP tools**, not a CLI: `deploy_edge_function` for functions (pass `verify_jwt` explicitly), `apply_migration` for DDL, `execute_sql` for data. The `supabase/migrations/*.sql` files are a record of migrations already applied to prod via MCP — there is no local Supabase/migration runner here.
 
-**Decision (owner):** do NOT ask the user for confirmation before running Supabase SQL — the `execute_sql` and `apply_migration` MCP tools are pre-approved and run without a permission prompt (also configured in `.claude/settings.local.json`). Note these act directly on the prod project (`rwmstlesxnglpblrurqj`, livemode).
+**Decision (owner):** do NOT ask the user for confirmation before running Supabase SQL — the `execute_sql` and `apply_migration` MCP tools are pre-approved and run without a permission prompt (allowlisted in `.claude/settings.json`). Note these act directly on the prod project (`rwmstlesxnglpblrurqj`, livemode).
+
+**Decision (owner) — autonomy / permissions:** the owner does NOT want mechanical permission prompts. `.claude/settings.json` sets `permissions.defaultMode: "auto"` (committed, so it survives fresh remote-container clones — a gitignored `settings.local.json` would not). Behaviour to follow: once you have the context and the decision, **chain the actions without asking for authorization** for routine requests (reads, edits, commits, SQL, usual shell). Present context and real choices (via a question) only for genuinely **consequential/irreversible** actions (mass data deletion, force-push, `DROP`, outward-facing sends). Do not stop and idle on a permission prompt.
 
 Stripe price IDs are hardcoded and must stay consistent across three places: `index.html` (`PLANS`/`MODULES`), `seats-checkout` (`ALLOWED`/`OWNER_PRICES`), and `stripe-webhook` (`PRICE_MAP`). Each role has a monthly and an annual price (annual = 10× monthly, i.e. 2 months free).
 
