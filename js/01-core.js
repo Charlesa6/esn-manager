@@ -324,31 +324,64 @@ function loadDemoData(){
   S.year=2026;
   S.quarter=null;
   S.tab=S.role==='utilisateur'?'activite':S.role==='recruteur'?'recrutement':S.role==='sales'?'business':'kpis';
+  /* ── BU fictive « Rhône-Alpes » : 14 consultants, 3 practices (dir), pour une
+     démo réaliste sans aucune donnée réelle. Regroupés par « dir » → l'onglet KPIs
+     « Marge consolidée par unité » affiche 3 unités. 2 consultants en intercontrat
+     (sans mission active), quelques missions en fin de course (risque de renouvellement). */
   S.cons=[
-    {id:'d1',name:'Sophie Martin',   title:'Consultante Senior',scr:520,email:'s.martin@demo.fr',   dir:'Thomas Bernard',arrive:'2024-10-01',depart:null},
-    {id:'d2',name:'Lucas Dupont',    title:'Architecte Cloud',  scr:610,email:'l.dupont@demo.fr',   dir:'Thomas Bernard',arrive:'2024-10-01',depart:null},
-    {id:'d3',name:'Inès Rousseau',   title:'Data Engineer',     scr:480,email:'i.rousseau@demo.fr', dir:'Marie Lefebvre',arrive:'2025-01-06',depart:null},
-    {id:'d4',name:'Karim Belhaj',    title:'Chef de projet',    scr:560,email:'k.belhaj@demo.fr',   dir:'Marie Lefebvre',arrive:'2024-10-01',depart:null},
-    {id:'d5',name:'Claire Morin',    title:'Développeuse BI',   scr:450,email:'c.morin@demo.fr',    dir:'Thomas Bernard',arrive:'2025-04-01',depart:null}
+    /* Practice Data & IA */
+    {id:'d1', name:'Camille Rey',       title:'Data Engineer Senior', scr:560,email:'c.rey@demo.fr',      dir:'Élodie Ferrand',   region:'Lyon',arrive:'2023-09-01',depart:null,expertise:['Data Engineering','Python','SQL'],       sectors:['Banque & Finance']},
+    {id:'d2', name:'Yanis Cherif',      title:'Data Scientist',       scr:540,email:'y.cherif@demo.fr',   dir:'Élodie Ferrand',   region:'Lyon',arrive:'2024-02-05',depart:null,expertise:['Data Science','AI / Machine Learning'],       sectors:['Assurance']},
+    {id:'d3', name:'Léa Fontaine',      title:'Consultante BI',       scr:460,email:'l.fontaine@demo.fr', dir:'Élodie Ferrand',   region:'Lyon',arrive:'2024-09-02',depart:null,expertise:['Power BI','SQL'],                       sectors:['Distribution & Retail']},
+    {id:'d4', name:'Hugo Mercier',      title:'Ingénieur ML confirmé',scr:500,email:'h.mercier@demo.fr',  dir:'Élodie Ferrand',   region:'Grenoble',arrive:'2024-04-08',depart:null,expertise:['AI / Machine Learning','Python'],     sectors:['Industrie / Manufacturing']},
+    {id:'d5', name:'Awa Diallo',        title:'Data Analyst',         scr:390,email:'a.diallo@demo.fr',   dir:'Élodie Ferrand',   region:'Lyon',arrive:'2025-03-03',depart:null,expertise:['Data Science','Power BI'],               sectors:['Industrie / Manufacturing']},
+    /* Practice Cloud & DevOps */
+    {id:'d6', name:'Thomas Girard',     title:'Architecte Cloud',     scr:640,email:'t.girard@demo.fr',   dir:'Nicolas Meyer',    region:'Lyon',arrive:'2022-11-14',depart:null,expertise:['AWS','Architecture logicielle','Terraform'],sectors:['Banque & Finance']},
+    {id:'d7', name:'Marion Lopez',      title:'DevOps Engineer',      scr:520,email:'m.lopez@demo.fr',    dir:'Nicolas Meyer',    region:'Lyon',arrive:'2024-01-08',depart:null,expertise:['DevOps','Docker','Kubernetes'],           sectors:['Banque & Finance']},
+    {id:'d8', name:'Rayan Haddad',      title:'Ingénieur Kubernetes', scr:500,email:'r.haddad@demo.fr',   dir:'Nicolas Meyer',    region:'Grenoble',arrive:'2024-06-03',depart:null,expertise:['Kubernetes','Cloud Computing'],     sectors:['Médias & Télécommunications']},
+    {id:'d9', name:'Julie Blanchard',   title:'SRE confirmée',        scr:540,email:'j.blanchard@demo.fr',dir:'Nicolas Meyer',    region:'Lyon',arrive:'2023-05-22',depart:null,expertise:['DevOps','Linux','Cloud Computing'],       sectors:['Énergie']},
+    {id:'d10',name:'Paul Rimbaud',      title:'Admin Cloud junior',   scr:400,email:'p.rimbaud@demo.fr',  dir:'Nicolas Meyer',    region:'Lyon',arrive:'2025-01-06',depart:null,expertise:['Azure','Linux'],                        sectors:['Public / Administration']},
+    /* Practice Finance & SI */
+    {id:'d11',name:'Nadia El Amrani',   title:'Chef de projet SI',    scr:580,email:'n.elamrani@demo.fr', dir:'Sarah Benkirane',  region:'Lyon',arrive:'2022-09-01',depart:null,expertise:['Gestion de projet','Business Analyst'],   sectors:['Assurance']},
+    {id:'d12',name:'Antoine Faure',     title:'Consultant SAP FICO',  scr:600,email:'a.faure@demo.fr',    dir:'Sarah Benkirane',  region:'Lyon',arrive:'2023-03-13',depart:null,expertise:['SAP','Finance'],                       sectors:['Pharma & Santé']},
+    {id:'d13',name:'Chloé Dubois',      title:'Business Analyst',     scr:470,email:'c.dubois@demo.fr',   dir:'Sarah Benkirane',  region:'Lyon',arrive:'2024-10-07',depart:null,expertise:['Business Analyst','Gestion des risques'],sectors:['Banque & Finance']},
+    {id:'d14',name:'Mehdi Slimani',     title:'Développeur Java conf.',scr:490,email:'m.slimani@demo.fr', dir:'Sarah Benkirane',  region:'Lyon',arrive:'2024-11-04',depart:null,expertise:['Java','Microservices','SQL'],            sectors:['Assurance']}
   ];
-  /* Format aligné sur mapM (cli/name/btype/wdays…) pour un rendu correct partout. */
+  /* Format aligné sur mapM (cli/name/btype/wdays…) pour un rendu correct partout.
+     Hugo Mercier (d4) et Paul Rimbaud (d10) sont volontairement sans mission → intercontrat. */
   S.miss=[
-    {id:'m1',cid:'d1',cli:'BNP Paribas',       name:'TMA SI Risques',   pcode:'300100001',tjm:780,sd:'2025-10-01',ed:'2026-03-31',btype:'at',     wdays:[1,2,3,4,5]},
-    {id:'m2',cid:'d2',cli:'Société Générale',  name:'Migration Cloud',  pcode:'300100002',tjm:920,sd:'2025-10-01',ed:'2026-09-30',btype:'at',     wdays:[1,2,3,4,5]},
-    {id:'m3',cid:'d3',cli:'AXA',               name:'Data Platform',    pcode:'300100003',tjm:720,sd:'2025-10-01',ed:'2026-06-30',btype:'at',     wdays:[1,2,3,4,5]},
-    {id:'m4',cid:'d4',cli:'SNCF',              name:'Pilotage forfait', pcode:'300100004',tjm:840,sd:'2025-10-01',ed:'2026-03-31',btype:'forfait',deal:180000,wdays:[1,2,3,4,5]},
-    {id:'m5',cid:'d5',cli:'TotalEnergies',     name:'Reporting BI',     pcode:'300100005',tjm:680,sd:'2025-10-01',ed:'2026-09-30',btype:'at',     wdays:[1,2,3,4,5]},
-    {id:'m6',cid:'d1',cli:'BNP Paribas',       name:'Phase 2 Risques',  pcode:'300100006',tjm:800,sd:'2026-04-01',ed:'2026-09-30',btype:'at',     wdays:[1,2,3,4,5]}
+    /* Data & IA */
+    {id:'m1', cid:'d1', cli:'AXA',              name:'Data Platform Groupe',  pcode:'300100001',tjm:820,sd:'2025-09-01',ed:'2026-06-30',btype:'at',     loc:'Lyon',    mgr:'Élodie Ferrand',  wdays:[1,2,3,4,5]},
+    {id:'m2', cid:'d1', cli:'AXA',              name:'Data Platform — Phase 2',pcode:'300100002',tjm:840,sd:'2026-07-01',ed:'2026-12-31',btype:'at',     loc:'Lyon',    mgr:'Élodie Ferrand',  wdays:[1,2,3,4,5]},
+    {id:'m3', cid:'d2', cli:'La Poste',         name:'MLOps Détection Fraude',pcode:'300100003',tjm:780,sd:'2025-10-01',ed:'2026-09-30',btype:'at',     loc:'Lyon',    mgr:'Élodie Ferrand',  wdays:[1,2,3,4,5]},
+    {id:'m4', cid:'d3', cli:'Decathlon',        name:'Reporting Retail',      pcode:'300100004',tjm:700,sd:'2025-11-03',ed:'2026-07-31',btype:'at',     loc:'Villeurbanne',mgr:'Élodie Ferrand',wdays:[1,2,3,4,5]},
+    {id:'m5', cid:'d5', cli:'Michelin',         name:'Dataviz Supply Chain',  pcode:'300100005',tjm:620,sd:'2026-01-05',ed:'2026-12-31',btype:'at',     loc:'Clermont-Ferrand',mgr:'Élodie Ferrand',wdays:[1,2,3,4,5]},
+    /* Cloud & DevOps */
+    {id:'m6', cid:'d6', cli:'Société Générale', name:'Migration AWS',         pcode:'300100006',tjm:960,sd:'2025-09-15',ed:'2026-09-30',btype:'at',     loc:'Lyon',    mgr:'Nicolas Meyer',   wdays:[1,2,3,4,5]},
+    {id:'m7', cid:'d7', cli:'BNP Paribas',      name:'Plateforme CI/CD',      pcode:'300100007',tjm:840,sd:'2025-10-01',ed:'2026-06-30',btype:'at',     loc:'Lyon',    mgr:'Nicolas Meyer',   wdays:[1,2,3,4,5]},
+    {id:'m8', cid:'d8', cli:'Orange',           name:'Conteneurisation SI',   pcode:'300100008',tjm:800,sd:'2025-12-01',ed:'2026-08-31',btype:'at',     loc:'Grenoble',mgr:'Nicolas Meyer',   wdays:[1,2,3,4,5]},
+    {id:'m9', cid:'d9', cli:'EDF',              name:'Observabilité SI',      pcode:'300100009',tjm:0,  sd:'2026-01-05',ed:'2026-07-31',btype:'forfait',deal:210000,loc:'Lyon',mgr:'Nicolas Meyer',wdays:[1,2,3,4,5]},
+    /* Finance & SI */
+    {id:'m10',cid:'d11',cli:'CNP Assurances',   name:'PMO Solvabilité II',    pcode:'300100010',tjm:880,sd:'2025-09-01',ed:'2026-12-31',btype:'at',     loc:'Lyon',    mgr:'Sarah Benkirane', wdays:[1,2,3,4,5]},
+    {id:'m11',cid:'d12',cli:'Sanofi',           name:'Déploiement SAP FICO',  pcode:'300100011',tjm:920,sd:'2025-10-06',ed:'2026-10-31',btype:'at',     loc:'Lyon',    mgr:'Sarah Benkirane', wdays:[1,2,3,4,5]},
+    {id:'m12',cid:'d13',cli:'Crédit Agricole',  name:'Cadrage Paiements',     pcode:'300100012',tjm:740,sd:'2025-11-17',ed:'2026-06-30',btype:'at',     loc:'Lyon',    mgr:'Sarah Benkirane', wdays:[1,2,3,4,5]},
+    {id:'m13',cid:'d14',cli:'MAIF',             name:'TMA Applicative Java',  pcode:'300100013',tjm:720,sd:'2025-10-01',ed:'2026-09-30',btype:'at',     loc:'Niort',   mgr:'Sarah Benkirane', wdays:[1,2,3,4,5]}
   ];
   S.lvs=[
-    {id:'v1',cid:'d1',type:'Congé payé',s:'2025-12-22',e:'2026-01-03'},
-    {id:'v2',cid:'d2',type:'RTT',       s:'2025-11-10',e:'2025-11-10'},
-    {id:'v3',cid:'d3',type:'Congé payé',s:'2026-02-17',e:'2026-02-21'},
-    {id:'v4',cid:'d4',type:'Maladie',   s:'2026-01-13',e:'2026-01-17'},
-    {id:'v5',cid:'d5',type:'RTT',       s:'2025-12-29',e:'2025-12-31'}
+    {id:'v1',cid:'d1', type:'Congé payé',s:'2026-08-03',e:'2026-08-14'},
+    {id:'v2',cid:'d2', type:'RTT',       s:'2026-06-01',e:'2026-06-01'},
+    {id:'v3',cid:'d3', type:'Congé payé',s:'2026-02-16',e:'2026-02-20'},
+    {id:'v4',cid:'d6', type:'RTT',       s:'2026-05-20',e:'2026-05-20'},
+    {id:'v5',cid:'d7', type:'Congé payé',s:'2026-07-13',e:'2026-07-25'},
+    {id:'v6',cid:'d11',type:'RTT',       s:'2026-11-02',e:'2026-11-02'},
+    {id:'v7',cid:'d12',type:'Maladie',   s:'2026-03-09',e:'2026-03-13'},
+    {id:'v8',cid:'d13',type:'Congé payé',s:'2026-04-27',e:'2026-04-30'},
+    {id:'v9',cid:'d14',type:'Congé payé',s:'2026-12-21',e:'2026-12-31'}
   ];
   S.cands=[
-    {id:'c1',name:'Maxime Guillot',expertise:['React','TypeScript'],sectors:['Banque & Finance'],locations:['Lyon'],nationality:'Française',reqSalary:48000,yearsExp:4,status:'entretien',marginPct:28,createdBy:'demo',feedbacks:[],cgiMeetings:[],cvFiles:[]}
+    {id:'c1',name:'Sofiane Bouras',  expertise:['Python','Data Engineering'],sectors:['Banque & Finance'],locations:['Lyon'],    nationality:'Française',reqSalary:46000,yearsExp:3,status:'op_ec',marginPct:27,createdBy:'demo',feedbacks:[],cgiMeetings:[],cvFiles:[]},
+    {id:'c2',name:'Émilie Charpentier',expertise:['Kubernetes','DevOps'],    sectors:['Énergie'],         locations:['Lyon','Grenoble'],nationality:'Française',reqSalary:52000,yearsExp:6,status:'rh_ec',marginPct:30,createdBy:'demo',feedbacks:[],cgiMeetings:[],cvFiles:[]},
+    {id:'c3',name:'Victor Nguyen',   expertise:['SAP','Finance'],            sectors:['Pharma & Santé'],  locations:['Lyon'],    nationality:'Française',reqSalary:58000,yearsExp:9,status:'pipe', marginPct:32,createdBy:'demo',feedbacks:[],cgiMeetings:[],cvFiles:[]}
   ];
   H=fyHols(2026);
 }
