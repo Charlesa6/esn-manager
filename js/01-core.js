@@ -667,6 +667,16 @@ function consInMyTeam(c){
   if(!c.managerId&&S.dirName&&(c.dir||'')===S.dirName)return true;
   return false;
 }
+/* Le compte lié à la fiche c est-il un supérieur hiérarchique (ancêtre) du compte
+   connecté ? Sert à masquer, dans l'Équipe, les personnes SITUÉES AU-DESSUS de soi
+   (ex. son patron et son salaire) sans restreindre le reste de la visibilité — on
+   part donc de ce que l'utilisateur voit déjà (visibleConsIds) et on n'en retire
+   QUE ses supérieurs. Une fiche sans compte lié n'est jamais « au-dessus ». */
+function consIsAboveMe(c){
+  var p=consProfile(c);
+  if(!p||p.id===S._userId)return false;
+  return isHierDescendant(S._userId,p.id);
+}
 /* Rang de tri par grade : Manager < Sénior < Confirmé < Junior. Business Manager
    en tête, grades inconnus en fin. */
 function gradeRank(g){

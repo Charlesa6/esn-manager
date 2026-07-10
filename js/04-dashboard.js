@@ -345,11 +345,11 @@ function tTeams(){
      - visible en FY2026 (oct25-sep26) et Q4 FY2026 (jul-sep26) ✓
      - invisible en FY2027 (oct26-sep27) car il sera déjà arrivé avant ✓ */
   var _rT=curRange(S.year);var rTS=_rT[0],rTE=_rT[1];
-  /* Périmètre hiérarchique : on ne montre que soi-même et ses subordonnés (N+1
-     transitif). Un compte au-dessus de l'utilisateur connecté (ex : son
-     super_admin) n'est jamais visible — donc son salaire non plus. Le
-     propriétaire (super_admin sans N+1) voit toute l'entreprise. */
-  var scoped=inFY.filter(consInMyTeam);
+  /* On part de ce que l'utilisateur voit déjà (visibleConsIds, appliqué plus haut
+     sur allC) et on retire UNIQUEMENT ses supérieurs hiérarchiques — ainsi le
+     salaire de son patron n'apparaît pas, sans pour autant masquer des collègues
+     ou des fiches non rattachées (qui, elles, restent visibles dans les KPIs). */
+  var scoped=inFY.filter(function(c){return !consIsAboveMe(c);});
   var futurs=applyFilters(scoped.filter(function(c){
     return c.arrive&&c.arrive>TODAY&&c.arrive>=rTS&&c.arrive<=rTE;
   })).sort(function(a,b){return a.arrive.localeCompare(b.arrive);});

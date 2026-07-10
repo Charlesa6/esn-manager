@@ -531,7 +531,10 @@ function addMissTeamRow(){
   var wrap=document.getElementById('miss-team');
   if(!wrap)return;
   var idx=wrap.querySelectorAll('.miss-team-row').length;
-  var tCons=S.cons.filter(function(c){return c.grade!=='sales_grade'&&consInMyTeam(c);});
+  /* Au clic, S.cons est le jeu maître (non filtré) : on applique donc explicitement
+     la visibilité par rôle pour ne proposer que les consultants gérés. */
+  var _vis=visibleConsIds();
+  var tCons=S.cons.filter(function(c){return _vis[c.id]&&c.grade!=='sales_grade';});
   var cOpts=tCons.map(function(c){return '<option value="'+c.id+'">'+esc(c.name)+'</option>';}).join('');
   var row=document.createElement('div');
   row.className='miss-team-row';row.style.cssText='display:flex;gap:8px;align-items:center';
@@ -558,11 +561,10 @@ function readMissTeam(){
 function tModal(){
   var m=S.modal;if(!m)return '';
   var tp=m.type,it=m.item,title='',body='',wide=false;
-  /* Staffing d'une mission : on ne peut staffer que soi-même et ses subordonnés
-     (N+1 transitif) — jamais quelqu'un au-dessus de soi. Le propriétaire staffe
-     toute l'entreprise. La sélection à l'édition (`co`) reste large pour toujours
-     pouvoir ré-afficher le consultant déjà affecté. */
-  var _teamCons=S.cons.filter(function(c){return c.grade!=='sales_grade'&&consInMyTeam(c);});
+  /* Staffing d'une mission : on peut staffer les consultants que l'on gère déjà
+     (S.cons est ici la vue filtrée par rôle/visibilité — admin : toute l'entreprise ;
+     gestionnaire : son équipe). Hors « Business Manager » (grade sales). */
+  var _teamCons=S.cons.filter(function(c){return c.grade!=='sales_grade';});
   var defCid=(it&&it.cid)||(_teamCons[0]&&_teamCons[0].id)||(S.cons[0]&&S.cons[0].id)||'';
   var co=S.cons.filter(function(c){return c.grade!=='sales_grade';}).map(function(c){return '<option value="'+c.id+'"'+(c.id===defCid?' selected':'')+'>'+esc(c.name)+'</option>';}).join('');
 
