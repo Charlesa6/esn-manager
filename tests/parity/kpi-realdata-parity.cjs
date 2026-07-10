@@ -13,9 +13,16 @@
 //      'lvs',(select jsonb_agg(jsonb_build_object('cid',consultant_id,'s',start_date,'e',end_date,'type',coalesce(type,'Congé payé'))) from public.leaves where company_id=(select company_id from cid))
 //    );
 //
-// 2) node tests/parity/kpi-realdata-parity.cjs   → imprime l'agrégat JS.
-// 3) Comparer aux nombres de konsilys_company_kpis_agg(...) (même company, même FY).
-//    Validé le 2026-07-10 : 9 indicateurs, 0 écart sur les données de prod.
+// 2) node tests/parity/kpi-realdata-parity.cjs   → imprime deux agrégats JS :
+//    - exercice complet  → comparer à konsilys_company_kpis(fy_start, fy_end)
+//    - trimestre T2       → comparer à
+//      konsilys_company_kpis_range(win_start, win_end, fy_start, fy_end)
+//    En vue trimestre, tWD/bill/rev sont bornés à la fenêtre mais le coût salarial
+//    reste proratisé sur les jours ouvrés de l'EXERCICE COMPLET (comme tKPIs()).
+// 3) Comparer aux nombres SQL (même company). NB : appeler la fonction PURE
+//    (konsilys_company_kpis_agg) ou passer par un contexte authentifié — les
+//    wrappers SECURITY DEFINER renvoient 0 sans JWT (my_company_id() nul).
+//    Validé le 2026-07-10 : 9 indicateurs, 0 écart (exercice complet ET trimestre).
 //
 // FY par défaut : 2025-10-01 → 2026-09-30 (adapter ys/ye si besoin).
 
@@ -40,15 +47,26 @@ var cons=D.cons.map(function(r){return{id:r.id,scr:r.scr||0,contract:r.contract|
 var miss=D.miss.map(function(r){return{cid:r.cid,sd:r.sd,ed:r.ed||null,tjm:r.tjm||0,btype:r.btype||'at',wmode:r.wmode||'rec',wdays:Array.isArray(r.wdays)?r.wdays:[1,2,3,4,5],manualDays:Array.isArray(r.manual_days)?r.manual_days:[],deal:r.deal||0};});
 var lvs=D.lvs.map(function(r){return{cid:r.cid,s:r.s,e:r.e,type:r.type||'Congé payé'};});
 var ys='2025-10-01',ye='2026-09-30',y=2026,H=fyHols(y);
-var fyTotalWD=wDays(ys,ye,H);
-var ks=cons.map(function(c){return{c:c,k:kpi(c,miss,lvs,y,H,[ys,ye])};});
-var totR=ks.reduce(function(s,x){return s+x.k.rev;},0);
-var totBill=ks.reduce(function(s,x){return s+x.k.bill;},0);
-var aktWD=ks.reduce(function(s,x){return s+(x.k.tWD||0);},0);
-var avgSr=aktWD>0?ks.reduce(function(s,x){return s+x.k.sr*(x.k.tWD||0);},0)/aktWD:0;
-var mArr=ks.filter(function(x){return x.k.om!=null;});
-var avgM=mArr.length?mArr.reduce(function(s,x){return s+x.k.om;},0)/mArr.length:null;
-var avgTJM=totBill>0?totR/totBill:0;
-var totSalary=ks.reduce(function(s,x){return s+(x.c.contract==='freelance'?x.c.scr*x.k.bill:x.c.scr*SCR_FACTOR*EMPLOYER_FACTOR*(x.k.tWD/fyTotalWD));},0);
-console.log('Agrégat JS (à comparer à konsilys_company_kpis_agg) :');
-console.log(JSON.stringify({nCons:ks.length,totR:totR,totBill:totBill,tWD:aktWD,avgSr:avgSr,avgM:avgM,avgTJM:avgTJM,totSalary:totSalary,netC:totR-totSalary},null,2));
+var fyTotalWD=wDays(ys,ye,H); /* dénominateur salaire = jours ouvrés de l'EXERCICE COMPLET */
+
+/* Agrégat entreprise sur une fenêtre [ws,we], salaire proratisé sur fyTotalWD.
+   Reproduit tKPIs() : en vue trimestre, la fenêtre borne tWD/bill/rev mais le
+   coût salarial reste proratisé sur l'exercice entier. */
+function agg(ws,we){
+  var ks=cons.map(function(c){return{c:c,k:kpi(c,miss,lvs,y,H,[ws,we])};});
+  var totR=ks.reduce(function(s,x){return s+x.k.rev;},0);
+  var totBill=ks.reduce(function(s,x){return s+x.k.bill;},0);
+  var aktWD=ks.reduce(function(s,x){return s+(x.k.tWD||0);},0);
+  var avgSr=aktWD>0?ks.reduce(function(s,x){return s+x.k.sr*(x.k.tWD||0);},0)/aktWD:0;
+  var mArr=ks.filter(function(x){return x.k.om!=null;});
+  var avgM=mArr.length?mArr.reduce(function(s,x){return s+x.k.om;},0)/mArr.length:null;
+  var avgTJM=totBill>0?totR/totBill:0;
+  var totSalary=ks.reduce(function(s,x){return s+(x.c.contract==='freelance'?x.c.scr*x.k.bill:x.c.scr*SCR_FACTOR*EMPLOYER_FACTOR*(x.k.tWD/fyTotalWD));},0);
+  return{nCons:ks.length,totR:totR,totBill:totBill,tWD:aktWD,avgSr:avgSr,avgM:avgM,avgTJM:avgTJM,totSalary:totSalary,netC:totR-totSalary};
+}
+
+console.log('Exercice complet — à comparer à konsilys_company_kpis(\''+ys+'\',\''+ye+'\') :');
+console.log(JSON.stringify(agg(ys,ye),null,2));
+console.log('\nTrimestre T2 (janv.–mars) — à comparer à');
+console.log('konsilys_company_kpis_range(\'2026-01-01\',\'2026-03-31\',\''+ys+'\',\''+ye+'\') :');
+console.log(JSON.stringify(agg('2026-01-01','2026-03-31'),null,2));

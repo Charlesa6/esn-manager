@@ -190,13 +190,21 @@ async function loadKpiSnapshot(){
 }
 
 /* Agrégat KPI entreprise calculé côté serveur (montée en charge), reproduisant
-   tKPIs() — parité prouvée. Alimente S.companyKpis quand KPI_SERVER_AGG est activé ;
-   ne remplace rien tant que le drapeau est off. */
+   tKPIs() — parité prouvée (exercice complet ET trimestre). Alimente S.companyKpis
+   quand KPI_SERVER_AGG est activé ; ne remplace rien tant que le drapeau est off.
+   En vue trimestre (S.quarter), la fenêtre borne tWD/CA/facturation mais le coût
+   salarial reste proratisé sur l'exercice complet — d'où konsilys_company_kpis_range. */
 async function loadCompanyKpis(){
   if(!sb||!SB_CID)return null;
   try{
     var fy=S.year||CFY;
-    var r=await sb.rpc('konsilys_company_kpis',{p_fy_start:fyStart(fy),p_fy_end:fyEnd(fy)});
+    var r;
+    if(S.quarter){
+      var win=qRange(fy,S.quarter);
+      r=await sb.rpc('konsilys_company_kpis_range',{p_win_start:win[0],p_win_end:win[1],p_fy_start:fyStart(fy),p_fy_end:fyEnd(fy)});
+    }else{
+      r=await sb.rpc('konsilys_company_kpis',{p_fy_start:fyStart(fy),p_fy_end:fyEnd(fy)});
+    }
     if(!r.error&&r.data){S.companyKpis=r.data;return r.data;}
   }catch(e){console.warn('company kpis:',e);}
   return null;
