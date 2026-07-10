@@ -10,6 +10,13 @@ var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
    proprement (sb=null) au lieu de planter toute l'app sur un ReferenceError. */
 var sb = (typeof supabase !== 'undefined' && SUPABASE_URL && SUPABASE_KEY && SUPABASE_URL.indexOf('supabase.co') > 0)
   ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+/* Drapeau — agrégation KPI côté serveur (montée en charge, cf. docs/SCALE_100K.md).
+   Désactivé par défaut : n'a AUCUN effet tant qu'il vaut false. Quand activé,
+   loadSB() charge en plus un instantané d'agrégats exacts (effectifs/missions
+   actifs, forfaits, effectif par BU) via la RPC company_kpi_snapshot, sans rien
+   remplacer des KPIs calculés jour-par-jour côté client. */
+var KPI_SERVER_AGG = false;
 var SB_CID = null; // company_id de l'utilisateur connecté (rempli après auth)
 
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
