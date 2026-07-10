@@ -53,23 +53,29 @@ create policy bu_scope_opportunities on public.crm_opportunities
   as restrictive for select
   using (public.bu_row_visible(bu_id));
 
--- missions : pas de bu_id → BU dérivée du consultant rattaché. Les missions
+-- missions / leaves : pas de bu_id → BU dérivée du consultant rattaché.
+-- La résolution passe par une fonction SECURITY DEFINER : sans cela, la sous-requête
+-- vers consultants serait elle-même filtrée par la RLS et une mission dont le
+-- consultant est masqué paraîtrait « orpheline » (donc visible à tort). En
+-- SECURITY DEFINER, la lecture de consultants contourne la RLS. Les vraies
 -- orphelines (consultant introuvable) restent visibles.
+create or replace function public.bu_consultant_visible(p_consultant text)
+returns boolean language sql stable security definer set search_path = public as $$
+  select case
+    when public.my_bu_id() is null or public.my_bu_id() = '' then true
+    else coalesce(
+      (select public.bu_row_visible(c.bu_id) from public.consultants c where c.id = p_consultant),
+      true
+    )
+  end;
+$$;
+
 drop policy if exists bu_scope_missions on public.missions;
 create policy bu_scope_missions on public.missions
   as restrictive for select
-  using (
-    public.my_bu_id() is null or public.my_bu_id() = ''
-    or not exists (select 1 from public.consultants c where c.id = missions.consultant_id)
-    or exists (select 1 from public.consultants c where c.id = missions.consultant_id and public.bu_row_visible(c.bu_id))
-  );
+  using (public.bu_consultant_visible(consultant_id));
 
--- leaves : idem, BU dérivée du consultant.
 drop policy if exists bu_scope_leaves on public.leaves;
 create policy bu_scope_leaves on public.leaves
   as restrictive for select
-  using (
-    public.my_bu_id() is null or public.my_bu_id() = ''
-    or not exists (select 1 from public.consultants c where c.id = leaves.consultant_id)
-    or exists (select 1 from public.consultants c where c.id = leaves.consultant_id and public.bu_row_visible(c.bu_id))
-  );
+  using (public.bu_consultant_visible(consultant_id));
