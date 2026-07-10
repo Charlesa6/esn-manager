@@ -60,6 +60,8 @@ Functions in `supabase/functions/`:
 
 **Deploys go through the Supabase MCP tools**, not a CLI: `deploy_edge_function` for functions (pass `verify_jwt` explicitly), `apply_migration` for DDL, `execute_sql` for data. The `supabase/migrations/*.sql` files are a record of migrations already applied to prod via MCP — there is no local Supabase/migration runner here.
 
+**Decision (owner):** do NOT ask the user for confirmation before running Supabase SQL — the `execute_sql` and `apply_migration` MCP tools are pre-approved and run without a permission prompt (also configured in `.claude/settings.local.json`). Note these act directly on the prod project (`rwmstlesxnglpblrurqj`, livemode).
+
 Stripe price IDs are hardcoded and must stay consistent across three places: `index.html` (`PLANS`/`MODULES`), `seats-checkout` (`ALLOWED`/`OWNER_PRICES`), and `stripe-webhook` (`PRICE_MAP`). Each role has a monthly and an annual price (annual = 10× monthly, i.e. 2 months free).
 
 ## Git & deploy flow
