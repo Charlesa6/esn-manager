@@ -34,23 +34,42 @@ var F=[
  {c:{id:'c8',scr:600,contract:'salarie',arrive:null,depart:null,bu:'bu_3'},miss:[{cid:'c8',sd:'2025-10-01',ed:'2026-03-31',tjm:600,btype:'at',wmode:'rec',wdays:[1,2,3]},{cid:'c8',sd:'2026-04-01',ed:'2026-09-30',tjm:650,btype:'at',wmode:'rec',wdays:[1,2,3,4,5]}],lvs:[L('c8','2025-11-10','2025-11-14','RTT')]}
 ];
 var ALLM=[],ALLL=[];F.forEach(function(f){f.miss.forEach(function(m){ALLM.push(m);});f.lvs.forEach(function(l){ALLL.push(l);});});
-var fyTotalWD=wDays(ys,ye,H);
-var ks=F.map(function(f){return{c:f.c,k:kpi(f.c,ALLM,ALLL,y,H,[ys,ye])};});
-var totR=ks.reduce(function(s,x){return s+x.k.rev;},0);
-var totBill=ks.reduce(function(s,x){return s+x.k.bill;},0);
-var aktWD=ks.reduce(function(s,x){return s+(x.k.tWD||0);},0);
-var avgSr=aktWD>0?ks.reduce(function(s,x){return s+x.k.sr*(x.k.tWD||0);},0)/aktWD:0;
-var mArr=ks.filter(function(x){return x.k.om!=null;});
-var avgM=mArr.length?mArr.reduce(function(s,x){return s+x.k.om;},0)/mArr.length:null;
-var avgTJM=totBill>0?totR/totBill:0;
-var totSalary=ks.reduce(function(s,x){return s+(x.c.contract==='freelance'?x.c.scr*x.k.bill:x.c.scr*SCR_FACTOR*EMPLOYER_FACTOR*(x.k.tWD/fyTotalWD));},0);
-var netC=totR-totSalary;
+var fyTotalWD=wDays(ys,ye,H); /* dénominateur salaire = jours ouvrés de l'exercice complet */
 function r4(x){return x==null?null:Number(Number(x).toFixed(4));}
-var exp={nCons:ks.length,totR:r4(totR),totBill:totBill,tWD:aktWD,avgSr:r4(avgSr),avgM:r4(avgM),avgTJM:r4(avgTJM),totSalary:r4(totSalary),netC:r4(netC)};
+
+/* Agrégat JS sur une fenêtre [ws,we] ; le coût salarial reste proratisé sur
+   l'exercice complet (fyTotalWD) — comme tKPIs() en vue trimestre. */
+function agg(ws,we){
+  var ks=F.map(function(f){return{c:f.c,k:kpi(f.c,ALLM,ALLL,y,H,[ws,we])};});
+  var totR=ks.reduce(function(s,x){return s+x.k.rev;},0);
+  var totBill=ks.reduce(function(s,x){return s+x.k.bill;},0);
+  var aktWD=ks.reduce(function(s,x){return s+(x.k.tWD||0);},0);
+  var avgSr=aktWD>0?ks.reduce(function(s,x){return s+x.k.sr*(x.k.tWD||0);},0)/aktWD:0;
+  var mArr=ks.filter(function(x){return x.k.om!=null;});
+  var avgM=mArr.length?mArr.reduce(function(s,x){return s+x.k.om;},0)/mArr.length:null;
+  var avgTJM=totBill>0?totR/totBill:0;
+  var totSalary=ks.reduce(function(s,x){return s+(x.c.contract==='freelance'?x.c.scr*x.k.bill:x.c.scr*SCR_FACTOR*EMPLOYER_FACTOR*(x.k.tWD/fyTotalWD));},0);
+  return{nCons:ks.length,totR:r4(totR),totBill:totBill,tWD:aktWD,avgSr:r4(avgSr),avgM:r4(avgM),avgTJM:r4(avgTJM),totSalary:r4(totSalary),netC:r4(totR-totSalary)};
+}
 function cJson(){return JSON.stringify(F.map(function(f){return{id:f.c.id,scr:f.c.scr,contract:f.c.contract,arrive:f.c.arrive,depart:f.c.depart,bu_id:f.c.bu};}));}
 function mJson(){return JSON.stringify(ALLM.map(function(m){return{cid:m.cid,sd:m.sd,ed:m.ed||null,tjm:m.tjm||0,btype:m.btype,wmode:m.wmode||'rec',wdays:m.wdays||[1,2,3,4,5],manual_days:m.manualDays||[],deal:m.deal||0};}));}
 function lJson(){return JSON.stringify(ALLL.map(function(l){return{cid:l.cid,s:l.s,e:l.e,type:l.type};}));}
-var sql="with r as (select public.konsilys_company_kpis_agg('"+cJson()+"'::jsonb,'"+mJson()+"'::jsonb,'"+lJson()+"'::jsonb,'"+ys+"'::date,'"+ye+"'::date) as k, '"+JSON.stringify(exp)+"'::jsonb as exp)\n"
- +"select count(*) as ecarts from r, lateral (values('nCons'),('totR'),('totBill'),('tWD'),('avgSr'),('avgM'),('avgTJM'),('totSalary'),('netC')) t(key)\n"
- +"where round(coalesce((k->>key)::numeric,-1e9),4) is distinct from round(coalesce((exp->>key)::numeric,-1e9),4);";
+
+/* Deux fenêtres : exercice complet + trimestre T2 (janv.–mars). En T2, le SQL
+   reçoit le dénominateur salaire explicite = jours ouvrés de l'exercice complet. */
+var salFyWd=wDays(ys,ye,H);
+var CASES=[
+  {lbl:'exercice complet', ws:ys, we:ye, salWd:'null'},
+  {lbl:'trimestre T2 (janv.-mars)', ws:'2026-01-01', we:'2026-03-31', salWd:salFyWd}
+];
+var parts=CASES.map(function(cs,i){
+  var exp=agg(cs.ws,cs.we);
+  return "select "+i+" as caseid, '"+cs.lbl+"' as scope, "
+    +"public.konsilys_company_kpis_agg('"+cJson()+"'::jsonb,'"+mJson()+"'::jsonb,'"+lJson()+"'::jsonb,'"+cs.ws+"'::date,'"+cs.we+"'::date,"+cs.salWd+") as k, "
+    +"'"+JSON.stringify(exp)+"'::jsonb as exp";
+});
+var sql="with r as (\n  "+parts.join("\n  union all\n  ")+"\n)\n"
+ +"select scope, count(*) filter (where round(coalesce((k->>key)::numeric,-1e9),4) is distinct from round(coalesce((exp->>key)::numeric,-1e9),4)) as ecarts\n"
+ +"from r, lateral (values('nCons'),('totR'),('totBill'),('tWD'),('avgSr'),('avgM'),('avgTJM'),('totSalary'),('netC')) t(key)\n"
+ +"group by caseid, scope order by caseid;";
 console.log(sql);

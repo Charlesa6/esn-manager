@@ -70,11 +70,14 @@ Chacun garde la meilleure expérience selon sa taille.
 ### Phase B — Refondre le chargement (le vrai chantier méga-tenant)
 À faire **écran par écran, derrière un drapeau**, avec E2E à chaque étape :
 1. [x] **KPIs agrégés en SQL** — fait et **prouvé identique au JS** (calendrier,
-       cœur par consultant, agrégat entreprise ; parité 0 écart, y compris sur
-       données réelles de prod — voir `tests/parity/`). Fonctions déployées
-       (`konsilys_kpi_core`, `konsilys_company_kpis`) ; drapeau `KPI_SERVER_AGG`
-       encore off. Reste : découpage par BU/trimestre, refonte de l'écran pour
-       lire l'agrégat (au lieu de `buildKS`), puis activation.
+       cœur par consultant, agrégat entreprise **exercice complet ET trimestre** ;
+       parité 0 écart, y compris sur données réelles de prod — voir `tests/parity/`).
+       Subtilité trimestre gérée : la fenêtre borne tWD/CA/facturation mais le coût
+       salarial reste proratisé sur l'exercice complet (dénominateur explicite).
+       Fonctions déployées (`konsilys_kpi_core`, `konsilys_company_kpis`,
+       `konsilys_company_kpis_range`) ; `loadCompanyKpis()` choisit la fenêtre selon
+       `S.quarter`. Drapeau `KPI_SERVER_AGG` encore off. Reste : découpage par BU,
+       refonte de l'écran pour lire l'agrégat (au lieu de `buildKS`), puis activation.
 2. [ ] **Équipe** : pagination + recherche serveur, liste virtualisée.
 3. [ ] **Missions** : idem + filtres serveur.
 4. [ ] **Planning** : chargement par période/fenêtre visible.
