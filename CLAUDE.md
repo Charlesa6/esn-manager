@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Keeping this file up to date (persistent memory)
+
+This file is the ONLY memory that survives between separate conversations — anything not written here is lost when a new conversation starts. Therefore: whenever a **notable decision** is made (an architectural or business-rule choice, a convention adopted, a workflow/tooling preference, a "from now on always/never do X"), record it in this file **without asking for permission**, then tell the user in the reply that you did and where. Do not wait to be asked; do not ask whether to write it down — just do it and inform. Keep additions concise and place them in the most relevant existing section (or add a short new one). Routine, one-off task steps are not notable and should not be recorded.
+
 ## What this is
 
 **Konsilys** (konsilys.fr) — a SaaS platform for ESNs (IT consulting firms): staffing, missions & margin, planning, absences with N+1 approval, recruitment and CRM. Multi-tenant, one isolated space per company.
