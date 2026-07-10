@@ -15,7 +15,20 @@ Préférez :
 
 Pour un test réaliste « façon CGI », chargez d'abord la base de test avec un
 **gros volume** (par ex. 100 000 consultants + missions/absences) — sinon vous
-mesurez une base vide.
+mesurez une base vide. Le script **`seed-large-dataset.sql`** le fait :
+
+```bash
+# Sur une BRANCHE Supabase ou un staging — JAMAIS la prod.
+psql "$BRANCH_DB_URL" \
+  -v cid="'<UUID_ENTREPRISE_DE_TEST>'" -v n=100000 \
+  -f tests/load/seed-large-dataset.sql
+```
+
+- `cid` = UUID d'une entreprise de test (obligatoire). `n` = nombre de consultants.
+- Génère ≈ n consultants, ≈ 1,5·n missions, ≈ n absences — tous préfixés `load_`.
+- **Nettoyage** : les 3 `delete ... where id like 'load_%'` en bas du fichier.
+- ⚠️ Le script désactive les triggers le temps de l'insert (rôle admin requis) et
+  refuse de tourner sans `cid` explicite. Ne le lancez pas sur la production.
 
 ## Prérequis
 
