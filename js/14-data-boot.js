@@ -205,9 +205,22 @@ async function loadCompanyKpis(){
     }else{
       r=await sb.rpc('konsilys_company_kpis',{p_fy_start:fyStart(fy),p_fy_end:fyEnd(fy)});
     }
-    if(!r.error&&r.data){S.companyKpis=r.data;return r.data;}
+    if(!r.error&&r.data){
+      S.companyKpis=r.data;
+      /* Mémoriser la fenêtre calculée (exercice+trimestre) : tKPIs n'utilise
+         l'agrégat serveur que s'il correspond à la vue courante. */
+      S.companyKpisKey=fy+'|'+(S.quarter||'');
+      return r.data;
+    }
   }catch(e){console.warn('company kpis:',e);}
   return null;
+}
+
+/* Recharge l'agrégat serveur pour la fenêtre courante puis rafraîchit la vue.
+   Appelé quand l'utilisateur change d'exercice ou de trimestre (sans effet si
+   le drapeau est off — on garde le rendu synchrone habituel). */
+function refreshServerKpis(){
+  if(typeof KPI_SERVER_AGG!=='undefined'&&KPI_SERVER_AGG){loadCompanyKpis().then(function(){render();});}
 }
 
 async function loadSB(){
