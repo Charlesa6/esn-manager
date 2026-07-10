@@ -472,7 +472,19 @@ function buildKS(){
   /* Cache par render — évite de recalculer pour chaque template */
   if(S._ks&&S._ks._valid)return S._ks.data;
   var _rng=S.quarter?curRange(S.year):null;
-  var data=S.cons.map(function(c){return{c:c,k:kpi(c,S.miss,S.lvs,S.year,H,_rng)};});
+  /* On ne compte que les consultants présents durant la période sélectionnée :
+     un consultant qui arrive après la fin de la période (pas encore embauché sur
+     l'exercice) ou parti avant son début ne doit ni figurer dans les KPIs ni peser
+     sur le taux de staffing — sinon un futur arrivant à 0 % fausse la moyenne de
+     l'année. Même règle de présence que l'onglet Équipe. */
+  var _pS=_rng?_rng[0]:fyStart(S.year);
+  var _pE=_rng?_rng[1]:fyEnd(S.year);
+  var _present=function(c){
+    if(c.arrive&&c.arrive>_pE)return false;
+    if(c.depart&&c.depart<_pS)return false;
+    return true;
+  };
+  var data=S.cons.filter(_present).map(function(c){return{c:c,k:kpi(c,S.miss,S.lvs,S.year,H,_rng)};});
   S._ks={data:data,_valid:true};
   return data;
 }
