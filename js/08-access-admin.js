@@ -24,7 +24,7 @@ function tSettings(){
     {v:5,lbl:'Mai'},{v:6,lbl:'Juin'},{v:7,lbl:'Juillet'},{v:8,lbl:'Août'},
     {v:9,lbl:'Septembre'},{v:10,lbl:'Octobre'},{v:11,lbl:'Novembre'},{v:12,lbl:'Décembre'}
   ];
-  var roleKeys=['super_admin','admin','gestionnaire','utilisateur','recruteur'];
+  var roleKeys=['super_admin','admin','gestionnaire','utilisateur','recruteur','sales'];
   var roleDefaults=JSON.parse(JSON.stringify(_ROLE_DEFAULTS)); /* utilise les defaults globaux */
   var curOpts=currencies.map(function(cr){return '<option value="'+cr.code+'"'+(st.currency===cr.code?' selected':'')+'>'+cr.lbl+'</option>';}).join('');
   var moOpts=months.map(function(m){return '<option value="'+m.v+'"'+((st.fyStartMonth||10)===m.v?' selected':'')+'>'+m.lbl+'</option>';}).join('');
@@ -231,7 +231,7 @@ function saveSettings(){
   var cur=document.getElementById('set-currency');
   var fym=document.getElementById('set-fystart');
   var currencies={EUR:'\u20ac',USD:'$',GBP:'\u00a3',CHF:'CHF',CAD:'CA$',MAD:'DH'};
-  var roleKeys=['super_admin','admin','gestionnaire','utilisateur','recruteur'];
+  var roleKeys=['super_admin','admin','gestionnaire','utilisateur','recruteur','sales'];
   var labels={};
   roleKeys.forEach(function(k){var el=document.getElementById('rol-'+k);if(el&&el.value.trim())labels[k]=el.value.trim();});
   /* Lire les statuts actuels depuis les inputs */

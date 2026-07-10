@@ -2357,8 +2357,10 @@ function mCalHTML(){
 
 function tProfile(){
   var userEmail=S._userEmail||'';
-  var roleLabels={directeur:rLabel('gestionnaire'),gestionnaire:rLabel('admin'),senior_vp:rLabel('super_admin'),consultant:rLabel('utilisateur'),recruteur:rLabel('recruteur')};
-  var userRole=roleLabels[S.role]||S.role;
+  /* Libellé du rôle réel du compte (personnalisable via Paramètres). L'ancien
+     mapping utilisait des clés legacy (directeur/gestionnaire/senior_vp…) et
+     décalait tout : un gestionnaire héritait du libellé de l'admin (« VP »). */
+  var userRole=rLabel(S.role);
   var fn=S.profileFirstName||'';
   var ln=S.profileLastName||'';
   var titre=S.profileTitle||'';

@@ -81,7 +81,11 @@ function tSB(){
   }).join('');
   /* ── bloc filtre directeur (gestionnaire) / libellé équipe (directeur) ── */
   var _allC=(S._all&&S._all.cons)||S.cons;
-  var _dirs=[];_allC.forEach(function(c){var r=c.dir||'';if(r&&_dirs.indexOf(r)<0)_dirs.push(r);});_dirs.sort();
+  /* Filtre « Directeur » (licence admin) : ne lister que les directeurs du
+     périmètre hiérarchique de l'utilisateur (lui + ses subordonnés). Sans ce
+     filtre, la liste reprenait TOUS les dir de l'entreprise, y compris le
+     super_admin situé au-dessus de l'admin. */
+  var _dirs=[];_allC.filter(consInMyTeam).forEach(function(c){var r=c.dir||'';if(r&&_dirs.indexOf(r)<0)_dirs.push(r);});_dirs.sort();
   var dirBlock;
   if(S.role==='gestionnaire'){
     dirBlock='<div class="syr"><div class="syr-lbl">Mon \u00e9quipe</div>'
