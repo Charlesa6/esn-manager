@@ -144,6 +144,26 @@ async function newPage(browser) {
       check('ouverture du modal « Nouveau candidat » sans erreur', modalOpen && p._appErrors.length === before, p._appErrors.slice(before).join(' | '));
     }
 
+    // Montée en charge : la hero-bande KPIs lit l'agrégat serveur derrière le
+    // drapeau KPI_SERVER_AGG. On injecte un agrégat distinctif (staffing 87,6 %)
+    // pour la fenêtre courante et on vérifie que la hero l'affiche, puis on remet
+    // le drapeau à off (état par défaut).
+    const beforeFlag = await p.evaluate(() => {
+      S.modal = null; S.tab = 'kpis'; render();       // ferme un éventuel modal ouvert et va sur KPIs
+      return document.body.innerText;
+    });
+    check('KPIs (drapeau off) : n’affiche pas la valeur serveur injectée', !/87[.,]6\s*%/.test(beforeFlag));
+    const afterFlag = await p.evaluate(() => {
+      window.KPI_SERVER_AGG = true;
+      S.companyKpis = { avgSr: 87.6, totR: 9123456, totBill: 1234, avgTJM: 543, avgM: 21.7, totSalary: 6111222, netC: 3012234, nCons: 99 };
+      S.companyKpisKey = (S.year || CFY) + '|' + (S.quarter || '');
+      render();
+      return document.body.innerText;
+    });
+    check('KPIs (drapeau on) : la hero lit l’agrégat serveur (staffing 87,6 %)', /87[.,]6\s*%/.test(afterFlag));
+    const restored = await p.evaluate(() => { window.KPI_SERVER_AGG = false; render(); return document.body.innerText; });
+    check('KPIs : retour au calcul local quand le drapeau repasse off', !/87[.,]6\s*%/.test(restored));
+
     check('aucune erreur JS fatale sur tout le parcours app', p._appErrors.length === 0, p._appErrors.join(' | '));
     await p.context().close();
   } catch (e) { check('app démo charge sans exception', false, e.message); }

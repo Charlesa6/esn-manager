@@ -2,6 +2,31 @@
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    TEMPLATE - KPIs (with top clients, avg TJM, net contribution)
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+/* ═══ Agrégat entreprise côté serveur (montée en charge) ═══
+   L'agrégat serveur (S.companyKpis) reproduit exactement le calcul JS ci-dessous
+   — parité prouvée (voir tests/parity/). On ne l'utilise QUE derrière le drapeau
+   KPI_SERVER_AGG et QUE s'il correspond à la fenêtre affichée (même exercice +
+   trimestre), sinon on retombe sur le calcul local. */
+function serverCompanyKpis(){
+  if(typeof KPI_SERVER_AGG==='undefined'||!KPI_SERVER_AGG||!S.companyKpis)return null;
+  var key=(S.year||(typeof CFY!=='undefined'?CFY:S.year))+'|'+(S.quarter||'');
+  return S.companyKpisKey===key?S.companyKpis:null;
+}
+/* Fusion pure : si un agrégat serveur est fourni, ses scalaires priment sur le
+   calcul JS local. Testable en isolation (tests/parity/kpi-merge-parity.cjs). */
+function mergeCompanyAgg(js, srv){
+  if(!srv)return js;
+  return {
+    avgSr: srv.avgSr!=null?+srv.avgSr:js.avgSr,
+    totR: +srv.totR,
+    totBill: +srv.totBill,
+    avgTJM: +srv.avgTJM,
+    avgM: srv.avgM==null?null:+srv.avgM,
+    totSalary: +srv.totSalary,
+    netC: +srv.netC,
+    nCons: srv.nCons!=null?+srv.nCons:js.nCons
+  };
+}
 function tKPIs(){
   var ks=buildKS();
   var totR=ks.reduce(function(s,x){return s+x.k.rev;},0);
@@ -18,6 +43,15 @@ function tKPIs(){
     ?ks.reduce(function(s,x){return s+(x.c.contract==='freelance'?x.c.scr*x.k.bill:x.c.scr*SCR_FACTOR*EMPLOYER_FACTOR*(x.k.tWD/fyTotalWD));},0)
     :0;
   var netC=totR-totSalary;
+  /* Montée en charge : derrière le drapeau, les scalaires de la hero-bande sont
+     lus depuis l'agrégat serveur (identique au JS par parité). Les cartes par
+     consultant restent locales (pagination = brique suivante). */
+  var _agg=mergeCompanyAgg(
+    {avgSr:avgSr,totR:totR,totBill:totBill,avgTJM:avgTJMv,avgM:avgM,totSalary:totSalary,netC:netC,nCons:ks.length},
+    serverCompanyKpis()
+  );
+  avgSr=_agg.avgSr;totR=_agg.totR;totBill=_agg.totBill;avgTJMv=_agg.avgTJM;
+  avgM=_agg.avgM;totSalary=_agg.totSalary;netC=_agg.netC;
   var top3=clientRev(ks).slice(0,3);
   var totRevP=Math.max(totR,1);
   var srBars=svgBars(ks.map(function(x){return{n:x.c.name.split(' ')[0],v:parseFloat(x.k.sr.toFixed(1))};}),function(v){return v>=80?'#16a34a':v>=50?'#d97706':'#dc2626';},'%');

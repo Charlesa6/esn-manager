@@ -77,7 +77,7 @@ function render(){
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function bind(){
   var el=function(id){return document.getElementById(id);};
-  var yr=el('yrs');if(yr)yr.onchange=function(){S.year=+this.value;H=fyHols(S.year);S.precs={};render();};
+  var yr=el('yrs');if(yr)yr.onchange=function(){S.year=+this.value;H=fyHols(S.year);S.precs={};render();refreshServerKpis();};
   /* nav */
   var nbs=document.querySelectorAll('[data-nav]');
   for(var i=0;i<nbs.length;i++){(function(b){b.onclick=function(){
@@ -209,7 +209,7 @@ function bind(){
     b.onclick=async function(e){
       e.stopPropagation();
       if(a==='export'){exportJSON();return;}
-      else if(a==='qsel'){S.quarter=id?+id:null;render();}
+      else if(a==='qsel'){S.quarter=id?+id:null;render();refreshServerKpis();}
       else if(a==='bu-fc-toggle'){if(!S.buFcOpen)S.buFcOpen={};S.buFcOpen[id]=!S.buFcOpen[id];render();}
       else if(a==='cmdk-open'){openCmdK();return;}
       else if(a==='yr-prev'){if(S.year>CFY-2){S.year--;H=fyHols(S.year);S.precs={};render();}}
