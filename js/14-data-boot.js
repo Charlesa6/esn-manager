@@ -716,39 +716,15 @@ async function initApp(){
         S.sbSt = 'Supabase connecté — aucune donnée pour cette entreprise';
       }else{
         S.sbSt='Supabase connect\u00e9';
-        /* Fusionner le localStorage : r\u00e9cup\u00e9rer les entr\u00e9es locales non encore sync\u00e9es */
-        try{
-          var _raw=localStorage.getItem(SKEY);
-          if(_raw){
-            var _d=JSON.parse(_raw);
-            if(_d){
-              var _sbMids=new Set(S.miss.map(function(m){return m.id;}));
-              var _localMiss=(_d.miss||[]).filter(function(m){return !_sbMids.has(m.id);});
-              if(_localMiss.length){
-                S.miss=S.miss.concat(_localMiss);
-                _localMiss.forEach(function(m){sbUpsertMiss(m).catch(function(e){console.warn('merge-sync miss:',e);});});
-              }
-              var _sbCids=new Set(S.cons.map(function(c){return c.id;}));
-              var _localCons=(_d.cons||[]).filter(function(c){return !_sbCids.has(c.id);});
-              if(_localCons.length){
-                S.cons=S.cons.concat(_localCons);
-                _localCons.forEach(function(c){sbUpsertCons(c).catch(function(e){console.warn('merge-sync cons:',e);});});
-              }
-              var _sbLids=new Set(S.lvs.map(function(l){return l.id;}));
-              var _localLvs=(_d.lvs||[]).filter(function(l){return !_sbLids.has(l.id);});
-              if(_localLvs.length){
-                S.lvs=S.lvs.concat(_localLvs);
-                _localLvs.forEach(function(l){sbUpsertLeave(l).catch(function(e){console.warn('merge-sync lv:',e);});});
-              }
-              var _sbCandIds=new Set(S.cands.map(function(c){return c.id;}));
-              var _localCands=(_d.cands||[]).filter(function(c){return !_sbCandIds.has(c.id);});
-              if(_localCands.length){
-                S.cands=S.cands.concat(_localCands);
-                _localCands.forEach(function(c){sbUpsertCand(c).catch(function(e){console.warn('merge-sync cand:',e);});});
-              }
-            }
-          }
-        }catch(_e){console.warn('localStorage merge:',_e);}
+        /* Supabase est la source de v\u00e9rit\u00e9 : on NE r\u00e9injecte plus le cache local
+           vers le serveur au d\u00e9marrage. L'ancienne \u00ab fusion \u00bb ressuscitait les
+           lignes supprim\u00e9es \u2014 une fiche effac\u00e9e par un membre mais encore pr\u00e9sente
+           dans le cache navigateur d'un autre \u00e9tait consid\u00e9r\u00e9e \u00ab cr\u00e9ation locale non
+           synchronis\u00e9e \u00bb et r\u00e9-upsert\u00e9e \u00e0 son prochain chargement, donc recr\u00e9\u00e9e en
+           boucle (un membre supprime, un autre la fait revenir sans le vouloir).
+           Les vraies cr\u00e9ations sont d\u00e9j\u00e0 pouss\u00e9es imm\u00e9diatement \u00e0 la cr\u00e9ation, donc
+           rien n'est perdu. Le cache local ne sert plus qu'\u00e0 l'affichage instantan\u00e9 ;
+           il est r\u00e9align\u00e9 sur Supabase au premier render() (saveLocal). */
       }
 
       await loadInvites();
