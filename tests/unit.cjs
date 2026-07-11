@@ -107,6 +107,29 @@ ctx.S.orgProfiles = [{ id: 'OWNER', role: 'super_admin', manager_id: null, cons_
 ok('consInTeamScope : exclut le supérieur (patron)', ctx.consInTeamScope({ id: 'cOwner' }) === false);
 ok('consInTeamScope : garde un consultant du périmètre', ctx.consInTeamScope({ id: 'other', dir: 'X' }) === true);
 
+// ── 6. Invariance d'agrégat (parité KPI client/serveur) ──
+// Un consultant hors période contribue 0 partout → le retirer (filtre buildKS) ne
+// change AUCUN agrégat pondéré. C'est ce qui garantit que le calcul client filtré
+// reste identique à l'agrégat serveur (seul l'effectif nCons est aligné en SQL).
+console.log('\n▶ Invariance d\'agrégat (parité KPI)');
+var Hp = ctx.fyHols(2026);
+var kPresent = ctx.kpi({ id: 'p1', scr: 400, contract: 'salarie', arrive: null, depart: null },
+  [{ cid: 'p1', sd: '2025-10-01', ed: '2026-09-30', tjm: 600, btype: 'at', wmode: 'rec', wdays: [1,2,3,4,5] }], [], 2026, Hp, null);
+var kFuture = ctx.kpi({ id: 'f1', scr: 400, contract: 'salarie', arrive: '2026-10-02', depart: null }, [], [], 2026, Hp, null);
+function agg(list) {
+  var tw = list.reduce(function (s, x) { return s + (x.tWD || 0); }, 0);
+  return {
+    avgSr: tw > 0 ? list.reduce(function (s, x) { return s + x.sr * (x.tWD || 0); }, 0) / tw : 0,
+    totR: list.reduce(function (s, x) { return s + x.rev; }, 0),
+    totBill: list.reduce(function (s, x) { return s + x.bill; }, 0),
+  };
+}
+var aWith = agg([kPresent, kFuture]);   // avec le futur arrivant
+var aWithout = agg([kPresent]);          // sans lui
+ok('avgSr invariant au consultant hors-période', aWith.avgSr === aWithout.avgSr);
+ok('CA total (totR) invariant', aWith.totR === aWithout.totR);
+ok('jours facturés (totBill) invariants', aWith.totBill === aWithout.totBill);
+
 console.log('\n' + '─'.repeat(58));
 console.log(pass + '/' + (pass + fail) + ' tests unitaires réussis' + (fail ? ' — \x1b[31m' + fail + ' échec(s)\x1b[0m' : ' — \x1b[32mtout est vert\x1b[0m'));
 process.exit(fail ? 1 : 0);
