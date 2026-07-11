@@ -384,21 +384,30 @@ async function loadSB(){
   }catch(e){console.warn('Supabase load error:',e);return false;}
 }
 
+/* Rend VISIBLE un échec d'écriture Supabase au lieu de l'avaler (toast + log).
+   Sans ça, une écriture/suppression refusée laissait croire à un succès — l'UI
+   étant optimiste (cf. incident « fiche ressuscitée » : la suppression échouait
+   en silence). */
+function sbWriteErr(label,err){
+  var msg=(err&&err.message)||String(err||'erreur inconnue');
+  try{toast('⚠️ Échec — '+label+' non enregistré : '+msg,'error');}catch(_e){}
+  console.warn('SB '+label+':',msg);
+}
 async function sbUpsertCons(c){
   if(!sb||!SB_CID)return;
   var res=await sb.from('consultants').upsert({id:c.id,company_id:SB_CID,name:c.name,title:c.title,scr:c.scr,email:c.email,directeur:c.dir||null,manager_id:c.managerId||null,bu_id:c.buId||null,region:c.region||null,mobility:c.mobility||[],arrive:c.arrive||null,depart:c.depart||null,expertise:c.expertise||[],sectors:c.sectors||[],contract:c.contract||'salarie',grade:c.grade||null});
-  if(res.error)throw new Error(c.name+': '+res.error.message);
+  if(res.error){sbWriteErr('consultant « '+c.name+' »',res.error);throw new Error(c.name+': '+res.error.message);}
 }
 async function sbUpsertMiss(m){
   if(!sb)return;
   if(!SB_CID)throw new Error('SB_CID null — reconnectez-vous');
   var res=await sb.from('missions').upsert({id:m.id,company_id:SB_CID,consultant_id:m.cid,name:m.name,client_name:m.cli,tjm:m.tjm,start_date:m.sd,end_date:m.ed||null,location:m.loc,manager_name:m.mgr,client_contact_name:m.ccn,client_contact_role:m.ccr,billing_type:m.btype||'at',work_days:(m.wdays&&m.wdays.length?m.wdays:[1,2,3,4,5]),wmode:m.wmode||'rec',manual_days:(Array.isArray(m.manualDays)?m.manualDays:[]),deal_amount:(m.deal||null),target_margin:((m.tmar!=null&&m.tmar!=='')?m.tmar:null),code_projet:m.pcode||null,team:m.team||null});
-  if(res.error)throw new Error(m.name+': '+res.error.message);
+  if(res.error){sbWriteErr('mission « '+m.name+' »',res.error);throw new Error(m.name+': '+res.error.message);}
 }
 async function sbUpsertLeave(l){
   if(!sb||!SB_CID)return;
   var res=await sb.from('leaves').upsert({id:l.id,company_id:SB_CID,consultant_id:l.cid,type:l.type,start_date:l.s,end_date:l.e,approval_role:l.approval_role||null,approved:(l.approved!=null?l.approved:true)});
-  if(res.error)throw new Error('Absence: '+res.error.message);
+  if(res.error){sbWriteErr('absence',res.error);throw new Error('Absence: '+res.error.message);}
 }
 async function sbUpsertCand(c){
   if(!sb)return;
@@ -421,7 +430,7 @@ async function sbUpsertCand(c){
     experiences:Array.isArray(c.experiences)?c.experiences:[],
     cv_profile:(c.cvProfile&&typeof c.cvProfile==='object')?c.cvProfile:{}
   });
-  if(res.error)throw new Error(c.name+': '+res.error.message);
+  if(res.error){sbWriteErr('candidat « '+c.name+' »',res.error);throw new Error(c.name+': '+res.error.message);}
 }
 
 function toggleRecruited(){
@@ -441,7 +450,13 @@ function recCalcRefresh(){
 async function sbDel(tbl,id){
   if(!sb)return;
   var res=await sb.from(tbl).delete().eq('id',id);
-  if(res.error)console.warn('SB del:',res.error.message);
+  if(res.error){
+    sbWriteErr('suppression',res.error);
+    /* Réconciliation : la ligne a été retirée de l'UI de façon optimiste. Comme la
+       suppression a échoué côté serveur, on recharge la vérité serveur pour la
+       restaurer — l'utilisateur voit à la fois l'erreur et la ligne revenir. */
+    if(typeof loadSB==='function'){try{await loadSB();render();}catch(_e){}}
+  }
 }
 
 /* ── Directeurs : invitations (le gestionnaire pré-enregistre, le trigger rattache à l'inscription) ── */
