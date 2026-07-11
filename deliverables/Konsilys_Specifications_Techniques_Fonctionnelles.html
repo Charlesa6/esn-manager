@@ -23,7 +23,7 @@ tr:nth-child(even) td{background:#F7F9FB}
   <div class="brand">KONSILYS</div>
   <div class="tag">Plateforme SaaS de pilotage pour ESN</div>
   <div class="doc">Spécifications techniques<br>et fonctionnelles</div>
-  <div class="meta">Version 1.0 &nbsp;·&nbsp; Juillet 2026<br><i>Document confidentiel</i></div>
+  <div class="meta">Version 1.1 &nbsp;·&nbsp; Juillet 2026<br><i>Document confidentiel</i></div>
 </div>
 
 <h1>1. Présentation générale</h1>
@@ -56,7 +56,7 @@ tr:nth-child(even) td{background:#F7F9FB}
 <h2>3.3 Backend Supabase</h2>
 <p>Les données sont exposées via l'API REST auto-générée de Supabase, protégée par RLS. Les opérations sensibles (activation d'une entreprise, provisioning des comptes, traitement des paiements) sont déléguées à des Edge Functions disposant de privilèges élevés (service role), jamais au client.</p>
 <h2>3.4 Multi-tenant et sécurité</h2>
-<p>Chaque enregistrement métier porte un identifiant d'entreprise (company_id). Les politiques RLS garantissent qu'un utilisateur n'accède qu'aux données de sa propre entreprise, via une fonction de référence (my_company_id()) qui résout l'entreprise du compte connecté. Les fonctions à privilèges (SECURITY DEFINER) fixent explicitement leur search_path.</p>
+<p>Chaque enregistrement métier porte un identifiant d'entreprise (company_id). Les politiques RLS garantissent qu'un utilisateur n'accède qu'aux données de sa propre entreprise, via une fonction de référence (my_company_id()) qui résout l'entreprise du compte connecté. Les fonctions à privilèges (SECURITY DEFINER) fixent explicitement leur search_path. Un second niveau de cloisonnement, par <b>Business Unit</b>, s'ajoute au-dessus : des politiques RLS <i>RESTRICTIVE</i> limitent la lecture au sous-arbre de BU de l'utilisateur (voir §13.3 et §13.8).</p>
 <div class="callout"><b>Note sécurité :</b> les politiques d'accès de la table des approbations ont été renforcées pour être strictement cloisonnées par entreprise (voir §9).</div>
 
 <h1>4. Modèle de données (principales entités)</h1>
@@ -179,7 +179,7 @@ tr:nth-child(even) td{background:#F7F9FB}
 <p>Les clés secrètes sont stockées côté serveur et <b>ne sont jamais renvoyées</b> au navigateur (masquées en lecture, conservées si laissées vides à l'enregistrement). Recommandation pour un déploiement à grande échelle : chiffrement au repos (Supabase Vault / pgsodium) et flux OAuth avec <i>refresh tokens</i> gérés côté serveur.</p>
 
 <h1>11. Exigences non-fonctionnelles</h1>
-<table><thead><tr><th>Exigence</th><th>Description</th></tr></thead><tbody><tr><td>Disponibilité</td><td>Front diffusé en CDN (Vercel), base managée (Supabase) avec sauvegardes.</td></tr><tr><td>Performance</td><td>API auto-générée et temps réel ; affichage optimisé côté client.</td></tr><tr><td>Compatibilité</td><td>Navigateurs modernes ; interface responsive mobile et desktop.</td></tr><tr><td>Sécurité</td><td>JWT, RLS, HTTPS, paiement délégué à Stripe.</td></tr><tr><td>Scalabilité</td><td>Modèle multi-tenant : ajout d'entreprises et de sièges sans redéploiement. Lecture des données paginée (par lots de 1 000 via <code>range</code>) pour lever le plafond silencieux de l'API REST et rester exact à grande échelle.</td></tr><tr><td>Conformité</td><td>Hébergement en Europe, logique RGPD, données bancaires externalisées.</td></tr></tbody></table>
+<table><thead><tr><th>Exigence</th><th>Description</th></tr></thead><tbody><tr><td>Disponibilité</td><td>Front diffusé en CDN (Vercel), base managée (Supabase) avec sauvegardes.</td></tr><tr><td>Performance</td><td>API auto-générée et temps réel ; affichage optimisé côté client.</td></tr><tr><td>Compatibilité</td><td>Navigateurs modernes ; interface responsive mobile et desktop.</td></tr><tr><td>Sécurité</td><td>JWT, RLS, HTTPS, paiement délégué à Stripe.</td></tr><tr><td>Scalabilité</td><td>Modèle multi-tenant : ajout d'entreprises et de sièges sans redéploiement. Lecture des données paginée (par lots de 1 000 via <code>range</code>) pour lever le plafond silencieux de l'API REST. Un chantier de montée en charge (agrégats KPI en SQL, pagination serveur, test de charge k6), progressif et derrière un drapeau, prépare l'échelle des très grands comptes — voir §13.7.</td></tr><tr><td>Conformité</td><td>Hébergement en Europe, logique RGPD, données bancaires externalisées.</td></tr></tbody></table>
 
 <h1>12. Annexes</h1>
 <h2>12.1 Récapitulatif tarifaire</h2>
@@ -193,23 +193,38 @@ tr:nth-child(even) td{background:#F7F9FB}
 <li>Annulation d'abonnement : blocage de l'accès et conservation des données pendant un an ; relances de paiement (dunning) configurées côté Stripe.</li>
 <li>Nettoyage du site vitrine (doublons retirés, cartes de prix menant au parcours d'abonnement, navigation par onglets sur mobile, questionnaire recentré sur la démonstration) et passage responsive mobile.</li>
 <li>Durcissement de la sécurité de la table des approbations (cloisonnement par entreprise).</li>
+<li>Business Units en table relationnelle avec cloisonnement serveur par sous-arbre (RLS RESTRICTIVE) et modèle de visibilité unifié à trois couches (voir §13.3 et §13.8).</li>
+<li>Fondation de montée en charge : agrégats KPI en SQL (parité prouvée), pagination serveur derrière un drapeau, test de charge k6 (voir §13.7).</li>
+<li>Barrière qualité : intégration continue (GitHub Actions), tests unitaires et E2E durcis, intégrité en base (FK), remontée des échecs d’écriture (voir §13.5).</li>
 </ul>
-<h1>13. Évolutions récentes (sécurité, pilotage, multi-BU, mobilité)</h1>
+<h1>13. Évolutions récentes (sécurité, pilotage, multi-BU, montée en charge, qualité)</h1>
 <h2>13.1 Durcissement sécurité et conformité RGPD</h2>
 <p>Audit RLS systématique des tables : correction d’une élévation de privilèges possible via la mise à jour de son propre profil (verrouillage du rôle et du company_id), restriction des insertions de profil à sa propre ligne, suppression de policies anonymes trop permissives, et fixation du search_path des fonctions SECURITY DEFINER.</p>
 <ul><li><b class="lead">Journal d’activité (audit log)</b> : des déclencheurs base de données enregistrent toute création, modification et suppression sur les tables sensibles, avec acteur, entité et champs modifiés ; consultable dans Gestion des accès, cloisonné par entreprise.</li>
 <li><b class="lead">Permissions fines sur les consultants</b> : le rattachement d’équipe (N+1) est réservé au grade gestionnaire et au-dessus ; la Business Unit d’un consultant n’est modifiable que par son N+1 (ou un administrateur), côté interface et côté serveur.</li></ul>
 <h2>13.2 Pilotage financier : prévisionnel et marge consolidée</h2>
 <p>Prévisionnel de CA sur 12 mois glissants combinant le backlog des missions et le pipeline pondéré des opportunités, avec une marge consolidée par Business Unit et par practice.</p>
-<h2>13.3 Hiérarchie multi-Business Units</h2>
-<p>Hiérarchie de BU jusqu’à six niveaux (Monde › Europe › France › région › agence › équipe), configurable par le super administrateur ; chaque membre hérite automatiquement de la BU de la personne qui a créé son compte.</p>
+<h2>13.3 Hiérarchie multi-Business Units (modèle relationnel + cloisonnement serveur)</h2>
+<p>Hiérarchie de BU jusqu’à six niveaux (Monde › Europe › France › région › agence › équipe), configurable par le super administrateur. L’arbre des BU est désormais une véritable <b>table relationnelle</b> (<code>business_units</code> : id, company_id, parent_id, name) — et non plus un simple JSON dans les paramètres — ce qui permet un <b>cloisonnement serveur efficace</b> :</p>
+<ul>
+<li>Des fonctions SQL (<code>my_bu_id</code>, <code>bu_in_subtree</code> via un CTE récursif, <code>bu_row_visible</code>) et des politiques RLS <b>RESTRICTIVE</b> restreignent la lecture des <b>consultants, opportunités, missions et absences</b> (ces deux dernières via le consultant) au <b>sous-arbre de BU</b> de l’utilisateur.</li>
+<li>Le <b>propriétaire</b> (compte sans BU) voit toute l’entreprise ; les lignes <b>non rattachées</b> (bu_id null) restent visibles de tous pour ne pas faire disparaître de données non taguées ; chaque membre hérite de la BU du compte qui l’a créé.</li>
+<li>Le front reconstruit l’arbre au format historique pour l’affichage ; l’éditeur de BU écrit directement dans la table.</li>
+</ul>
 <h2>13.4 Recrutement : pipeline partagé et matching</h2>
 <ul><li>Vivier partagé à l’échelle de l’entreprise, filtres avancés ; un candidat recruté crée une fiche consultant reliée à son gestionnaire et héritant de sa BU.</li>
 <li>Matching opportunité → candidats sur expertise, localisation, années d’expérience et secteur, classés par nombre de critères satisfaits.</li>
 <li>Localisation candidat classifiée : cible (priorité), secondaires, mobilité France entière, recherche parmi les grandes villes de France.</li>
 <li>Mobilité régionale des consultants : villes de la région définies par le super administrateur dans les Paramètres.</li></ul>
 <h2>13.5 Qualité et robustesse</h2>
-<p>Application produit découpée en modules (sans étape de build) et suite de tests de bout-en-bout (Playwright, hors-ligne) prévenant les régressions.</p>
+<p>Application produit découpée en modules (sans étape de build). Plusieurs garde-fous ont été ajoutés :</p>
+<ul>
+<li><b class="lead">Intégration continue (GitHub Actions)</b> — chaque <i>Pull Request</i> et chaque <i>push</i> sur <code>main</code> déclenche une vérification de syntaxe (<code>node --check</code>), des tests unitaires de logique pure et la suite E2E Playwright. Le produit reste sans étape de build ni dépendance npm : Playwright n’est installé que sur le <i>runner</i>, jamais commité.</li>
+<li><b class="lead">Tests</b> — suite E2E hors-ligne (rendu Chromium, client Supabase simulé) couvrant le démarrage des pages, la navigation par onglet et les fonctionnalités clés (prévisionnel, marge par BU/Practice), assortie d’<b>assertions de contenu</b> (Équipe non vide, staffing affiché) ; tests unitaires de la logique de périmètre (consInScope / consInTeamScope) et de calcul KPI (bornage de présence, filtre de période).</li>
+<li><b class="lead">Fiabilité des écritures</b> — les échecs de synchronisation, autrefois silencieux, sont désormais remontés à l’utilisateur (notification + journal) ; en cas d’échec d’une suppression, l’interface est réconciliée sur la vérité serveur (la ligne retirée de façon optimiste est restaurée).</li>
+<li><b class="lead">Intégrité en base</b> — ajout de clés étrangères (missions et absences → consultants, <code>ON DELETE CASCADE</code>) et purge des orphelins : supprimer un consultant nettoie proprement ses missions et congés.</li>
+<li><b class="lead">Source de vérité unique</b> — suppression, au démarrage, de la ré-injection du cache local vers le serveur, qui pouvait « ressusciter » une fiche supprimée par un autre membre. Supabase fait foi ; le cache local ne sert plus qu’à l’affichage instantané et est réaligné au premier rendu.</li>
+</ul>
 <h2>13.6 Intégrations, SSO et montée en charge</h2>
 <ul>
 <li><b class="lead">Couche de connecteurs API</b> (cf. §10) : Microsoft 365 / Entra ID, SIRH (Workday, SuccessFactors, Lucca, BambooHR), paie (Silae, PayFit, ADP) et facturation (Pennylane, Sage, Sellsy, QuickBooks) — désactivés par défaut, secrets côté serveur, cloisonnés par entreprise.</li>
@@ -217,4 +232,26 @@ tr:nth-child(even) td{background:#F7F9FB}
 <li><b class="lead">SSO Microsoft Entra</b> : socle sur la page de connexion, désactivé par défaut (login inchangé), OIDC ou SAML selon configuration.</li>
 <li><b class="lead">Lecture paginée</b> : le chargement des consultants, missions, absences, candidats et membres pagine par lots de 1 000 lignes, levant le plafond silencieux de l'API REST pour rester exact à grande échelle — sans changer le modèle ni les vues.</li>
 </ul>
+
+<h2>13.7 Montée en charge (fondation méga-tenant)</h2>
+<p>Un plan de montée en charge <b>progressif, derrière un drapeau et sans régression</b> prépare l’échelle des très grands comptes (jusqu’à l’ordre de 100 000 collaborateurs dans une seule entreprise). Aujourd’hui l’application charge les tables de l’entreprise dans le navigateur et y recalcule les KPIs ; la refonte déporte le calcul en base et ne charge que le périmètre utile.</p>
+<ul>
+<li><b class="lead">Agrégats KPI en SQL</b> — le cœur du calcul (staffing, CA, TJM, marge, contribution) a été porté en fonctions PostgreSQL : calendrier, cœur par consultant (avec détail par mission), agrégats entreprise par exercice <b>et</b> par trimestre, page par consultant et top clients (<code>konsilys_kpi_core</code>, <code>konsilys_company_kpis</code>, <code>konsilys_company_kpis_range</code>, <code>konsilys_consultant_kpis_page</code>, <code>konsilys_top_clients</code>). La <b>parité</b> avec le calcul JavaScript historique est prouvée à l’octet près (<b>0 écart</b>), y compris sur données réelles de production, et verrouillée par des tests dédiés (<code>tests/parity/</code>). Subtilité gérée : la fenêtre trimestre borne temps-passé, CA et facturation, mais le coût salarial reste proratisé sur l’exercice complet.</li>
+<li><b class="lead">Pagination serveur des KPIs</b> — hero-bande depuis l’agrégat serveur, cartes et liste par consultant paginées, triées et filtrées côté serveur, top clients côté serveur : le navigateur ne recalcule plus l’ensemble du tenant.</li>
+<li><b class="lead">Activation par drapeau</b> (<code>KPI_SERVER_AGG</code>) — le mode serveur s’active par entreprise ; les ESN de taille normale conservent le calcul local (zéro latence), les très gros tenants basculent sur l’agrégat serveur. Aucune bascule en production avant test de charge.</li>
+<li><b class="lead">Test de charge</b> — scénario k6 (login + navigation + KPIs + écriture) et générateur de gros jeu de données de test, pour mesurer la latence (p95/p99) et le point de saturation.</li>
+<li><b class="lead">Plan par phases</b> — (A) dimensionnement de l’infrastructure (instance de calcul dédiée, <i>connection pooler</i>, réplicas de lecture, index, RLS optimisées) ; (B) refonte du chargement écran par écran (KPIs faits, puis Équipe, Missions, Planning, et chargement au login limité au périmètre de l’utilisateur) ; (C) validation par test de charge et observabilité.</li>
+</ul>
+
+<h2>13.8 Modèle de visibilité unifié</h2>
+<p>Le périmètre de chaque utilisateur repose sur trois couches complémentaires, désormais centralisées et documentées :</p>
+<ol>
+<li><b class="lead">Cloisonnement par BU au niveau base</b> — politiques RLS <i>RESTRICTIVE</i> limitant la lecture au sous-arbre de BU de l’utilisateur (cf. §13.3).</li>
+<li><b class="lead">Périmètre par rôle côté client</b> — une définition canonique par fiche (<code>consInScope</code>) filtre ce que voit chaque rôle et sélection ; elle sert de base à l’ensemble des onglets.</li>
+<li><b class="lead">Masquage des supérieurs pour les vues « équipe »</b> (<code>consInTeamScope</code>) — l’onglet Équipe et le staffing n’affichent que soi et ses subordonnés (N+1 transitif), jamais ses propres responsables — donc jamais leur rémunération. L’onglet Équipe est scindé en « Encadrement &amp; support » et « Utilisateurs », triés par grade.</li>
+</ol>
+<p><b>Permissions fines</b> : le rattachement d’équipe (N+1) est réservé au grade gestionnaire et au-dessus ; la BU d’un consultant n’est modifiable que par son N+1 (ou un administrateur), côté interface <b>et</b> côté serveur.</p>
+
+<h2>13.9 Visibilité &amp; acquisition (SEO / lisibilité IA)</h2>
+<p>Le site vitrine a été optimisé pour le référencement et la lecture par les moteurs et les IA, afin d’alimenter le canal d’acquisition en libre-service à faible coût : métadonnées et <b>données structurées</b> (Schema.org), FAQ, fichiers <code>robots.txt</code> / <code>sitemap.xml</code> / <code>llms.txt</code>, <b>blog et pages de cas d’usage</b>, vérification Google Search Console, soumission <b>IndexNow</b>, logos de marque et kit d’inscription aux annuaires. Le site expose par ailleurs une section « Intégrations API » présentant les connecteurs disponibles.</p>
 </body></html>
