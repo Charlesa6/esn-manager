@@ -1,0 +1,44 @@
+name: CI
+
+# Barrière qualité : vérifie chaque PR et chaque push sur main.
+# Le produit reste sans build ni dépendance npm — Playwright n'est installé QUE
+# sur le runner (jamais commité), le temps de faire tourner l'e2e.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Vérification syntaxe (node --check)
+        run: |
+          set -e
+          for f in js/*.js; do node --check "$f"; done
+
+      - name: Tests unitaires (logique pure)
+        run: node tests/unit.cjs
+
+      - name: Installer Playwright + Chromium (runner uniquement)
+        run: |
+          npm init -y >/dev/null
+          npm install playwright >/dev/null
+          npx playwright install --with-deps chromium
+
+      - name: Tests E2E (Playwright)
+        run: node tests/e2e.cjs

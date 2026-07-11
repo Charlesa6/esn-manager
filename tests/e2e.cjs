@@ -11,6 +11,7 @@
    Sortie : liste PASS/FAIL + code de sortie non-nul si un test échoue.
    ═══════════════════════════════════════════════════════════════════════════ */
 const path = require('path');
+const fs = require('fs');
 let chromium;
 try { chromium = require('playwright').chromium; }
 catch (e) {
@@ -71,7 +72,9 @@ async function newPage(browser) {
 }
 
 (async () => {
-  const browser = await chromium.launch({ executablePath: EXEC });
+  // En local/web on cible le Chromium pré-installé ; en CI (binaire absent) on
+  // laisse Playwright utiliser le sien (installé via `playwright install`).
+  const browser = await chromium.launch(fs.existsSync(EXEC) ? { executablePath: EXEC } : {});
 
   // ── 1. Landing (index.html) ───────────────────────────────────────────────
   console.log('\n▶ Landing — index.html');
@@ -123,6 +126,14 @@ async function newPage(browser) {
     const bodyTxt = await p.evaluate(() => document.body.innerText);
     check('KPIs : prévisionnel de CA affiché', /Prévisionnel de CA/.test(bodyTxt));
     check('KPIs : marge consolidée par unité affichée', /Marge consolidée par unité/.test(bodyTxt));
+    check('KPIs : staffing par consultant affiché', /Staffing par consultant/.test(bodyTxt));
+
+    // Garde-fou anti-régression du PÉRIMÈTRE : l'onglet Équipe ne doit PAS être vide
+    // (un filtre de visibilité trop agressif l'avait vidé — cf. sanity check). On
+    // compte les lignes consultant (bouton « Modifier » = data-act="ec").
+    const tb = await p.$('[data-nav="teams"]'); if (tb) { await tb.click(); await p.waitForTimeout(500); }
+    const teamRows = await p.evaluate(() => document.querySelectorAll('button[data-act="ec"]').length);
+    check('Équipe : consultants affichés (' + teamRows + ' ligne(s), attendu > 0)', teamRows > 0, 'onglet Équipe vide');
 
     // Force l'activation des modules Business + Recrutement pour exercer ces
     // écrans (sinon masqués en démo) — couvre les modules js/09 et js/12.
