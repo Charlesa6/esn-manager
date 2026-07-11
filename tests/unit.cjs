@@ -82,6 +82,31 @@ const ks = ctx.buildKS();
 eq('buildKS exclut le futur arrivant (FY27)', ks.length, 1);
 ok('buildKS conserve le consultant présent', !!ks[0] && ks[0].c.id === 'in');
 
+// ── 5. consInScope / consInTeamScope : périmètre canonique par rôle ──
+console.log('\n▶ consInScope / consInTeamScope');
+function resetS() { ctx.S.fdir = []; ctx.S.fvp = []; ctx.S.vpDirMap = {}; ctx.S.consId = null; ctx.S._userEmail = ''; ctx.S.dirName = ''; ctx.S._userId = undefined; ctx.S.orgProfiles = []; }
+// gestionnaire → son équipe uniquement
+resetS(); ctx.S.role = 'gestionnaire'; ctx.S._userId = 'G'; ctx.S.dirName = 'Chef'; ctx.S.consId = 'cG';
+ok('gestionnaire : voit une fiche de son équipe (managerId)', ctx.consInScope({ id: 'a', managerId: 'G' }) === true);
+ok('gestionnaire : voit une fiche rattachée par nom de directeur', ctx.consInScope({ id: 'b', dir: 'Chef' }) === true);
+ok('gestionnaire : ne voit pas une fiche hors équipe', ctx.consInScope({ id: 'c', managerId: 'X', dir: 'Autre' }) === false);
+// utilisateur → sa seule fiche
+resetS(); ctx.S.role = 'utilisateur'; ctx.S.consId = 'cU'; ctx.S._userEmail = 'u@x';
+ok('utilisateur : voit sa propre fiche (consId)', ctx.consInScope({ id: 'cU' }) === true);
+ok('utilisateur : voit sa fiche (email)', ctx.consInScope({ id: 'z', email: 'u@x' }) === true);
+ok('utilisateur : ne voit pas les autres', ctx.consInScope({ id: 'z2', email: 'v@x' }) === false);
+// admin → tout, sauf filtre directeur actif
+resetS(); ctx.S.role = 'admin';
+ok('admin sans filtre : voit tout', ctx.consInScope({ id: 'q', dir: 'Peu importe' }) === true);
+ctx.S.fdir = ['Chef'];
+ok('admin + filtre directeur : garde le directeur sélectionné', ctx.consInScope({ id: 'q', dir: 'Chef' }) === true);
+ok('admin + filtre directeur : exclut les autres', ctx.consInScope({ id: 'q2', dir: 'Autre' }) === false);
+// consInTeamScope = périmètre visible MOINS les supérieurs
+resetS(); ctx.S.role = 'admin'; ctx.S._userId = 'ADMIN';
+ctx.S.orgProfiles = [{ id: 'OWNER', role: 'super_admin', manager_id: null, cons_id: 'cOwner' }, { id: 'ADMIN', role: 'admin', manager_id: 'OWNER', cons_id: 'cAdmin' }];
+ok('consInTeamScope : exclut le supérieur (patron)', ctx.consInTeamScope({ id: 'cOwner' }) === false);
+ok('consInTeamScope : garde un consultant du périmètre', ctx.consInTeamScope({ id: 'other', dir: 'X' }) === true);
+
 console.log('\n' + '─'.repeat(58));
 console.log(pass + '/' + (pass + fail) + ' tests unitaires réussis' + (fail ? ' — \x1b[31m' + fail + ' échec(s)\x1b[0m' : ' — \x1b[32mtout est vert\x1b[0m'));
 process.exit(fail ? 1 : 0);

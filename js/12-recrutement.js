@@ -531,10 +531,9 @@ function addMissTeamRow(){
   var wrap=document.getElementById('miss-team');
   if(!wrap)return;
   var idx=wrap.querySelectorAll('.miss-team-row').length;
-  /* Au clic, S.cons est le jeu maître (non filtré) : on applique donc explicitement
-     la visibilité par rôle pour ne proposer que les consultants gérés. */
-  var _vis=visibleConsIds();
-  var tCons=S.cons.filter(function(c){return _vis[c.id]&&c.grade!=='sales_grade';});
+  /* Au clic, S.cons est le jeu maître (non filtré) : on applique donc le périmètre
+     par rôle (consInScope) pour ne proposer que les consultants gérés. */
+  var tCons=S.cons.filter(function(c){return consInScope(c)&&c.grade!=='sales_grade';});
   var cOpts=tCons.map(function(c){return '<option value="'+c.id+'">'+esc(c.name)+'</option>';}).join('');
   var row=document.createElement('div');
   row.className='miss-team-row';row.style.cssText='display:flex;gap:8px;align-items:center';

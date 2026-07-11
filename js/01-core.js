@@ -494,26 +494,41 @@ function clientRev(ks){
   return Object.keys(map).map(function(k){return{name:k,rev:map[k]};}).sort(function(a,b){return b.rev-a.rev;});
 }
 
-/* ═══ PERMISSIONS / VUE FILTRÉE PAR DIRECTEUR ═══
-   - role 'admin' : accès à tout, peut filtrer par un ou plusieurs directeurs (S.fdir)
-   - role 'gestionnaire'    : accès limité aux consultants de son équipe (c.dir === S.dirName)
-   visibleData() renvoie le sous-ensemble cons/miss/lvs à afficher (les données maîtres
-   restent dans S._all pour la sauvegarde et les mutations). */
+/* ═══ PÉRIMÈTRE DE VISIBILITÉ — DOCTRINE UNIQUE ═══
+   Trois couches, chacune à sa place, pour éviter que les onglets divergent :
+   1. Cloisonnement par Business Unit → AU NIVEAU BASE (RLS). Un compte rattaché à
+      une BU ne LIT déjà que sa BU + les fiches non rattachées (cf.
+      business_units_rls_bu_scope.sql). S.cons/S.miss/S.lvs arrivent donc déjà
+      filtrés par BU — on ne duplique PAS ce filtre côté client.
+   2. Périmètre par rôle / sélection → consInScope(c) : LA définition canonique de
+      « ce consultant fait-il partie de mon périmètre ». visibleConsIds()/
+      visibleData() s'en servent pour bâtir la vue ; TOUTES les vues consomment ce
+      même périmètre (KPIs, missions, planning, absences…).
+   3. Masquage des supérieurs → consIsAboveMe(c), appliqué EN PLUS par les vues
+      « équipe » via consInTeamScope(c) : on ne montre pas la hiérarchie au-dessus
+      de soi (ex. le salaire de son patron).
+   NB : le prévisionnel KPI agrège par nœud BU (vue « par unité ») — cohérent car
+   alimenté par les mêmes données déjà filtrées en (1).
+   Rappel : les données maîtres restent dans S._all (sauvegarde/mutations). */
+function consInScope(c){
+  if(!c)return false;
+  if(S.role==='gestionnaire')return c.managerId===S._userId || (!c.managerId && (c.dir||'')===S.dirName) || c.id===S.consId;
+  if(S.role==='utilisateur'||S.role==='sales'||S.role==='recruteur')return c.id===S.consId||c.email===S._userEmail;
+  if(S.role==='super_admin'&&S.fvp&&S.fvp.length){
+    /* Filtre par VP sélectionné : directeurs rattachés aux VPs cochés. */
+    var allowedDirs=[];
+    S.fvp.forEach(function(vpName){((S.vpDirMap||{})[vpName]||[]).forEach(function(d){if(allowedDirs.indexOf(d)<0)allowedDirs.push(d);});});
+    return allowedDirs.length?allowedDirs.indexOf(c.dir||'')>=0:true;
+  }
+  if(S.fdir&&S.fdir.length)return S.fdir.indexOf(c.dir||'')>=0; /* admin : filtre directeur sélectionné */
+  return true; /* admin / super_admin sans filtre : tout le périmètre déjà chargé */
+}
+/* Périmètre « équipe » : le périmètre visible MOINS ses supérieurs hiérarchiques. */
+function consInTeamScope(c){return consInScope(c)&&!consIsAboveMe(c);}
+
 function visibleConsIds(){
   var base=(S._all&&S._all.cons)||S.cons;
-  if(S.role==='gestionnaire'){base=base.filter(function(c){return c.managerId===S._userId || (!c.managerId && (c.dir||'')===S.dirName) || c.id===S.consId;});}
-  else if(S.role==='utilisateur'||S.role==='sales'||S.role==='recruteur'){base=base.filter(function(c){return c.id===S.consId||c.email===S._userEmail;});}
-  else if(S.role==='super_admin'&&S.fvp&&S.fvp.length){
-    /* Filtrer par VP : on cherche les directeurs appartenant aux VPs sélectionnés */
-    var allowedDirs=[];
-    S.fvp.forEach(function(vpName){
-      var dirs=(S.vpDirMap||{})[vpName]||[];
-      dirs.forEach(function(d){if(allowedDirs.indexOf(d)<0)allowedDirs.push(d);});
-    });
-    if(allowedDirs.length)base=base.filter(function(c){return allowedDirs.indexOf(c.dir||'')>=0;});
-  }
-  else if(S.fdir&&S.fdir.length){base=base.filter(function(c){return S.fdir.indexOf(c.dir||'')>=0;});}
-  var s={};base.forEach(function(c){s[c.id]=1;});return s;
+  var s={};base.forEach(function(c){if(consInScope(c))s[c.id]=1;});return s;
 }
 function visibleData(){
   var ids=visibleConsIds(),src=S._all||{cons:S.cons,miss:S.miss,lvs:S.lvs};
