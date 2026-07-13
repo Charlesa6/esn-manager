@@ -304,6 +304,14 @@ function icOnDay(c,miss,lvs,day){
   if(lvOnDay(c,lvs,day))return false;
   return !(miss||[]).some(function(m){return m.cid===c.id&&m.sd<=day&&(!m.ed||m.ed>=day);});
 }
+/* Nb de jours OUVRÉS en intercontrat sur la fenêtre [a,b]. Sert au focus d'une
+   période de la timeline (clic sur une semaine / un mois). */
+function icDaysInRange(c,miss,lvs,a,b){
+  if(!a||!b||a>b)return 0;
+  var HH=holRange(a,b),n=0,d=a;
+  while(d<=b){if(isWD(d,HH)&&icOnDay(c,miss,lvs,d))n++;d=nxt(d);}
+  return n;
+}
 function shiftMonth(ym,delta){
   var p=ym.split('-'),dd=new Date(+p[0],+p[1]-1+delta,1);
   return dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0');
@@ -328,6 +336,7 @@ var S={
   cands:[],
   staffOpps:[],   /* opportunités staffing (pilotage des intercontrats) */
   oppView:'week', /* granularité de la timeline intercontrats : 'week' | 'month' */
+  oppFocus:null,  /* focus sur une période de la timeline : {day,end} ou null */
   approvals:[],   /* demandes d'approbation des consultants */
   consInvites:[], /* codes d'accès générés pour les consultants */
   adminCode:null, /* dernier code généré (affiché dans Admin) */

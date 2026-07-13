@@ -159,6 +159,13 @@ var lvsIC = [
 ok('icOnDay : en congé → PAS compté en intercontrat', ctx.icOnDay({ id: 'b' }, missIC, lvsIC, T) === false);
 ok('icOnDay : absence de type « Inter-contrat » → reste compté IC', ctx.icOnDay({ id: 'e' }, missIC, lvsIC, T) === true);
 ok('icOnDay : congé passé → IC de nouveau', ctx.icOnDay({ id: 'b' }, missIC, lvsIC, '2026-06-25') === true);
+// icDaysInRange : jours ouvrés en IC sur une fenêtre (focus timeline).
+// Semaine du lun 22/06 au dim 28/06/2026 : 5 jours ouvrés, aucun férié.
+var W1 = '2026-06-22', W2 = '2026-06-28';
+eq('icDaysInRange : IC toute la semaine → 5 j ouvrés', ctx.icDaysInRange({ id: 'b' }, missIC, [], W1, W2), 5);
+eq('icDaysInRange : en mission toute la semaine → 0', ctx.icDaysInRange({ id: 'a' }, missIC, [], W1, W2), 0);
+eq('icDaysInRange : congé mar-mer → 3 j IC', ctx.icDaysInRange({ id: 'b' }, missIC, [{ cid: 'b', s: '2026-06-23', e: '2026-06-24', type: 'Congé payé' }], W1, W2), 3);
+eq('icDaysInRange : bornes inversées → 0', ctx.icDaysInRange({ id: 'b' }, missIC, [], W2, W1), 0);
 
 console.log('\n' + '─'.repeat(58));
 console.log(pass + '/' + (pass + fail) + ' tests unitaires réussis' + (fail ? ' — \x1b[31m' + fail + ' échec(s)\x1b[0m' : ' — \x1b[32mtout est vert\x1b[0m'));

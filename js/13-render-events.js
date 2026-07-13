@@ -295,6 +295,15 @@ function bind(){
       /* ── Opportunités staffing (pilotage des intercontrats) ── */
       else if(a==='opp-add'){S.modal={type:'staffopp',cid:id};render();}
       else if(a==='opp-view'){S.oppView=(id==='month')?'month':'week';render();}
+      else if(a==='opp-focus'){
+        /* Clic sur une période de la timeline : focus du tableau sur ses
+           intercontrats ; re-clic sur la même période : désélection. */
+        var _pf=(id||'').split('|');
+        if(S.oppFocus&&S.oppFocus.day===_pf[0]&&S.oppFocus.end===_pf[1])S.oppFocus=null;
+        else S.oppFocus={day:_pf[0],end:_pf[1]};
+        render();
+      }
+      else if(a==='opp-focus-clear'){S.oppFocus=null;render();}
       else if(a==='opp-save'){
         var _ocid=S.modal&&S.modal.cid;
         var _ocli=(gv('opp-cli')||'').trim(),_osd=gv('opp-sd')||'',_odur=+gv('opp-dur')||null,_otjm=+gv('opp-tjm')||0,_odet=(gv('opp-det')||'').trim();

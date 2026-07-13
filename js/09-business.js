@@ -1048,7 +1048,8 @@ function oppTimeline(cons,view){
     for(var i=0;i<6;i++){
       var d=new Date(now.getFullYear(),now.getMonth()+i,1);
       var day=i===0?TODAY:fD(d); /* mois courant : état à aujourd'hui, pas au 1er passé */
-      out.push({day:day,lb:MLB_OPP[d.getMonth()]+' '+String(d.getFullYear()).slice(2)});
+      var mEnd=fD(new Date(now.getFullYear(),now.getMonth()+i+1,0)); /* dernier jour du mois */
+      out.push({day:day,end:mEnd,lb:MLB_OPP[d.getMonth()]+' '+String(d.getFullYear()).slice(2)});
     }
   }else{
     var dow=(now.getDay()+6)%7;
@@ -1056,7 +1057,8 @@ function oppTimeline(cons,view){
     for(var w=0;w<12;w++){
       var wd=new Date(monday.getFullYear(),monday.getMonth(),monday.getDate()+w*7);
       var wday=w===0?TODAY:fD(wd); /* semaine courante : état à aujourd'hui */
-      out.push({day:wday,lb:String(wd.getDate()).padStart(2,'0')+'/'+String(wd.getMonth()+1).padStart(2,'0')});
+      var wEnd=fD(new Date(wd.getFullYear(),wd.getMonth(),wd.getDate()+6)); /* dimanche */
+      out.push({day:wday,end:wEnd,lb:String(wd.getDate()).padStart(2,'0')+'/'+String(wd.getMonth()+1).padStart(2,'0')});
     }
   }
   out.forEach(function(p){
@@ -1103,11 +1105,14 @@ function tOpps(){
   var view=S.oppView==='month'?'month':'week';
   var tl=oppTimeline(cons,view);
   var maxIc=Math.max.apply(null,tl.map(function(p){return p.ic;}).concat([1]));
+  var focus=S.oppFocus&&S.oppFocus.day&&S.oppFocus.end?S.oppFocus:null;
   var bars=tl.map(function(p){
     var h=Math.max(Math.round(p.ic/maxIc*90),p.ic>0?6:2);
     /* Couleur par taux EN CONTRAT : ≥90 % vert, ≥75 % orange, sinon rouge. */
     var col=p.staffed>=90?'#84CC16':p.staffed>=75?'#d97706':'#dc2626';
-    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0">'
+    var sel=focus&&focus.day===p.day&&focus.end===p.end;
+    /* Clic sur la période : filtre le tableau du dessous sur ses intercontrats. */
+    return '<div data-act="opp-focus" data-id="'+p.day+'|'+p.end+'" title="Cliquer pour voir les consultants en intercontrat sur cette période" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;cursor:pointer;border-radius:8px;padding:2px 0'+(sel?';box-shadow:0 0 0 2px #84CC16;background:#f7fdef':'')+'">'
       +'<div style="font-size:10px;font-weight:800;color:#334155;height:14px">'+(p.ic||'')+'</div>'
       +'<div style="display:flex;flex-direction:column;justify-content:flex-end;height:92px;width:60%;max-width:26px">'
       +'<div title="'+p.ic+' en intercontrat / '+p.total+' actifs — '+p.staffed.toFixed(0)+'% en contrat" style="height:'+h+'px;background:'+col+';border-radius:3px 3px 0 0"></div></div>'
@@ -1146,15 +1151,30 @@ function tOpps(){
     var oppTxt=r.opps.length
       ?'<span data-act="opp-add" data-id="'+c.id+'" title="'+esc(oppTip)+'" style="cursor:pointer;border-bottom:1px dotted #94a3b8"><span style="font-weight:800;color:#1B2B3A">'+r.opps.length+'</span> <span style="font-size:11px;color:#94a3b8">'+esc(r.opps.map(function(o){return o.cli;}).join(', '))+'</span></span>'
       :'<span style="color:#cbd5e1">—</span>';
-    return '<tr>'
+    r.tr='<tr>'
       +'<td><div style="display:flex;align-items:center;gap:10px">'+av(c.name,30)
       +'<div><div style="font-weight:600;font-size:13px">'+esc(c.name)+'</div>'
       +'<div style="font-size:11px;color:#94a3b8">'+esc(c.title||'')+'</div></div></div></td>'
-      +'<td>'+badge+'</td>'
+      +'<td>'+badge+'<!--icdays--></td>'
       +'<td>'+oppTxt+'</td>'
       +'<td class="tr"><button class="bp" style="font-size:11px;padding:6px 12px" data-act="opp-add" data-id="'+c.id+'">+ Opportunité</button></td>'
       +'</tr>';
+    return r.tr;
   }).join('');
+
+  /* ── Focus période (clic sur une barre) : ne montrer que les consultants en
+     intercontrat ≥ 1 jour ouvré sur la fenêtre, avec leur volume de jours IC. ── */
+  var focusBanner='';
+  if(focus){
+    rows.forEach(function(r){r.icDays=icDaysInRange(r.c,S.miss,S.lvs,focus.day,focus.end);});
+    var _tot=rows.length;
+    rows=rows.filter(function(r){return r.icDays>0;});
+    focusBanner='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:12.5px">'
+      +'<span>🔎 <strong>Focus du '+fDt(focus.day)+' au '+fDt(focus.end)+'</strong> — '
+      +'<strong>'+rows.length+'</strong> consultant'+(rows.length>1?'s':'')+' en intercontrat sur la période <span style="color:#94a3b8">(sur '+_tot+')</span></span>'
+      +'<button class="bg" style="font-size:11px;padding:5px 12px" data-act="opp-focus-clear">✕ Tout afficher</button></div>';
+    trs=rows.map(function(r){return r.tr.replace('<!--icdays-->',' <span style="font-size:10px;font-weight:800;color:#b45309;white-space:nowrap">'+r.icDays+' j IC</span>');}).join('');
+  }
 
   return '<div class="vw">'
     +'<div class="ph"><div><div class="pt">🛬 Opportunités — pilotage des intercontrats</div>'
@@ -1170,6 +1190,7 @@ function tOpps(){
     +'<div style="display:flex;gap:6px">'+segBtn('week','Semaines')+segBtn('month','Mois')+'</div></div>'
     +'<div style="display:flex;align-items:flex-end;gap:4px;padding-top:4px">'+bars+'</div>'
     +'</div>'
+    +focusBanner
     +'<div class="card ov"><table style="min-width:640px">'
     +'<thead><tr><th>'+rLabel('utilisateur')+'</th><th>Statut / atterrissage</th><th>Opportunités pressenties</th><th class="tr"></th></tr></thead>'
     +'<tbody>'+(trs||'<tr><td colspan="4" class="emp">Aucun consultant sur ce périmètre.</td></tr>')+'</tbody></table></div>'
