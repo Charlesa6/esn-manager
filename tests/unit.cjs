@@ -182,6 +182,15 @@ var ps2 = ctx.icPeriodStats([{ id: 'b' }, { id: 'f' }], missIC, lvMon, W1, W2);
 ok('icPeriodStats : IC dès mardi → PAS 100 % (20 % en contrat)', ps2.icN === 2 && ps2.icDays === 8 && ps2.staffed === 20);
 var ps3 = ctx.icPeriodStats([{ id: 'a' }], missIC, [], W1, W2);
 ok('icPeriodStats : tous en mission → 100 %', ps3.staffed === 100 && ps3.icN === 0);
+// icArrivals : qui ENTRE en intercontrat sur (from, to] — atterrissage OU fin d'absence.
+// Référence T=15/06 : a = mission jusqu'au 31/08 ; b = IC ; c = mission sans fin ; d = mission future dès 01/09.
+var arrWin = ctx.icArrivals([{ id: 'a' }, { id: 'b' }, { id: 'c' }], missIC, [], T, '2026-09-05');
+ok('icArrivals : atterrissage compté (a le 01/09), IC actuel exclu (b), sans-fin exclu (c)',
+  arrWin.length === 1 && arrWin[0].c.id === 'a' && arrWin[0].day === '2026-09-01');
+var arrLv = ctx.icArrivals([{ id: 'g' }], [], [{ cid: 'g', s: '2026-06-01', e: '2026-06-20', type: 'Congé payé' }], T, '2026-07-15');
+ok('icArrivals : fin d\'absence comptée (g le 21/06)', arrLv.length === 1 && arrLv[0].day === '2026-06-21');
+var arrFar = ctx.icArrivals([{ id: 'a' }], missIC, [], T, '2026-07-15');
+ok('icArrivals : atterrissage hors fenêtre → non compté', arrFar.length === 0);
 
 console.log('\n' + '─'.repeat(58));
 console.log(pass + '/' + (pass + fail) + ' tests unitaires réussis' + (fail ? ' — \x1b[31m' + fail + ' échec(s)\x1b[0m' : ' — \x1b[32mtout est vert\x1b[0m'));

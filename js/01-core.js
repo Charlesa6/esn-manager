@@ -333,6 +333,22 @@ function icPeriodStats(cons,miss,lvs,a,b){
   });
   return {act:act,icN:icN,icDays:icDays,dispo:dispo,staffed:dispo>0?(dispo-icDays)/dispo*100:100};
 }
+/* Consultants qui ENTRENT en intercontrat sur la fenêtre (from, to] : pas en
+   intercontrat le jour `from` (en mission OU en absence), puis ≥1 jour IC dans
+   la fenêtre. Couvre les atterrissages de mission ET les fins de congé/arrêt.
+   Renvoie [{c, day}] avec le premier jour d'intercontrat. */
+function icArrivals(cons,miss,lvs,from,to){
+  var out=[];
+  (cons||[]).forEach(function(c){
+    if(icOnDay(c,miss,lvs,from))return;   /* déjà en intercontrat : pas une « arrivée » */
+    var d=nxt(from);
+    while(d<=to){
+      if(icOnDay(c,miss,lvs,d)){out.push({c:c,day:d});return;}
+      d=nxt(d);
+    }
+  });
+  return out;
+}
 /* Début de la période d'intercontrat vue depuis la fenêtre [a,b] : premier jour
    IC de la fenêtre, puis on remonte tant que le consultant reste en intercontrat
    (la remontée s'arrête sur une mission, une absence ou l'entrée dans l'effectif).

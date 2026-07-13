@@ -1086,12 +1086,14 @@ function tOpps(){
     return {c:c,st:st,key:key,opps:oppsOf(c.id)};
   }).sort(function(a,b){return a.key<b.key?-1:a.key>b.key?1:(a.c.name||'').localeCompare(b.c.name||'','fr');});
 
-  /* En intercontrat aujourd'hui : hors mission ET hors absence (congé/arrêt) —
-     seuls les non-facturés disponibles comptent. */
-  var icNow=cons.filter(function(c){return icOnDay(c,S.miss,S.lvs,TODAY);}).length;
-  var actNow=cons.filter(function(c){return (!c.arrive||c.arrive<=TODAY)&&(!c.depart||c.depart>=TODAY);}).length;
-  var staffedNow=actNow?((actNow-icNow)/actNow*100):100;
-  var soon30=rows.filter(function(r){return r.st.onMission&&r.st.landing&&dL(r.st.landing)<=30;}).length;
+  /* Taux d'intercontrat sur l'EXERCICE sélectionné, en jours-homme ouvrés
+     (passé réalisé + projection missions/absences connues). */
+  var fyStats=icPeriodStats(cons,S.miss,S.lvs,fyStart(S.year),fyEnd(S.year));
+  var icRateFY=fyStats.dispo>0?fyStats.icDays/fyStats.dispo*100:0;
+  /* Arrivées en intercontrat sous 30 jours : atterrissages de mission ET fins
+     d'absence — ceux qui ne sont PAS en IC aujourd'hui mais le seront. */
+  var _in30=fD(new Date(pD(TODAY).getFullYear(),pD(TODAY).getMonth(),pD(TODAY).getDate()+30));
+  var arrivals30=icArrivals(cons,S.miss,S.lvs,TODAY,_in30).length;
   var nOpps=(S.staffOpps||[]).filter(function(o){return o.status==='pressentie';}).length;
 
   function tile(lb,val,sub,color){
@@ -1192,8 +1194,8 @@ function tOpps(){
     +'<div class="ph"><div><div class="pt">🛬 Opportunités — pilotage des intercontrats</div>'
     +'<div class="ps">Consultants par date d\'atterrissage · opportunités pressenties · concrétisation en mission</div></div></div>'
     +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">'
-    +tile('Taux en contrat',staffedNow.toFixed(0)+'%','aujourd\'hui — '+icNow+' en intercontrat',staffedNow>=90?'#15803d':staffedNow>=75?'#b45309':'#b91c1c')
-    +tile('Atterrissages ≤ 30 j',soon30,'fins de mission à venir',soon30>0?'#b45309':'#0f172a')
+    +tile('Taux d\'intercontrat '+fyLbl(S.year),icRateFY.toFixed(1)+'%',fyStats.icDays+' j ouvrés IC / '+fyStats.dispo+' sur l\'exercice',icRateFY<=10?'#15803d':icRateFY<=25?'#b45309':'#b91c1c')
+    +tile('Arrivées en intercontrat ≤ 30 j',arrivals30,'atterrissages + fins d\'absence',arrivals30>0?'#b45309':'#15803d')
     +tile('Opportunités en cours',nOpps,'missions pressenties','#1B2B3A')
     +'</div>'
     +'<div class="card" style="padding:18px 20px;margin-bottom:16px">'
