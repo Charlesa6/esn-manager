@@ -290,11 +290,18 @@ function icStatus(c,miss,today){
   if(cur.length&&!open)landing=cur.reduce(function(mx,m){return m.ed>mx?m.ed:mx;},cur[0].ed);
   return {onMission:onNow,open:open,landing:landing};
 }
-/* Un consultant est-il en intercontrat au jour donné ? (actif dans l'effectif
-   ET aucune mission ne couvre ce jour). Sert à la timeline semaine/mois. */
-function icOnDay(c,miss,day){
+/* Une absence (congé, arrêt… — tout SAUF le type « Inter-contrat ») couvre-t-elle
+   ce jour ? Un consultant en congé/arrêt n'est PAS compté en intercontrat. */
+function lvOnDay(c,lvs,day){
+  return (lvs||[]).some(function(l){return l.cid===c.id&&l.type!=='Inter-contrat'&&l.s<=day&&day<=l.e;});
+}
+/* Un consultant est-il en intercontrat au jour donné ? Trois conditions :
+   actif dans l'effectif, PAS en absence (congé/arrêt), et aucune mission ne
+   couvre ce jour (non facturé). Sert à la timeline semaine/mois. */
+function icOnDay(c,miss,lvs,day){
   if(c.arrive&&c.arrive>day)return false;
   if(c.depart&&c.depart<day)return false;
+  if(lvOnDay(c,lvs,day))return false;
   return !(miss||[]).some(function(m){return m.cid===c.id&&m.sd<=day&&(!m.ed||m.ed>=day);});
 }
 function shiftMonth(ym,delta){

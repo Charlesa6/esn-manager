@@ -147,10 +147,18 @@ var stC = ctx.icStatus({ id: 'c' }, missIC, T);
 ok('mission sans fin → open, pas d\'atterrissage', stC.onMission === true && stC.open === true && stC.landing === null);
 var stD = ctx.icStatus({ id: 'd' }, missIC, T);
 ok('mission future seulement → IC aujourd\'hui, atterrit à la fin de la future', stD.onMission === false && stD.landing === '2026-12-31');
-ok('icOnDay : couvert par une mission → pas IC', ctx.icOnDay({ id: 'a' }, missIC, T) === false);
-ok('icOnDay : non couvert → IC', ctx.icOnDay({ id: 'b' }, missIC, T) === true);
-ok('icOnDay : pas encore arrivé → pas compté', ctx.icOnDay({ id: 'b', arrive: '2026-07-01' }, missIC, T) === false);
-ok('icOnDay : parti → pas compté', ctx.icOnDay({ id: 'b', depart: '2026-05-31' }, missIC, T) === false);
+ok('icOnDay : couvert par une mission → pas IC', ctx.icOnDay({ id: 'a' }, missIC, [], T) === false);
+ok('icOnDay : non couvert → IC', ctx.icOnDay({ id: 'b' }, missIC, [], T) === true);
+ok('icOnDay : pas encore arrivé → pas compté', ctx.icOnDay({ id: 'b', arrive: '2026-07-01' }, missIC, [], T) === false);
+ok('icOnDay : parti → pas compté', ctx.icOnDay({ id: 'b', depart: '2026-05-31' }, missIC, [], T) === false);
+// Congés / arrêts : une absence (hors type « Inter-contrat ») exclut du décompte IC
+var lvsIC = [
+  { cid: 'b', s: '2026-06-10', e: '2026-06-20', type: 'Congé payé' },
+  { cid: 'e', s: '2026-06-10', e: '2026-06-20', type: 'Inter-contrat' },
+];
+ok('icOnDay : en congé → PAS compté en intercontrat', ctx.icOnDay({ id: 'b' }, missIC, lvsIC, T) === false);
+ok('icOnDay : absence de type « Inter-contrat » → reste compté IC', ctx.icOnDay({ id: 'e' }, missIC, lvsIC, T) === true);
+ok('icOnDay : congé passé → IC de nouveau', ctx.icOnDay({ id: 'b' }, missIC, lvsIC, '2026-06-25') === true);
 
 console.log('\n' + '─'.repeat(58));
 console.log(pass + '/' + (pass + fail) + ' tests unitaires réussis' + (fail ? ' — \x1b[31m' + fail + ' échec(s)\x1b[0m' : ' — \x1b[32mtout est vert\x1b[0m'));

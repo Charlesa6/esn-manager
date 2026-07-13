@@ -297,15 +297,25 @@ function bind(){
       else if(a==='opp-view'){S.oppView=(id==='month')?'month':'week';render();}
       else if(a==='opp-save'){
         var _ocid=S.modal&&S.modal.cid;
-        var _ocli=(gv('opp-cli')||'').trim(),_osd=gv('opp-sd')||'',_odur=+gv('opp-dur')||null,_otjm=+gv('opp-tjm')||0;
+        var _ocli=(gv('opp-cli')||'').trim(),_osd=gv('opp-sd')||'',_odur=+gv('opp-dur')||null,_otjm=+gv('opp-tjm')||0,_odet=(gv('opp-det')||'').trim();
         if(!_ocid||!_ocli||!_osd){alert('Client et date de démarrage sont requis.');}
+        else if(S.modal.editId){
+          /* Mode édition : mise à jour de l'opportunité existante */
+          var _oe=S.staffOpps.find(function(o){return o.id===S.modal.editId;});
+          if(_oe){_oe.cli=_ocli;_oe.sd=_osd;_oe.dur=_odur;_oe.tjm=_otjm;_oe.details=_odet;
+            sbUpsertOpp(_oe).catch(function(e){console.warn('opp edit:',e);});}
+          delete S.modal.editId;
+          render();
+        }
         else{
-          var _no={id:uid(),cid:_ocid,cli:_ocli,sd:_osd,dur:_odur,tjm:_otjm,status:'pressentie'};
+          var _no={id:uid(),cid:_ocid,cli:_ocli,sd:_osd,dur:_odur,tjm:_otjm,details:_odet,status:'pressentie'};
           S.staffOpps.push(_no);
           sbUpsertOpp(_no).catch(function(e){console.warn('opp save:',e);});
           render(); /* modal conservé : la nouvelle opportunité apparaît dans la liste */
         }
       }
+      else if(a==='opp-edit'){if(S.modal){S.modal.editId=id;render();}}
+      else if(a==='opp-edit-cancel'){if(S.modal){delete S.modal.editId;render();}}
       else if(a==='opp-lost'){
         var _ol=S.staffOpps.find(function(o){return o.id===id;});
         if(_ol){_ol.status='perdue';sbUpsertOpp(_ol).catch(function(e){console.warn('opp lost:',e);});render();}

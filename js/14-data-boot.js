@@ -54,7 +54,7 @@ function mapM(r){return{id:r.id,cid:r.consultant_id,name:r.name,cli:r.client_nam
 function mapL(r){return{id:r.id,cid:r.consultant_id,type:r.type||'Congé payé',s:r.start_date,e:r.end_date};}
 /* Opportunité staffing (pilotage des intercontrats) : mission pressentie pour un
    consultant — client, démarrage, durée (mois), TJM, statut pressentie/gagnee/perdue. */
-function mapOpp(r){return{id:r.id,cid:r.consultant_id,cli:r.client_name||'',sd:r.start_date||null,dur:(r.duration_months!=null?+r.duration_months:null),tjm:(r.tjm!=null?+r.tjm:0),status:r.status||'pressentie'};}
+function mapOpp(r){return{id:r.id,cid:r.consultant_id,cli:r.client_name||'',sd:r.start_date||null,dur:(r.duration_months!=null?+r.duration_months:null),tjm:(r.tjm!=null?+r.tjm:0),details:r.details||'',status:r.status||'pressentie'};}
 function mapCand(r){return{
   id:r.id,name:r.name,email:r.email||'',phone:r.phone||'',
   locations:Array.isArray(r.locations)?r.locations:[],nationality:r.nationality||'',
@@ -418,7 +418,7 @@ async function sbUpsertLeave(l){
 }
 async function sbUpsertOpp(o){
   if(!sb||!SB_CID)return;
-  var res=await sb.from('staffing_opportunities').upsert({id:o.id,company_id:SB_CID,consultant_id:o.cid,client_name:o.cli||'',start_date:o.sd||null,duration_months:(o.dur!=null?o.dur:null),tjm:(o.tjm!=null?o.tjm:null),status:o.status||'pressentie'});
+  var res=await sb.from('staffing_opportunities').upsert({id:o.id,company_id:SB_CID,consultant_id:o.cid,client_name:o.cli||'',start_date:o.sd||null,duration_months:(o.dur!=null?o.dur:null),tjm:(o.tjm!=null?o.tjm:null),details:o.details||null,status:o.status||'pressentie'});
   if(res.error){sbWriteErr('opportunité « '+(o.cli||'')+' »',res.error);throw new Error((o.cli||'Opportunité')+': '+res.error.message);}
 }
 async function sbUpsertCand(c){

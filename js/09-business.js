@@ -1061,9 +1061,11 @@ function oppTimeline(cons,view){
   }
   out.forEach(function(p){
     var act=cons.filter(function(c){return (!c.arrive||c.arrive<=p.day)&&(!c.depart||c.depart>=p.day);});
-    var ic=act.filter(function(c){return icOnDay(c,S.miss,p.day);});
+    var ic=act.filter(function(c){return icOnDay(c,S.miss,S.lvs,p.day);});
     p.total=act.length;p.ic=ic.length;
-    p.rate=act.length?ic.length/act.length*100:0;
+    /* Taux affiché : personnes EN CONTRAT (mission ou absence) — le nombre
+       d'intercontrats reste lisible en tête de barre. */
+    p.staffed=act.length?(act.length-ic.length)/act.length*100:100;
   });
   return out;
 }
@@ -1082,7 +1084,11 @@ function tOpps(){
     return {c:c,st:st,key:key,opps:oppsOf(c.id)};
   }).sort(function(a,b){return a.key<b.key?-1:a.key>b.key?1:(a.c.name||'').localeCompare(b.c.name||'','fr');});
 
-  var icNow=rows.filter(function(r){return !r.st.onMission;}).length;
+  /* En intercontrat aujourd'hui : hors mission ET hors absence (congé/arrêt) —
+     seuls les non-facturés disponibles comptent. */
+  var icNow=cons.filter(function(c){return icOnDay(c,S.miss,S.lvs,TODAY);}).length;
+  var actNow=cons.filter(function(c){return (!c.arrive||c.arrive<=TODAY)&&(!c.depart||c.depart>=TODAY);}).length;
+  var staffedNow=actNow?((actNow-icNow)/actNow*100):100;
   var soon30=rows.filter(function(r){return r.st.onMission&&r.st.landing&&dL(r.st.landing)<=30;}).length;
   var nOpps=(S.staffOpps||[]).filter(function(o){return o.status==='pressentie';}).length;
 
@@ -1099,13 +1105,14 @@ function tOpps(){
   var maxIc=Math.max.apply(null,tl.map(function(p){return p.ic;}).concat([1]));
   var bars=tl.map(function(p){
     var h=Math.max(Math.round(p.ic/maxIc*90),p.ic>0?6:2);
-    var col=p.rate>=25?'#dc2626':p.rate>=10?'#d97706':'#84CC16';
+    /* Couleur par taux EN CONTRAT : ≥90 % vert, ≥75 % orange, sinon rouge. */
+    var col=p.staffed>=90?'#84CC16':p.staffed>=75?'#d97706':'#dc2626';
     return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0">'
       +'<div style="font-size:10px;font-weight:800;color:#334155;height:14px">'+(p.ic||'')+'</div>'
       +'<div style="display:flex;flex-direction:column;justify-content:flex-end;height:92px;width:60%;max-width:26px">'
-      +'<div title="'+p.ic+' intercontrat / '+p.total+' actifs ('+p.rate.toFixed(0)+'%)" style="height:'+h+'px;background:'+col+';border-radius:3px 3px 0 0"></div></div>'
+      +'<div title="'+p.ic+' en intercontrat / '+p.total+' actifs — '+p.staffed.toFixed(0)+'% en contrat" style="height:'+h+'px;background:'+col+';border-radius:3px 3px 0 0"></div></div>'
       +'<div style="font-size:9px;color:#94a3b8;white-space:nowrap">'+p.lb+'</div>'
-      +'<div style="font-size:9px;font-weight:700;color:'+col+'">'+p.rate.toFixed(0)+'%</div>'
+      +'<div style="font-size:9px;font-weight:700;color:'+col+'">'+p.staffed.toFixed(0)+'%</div>'
       +'</div>';
   }).join('');
   function segBtn(id,lb){
@@ -1117,15 +1124,25 @@ function tOpps(){
   var trs=rows.map(function(r){
     var c=r.c,st=r.st;
     var badge;
-    if(!st.onMission)badge='<span style="background:#fee2e2;color:#b91c1c;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:800">En intercontrat</span>';
+    if(!st.onMission&&lvOnDay(c,S.lvs,TODAY)){
+      /* En congé/arrêt aujourd'hui : pas compté en intercontrat. */
+      var _lvC=(S.lvs||[]).filter(function(l){return l.cid===c.id&&l.type!=='Inter-contrat'&&l.s<=TODAY&&TODAY<=l.e;})
+        .reduce(function(mx,l){return !mx||l.e>mx.e?l:mx;},null);
+      badge='<span style="background:#dbeafe;color:#1e40af;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700">En absence'+(_lvC?' jusqu\'au '+fDt(_lvC.e):'')+'</span>';
+    }
+    else if(!st.onMission)badge='<span style="background:#fee2e2;color:#b91c1c;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:800">En intercontrat</span>';
     else if(st.open)badge='<span style="background:#f1f5f9;color:#64748b;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700">Mission sans date de fin</span>';
     else{
       var dl=dL(st.landing);
       var col=dl<=15?'#b91c1c':dl<=45?'#b45309':'#15803d',bg=dl<=15?'#fee2e2':dl<=45?'#fffbeb':'#f0fdf4';
       badge='<span style="background:'+bg+';color:'+col+';padding:2px 10px;border-radius:99px;font-size:11px;font-weight:800">Atterrit le '+fDt(st.landing)+' (J-'+dl+')</span>';
     }
+    /* Aperçu au survol : détail complet de chaque opportunité pressentie. */
+    var oppTip=r.opps.map(function(o){
+      return o.cli+' — '+(o.sd?fDt(o.sd):'?')+(o.dur?' · '+o.dur+' mois':'')+(o.tjm?' · '+Math.round(o.tjm)+' €/j':'')+(o.details?' · '+o.details:'');
+    }).join('\n');
     var oppTxt=r.opps.length
-      ?'<span style="font-weight:800;color:#1B2B3A">'+r.opps.length+'</span> <span style="font-size:11px;color:#94a3b8">'+esc(r.opps.map(function(o){return o.cli;}).join(', '))+'</span>'
+      ?'<span title="'+esc(oppTip)+'" style="cursor:help;border-bottom:1px dotted #94a3b8"><span style="font-weight:800;color:#1B2B3A">'+r.opps.length+'</span> <span style="font-size:11px;color:#94a3b8">'+esc(r.opps.map(function(o){return o.cli;}).join(', '))+'</span></span>'
       :'<span style="color:#cbd5e1">—</span>';
     return '<tr>'
       +'<td><div style="display:flex;align-items:center;gap:10px">'+av(c.name,30)
@@ -1141,13 +1158,13 @@ function tOpps(){
     +'<div class="ph"><div><div class="pt">🛬 Opportunités — pilotage des intercontrats</div>'
     +'<div class="ps">Consultants par date d\'atterrissage · opportunités pressenties · concrétisation en mission</div></div></div>'
     +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">'
-    +tile('En intercontrat',icNow,'aujourd\'hui',icNow>0?'#b91c1c':'#15803d')
+    +tile('Taux en contrat',staffedNow.toFixed(0)+'%','aujourd\'hui — '+icNow+' en intercontrat',staffedNow>=90?'#15803d':staffedNow>=75?'#b45309':'#b91c1c')
     +tile('Atterrissages ≤ 30 j',soon30,'fins de mission à venir',soon30>0?'#b45309':'#0f172a')
     +tile('Opportunités en cours',nOpps,'missions pressenties','#1B2B3A')
     +'</div>'
     +'<div class="card" style="padding:18px 20px;margin-bottom:16px">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px">'
-    +'<div style="font-size:13px;font-weight:800;color:#0f172a">Intercontrats à venir <span style="font-weight:500;color:#94a3b8;font-size:12px">— nombre et taux par '+(view==='month'?'mois':'semaine')+'</span></div>'
+    +'<div style="font-size:13px;font-weight:800;color:#0f172a">Taux en contrat à venir <span style="font-weight:500;color:#94a3b8;font-size:12px">— % en contrat et nb d\'intercontrats par '+(view==='month'?'mois':'semaine')+' (hors congés/arrêts)</span></div>'
     +'<div style="display:flex;gap:6px">'+segBtn('week','Semaines')+segBtn('month','Mois')+'</div></div>'
     +'<div style="display:flex;align-items:flex-end;gap:4px;padding-top:4px">'+bars+'</div>'
     +'</div>'
@@ -1164,16 +1181,20 @@ function tStaffOppModal(){
   var st=icStatus(c,S.miss);
   var stTxt=!st.onMission?'En intercontrat aujourd\'hui':(st.open?'En mission (sans date de fin)':'Atterrit le '+fDt(st.landing));
   var opps=(S.staffOpps||[]).filter(function(o){return o.cid===cid;});
+  /* Mode édition : le formulaire est pré-rempli avec l'opportunité ciblée. */
+  var editing=S.modal.editId?opps.find(function(o){return o.id===S.modal.editId;}):null;
   var rows=opps.map(function(o){
     var stBadge=o.status==='gagnee'?'<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:800">Gagnée</span>'
       :o.status==='perdue'?'<span style="background:#f1f5f9;color:#94a3b8;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700">Perdue</span>'
       :'<span style="background:#fffbeb;color:#b45309;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:800">Pressentie</span>';
     var acts=o.status==='pressentie'
       ?'<button class="bp" style="font-size:10px;padding:4px 9px" data-act="opp-win" data-id="'+o.id+'" title="Créer la mission correspondante">✓ Concrétiser</button> '
+        +'<button class="lb" style="font-size:10px" data-act="opp-edit" data-id="'+o.id+'">Modifier</button> '
         +'<button class="lb" style="font-size:10px" data-act="opp-lost" data-id="'+o.id+'">Perdue</button> '
         +'<button class="lr" style="font-size:10px" data-act="opp-del" data-id="'+o.id+'">Suppr.</button>'
       :'<button class="lr" style="font-size:10px" data-act="opp-del" data-id="'+o.id+'">Suppr.</button>';
-    return '<tr><td style="font-weight:600;font-size:12px">'+esc(o.cli)+'</td>'
+    return '<tr'+(editing&&editing.id===o.id?' style="background:#f0fdf4"':'')+'><td style="font-weight:600;font-size:12px">'+esc(o.cli)
+      +(o.details?'<div style="font-size:10px;font-weight:400;color:#94a3b8;max-width:220px">'+esc(o.details)+'</div>':'')+'</td>'
       +'<td style="font-size:12px">'+(o.sd?fDt(o.sd):'—')+'</td>'
       +'<td style="font-size:12px">'+(o.dur!=null?o.dur+' mois':'—')+'</td>'
       +'<td style="font-size:12px;font-weight:600">'+(o.tjm?fEur(o.tjm):'—')+'</td>'
@@ -1182,14 +1203,17 @@ function tStaffOppModal(){
   }).join('');
   return '<div style="margin-bottom:14px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;font-size:12px">'
     +'<strong>'+esc(c.name)+'</strong> · '+esc(c.title||'')+' · <span style="color:#64748b">'+stTxt+'</span></div>'
-    +'<div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:8px">➕ Nouvelle opportunité pressentie</div>'
+    +'<div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:8px">'
+    +(editing?'✏️ Modifier l\'opportunité — '+esc(editing.cli):'➕ Nouvelle opportunité pressentie')+'</div>'
     +'<div class="g2">'
-    +'<div class="fd"><label class="fl">Client *</label><input class="ic" id="opp-cli" placeholder="ex : BNP Paribas"></div>'
-    +'<div class="fd"><label class="fl">Date de démarrage *</label><input class="ic" id="opp-sd" type="date" value="'+(st.landing||TODAY)+'"></div>'
-    +'<div class="fd"><label class="fl">Durée (mois)</label><input class="ic" id="opp-dur" type="number" min="1" step="1" placeholder="6"></div>'
-    +'<div class="fd"><label class="fl">TJM pressenti (€)</label><input class="ic" id="opp-tjm" type="number" min="0" placeholder="650"></div>'
+    +'<div class="fd"><label class="fl">Client *</label><input class="ic" id="opp-cli" value="'+(editing?esc(editing.cli):'')+'" placeholder="ex : BNP Paribas"></div>'
+    +'<div class="fd"><label class="fl">Date de démarrage *</label><input class="ic" id="opp-sd" type="date" value="'+(editing?(editing.sd||''):(st.landing||TODAY))+'"></div>'
+    +'<div class="fd"><label class="fl">Durée (mois)</label><input class="ic" id="opp-dur" type="number" min="1" step="1" value="'+(editing&&editing.dur!=null?editing.dur:'')+'" placeholder="6"></div>'
+    +'<div class="fd"><label class="fl">TJM pressenti (€)</label><input class="ic" id="opp-tjm" type="number" min="0" value="'+(editing&&editing.tjm?editing.tjm:'')+'" placeholder="650"></div>'
+    +'<div class="fd cs2"><label class="fl">Détail</label><input class="ic" id="opp-det" value="'+(editing?esc(editing.details||''):'')+'" placeholder="quelques mots : contexte, contact, prochaine étape…"></div>'
     +'</div>'
-    +'<button class="bp" style="margin-top:4px" data-act="opp-save">Ajouter l\'opportunité</button>'
+    +'<button class="bp" style="margin-top:4px" data-act="opp-save">'+(editing?'Enregistrer la modification':'Ajouter l\'opportunité')+'</button>'
+    +(editing?' <button class="bg" style="margin-top:4px" data-act="opp-edit-cancel">Annuler</button>':'')
     +(rows?('<div style="font-size:12px;font-weight:800;color:#0f172a;margin:18px 0 8px">Opportunités de '+esc(c.name)+'</div>'
       +'<div class="ov"><table><thead><tr><th>Client</th><th>Démarrage</th><th>Durée</th><th>TJM</th><th>Statut</th><th class="tr"></th></tr></thead><tbody>'+rows+'</tbody></table></div>'):'')
     +'<p class="fh" style="margin-top:12px">« Concrétiser » crée la mission (AT, lun-ven) dans l\'onglet Missions et ouvre sa fiche pour compléter les informations manquantes.</p>';
