@@ -130,6 +130,28 @@ ok('avgSr invariant au consultant hors-période', aWith.avgSr === aWithout.avgSr
 ok('CA total (totR) invariant', aWith.totR === aWithout.totR);
 ok('jours facturés (totBill) invariants', aWith.totBill === aWithout.totBill);
 
+// ── 7. icStatus / icOnDay : pilotage des intercontrats ──
+console.log('\n▶ icStatus / icOnDay (intercontrats)');
+var T = '2026-06-15'; // « aujourd'hui » déterministe pour ces tests
+var missIC = [
+  { cid: 'a', sd: '2026-01-01', ed: '2026-08-31' },  // couvre T → atterrit le 31/08
+  { cid: 'b', sd: '2026-01-01', ed: '2026-03-31' },  // finie avant T
+  { cid: 'c', sd: '2026-01-01', ed: null },          // sans date de fin
+  { cid: 'd', sd: '2026-09-01', ed: '2026-12-31' },  // future uniquement
+];
+var stA = ctx.icStatus({ id: 'a' }, missIC, T);
+ok('en mission avec fin → atterrissage à la fin', stA.onMission === true && stA.landing === '2026-08-31' && !stA.open);
+var stB = ctx.icStatus({ id: 'b' }, missIC, T);
+ok('mission terminée → en intercontrat (landing null)', stB.onMission === false && stB.landing === null);
+var stC = ctx.icStatus({ id: 'c' }, missIC, T);
+ok('mission sans fin → open, pas d\'atterrissage', stC.onMission === true && stC.open === true && stC.landing === null);
+var stD = ctx.icStatus({ id: 'd' }, missIC, T);
+ok('mission future seulement → IC aujourd\'hui, atterrit à la fin de la future', stD.onMission === false && stD.landing === '2026-12-31');
+ok('icOnDay : couvert par une mission → pas IC', ctx.icOnDay({ id: 'a' }, missIC, T) === false);
+ok('icOnDay : non couvert → IC', ctx.icOnDay({ id: 'b' }, missIC, T) === true);
+ok('icOnDay : pas encore arrivé → pas compté', ctx.icOnDay({ id: 'b', arrive: '2026-07-01' }, missIC, T) === false);
+ok('icOnDay : parti → pas compté', ctx.icOnDay({ id: 'b', depart: '2026-05-31' }, missIC, T) === false);
+
 console.log('\n' + '─'.repeat(58));
 console.log(pass + '/' + (pass + fail) + ' tests unitaires réussis' + (fail ? ' — \x1b[31m' + fail + ' échec(s)\x1b[0m' : ' — \x1b[32mtout est vert\x1b[0m'));
 process.exit(fail ? 1 : 0);

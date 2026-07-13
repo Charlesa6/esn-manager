@@ -23,11 +23,13 @@ function render(){
   S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
   var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;
   document.getElementById('sb').innerHTML=tSB();
-  /* ── Contrôle d'accès central : chaque rôle a ses onglets autorisés ── */
+  /* ── Contrôle d'accès central : chaque rôle a ses onglets autorisés ──
+     NB : 'svp_acces' et 'svp_settings' sont TEMPORAIREMENT retirés (onglets
+     masqués — voir js/03-sidebar.js pour les réactiver). */
   var _allowedTabs={
-    super_admin:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','approvals','svp_acces','svp_settings','svp_integrations','param','help','profile','kpis_dir'],
-    admin:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','approvals','svp_acces','param','help','profile','kpis_dir'],
-    gestionnaire:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','approvals','svp_acces','param','help','profile','kpis_dir'],
+    super_admin:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','opportunites','approvals','svp_integrations','param','help','profile','kpis_dir'],
+    admin:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','opportunites','approvals','param','help','profile','kpis_dir'],
+    gestionnaire:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','opportunites','approvals','param','help','profile','kpis_dir'],
     utilisateur:['activite','missions','planning','leaves','approvals','business','help','profile'],
     recruteur:['recrutement','activite','leaves','help','profile'],
     sales:['business','recrutement','activite','leaves','help','profile']
@@ -37,7 +39,7 @@ function render(){
     /* Onglet non autorisé pour ce rôle → rediriger vers son onglet d'accueil */
     S.tab=(S.role==='sales')?'business':(S.role==='recruteur')?'recrutement':(S.role==='utilisateur')?'activite':'kpis';
   }
-  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tSVPAcces():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDirSection():S.tab==='svp_acces'?tSVPAcces():S.tab==='svp_settings'?tSettings():S.tab==='svp_integrations'?tIntegrations():S.tab==='business'?tBusiness():S.tab==='help'?tHelp():tParam();
+  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tSVPAcces():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDirSection():S.tab==='svp_acces'?tSVPAcces():S.tab==='svp_settings'?tSettings():S.tab==='svp_integrations'?tIntegrations():S.tab==='business'?tBusiness():S.tab==='opportunites'?tOpps():S.tab==='help'?tHelp():tParam();
   var _ini=function(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();};
   var _av=S._userEmail?_ini(S._userEmail.split('@')[0].replace(/[._]/g,' ')):'?';
   var _pfBtn=''; /* Profil déplacé dans la sidebar gauche */
@@ -290,6 +292,51 @@ function bind(){
       S.modal={type:'mission',item:null,wmode:'rec',manualDays:[],
         calYear:_now.getFullYear(),calMonth:_now.getMonth()};
       render();}
+      /* ── Opportunités staffing (pilotage des intercontrats) ── */
+      else if(a==='opp-add'){S.modal={type:'staffopp',cid:id};render();}
+      else if(a==='opp-view'){S.oppView=(id==='month')?'month':'week';render();}
+      else if(a==='opp-save'){
+        var _ocid=S.modal&&S.modal.cid;
+        var _ocli=(gv('opp-cli')||'').trim(),_osd=gv('opp-sd')||'',_odur=+gv('opp-dur')||null,_otjm=+gv('opp-tjm')||0;
+        if(!_ocid||!_ocli||!_osd){alert('Client et date de démarrage sont requis.');}
+        else{
+          var _no={id:uid(),cid:_ocid,cli:_ocli,sd:_osd,dur:_odur,tjm:_otjm,status:'pressentie'};
+          S.staffOpps.push(_no);
+          sbUpsertOpp(_no).catch(function(e){console.warn('opp save:',e);});
+          render(); /* modal conservé : la nouvelle opportunité apparaît dans la liste */
+        }
+      }
+      else if(a==='opp-lost'){
+        var _ol=S.staffOpps.find(function(o){return o.id===id;});
+        if(_ol){_ol.status='perdue';sbUpsertOpp(_ol).catch(function(e){console.warn('opp lost:',e);});render();}
+      }
+      else if(a==='opp-del'){
+        if(confirm('Supprimer cette opportunité ?')){
+          S.staffOpps=S.staffOpps.filter(function(o){return o.id!==id;});
+          sbDel('staffing_opportunities',id);render();
+        }
+      }
+      else if(a==='opp-win'){
+        /* Concrétisation : l'opportunité devient une vraie mission (AT, L-V), puis
+           on ouvre le modal mission pour compléter les informations manquantes. */
+        var _ow=S.staffOpps.find(function(o){return o.id===id;});
+        if(_ow){
+          var _oc=S.cons.find(function(c){return c.id===_ow.cid;});
+          var _oed=_ow.sd&&_ow.dur?oppAddMonths(_ow.sd,_ow.dur):null;
+          var _nm={id:uid(),cid:_ow.cid,name:'Mission '+_ow.cli,cli:_ow.cli,tjm:_ow.tjm||0,
+            sd:_ow.sd||TODAY,ed:_oed,btype:'at',wdays:[1,2,3,4,5],wmode:'rec',manualDays:[],
+            loc:'',mgr:'',ccn:'',ccr:'',pcode:''};
+          S.miss.push(_nm);
+          sbUpsertMiss(_nm).catch(function(e){console.warn('opp win → mission:',e);});
+          _ow.status='gagnee';
+          sbUpsertOpp(_ow).catch(function(e){console.warn('opp win:',e);});
+          if(typeof toast==='function')toast('Mission créée pour '+(_oc?_oc.name:'le consultant')+' — complétez les informations manquantes.');
+          var _nw=new Date();
+          S.tab='missions';
+          S.modal={type:'mission',item:_nm,wmode:'rec',manualDays:[],calYear:_nw.getFullYear(),calMonth:_nw.getMonth()};
+          render();
+        }
+      }
       else if(a==='al'){S.modal={type:'leave',item:null};render();}
       else if(a==='mc'){S.modal=null;render();}
       else if(a==='ec'){var _ec=S.cons.find(function(c){return c.id===id;});S.modal={type:'utilisateur',item:_ec,expSel:(_ec&&_ec.expertise)?_ec.expertise.slice():[],secSel:(_ec&&_ec.sectors)?_ec.sectors.slice():[],region:(_ec&&_ec.region)||'',mobility:(_ec&&_ec.mobility)?_ec.mobility.slice():[]};render();}

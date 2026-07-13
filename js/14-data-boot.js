@@ -52,6 +52,9 @@ function importJSON(file){
 function mapC(r){return{id:r.id,name:r.name,title:r.title||'',scr:r.scr||0,email:r.email||'',dir:r.directeur||'',managerId:r.manager_id||null,buId:r.bu_id||null,region:r.region||'',mobility:Array.isArray(r.mobility)?r.mobility:[],arrive:r.arrive||null,depart:r.depart||null,expertise:r.expertise||[],sectors:r.sectors||[],contract:r.contract||'salarie',grade:r.grade||''};}
 function mapM(r){return{id:r.id,cid:r.consultant_id,name:r.name,cli:r.client_name||'',tjm:r.tjm||0,sd:r.start_date,ed:r.end_date||null,loc:r.location||'',mgr:r.manager_name||'',ccn:r.client_contact_name||'',ccr:r.client_contact_role||'',pcode:r.code_projet||'',btype:r.billing_type||'at',wdays:(Array.isArray(r.work_days)?r.work_days:(r.work_days?String(r.work_days).split(',').map(Number):[1,2,3,4,5])),wmode:r.wmode||'rec',manualDays:(Array.isArray(r.manual_days)?r.manual_days:[]),deal:r.deal_amount||0,tmar:(r.target_margin!=null?r.target_margin:null),team:r.team||[]};}
 function mapL(r){return{id:r.id,cid:r.consultant_id,type:r.type||'Congé payé',s:r.start_date,e:r.end_date};}
+/* Opportunité staffing (pilotage des intercontrats) : mission pressentie pour un
+   consultant — client, démarrage, durée (mois), TJM, statut pressentie/gagnee/perdue. */
+function mapOpp(r){return{id:r.id,cid:r.consultant_id,cli:r.client_name||'',sd:r.start_date||null,dur:(r.duration_months!=null?+r.duration_months:null),tjm:(r.tjm!=null?+r.tjm:0),status:r.status||'pressentie'};}
 function mapCand(r){return{
   id:r.id,name:r.name,email:r.email||'',phone:r.phone||'',
   locations:Array.isArray(r.locations)?r.locations:[],nationality:r.nationality||'',
@@ -342,11 +345,15 @@ async function loadSB(){
        ou le directeur connecté \u2014 jamais filtré par équipe */
     var _candB=function(){return sb.from('candidates').select('*').eq('company_id',SB_CID).order('created_at',{ascending:false}).order('id',{ascending:false});};
     /* P&L Budget (Pilotage financier) : company-wide \u00e9galement */
-    var res=await Promise.all([sbFetchAll(_missB),sbFetchAll(_lvB),sbFetchAll(_candB)]);
+    /* Opportunités staffing (pilotage des intercontrats) : même périmètre que
+       missions/leaves (filtrées par consultant si vue restreinte). */
+    var _oppB=function(){var q=sb.from('staffing_opportunities').select('*').eq('company_id',SB_CID);if(idsG)q=q.in('consultant_id',idsG);return q.order('id');};
+    var res=await Promise.all([sbFetchAll(_missB),sbFetchAll(_lvB),sbFetchAll(_candB),sbFetchAll(_oppB)]);
     S.cons=cons;
     if(res[0].data)S.miss=res[0].data.map(mapM);
     if(res[1].data)S.lvs=res[1].data.map(mapL);
     if(res[2].data)S.cands=res[2].data.map(mapCand);
+    if(res[3]&&res[3].data)S.staffOpps=res[3].data.map(mapOpp);
     /* Charger les invites SVP directement dans loadSB pour senior_vp */
     if(S.role==='super_admin'){
       try{
@@ -408,6 +415,11 @@ async function sbUpsertLeave(l){
   if(!sb||!SB_CID)return;
   var res=await sb.from('leaves').upsert({id:l.id,company_id:SB_CID,consultant_id:l.cid,type:l.type,start_date:l.s,end_date:l.e,approval_role:l.approval_role||null,approved:(l.approved!=null?l.approved:true)});
   if(res.error){sbWriteErr('absence',res.error);throw new Error('Absence: '+res.error.message);}
+}
+async function sbUpsertOpp(o){
+  if(!sb||!SB_CID)return;
+  var res=await sb.from('staffing_opportunities').upsert({id:o.id,company_id:SB_CID,consultant_id:o.cid,client_name:o.cli||'',start_date:o.sd||null,duration_months:(o.dur!=null?o.dur:null),tjm:(o.tjm!=null?o.tjm:null),status:o.status||'pressentie'});
+  if(res.error){sbWriteErr('opportunité « '+(o.cli||'')+' »',res.error);throw new Error((o.cli||'Opportunité')+': '+res.error.message);}
 }
 async function sbUpsertCand(c){
   if(!sb)return;
@@ -2427,6 +2439,10 @@ function tProfile(){
         +'<button class="bp" style="margin-top:12px" onclick="saveDelegation()">Enregistrer la délégation</button>'
         +'</div>';
     })():'')
+
+    /* ── Hiérarchie (N+1) & BU — gestion de l'organisation (rôles encadrants),
+       déplacée ici depuis « Gestion des accès » ── */
+    +tHierCard()
 
     /* ── Changer le mot de passe ── */
     +'<div class="card" style="padding:24px;margin-bottom:16px">'

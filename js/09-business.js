@@ -1023,3 +1023,174 @@ function tBizModal(){
 
 
 
+/* ══════════════════════════════════════════════════════════════
+   OPPORTUNITÉS — PILOTAGE DES INTERCONTRATS
+   Onglet dédié (rôles encadrants) : consultants en intercontrat ou en
+   approche d'atterrissage, triés par date ; opportunités pressenties par
+   consultant (client, démarrage, durée, TJM) concrétisables en mission ;
+   timeline semaine/mois du nombre et du taux d'intercontrat.
+   Données : S.staffOpps (table staffing_opportunities, RLS entreprise + BU).
+══════════════════════════════════════════════════════════════ */
+/* Ajoute n mois à une date AAAA-MM-JJ (fin de mission = veille du jour anniversaire). */
+function oppAddMonths(s,n){
+  var d=pD(s);var t=new Date(d.getFullYear(),d.getMonth()+Math.round(+n||0),d.getDate());
+  t.setDate(t.getDate()-1);
+  return fD(t);
+}
+/* Opportunités ouvertes (pressenties) d'un consultant. */
+function oppsOf(cid){return (S.staffOpps||[]).filter(function(o){return o.cid===cid&&o.status==='pressentie';});}
+
+/* Timeline : périodes à venir (12 semaines à partir du lundi courant, ou 6 mois
+   à partir du 1er du mois) avec nb de consultants en intercontrat et taux. */
+function oppTimeline(cons,view){
+  var out=[],now=pD(TODAY);
+  if(view==='month'){
+    for(var i=0;i<6;i++){
+      var d=new Date(now.getFullYear(),now.getMonth()+i,1);
+      var day=i===0?TODAY:fD(d); /* mois courant : état à aujourd'hui, pas au 1er passé */
+      out.push({day:day,lb:MLB_OPP[d.getMonth()]+' '+String(d.getFullYear()).slice(2)});
+    }
+  }else{
+    var dow=(now.getDay()+6)%7;
+    var monday=new Date(now.getFullYear(),now.getMonth(),now.getDate()-dow);
+    for(var w=0;w<12;w++){
+      var wd=new Date(monday.getFullYear(),monday.getMonth(),monday.getDate()+w*7);
+      var wday=w===0?TODAY:fD(wd); /* semaine courante : état à aujourd'hui */
+      out.push({day:wday,lb:String(wd.getDate()).padStart(2,'0')+'/'+String(wd.getMonth()+1).padStart(2,'0')});
+    }
+  }
+  out.forEach(function(p){
+    var act=cons.filter(function(c){return (!c.arrive||c.arrive<=p.day)&&(!c.depart||c.depart>=p.day);});
+    var ic=act.filter(function(c){return icOnDay(c,S.miss,p.day);});
+    p.total=act.length;p.ic=ic.length;
+    p.rate=act.length?ic.length/act.length*100:0;
+  });
+  return out;
+}
+var MLB_OPP=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+
+function tOpps(){
+  if(!['super_admin','admin','gestionnaire'].includes(S.role))return '<div class="emp">Accès non autorisé.</div>';
+  /* Consultants du périmètre (S.cons est déjà la vue filtrée par rôle), actifs
+     ou à venir — les partis sont exclus. Hors profils Business Manager. */
+  var cons=S.cons.filter(function(c){return c.grade!=='sales_grade'&&!(c.depart&&c.depart<TODAY);});
+  var rows=cons.map(function(c){
+    var st=icStatus(c,S.miss);
+    /* Clé de tri : IC aujourd'hui d'abord, puis par date d'atterrissage, missions
+       sans fin en dernier. */
+    var key=!st.onMission?'0':(st.open?'9999-99-99':st.landing||'9999-99-98');
+    return {c:c,st:st,key:key,opps:oppsOf(c.id)};
+  }).sort(function(a,b){return a.key<b.key?-1:a.key>b.key?1:(a.c.name||'').localeCompare(b.c.name||'','fr');});
+
+  var icNow=rows.filter(function(r){return !r.st.onMission;}).length;
+  var soon30=rows.filter(function(r){return r.st.onMission&&r.st.landing&&dL(r.st.landing)<=30;}).length;
+  var nOpps=(S.staffOpps||[]).filter(function(o){return o.status==='pressentie';}).length;
+
+  function tile(lb,val,sub,color){
+    return '<div style="flex:1;min-width:150px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px">'
+      +'<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em">'+lb+'</div>'
+      +'<div style="font-size:26px;font-weight:900;color:'+(color||'#0f172a')+';margin-top:2px">'+val+'</div>'
+      +(sub?'<div style="font-size:11px;color:#94a3b8;margin-top:1px">'+sub+'</div>':'')+'</div>';
+  }
+
+  /* ── Timeline semaine / mois ── */
+  var view=S.oppView==='month'?'month':'week';
+  var tl=oppTimeline(cons,view);
+  var maxIc=Math.max.apply(null,tl.map(function(p){return p.ic;}).concat([1]));
+  var bars=tl.map(function(p){
+    var h=Math.max(Math.round(p.ic/maxIc*90),p.ic>0?6:2);
+    var col=p.rate>=25?'#dc2626':p.rate>=10?'#d97706':'#84CC16';
+    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0">'
+      +'<div style="font-size:10px;font-weight:800;color:#334155;height:14px">'+(p.ic||'')+'</div>'
+      +'<div style="display:flex;flex-direction:column;justify-content:flex-end;height:92px;width:60%;max-width:26px">'
+      +'<div title="'+p.ic+' intercontrat / '+p.total+' actifs ('+p.rate.toFixed(0)+'%)" style="height:'+h+'px;background:'+col+';border-radius:3px 3px 0 0"></div></div>'
+      +'<div style="font-size:9px;color:#94a3b8;white-space:nowrap">'+p.lb+'</div>'
+      +'<div style="font-size:9px;font-weight:700;color:'+col+'">'+p.rate.toFixed(0)+'%</div>'
+      +'</div>';
+  }).join('');
+  function segBtn(id,lb){
+    var on=view===id;
+    return '<button data-act="opp-view" data-id="'+id+'" style="padding:5px 14px;border-radius:7px;font-size:11px;font-weight:800;border:1px solid '+(on?'#84CC16':'#e2e8f0')+';background:'+(on?'#84CC16':'#fff')+';color:'+(on?'#1B2B3A':'#64748b')+';cursor:pointer">'+lb+'</button>';
+  }
+
+  /* ── Tableau des consultants par atterrissage ── */
+  var trs=rows.map(function(r){
+    var c=r.c,st=r.st;
+    var badge;
+    if(!st.onMission)badge='<span style="background:#fee2e2;color:#b91c1c;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:800">En intercontrat</span>';
+    else if(st.open)badge='<span style="background:#f1f5f9;color:#64748b;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700">Mission sans date de fin</span>';
+    else{
+      var dl=dL(st.landing);
+      var col=dl<=15?'#b91c1c':dl<=45?'#b45309':'#15803d',bg=dl<=15?'#fee2e2':dl<=45?'#fffbeb':'#f0fdf4';
+      badge='<span style="background:'+bg+';color:'+col+';padding:2px 10px;border-radius:99px;font-size:11px;font-weight:800">Atterrit le '+fDt(st.landing)+' (J-'+dl+')</span>';
+    }
+    var oppTxt=r.opps.length
+      ?'<span style="font-weight:800;color:#1B2B3A">'+r.opps.length+'</span> <span style="font-size:11px;color:#94a3b8">'+esc(r.opps.map(function(o){return o.cli;}).join(', '))+'</span>'
+      :'<span style="color:#cbd5e1">—</span>';
+    return '<tr>'
+      +'<td><div style="display:flex;align-items:center;gap:10px">'+av(c.name,30)
+      +'<div><div style="font-weight:600;font-size:13px">'+esc(c.name)+'</div>'
+      +'<div style="font-size:11px;color:#94a3b8">'+esc(c.title||'')+'</div></div></div></td>'
+      +'<td>'+badge+'</td>'
+      +'<td>'+oppTxt+'</td>'
+      +'<td class="tr"><button class="bp" style="font-size:11px;padding:6px 12px" data-act="opp-add" data-id="'+c.id+'">+ Opportunité</button></td>'
+      +'</tr>';
+  }).join('');
+
+  return '<div class="vw">'
+    +'<div class="ph"><div><div class="pt">🛬 Opportunités — pilotage des intercontrats</div>'
+    +'<div class="ps">Consultants par date d\'atterrissage · opportunités pressenties · concrétisation en mission</div></div></div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">'
+    +tile('En intercontrat',icNow,'aujourd\'hui',icNow>0?'#b91c1c':'#15803d')
+    +tile('Atterrissages ≤ 30 j',soon30,'fins de mission à venir',soon30>0?'#b45309':'#0f172a')
+    +tile('Opportunités en cours',nOpps,'missions pressenties','#1B2B3A')
+    +'</div>'
+    +'<div class="card" style="padding:18px 20px;margin-bottom:16px">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px">'
+    +'<div style="font-size:13px;font-weight:800;color:#0f172a">Intercontrats à venir <span style="font-weight:500;color:#94a3b8;font-size:12px">— nombre et taux par '+(view==='month'?'mois':'semaine')+'</span></div>'
+    +'<div style="display:flex;gap:6px">'+segBtn('week','Semaines')+segBtn('month','Mois')+'</div></div>'
+    +'<div style="display:flex;align-items:flex-end;gap:4px;padding-top:4px">'+bars+'</div>'
+    +'</div>'
+    +'<div class="card ov"><table style="min-width:640px">'
+    +'<thead><tr><th>'+rLabel('utilisateur')+'</th><th>Statut / atterrissage</th><th>Opportunités pressenties</th><th class="tr"></th></tr></thead>'
+    +'<tbody>'+(trs||'<tr><td colspan="4" class="emp">Aucun consultant sur ce périmètre.</td></tr>')+'</tbody></table></div>'
+    +'</div>';
+}
+
+/* Corps du modal « Opportunités du consultant » (branché dans tModal, type 'staffopp'). */
+function tStaffOppModal(){
+  var cid=S.modal&&S.modal.cid;
+  var c=S.cons.find(function(x){return x.id===cid;})||{name:'—'};
+  var st=icStatus(c,S.miss);
+  var stTxt=!st.onMission?'En intercontrat aujourd\'hui':(st.open?'En mission (sans date de fin)':'Atterrit le '+fDt(st.landing));
+  var opps=(S.staffOpps||[]).filter(function(o){return o.cid===cid;});
+  var rows=opps.map(function(o){
+    var stBadge=o.status==='gagnee'?'<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:800">Gagnée</span>'
+      :o.status==='perdue'?'<span style="background:#f1f5f9;color:#94a3b8;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700">Perdue</span>'
+      :'<span style="background:#fffbeb;color:#b45309;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:800">Pressentie</span>';
+    var acts=o.status==='pressentie'
+      ?'<button class="bp" style="font-size:10px;padding:4px 9px" data-act="opp-win" data-id="'+o.id+'" title="Créer la mission correspondante">✓ Concrétiser</button> '
+        +'<button class="lb" style="font-size:10px" data-act="opp-lost" data-id="'+o.id+'">Perdue</button> '
+        +'<button class="lr" style="font-size:10px" data-act="opp-del" data-id="'+o.id+'">Suppr.</button>'
+      :'<button class="lr" style="font-size:10px" data-act="opp-del" data-id="'+o.id+'">Suppr.</button>';
+    return '<tr><td style="font-weight:600;font-size:12px">'+esc(o.cli)+'</td>'
+      +'<td style="font-size:12px">'+(o.sd?fDt(o.sd):'—')+'</td>'
+      +'<td style="font-size:12px">'+(o.dur!=null?o.dur+' mois':'—')+'</td>'
+      +'<td style="font-size:12px;font-weight:600">'+(o.tjm?fEur(o.tjm):'—')+'</td>'
+      +'<td>'+stBadge+'</td>'
+      +'<td class="tr" style="white-space:nowrap">'+acts+'</td></tr>';
+  }).join('');
+  return '<div style="margin-bottom:14px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;font-size:12px">'
+    +'<strong>'+esc(c.name)+'</strong> · '+esc(c.title||'')+' · <span style="color:#64748b">'+stTxt+'</span></div>'
+    +'<div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:8px">➕ Nouvelle opportunité pressentie</div>'
+    +'<div class="g2">'
+    +'<div class="fd"><label class="fl">Client *</label><input class="ic" id="opp-cli" placeholder="ex : BNP Paribas"></div>'
+    +'<div class="fd"><label class="fl">Date de démarrage *</label><input class="ic" id="opp-sd" type="date" value="'+(st.landing||TODAY)+'"></div>'
+    +'<div class="fd"><label class="fl">Durée (mois)</label><input class="ic" id="opp-dur" type="number" min="1" step="1" placeholder="6"></div>'
+    +'<div class="fd"><label class="fl">TJM pressenti (€)</label><input class="ic" id="opp-tjm" type="number" min="0" placeholder="650"></div>'
+    +'</div>'
+    +'<button class="bp" style="margin-top:4px" data-act="opp-save">Ajouter l\'opportunité</button>'
+    +(rows?('<div style="font-size:12px;font-weight:800;color:#0f172a;margin:18px 0 8px">Opportunités de '+esc(c.name)+'</div>'
+      +'<div class="ov"><table><thead><tr><th>Client</th><th>Démarrage</th><th>Durée</th><th>TJM</th><th>Statut</th><th class="tr"></th></tr></thead><tbody>'+rows+'</tbody></table></div>'):'')
+    +'<p class="fh" style="margin-top:12px">« Concrétiser » crée la mission (AT, lun-ven) dans l\'onglet Missions et ouvre sa fiche pour compléter les informations manquantes.</p>';
+}

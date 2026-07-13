@@ -976,6 +976,12 @@ function tModal(){
       +'<div class="br"><button class="bg" data-act="mc">Annuler</button>'
       +'<button class="bp" style="background:#b91c1c;border-color:#b91c1c" data-act="appr-ko-confirm" data-id="'+esc(m.reqId||'')+'">Confirmer le refus</button></div>';
   }
+  /* ── Modal opportunités staffing (pilotage des intercontrats) ── */
+  if(tp==='staffopp'){
+    wide=true;
+    title='🛬 Opportunités du consultant';
+    body=tStaffOppModal();
+  }
   /* ── Modal import consultants (Excel/CSV) ── */
   if(tp==='import_cons'){
     wide=true;

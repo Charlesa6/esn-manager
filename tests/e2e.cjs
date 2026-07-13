@@ -111,7 +111,7 @@ async function newPage(browser) {
     check('l’app démarre (état S initialisé, rôle=' + role + ')', !!role);
 
     // Navigation : chaque onglet principal se rend sans planter
-    const tabs = ['kpis', 'dashboard', 'teams', 'missions', 'planning', 'leaves'];
+    const tabs = ['kpis', 'dashboard', 'teams', 'missions', 'planning', 'leaves', 'opportunites'];
     for (const t of tabs) {
       const btn = await p.$('[data-nav="' + t + '"]');
       if (!btn) { check('onglet ' + t + ' présent', false, 'bouton nav absent'); continue; }
@@ -134,6 +134,24 @@ async function newPage(browser) {
     const tb = await p.$('[data-nav="teams"]'); if (tb) { await tb.click(); await p.waitForTimeout(500); }
     const teamRows = await p.evaluate(() => document.querySelectorAll('button[data-act="ec"]').length);
     check('Équipe : consultants affichés (' + teamRows + ' ligne(s), attendu > 0)', teamRows > 0, 'onglet Équipe vide');
+
+    // Opportunités (pilotage des intercontrats) : contenu + modal + onglets masqués
+    const ob = await p.$('[data-nav="opportunites"]'); if (ob) { await ob.click(); await p.waitForTimeout(500); }
+    const oppTxt = await p.evaluate(() => document.body.innerText);
+    check('Opportunités : pilotage des intercontrats affiché', /pilotage des intercontrats/i.test(oppTxt));
+    check('Opportunités : timeline semaine/mois présente', /Semaines/.test(oppTxt) && /Mois/.test(oppTxt));
+    const oppAddBtn = await p.$('[data-act="opp-add"]');
+    check('Opportunités : bouton « + Opportunité » présent', !!oppAddBtn);
+    if (oppAddBtn) {
+      await oppAddBtn.click(); await p.waitForTimeout(400);
+      const modalTxt = await p.evaluate(() => document.getElementById('md') ? document.getElementById('md').innerText : '');
+      check('Opportunités : modal du consultant s\'ouvre', /Nouvelle opportunité pressentie/.test(modalTxt));
+      await p.evaluate(() => { S.modal = null; render(); }); await p.waitForTimeout(300);
+    }
+    // Gestion des accès & Paramètres : temporairement masqués sur toutes les licences
+    const hiddenTabs = await p.evaluate(() =>
+      !!document.querySelector('[data-nav="svp_acces"]') || !!document.querySelector('[data-nav="svp_settings"]'));
+    check('Sidebar : Gestion des accès & Paramètres masqués', hiddenTabs === false);
 
     // Force l'activation des modules Business + Recrutement pour exercer ces
     // écrans (sinon masqués en démo) — couvre les modules js/09 et js/12.

@@ -273,6 +273,30 @@ function missOnDay(cid,day){
 function leaveOnDay(cid,day){
   return S.lvs.find(function(l){return l.cid===cid&&l.s<=day&&day<=l.e;});
 }
+/* ═══ INTERCONTRATS — statut d'atterrissage d'un consultant ═══
+   Renvoie {onMission, open, landing} au jour `today` (défaut : aujourd'hui) :
+   - onMission : une mission couvre le jour (sd<=j et fin absente ou >=j) ;
+   - open      : au moins une mission en cours/à venir SANS date de fin
+                 → pas d'atterrissage prévisible ;
+   - landing   : date d'atterrissage = fin la plus tardive des missions en
+                 cours/à venir (null si aucune → en intercontrat, ou si open). */
+function icStatus(c,miss,today){
+  today=today||TODAY;
+  var mine=(miss||[]).filter(function(m){return m.cid===c.id;});
+  var onNow=mine.some(function(m){return m.sd<=today&&(!m.ed||m.ed>=today);});
+  var cur=mine.filter(function(m){return !m.ed||m.ed>=today;});
+  var open=cur.some(function(m){return !m.ed;});
+  var landing=null;
+  if(cur.length&&!open)landing=cur.reduce(function(mx,m){return m.ed>mx?m.ed:mx;},cur[0].ed);
+  return {onMission:onNow,open:open,landing:landing};
+}
+/* Un consultant est-il en intercontrat au jour donné ? (actif dans l'effectif
+   ET aucune mission ne couvre ce jour). Sert à la timeline semaine/mois. */
+function icOnDay(c,miss,day){
+  if(c.arrive&&c.arrive>day)return false;
+  if(c.depart&&c.depart<day)return false;
+  return !(miss||[]).some(function(m){return m.cid===c.id&&m.sd<=day&&(!m.ed||m.ed>=day);});
+}
 function shiftMonth(ym,delta){
   var p=ym.split('-'),dd=new Date(+p[0],+p[1]-1+delta,1);
   return dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0');
@@ -295,6 +319,8 @@ var S={
   miss:IM.map(function(m){return Object.assign({},m);}),
   lvs:IL.map(function(l){return Object.assign({},l);}),
   cands:[],
+  staffOpps:[],   /* opportunités staffing (pilotage des intercontrats) */
+  oppView:'week', /* granularité de la timeline intercontrats : 'week' | 'month' */
   approvals:[],   /* demandes d'approbation des consultants */
   consInvites:[], /* codes d'accès générés pour les consultants */
   adminCode:null, /* dernier code généré (affiché dans Admin) */

@@ -44,6 +44,7 @@ function tSB(){
       {id:'kpis',      ic:'\uD83D\uDCC8',lb:'KPIs'},
       {id:'dashboard', ic:'\uD83D\uDCCA',lb:'Dashboard'},
       {id:'business',  ic:'\uD83D\uDCBC',lb:'Business'},
+      {id:'opportunites',ic:'\uD83D\uDEEC',lb:'Opportunit\u00E9s'},
       {id:'recrutement',ic:'\uD83C\uDFAF',lb:'Recrutement'},
       {id:'teams',     ic:'\uD83D\uDC65',lb:'\u00c9quipe'},
       {id:'activite',  ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'},
@@ -53,8 +54,13 @@ function tSB(){
       {id:'approvals',  ic:'\uD83D\uDD14',lb:'Approbations'},
       {id:'param',     ic:'\uD83D\uDCA1',lb:'Pr\u00e9conisations'}
     ];
-    if(S.role==='admin'||S.role==='gestionnaire'||S.role==='super_admin')NAV.push({id:'svp_acces',ic:'\uD83D\uDD11',lb:'Gestion des acc\u00e8s'});
+    /* \u00ab Gestion des acc\u00e8s \u00bb et \u00ab Param\u00e8tres \u00bb : TEMPORAIREMENT MASQU\u00c9S sur toutes
+       les licences (la hi\u00e9rarchie N+1 vit d\u00e9sormais dans \u00ab Mon Profil \u00bb). Pour les
+       r\u00e9activer : d\u00e9commenter ces deux lignes ET remettre 'svp_acces'/'svp_settings'
+       dans _allowedTabs (js/13-render-events.js).
+    if(S.role==='admin'||S.role==='gestionnaire'||S.role==='super_admin')NAV.push({id:'svp_acces',ic:'\ud83d\uDD11',lb:'Gestion des acc\u00e8s'});
     if(S.role==='super_admin')NAV.push({id:'svp_settings',ic:'\u2699',lb:'Param\u00e8tres'});
+    */
     if(S.role==='super_admin')NAV.push({id:'svp_integrations',ic:'\ud83d\udd0c',lb:'Int\u00e9grations'});
     NAV.push({id:'help',ic:'\u2753',lb:'Aide'});
   }

@@ -413,6 +413,38 @@ function tRegionsCard(){
     +'</div>';
 }
 
+/* ═══ Hiérarchie (N+1) & Business Unit — carte réutilisable ═══
+   Historiquement dans « Gestion des accès » ; affichée désormais dans « Mon
+   Profil » (rôles encadrants). Pour chaque membre : choix du N+1 et de la BU.
+   Écritures via RPC sécurisées (set_member_manager / set_member_bu : rôle et
+   même entreprise vérifiés côté serveur). */
+function tHierCard(){
+  if(!['super_admin','admin','gestionnaire'].includes(S.role))return '';
+  var sbOn=!!(sb&&SB_CID);
+  var members=(S.orgProfiles||[]);
+  /* Options BU (chemin complet), triées par label pour la lisibilité */
+  var _buOpts=buNodes().slice().sort(function(a,b){return buPathLabel(a.id).localeCompare(buPathLabel(b.id),'fr');});
+  var hierRows=members.map(function(p){
+    var _canBU=canEditMemberBU(p);
+    var opts='<option value="">— Aucun —</option>'+members.filter(function(q){return q.id!==p.id;}).map(function(q){
+      var nmq=((q.first_name||'')+' '+(q.last_name||'')).trim()||q.id;
+      return '<option value="'+q.id+'"'+(p.manager_id===q.id?' selected':'')+'>'+esc(nmq)+' ('+rLabel(q.role)+')</option>';
+    }).join('');
+    var buOpts='<option value="">— Aucune —</option>'+_buOpts.map(function(n){
+      return '<option value="'+n.id+'"'+(p.bu_id===n.id?' selected':'')+'>'+esc(buPathLabel(n.id))+'</option>';
+    }).join('');
+    var nm=((p.first_name||'')+' '+(p.last_name||'')).trim()||p.id;
+    return '<tr><td>'+esc(nm)+'</td><td>'+rLabel(p.role)+'</td>'
+      +'<td><select class="ic" onchange="setNplus1(\''+p.id+'\',this.value)"'+(sbOn?'':' disabled')+'>'+opts+'</select></td>'
+      +'<td><select class="ic" onchange="setMemberBU(\''+p.id+'\',this.value)"'+(sbOn&&_canBU?'':' disabled title="Vous ne pouvez pas modifier cette unité"')+'>'+buOpts+'</select></td></tr>';
+  }).join('');
+  return '<div class="card ov" style="margin-bottom:16px"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
+    +'<span style="font-size:13px;font-weight:700;color:#0f172a">🏢 Hiérarchie (N+1) &amp; Business Unit</span>'
+    +'<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#15803d;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:99px;padding:3px 10px">✅ Enregistrement automatique</span></div>'
+    +'<table><thead><tr><th>Membre</th><th>Rôle</th><th>Responsable (N+1)</th><th>Business Unit</th></tr></thead><tbody>'
+    +(hierRows||'<tr><td colspan="4" class="emp">Aucun membre pour le moment.</td></tr>')+'</tbody></table></div>';
+}
+
 function tSVPAcces(){
   if(!['super_admin','admin','gestionnaire'].includes(S.role))return '<div class="emp">Accès non autorisé.</div>';
   var sbOn=!!(sb&&SB_CID);
@@ -461,24 +493,6 @@ function tSVPAcces(){
       +'<td class="tr"><button class="lr" data-act="seat-del-row" data-idx="'+i+'">Retirer</button></td></tr>';
   }).join('');
 
-  /* Hiérarchie : pour chaque membre existant, choix de son N+1 parmi les autres. */
-  /* Options BU (chemin complet), triées par profondeur/label pour la lisibilité */
-  var _buOpts=buNodes().slice().sort(function(a,b){return buPathLabel(a.id).localeCompare(buPathLabel(b.id),'fr');});
-  var hierRows=members.map(function(p){
-    var _canBU=canEditMemberBU(p);
-    var opts='<option value="">— Aucun —</option>'+members.filter(function(q){return q.id!==p.id;}).map(function(q){
-      var nmq=((q.first_name||'')+' '+(q.last_name||'')).trim()||q.id;
-      return '<option value="'+q.id+'"'+(p.manager_id===q.id?' selected':'')+'>'+esc(nmq)+' ('+rLabel(q.role)+')</option>';
-    }).join('');
-    var buOpts='<option value="">— Aucune —</option>'+_buOpts.map(function(n){
-      return '<option value="'+n.id+'"'+(p.bu_id===n.id?' selected':'')+'>'+esc(buPathLabel(n.id))+'</option>';
-    }).join('');
-    var nm=((p.first_name||'')+' '+(p.last_name||'')).trim()||p.id;
-    return '<tr><td>'+esc(nm)+'</td><td>'+rLabel(p.role)+'</td>'
-      +'<td><select class="ic" onchange="setNplus1(\''+p.id+'\',this.value)"'+(sbOn?'':' disabled')+'>'+opts+'</select></td>'
-      +'<td><select class="ic" onchange="setMemberBU(\''+p.id+'\',this.value)"'+(sbOn&&_canBU?'':' disabled title="Vous ne pouvez pas modifier cette unité"')+'>'+buOpts+'</select></td></tr>';
-  }).join('');
-
   var retryable=pend.filter(function(s){return s.status==='error'||s.status==='pending';}).length;
   var pendRows=pend.map(function(s){
     var st=s.status==='provisioned'?'<span class="badge bgrn">✓ Compte créé</span>'
@@ -512,12 +526,7 @@ function tSVPAcces(){
       +'<button class="bp" data-act="seats-buy">Payer et créer les comptes →</button></div>'):'')
     +'</div>'
 
-    /* B. Hiérarchie */
-    +'<div class="card ov" style="margin-bottom:16px"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
-    +'<span style="font-size:13px;font-weight:700;color:#0f172a">🏢 Hiérarchie (N+1) &amp; Business Unit</span>'
-    +'<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#15803d;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:99px;padding:3px 10px">✅ Enregistrement automatique</span></div>'
-    +'<table><thead><tr><th>Membre</th><th>Rôle</th><th>Responsable (N+1)</th><th>Business Unit</th></tr></thead><tbody>'
-    +(hierRows||'<tr><td colspan="4" class="emp">Aucun membre pour le moment.</td></tr>')+'</tbody></table></div>'
+    /* B. Hiérarchie : déplacée dans « Mon Profil » (tHierCard). */
 
     /* C. Sièges en attente */
     +(pend.length?('<div class="card ov"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'
@@ -533,7 +542,7 @@ function tSVPAcces(){
 
 /* Journal d'activité : lecture de activity_logs (alimentée par les triggers SQL
    audit_trigger sur les tables sensibles). Cloisonné par entreprise via la RLS. */
-var AUDIT_ENTITY_LB={consultants:'Consultant',missions:'Mission',leaves:'Absence',candidates:'Candidat',crm_opportunities:'Opportunité',crm_accounts:'Compte',crm_contacts:'Contact',profiles:'Membre',companies:'Entreprise',settings:'Paramètres',company_settings:'Paramètres'};
+var AUDIT_ENTITY_LB={consultants:'Consultant',missions:'Mission',leaves:'Absence',candidates:'Candidat',crm_opportunities:'Opportunité',crm_accounts:'Compte',crm_contacts:'Contact',profiles:'Membre',companies:'Entreprise',settings:'Paramètres',company_settings:'Paramètres',staffing_opportunities:'Opportunité staffing'};
 var AUDIT_ACTION_STYLE={INSERT:['Création','#dcfce7','#166534'],UPDATE:['Modification','#dbeafe','#1e40af'],DELETE:['Suppression','#fee2e2','#991b1b']};
 function tAuditSection(){
   var logs=(S.activityLog||[]);
