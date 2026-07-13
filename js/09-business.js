@@ -1062,12 +1062,12 @@ function oppTimeline(cons,view){
     }
   }
   out.forEach(function(p){
-    var act=cons.filter(function(c){return (!c.arrive||c.arrive<=p.day)&&(!c.depart||c.depart>=p.day);});
-    var ic=act.filter(function(c){return icOnDay(c,S.miss,S.lvs,p.day);});
-    p.total=act.length;p.ic=ic.length;
-    /* Taux affiché : personnes EN CONTRAT (mission ou absence) — le nombre
-       d'intercontrats reste lisible en tête de barre. */
-    p.staffed=act.length?(act.length-ic.length)/act.length*100:100;
+    /* Jours-homme sur TOUTE la période (pas un jour de mesure unique) : une
+       semaine dont l'intercontrat démarre le mardi n'affiche plus 100 %.
+       p.ic = consultants avec ≥1 j ouvré d'IC (cohérent avec le focus). */
+    var st=icPeriodStats(cons,S.miss,S.lvs,p.day,p.end);
+    p.total=st.act;p.ic=st.icN;p.icDays=st.icDays;p.dispo=st.dispo;
+    p.staffed=st.staffed;
   });
   return out;
 }
@@ -1115,7 +1115,7 @@ function tOpps(){
     return '<div data-act="opp-focus" data-id="'+p.day+'|'+p.end+'" title="Cliquer pour voir les consultants en intercontrat sur cette période" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;cursor:pointer;border-radius:8px;padding:2px 0'+(sel?';box-shadow:0 0 0 2px #84CC16;background:#f7fdef':'')+'">'
       +'<div style="font-size:10px;font-weight:800;color:#334155;height:14px">'+(p.ic||'')+'</div>'
       +'<div style="display:flex;flex-direction:column;justify-content:flex-end;height:92px;width:60%;max-width:26px">'
-      +'<div title="'+p.ic+' en intercontrat / '+p.total+' actifs — '+p.staffed.toFixed(0)+'% en contrat" style="height:'+h+'px;background:'+col+';border-radius:3px 3px 0 0"></div></div>'
+      +'<div title="'+p.ic+' consultant(s) avec de l\'intercontrat sur la période · '+p.icDays+' j ouvrés IC / '+p.dispo+' disponibles — '+p.staffed.toFixed(0)+'% en contrat" style="height:'+h+'px;background:'+col+';border-radius:3px 3px 0 0"></div></div>'
       +'<div style="font-size:9px;color:#94a3b8;white-space:nowrap">'+p.lb+'</div>'
       +'<div style="font-size:9px;font-weight:700;color:'+col+'">'+p.staffed.toFixed(0)+'%</div>'
       +'</div>';

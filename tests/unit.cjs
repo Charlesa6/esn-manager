@@ -171,6 +171,17 @@ eq('icStretchStart : IC depuis la fin de mission (01/04)', ctx.icStretchStart({ 
 eq('icStretchStart : IC depuis la fin du congé (21/06)', ctx.icStretchStart({ id: 'b' }, missIC, [{ cid: 'b', s: '2026-06-10', e: '2026-06-20', type: 'Congé payé' }], W1, W2), '2026-06-21');
 eq('icStretchStart : borné à la date d\'arrivée', ctx.icStretchStart({ id: 'z', arrive: '2026-06-24' }, missIC, [], W1, W2), '2026-06-24');
 eq('icStretchStart : en mission sur la fenêtre → null', ctx.icStretchStart({ id: 'a' }, missIC, [], W1, W2), null);
+// icPeriodStats : taux en contrat en JOURS-HOMME sur la fenêtre (pas un jour unique).
+// Semaine 22-28/06/2026 (5 j ouvrés). a = en mission ; b = IC toute la semaine.
+var popIC = [{ id: 'a' }, { id: 'b' }];
+var ps1 = ctx.icPeriodStats(popIC, missIC, [], W1, W2);
+ok('icPeriodStats : 5 j IC / 10 dispo → 50 % en contrat', ps1.act === 2 && ps1.icN === 1 && ps1.icDays === 5 && ps1.dispo === 10 && ps1.staffed === 50);
+// Cas de la capture : absence lun uniquement, IC mar→ven (4 j) → 2 cons : (10-8)/10 = 20 %
+var lvMon = [{ cid: 'b', s: '2026-06-22', e: '2026-06-22', type: 'Congé payé' }, { cid: 'f', s: '2026-06-22', e: '2026-06-22', type: 'Congé payé' }];
+var ps2 = ctx.icPeriodStats([{ id: 'b' }, { id: 'f' }], missIC, lvMon, W1, W2);
+ok('icPeriodStats : IC dès mardi → PAS 100 % (20 % en contrat)', ps2.icN === 2 && ps2.icDays === 8 && ps2.staffed === 20);
+var ps3 = ctx.icPeriodStats([{ id: 'a' }], missIC, [], W1, W2);
+ok('icPeriodStats : tous en mission → 100 %', ps3.staffed === 100 && ps3.icN === 0);
 
 console.log('\n' + '─'.repeat(58));
 console.log(pass + '/' + (pass + fail) + ' tests unitaires réussis' + (fail ? ' — \x1b[31m' + fail + ' échec(s)\x1b[0m' : ' — \x1b[32mtout est vert\x1b[0m'));

@@ -312,6 +312,27 @@ function icDaysInRange(c,miss,lvs,a,b){
   while(d<=b){if(isWD(d,HH)&&icOnDay(c,miss,lvs,d))n++;d=nxt(d);}
   return n;
 }
+/* Statistiques d'intercontrat d'une population sur la fenêtre [a,b], en
+   JOURS-HOMME ouvrés (et non sur un jour de mesure unique — sinon une semaine
+   dont l'IC commence le mardi afficherait 100 % en contrat) :
+   - act    : consultants actifs (≥1 j ouvré dans la fenêtre, bornée arrivée/départ)
+   - icN    : consultants avec ≥1 j ouvré d'intercontrat
+   - icDays : jours-homme d'intercontrat · dispo : jours-homme disponibles
+   - staffed: taux en contrat = (dispo − icDays) / dispo. */
+function icPeriodStats(cons,miss,lvs,a,b){
+  var HH=holRange(a,b),act=0,icN=0,icDays=0,dispo=0;
+  (cons||[]).forEach(function(c){
+    var s=(c.arrive&&c.arrive>a)?c.arrive:a;
+    var e=(c.depart&&c.depart<b)?c.depart:b;
+    if(s>e)return;
+    var wd=wDays(s,e,HH);
+    if(wd<=0)return;
+    act++;dispo+=wd;
+    var d=icDaysInRange(c,miss,lvs,s,e);
+    icDays+=d;if(d>0)icN++;
+  });
+  return {act:act,icN:icN,icDays:icDays,dispo:dispo,staffed:dispo>0?(dispo-icDays)/dispo*100:100};
+}
 /* Début de la période d'intercontrat vue depuis la fenêtre [a,b] : premier jour
    IC de la fenêtre, puis on remonte tant que le consultant reste en intercontrat
    (la remontée s'arrête sur une mission, une absence ou l'entrée dans l'effectif).
