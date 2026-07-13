@@ -1087,8 +1087,12 @@ function tOpps(){
   }).sort(function(a,b){return a.key<b.key?-1:a.key>b.key?1:(a.c.name||'').localeCompare(b.c.name||'','fr');});
 
   /* Taux d'intercontrat sur l'EXERCICE sélectionné, en jours-homme ouvrés
-     (passé réalisé + projection missions/absences connues). */
-  var fyStats=icPeriodStats(cons,S.miss,S.lvs,fyStart(S.year),fyEnd(S.year));
+     (passé réalisé + projection missions/absences connues). Population COMPLÈTE
+     de l'exercice : les PARTIS comptent aussi (bornés à leur départ par
+     icPeriodStats) — le tableau les exclut car on ne les staffe plus, mais leurs
+     jours d'intercontrat font partie du taux annuel. Hors Business Managers. */
+  var fyCons=S.cons.filter(function(c){return c.grade!=='sales_grade';});
+  var fyStats=icPeriodStats(fyCons,S.miss,S.lvs,fyStart(S.year),fyEnd(S.year));
   var icRateFY=fyStats.dispo>0?fyStats.icDays/fyStats.dispo*100:0;
   /* Arrivées en intercontrat sous 30 jours : atterrissages de mission ET fins
      d'absence — ceux qui ne sont PAS en IC aujourd'hui mais le seront. */

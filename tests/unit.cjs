@@ -182,6 +182,10 @@ var ps2 = ctx.icPeriodStats([{ id: 'b' }, { id: 'f' }], missIC, lvMon, W1, W2);
 ok('icPeriodStats : IC dès mardi → PAS 100 % (20 % en contrat)', ps2.icN === 2 && ps2.icDays === 8 && ps2.staffed === 20);
 var ps3 = ctx.icPeriodStats([{ id: 'a' }], missIC, [], W1, W2);
 ok('icPeriodStats : tous en mission → 100 %', ps3.staffed === 100 && ps3.icN === 0);
+// Un PARTI en cours de fenêtre compte, borné à son départ : h part le mer 24/06,
+// sans mission → 3 j dispo (lun-mer), 3 j IC. Avec a (en mission 5 j) : 3 IC / 8 dispo.
+var ps4 = ctx.icPeriodStats([{ id: 'a' }, { id: 'h', depart: '2026-06-24' }], missIC, [], W1, W2);
+ok('icPeriodStats : parti en cours de fenêtre compté jusqu\'à son départ', ps4.act === 2 && ps4.icDays === 3 && ps4.dispo === 8);
 // icArrivals : qui ENTRE en intercontrat sur (from, to] — atterrissage OU fin d'absence.
 // Référence T=15/06 : a = mission jusqu'au 31/08 ; b = IC ; c = mission sans fin ; d = mission future dès 01/09.
 var arrWin = ctx.icArrivals([{ id: 'a' }, { id: 'b' }, { id: 'c' }], missIC, [], T, '2026-09-05');
