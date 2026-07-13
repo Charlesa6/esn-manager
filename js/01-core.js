@@ -312,6 +312,23 @@ function icDaysInRange(c,miss,lvs,a,b){
   while(d<=b){if(isWD(d,HH)&&icOnDay(c,miss,lvs,d))n++;d=nxt(d);}
   return n;
 }
+/* Début de la période d'intercontrat vue depuis la fenêtre [a,b] : premier jour
+   IC de la fenêtre, puis on remonte tant que le consultant reste en intercontrat
+   (la remontée s'arrête sur une mission, une absence ou l'entrée dans l'effectif).
+   Renvoie null si aucun jour IC dans la fenêtre. */
+function icStretchStart(c,miss,lvs,a,b){
+  var d=a;
+  while(d<=b&&!icOnDay(c,miss,lvs,d))d=nxt(d);
+  if(d>b)return null;
+  var guard=0;
+  for(;;){
+    var p=pD(d);p.setDate(p.getDate()-1);var pd=fD(p);
+    if(guard++>730)break;                 /* garde-fou : 2 ans max */
+    if(!icOnDay(c,miss,lvs,pd))break;
+    d=pd;
+  }
+  return d;
+}
 function shiftMonth(ym,delta){
   var p=ym.split('-'),dd=new Date(+p[0],+p[1]-1+delta,1);
   return dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0');

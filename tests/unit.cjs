@@ -166,6 +166,11 @@ eq('icDaysInRange : IC toute la semaine → 5 j ouvrés', ctx.icDaysInRange({ id
 eq('icDaysInRange : en mission toute la semaine → 0', ctx.icDaysInRange({ id: 'a' }, missIC, [], W1, W2), 0);
 eq('icDaysInRange : congé mar-mer → 3 j IC', ctx.icDaysInRange({ id: 'b' }, missIC, [{ cid: 'b', s: '2026-06-23', e: '2026-06-24', type: 'Congé payé' }], W1, W2), 3);
 eq('icDaysInRange : bornes inversées → 0', ctx.icDaysInRange({ id: 'b' }, missIC, [], W2, W1), 0);
+// icStretchStart : début réel de la période d'intercontrat vue depuis une fenêtre.
+eq('icStretchStart : IC depuis la fin de mission (01/04)', ctx.icStretchStart({ id: 'b' }, missIC, [], W1, W2), '2026-04-01');
+eq('icStretchStart : IC depuis la fin du congé (21/06)', ctx.icStretchStart({ id: 'b' }, missIC, [{ cid: 'b', s: '2026-06-10', e: '2026-06-20', type: 'Congé payé' }], W1, W2), '2026-06-21');
+eq('icStretchStart : borné à la date d\'arrivée', ctx.icStretchStart({ id: 'z', arrive: '2026-06-24' }, missIC, [], W1, W2), '2026-06-24');
+eq('icStretchStart : en mission sur la fenêtre → null', ctx.icStretchStart({ id: 'a' }, missIC, [], W1, W2), null);
 
 console.log('\n' + '─'.repeat(58));
 console.log(pass + '/' + (pass + fail) + ' tests unitaires réussis' + (fail ? ' — \x1b[31m' + fail + ' échec(s)\x1b[0m' : ' — \x1b[32mtout est vert\x1b[0m'));

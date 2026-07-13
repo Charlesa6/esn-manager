@@ -1125,15 +1125,18 @@ function tOpps(){
     return '<button data-act="opp-view" data-id="'+id+'" style="padding:5px 14px;border-radius:7px;font-size:11px;font-weight:800;border:1px solid '+(on?'#84CC16':'#e2e8f0')+';background:'+(on?'#84CC16':'#fff')+';color:'+(on?'#1B2B3A':'#64748b')+';cursor:pointer">'+lb+'</button>';
   }
 
-  /* ── Tableau des consultants par atterrissage ── */
-  var trs=rows.map(function(r){
+  /* ── Tableau des consultants par atterrissage ──
+     mkTr construit une ligne ; badgeOverride (mode focus) remplace le statut
+     « aujourd'hui » par le statut CALCULÉ SUR LA PÉRIODE sélectionnée. */
+  var mkTr=function(r,badgeOverride){
     var c=r.c,st=r.st;
     var badge;
-    if(!st.onMission&&lvOnDay(c,S.lvs,TODAY)){
+    if(badgeOverride!=null)badge=badgeOverride;
+    else if(!st.onMission&&lvOnDay(c,S.lvs,TODAY)){
       /* En congé/arrêt aujourd'hui : pas compté en intercontrat. */
       var _lvC=(S.lvs||[]).filter(function(l){return l.cid===c.id&&l.type!=='Inter-contrat'&&l.s<=TODAY&&TODAY<=l.e;})
         .reduce(function(mx,l){return !mx||l.e>mx.e?l:mx;},null);
-      badge='<span style="background:#dbeafe;color:#1e40af;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700">En absence'+(_lvC?' jusqu\'au '+fDt(_lvC.e):'')+'</span>';
+      badge='<span style="background:#dbeafe;color:#1e40af;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700">Absence'+(_lvC?' jusqu\'au '+fDt(_lvC.e):'')+'</span>';
     }
     else if(!st.onMission)badge='<span style="background:#fee2e2;color:#b91c1c;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:800">En intercontrat</span>';
     else if(st.open)badge='<span style="background:#f1f5f9;color:#64748b;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700">Mission sans date de fin</span>';
@@ -1151,19 +1154,21 @@ function tOpps(){
     var oppTxt=r.opps.length
       ?'<span data-act="opp-add" data-id="'+c.id+'" title="'+esc(oppTip)+'" style="cursor:pointer;border-bottom:1px dotted #94a3b8"><span style="font-weight:800;color:#1B2B3A">'+r.opps.length+'</span> <span style="font-size:11px;color:#94a3b8">'+esc(r.opps.map(function(o){return o.cli;}).join(', '))+'</span></span>'
       :'<span style="color:#cbd5e1">—</span>';
-    r.tr='<tr>'
+    return '<tr>'
       +'<td><div style="display:flex;align-items:center;gap:10px">'+av(c.name,30)
       +'<div><div style="font-weight:600;font-size:13px">'+esc(c.name)+'</div>'
       +'<div style="font-size:11px;color:#94a3b8">'+esc(c.title||'')+'</div></div></div></td>'
-      +'<td>'+badge+'<!--icdays--></td>'
+      +'<td>'+badge+'</td>'
       +'<td>'+oppTxt+'</td>'
       +'<td class="tr"><button class="bp" style="font-size:11px;padding:6px 12px" data-act="opp-add" data-id="'+c.id+'">+ Opportunité</button></td>'
       +'</tr>';
-    return r.tr;
-  }).join('');
+  };
+  var trs=rows.map(function(r){return mkTr(r,null);}).join('');
 
-  /* ── Focus période (clic sur une barre) : ne montrer que les consultants en
-     intercontrat ≥ 1 jour ouvré sur la fenêtre, avec leur volume de jours IC. ── */
+  /* ── Focus période (clic sur une barre) : consultants en intercontrat ≥ 1 jour
+     ouvré sur la fenêtre. Le statut évolue avec la période choisie :
+     « Intercontrat depuis/dès le X » (début réel de la période d'IC), jours IC
+     de la fenêtre + cumul depuis le début de l'intercontrat. ── */
   var focusBanner='';
   if(focus){
     rows.forEach(function(r){r.icDays=icDaysInRange(r.c,S.miss,S.lvs,focus.day,focus.end);});
@@ -1173,7 +1178,14 @@ function tOpps(){
       +'<span>🔎 <strong>Focus du '+fDt(focus.day)+' au '+fDt(focus.end)+'</strong> — '
       +'<strong>'+rows.length+'</strong> consultant'+(rows.length>1?'s':'')+' en intercontrat sur la période <span style="color:#94a3b8">(sur '+_tot+')</span></span>'
       +'<button class="bg" style="font-size:11px;padding:5px 12px" data-act="opp-focus-clear">✕ Tout afficher</button></div>';
-    trs=rows.map(function(r){return r.tr.replace('<!--icdays-->',' <span style="font-size:10px;font-weight:800;color:#b45309;white-space:nowrap">'+r.icDays+' j IC</span>');}).join('');
+    trs=rows.map(function(r){
+      var _start=icStretchStart(r.c,S.miss,S.lvs,focus.day,focus.end);
+      var _cum=_start?icDaysInRange(r.c,S.miss,S.lvs,_start,focus.end):r.icDays;
+      var _lbl=_start?('Intercontrat '+(_start<=TODAY?'depuis':'dès')+' le '+fDt(_start)):'En intercontrat';
+      var fBadge='<span style="background:#fee2e2;color:#b91c1c;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:800">'+_lbl+'</span>'
+        +' <span title="Jours ouvrés en intercontrat (congés/arrêts et fériés exclus)'+(_start?' — cumul du '+fDt(_start)+' au '+fDt(focus.end):'')+'" style="font-size:10px;font-weight:800;color:#b45309;white-space:nowrap">'+r.icDays+' j IC sur la période · '+_cum+' j au total</span>';
+      return mkTr(r,fBadge);
+    }).join('');
   }
 
   return '<div class="vw">'
