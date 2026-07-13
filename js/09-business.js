@@ -1086,14 +1086,14 @@ function tOpps(){
     return {c:c,st:st,key:key,opps:oppsOf(c.id)};
   }).sort(function(a,b){return a.key<b.key?-1:a.key>b.key?1:(a.c.name||'').localeCompare(b.c.name||'','fr');});
 
-  /* Taux d'intercontrat sur l'EXERCICE sélectionné, en jours-homme ouvrés
-     (passé réalisé + projection missions/absences connues). Population COMPLÈTE
-     de l'exercice : les PARTIS comptent aussi (bornés à leur départ par
-     icPeriodStats) — le tableau les exclut car on ne les staffe plus, mais leurs
-     jours d'intercontrat font partie du taux annuel. Hors Business Managers. */
-  var fyCons=S.cons.filter(function(c){return c.grade!=='sales_grade';});
-  var fyStats=icPeriodStats(fyCons,S.miss,S.lvs,fyStart(S.year),fyEnd(S.year));
-  var icRateFY=fyStats.dispo>0?fyStats.icDays/fyStats.dispo*100:0;
+  /* Taux d'intercontrat = 100 % − staffing moyen de l'onglet KPIs, PAR
+     CONSTRUCTION : même moteur (buildKS/kpi), même population, même période
+     sélectionnée (exercice ou trimestre). Une seule lecture dans toute l'app —
+     les deux indicateurs sont exactement complémentaires. */
+  var _ks=buildKS();
+  var _aktWD=_ks.reduce(function(s,x){return s+(x.k.tWD||0);},0);
+  var _avgSr=_aktWD>0?_ks.reduce(function(s,x){return s+x.k.sr*(x.k.tWD||0);},0)/_aktWD:0;
+  var icRateFY=Math.max(0,100-_avgSr);
   /* Arrivées en intercontrat sous 30 jours : atterrissages de mission ET fins
      d'absence — ceux qui ne sont PAS en IC aujourd'hui mais le seront. */
   var _in30=fD(new Date(pD(TODAY).getFullYear(),pD(TODAY).getMonth(),pD(TODAY).getDate()+30));
@@ -1198,7 +1198,7 @@ function tOpps(){
     +'<div class="ph"><div><div class="pt">🛬 Opportunités — pilotage des intercontrats</div>'
     +'<div class="ps">Consultants par date d\'atterrissage · opportunités pressenties · concrétisation en mission</div></div></div>'
     +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">'
-    +tile('Taux d\'intercontrat '+fyLbl(S.year),icRateFY.toFixed(1)+'%',fyStats.icDays+' j ouvrés IC / '+fyStats.dispo+' sur l\'exercice',icRateFY<=10?'#15803d':icRateFY<=25?'#b45309':'#b91c1c')
+    +tile('Taux d\'intercontrat '+fyLbl(S.year)+(S.quarter?' · '+curRangeLbl():''),icRateFY.toFixed(1)+'%','= 100 % − staffing moyen (KPIs)',icRateFY<=10?'#15803d':icRateFY<=25?'#b45309':'#b91c1c')
     +tile('Arrivées en intercontrat ≤ 30 j',arrivals30,'atterrissages + fins d\'absence',arrivals30>0?'#b45309':'#15803d')
     +tile('Opportunités en cours',nOpps,'missions pressenties','#1B2B3A')
     +'</div>'
