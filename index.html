@@ -200,6 +200,15 @@ section{padding:80px 24px}
 .section-title{font-size:clamp(26px,3.5vw,40px);font-weight:900;color:var(--navy);letter-spacing:-.02em;line-height:1.15;margin-bottom:14px}
 .section-sub{font-size:16px;color:var(--muted);max-width:560px;margin-bottom:48px}
 
+/* ── VIDEO DEMO ── */
+.demo-sec{background:linear-gradient(180deg,#132030,var(--navy));text-align:center}
+.demo-sec .section-title{color:#fff}
+.demo-sec .section-sub{color:rgba(255,255,255,.72);margin-left:auto;margin-right:auto}
+.demo-frame{max-width:940px;margin:8px auto 0;border-radius:18px;overflow:hidden;
+  box-shadow:0 30px 90px rgba(0,0,0,.5);border:1px solid rgba(132,204,22,.28);background:#0b1420;line-height:0}
+.demo-frame video{width:100%;height:auto;display:block}
+.demo-note{margin-top:18px;font-size:13px;color:rgba(255,255,255,.5)}
+
 /* ── FEATURES ── */
 .features{background:var(--off)}
 .features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
@@ -426,6 +435,21 @@ footer{background:var(--dark);padding:48px 24px 32px}
       <div class="hero-stat"><div class="num">Temps réel</div><div class="lbl">Synchronisation</div></div>
       <div class="hero-stat"><div class="num">Europe</div><div class="lbl">Données hébergées</div></div>
     </div>
+  </div>
+</section>
+
+<!-- VIDEO DEMO -->
+<section class="demo-sec" id="demo">
+  <div class="container">
+    <p class="section-eyebrow anim-fade">Visite guidée</p>
+    <h2 class="section-title anim-up delay-1">Découvrez Konsilys en 1 minute</h2>
+    <p class="section-sub anim-up delay-2">Staffing, marges, missions et pilotage des intercontrats — un tour complet de l'outil, onglet par onglet.</p>
+    <div class="demo-frame anim-up delay-3">
+      <video src="assets/konsilys-demo.webm" poster="assets/konsilys-demo-poster.jpg"
+             controls preload="none" playsinline
+             aria-label="Vidéo de présentation de Konsilys"></video>
+    </div>
+    <p class="demo-note">▶︎ Cliquez pour lancer la vidéo (avec le son).</p>
   </div>
 </section>
 
