@@ -1141,8 +1141,10 @@ function tOpps(){
     var oppTip=r.opps.map(function(o){
       return o.cli+' — '+(o.sd?fDt(o.sd):'?')+(o.dur?' · '+o.dur+' mois':'')+(o.tjm?' · '+Math.round(o.tjm)+' €/j':'')+(o.details?' · '+o.details:'');
     }).join('\n');
+    /* Cellule cliquable : ouvre le popup des opportunités du consultant (même
+       action que « + Opportunité ») ; le survol garde l'aperçu détaillé. */
     var oppTxt=r.opps.length
-      ?'<span title="'+esc(oppTip)+'" style="cursor:help;border-bottom:1px dotted #94a3b8"><span style="font-weight:800;color:#1B2B3A">'+r.opps.length+'</span> <span style="font-size:11px;color:#94a3b8">'+esc(r.opps.map(function(o){return o.cli;}).join(', '))+'</span></span>'
+      ?'<span data-act="opp-add" data-id="'+c.id+'" title="'+esc(oppTip)+'" style="cursor:pointer;border-bottom:1px dotted #94a3b8"><span style="font-weight:800;color:#1B2B3A">'+r.opps.length+'</span> <span style="font-size:11px;color:#94a3b8">'+esc(r.opps.map(function(o){return o.cli;}).join(', '))+'</span></span>'
       :'<span style="color:#cbd5e1">—</span>';
     return '<tr>'
       +'<td><div style="display:flex;align-items:center;gap:10px">'+av(c.name,30)
@@ -1187,19 +1189,23 @@ function tStaffOppModal(){
     var stBadge=o.status==='gagnee'?'<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:800">Gagnée</span>'
       :o.status==='perdue'?'<span style="background:#f1f5f9;color:#94a3b8;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700">Perdue</span>'
       :'<span style="background:#fffbeb;color:#b45309;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:800">Pressentie</span>';
+    /* Actions compactes sur deux lignes : évite tout défilement horizontal. */
     var acts=o.status==='pressentie'
-      ?'<button class="bp" style="font-size:10px;padding:4px 9px" data-act="opp-win" data-id="'+o.id+'" title="Créer la mission correspondante">✓ Concrétiser</button> '
-        +'<button class="lb" style="font-size:10px" data-act="opp-edit" data-id="'+o.id+'">Modifier</button> '
-        +'<button class="lb" style="font-size:10px" data-act="opp-lost" data-id="'+o.id+'">Perdue</button> '
+      ?'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">'
+        +'<button class="bp" style="font-size:10px;padding:4px 9px;white-space:nowrap" data-act="opp-win" data-id="'+o.id+'" title="Créer la mission correspondante">✓ Concrétiser</button>'
+        +'<div style="display:flex;gap:8px;white-space:nowrap">'
+        +'<button class="lb" style="font-size:10px" data-act="opp-edit" data-id="'+o.id+'">Modifier</button>'
+        +'<button class="lb" style="font-size:10px" data-act="opp-lost" data-id="'+o.id+'">Perdue</button>'
         +'<button class="lr" style="font-size:10px" data-act="opp-del" data-id="'+o.id+'">Suppr.</button>'
+        +'</div></div>'
       :'<button class="lr" style="font-size:10px" data-act="opp-del" data-id="'+o.id+'">Suppr.</button>';
     return '<tr'+(editing&&editing.id===o.id?' style="background:#f0fdf4"':'')+'><td style="font-weight:600;font-size:12px">'+esc(o.cli)
-      +(o.details?'<div style="font-size:10px;font-weight:400;color:#94a3b8;max-width:220px">'+esc(o.details)+'</div>':'')+'</td>'
+      +(o.details?'<div style="font-size:10px;font-weight:400;color:#94a3b8;max-width:150px">'+esc(o.details)+'</div>':'')+'</td>'
       +'<td style="font-size:12px">'+(o.sd?fDt(o.sd):'—')+'</td>'
       +'<td style="font-size:12px">'+(o.dur!=null?o.dur+' mois':'—')+'</td>'
       +'<td style="font-size:12px;font-weight:600">'+(o.tjm?fEur(o.tjm):'—')+'</td>'
       +'<td>'+stBadge+'</td>'
-      +'<td class="tr" style="white-space:nowrap">'+acts+'</td></tr>';
+      +'<td class="tr">'+acts+'</td></tr>';
   }).join('');
   return '<div style="margin-bottom:14px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;font-size:12px">'
     +'<strong>'+esc(c.name)+'</strong> · '+esc(c.title||'')+' · <span style="color:#64748b">'+stTxt+'</span></div>'
