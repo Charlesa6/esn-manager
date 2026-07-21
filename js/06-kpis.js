@@ -43,6 +43,22 @@ function srvRowToKS(r){
        pm:(k.pm||[]).map(function(m){return{cli:m.cli||'',name:m.name||'',days:+m.days||0,tjm:+m.tjm||0,rev:+m.rev||0,mar:+m.mar||0};}),
        cs:k.cs||null,ce:k.ce||null,lvD:0,avD:0,sickD:0}};
 }
+/* Signature de contenu des données influant sur les KPI N-1 (cache de _prev).
+   Change dès qu'une donnée pertinente change => invalide le cache sans risque de
+   valeur périmée. O(missions+congés+consultants), bien moins cher que le recalcul. */
+function _prevKpiSig(){
+  var s=(S.year||0)+'|'+((S.settings&&S.settings.fyStartMonth)||10)+'|';
+  var m=S.miss||[],i,x;
+  for(i=0;i<m.length;i++){x=m[i];
+    s+=(x.id||'')+','+(x.cid||'')+','+(x.sd||'')+','+(x.ed||'')+','+(x.tjm||0)+','+(x.deal||0)+','
+      +(x.btype||'')+','+(x.wmode||'')+','+(x.tmar||'')+','+((x.wdays||[]).join(''))+','+((x.manualDays||[]).join('|'))+';';
+  }
+  s+='#';var l=S.lvs||[],j,y;
+  for(j=0;j<l.length;j++){y=l[j];s+=(y.id||'')+','+(y.cid||'')+','+(y.s||'')+','+(y.e||'')+','+(y.type||'')+';';}
+  s+='#';var c=S.cons||[],q,z;
+  for(q=0;q<c.length;q++){z=c[q];s+=(z.id||'')+','+(z.scr||0)+','+(z.contract||'')+','+(z.arrive||'')+','+(z.depart||'')+';';}
+  return s;
+}
 function tKPIs(){
   /* Montée en charge : quand le drapeau est on ET que l'agrégat entreprise ET la
      page de cartes serveur concordent avec la vue, on ne recalcule plus tout le
@@ -98,10 +114,17 @@ function tKPIs(){
   /* Deltas N-1 masqués en mode serveur (éviter de recalculer tout le tenant N-1). */
   var _showDelta=!S.quarter&&!_useCards;
   var _prev=_showDelta?(function(){
+    /* Cache : les deltas N-1 refont un balayage complet de S.cons (kpi() O(cons×jours×missions)).
+       On mémoïse le résultat, invalidé par une signature de contenu des données qui l'influencent
+       (année, fériés, missions, congés, consultants). Coût du cache : O(n) de signature << recalcul. */
+    var _sig=_prevKpiSig();
+    if(S._prevKPI&&S._prevKPI.sig===_sig)return S._prevKPI.val;
     var yr=S.year-1,Hp=holRange(fyStart(yr),fyEnd(yr)),fyWDp=wDays(fyStart(yr),fyEnd(yr),Hp);
     var ca=0,bill=0,twd=0,srw=0,sal=0;
     S.cons.forEach(function(c){var k=kpi(c,S.miss,S.lvs,yr,Hp,null);ca+=k.rev;bill+=k.bill;twd+=k.tWD||0;srw+=k.sr*(k.tWD||0);sal+=(c.contract==='freelance'?c.scr*k.bill:c.scr*SCR_FACTOR*EMPLOYER_FACTOR*(k.tWD/(fyWDp||1)));});
-    return {sr:twd>0?srw/twd:0,ca:ca,tjm:bill>0?ca/bill:0,netC:ca-sal,sal:sal};
+    var _val={sr:twd>0?srw/twd:0,ca:ca,tjm:bill>0?ca/bill:0,netC:ca-sal,sal:sal};
+    S._prevKPI={sig:_sig,val:_val};
+    return _val;
   })():null;
   function _delta(cur,prev,goodUp){
     if(!_showDelta||prev==null||!isFinite(prev)||Math.abs(prev)<1e-9)return '';
