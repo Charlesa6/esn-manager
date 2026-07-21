@@ -56,6 +56,18 @@ Deno.serve(async (req) => {
     return new Response("Signature invalide: " + (e as Error).message, { status: 400 });
   }
 
+  // Idempotence (audit sécurité M3) : ignore un évènement déjà traité
+  // (double livraison ou rejeu Stripe) pour ne pas re-provisionner / ré-inviter.
+  // Nécessite la table public.stripe_events (migration stripe_events_idempotency).
+  try {
+    const { error: dupErr } = await supa.from("stripe_events")
+      .insert({ event_id: evt.id, type: evt.type });
+    if (dupErr) {
+      if ((dupErr as { code?: string }).code === "23505") return new Response("ok (dup)");
+      console.error("stripe_events insert:", dupErr.message); // autre erreur : on ne bloque pas le paiement
+    }
+  } catch (e) { console.error("stripe_events guard:", (e as Error).message); }
+
   try {
     switch (evt.type) {
       case "checkout.session.completed": {
