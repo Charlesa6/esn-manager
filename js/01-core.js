@@ -49,9 +49,13 @@ function easter(y){
   var mo=Math.floor((h+l-7*m+114)/31),dy=((h+l-7*m+114)%31)+1;
   return fD(new Date(y,mo-1,dy));
 }
+var _frHolsCache={};
 function frHols(y){
+  if(_frHolsCache[y])return _frHolsCache[y];
   var e=easter(y);
-  return new Set([y+'-01-01',addD(e,1),y+'-05-01',y+'-05-08',addD(e,39),addD(e,50),y+'-07-14',y+'-08-15',y+'-11-01',y+'-11-11',y+'-12-25']);
+  var s=new Set([y+'-01-01',addD(e,1),y+'-05-01',y+'-05-08',addD(e,39),addD(e,50),y+'-07-14',y+'-08-15',y+'-11-01',y+'-11-11',y+'-12-25']);
+  _frHolsCache[y]=s;
+  return s;
 }
 var HOLS_N=['Jour de l\u2019An','Lundi de P\u00e2ques','F\u00eate du Travail','Victoire 1945','Ascension','Lundi de Pentec\u00f4te','F\u00eate Nationale','Assomption','Toussaint','Armistice','No\u00ebl'];
 

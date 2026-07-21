@@ -1,0 +1,30 @@
+# supabase/config.toml — source de vérité VERSIONNÉE de la config des Edge Functions.
+#
+# ⚠️ INVARIANT CRITIQUE : `stripe-webhook` DOIT rester verify_jwt = false.
+#    Stripe appelle le webhook SANS JWT ; la fonction vérifie la SIGNATURE Stripe.
+#    Un déploiement avec verify_jwt = true (valeur par défaut de l'outil de deploy)
+#    renvoie 401 à Stripe => AUCUN paiement traité, entreprise jamais activée.
+#    Ce fichier documente et fige l'intention ; toujours passer verify_jwt
+#    explicitement lors d'un `deploy_edge_function`.
+project_id = "rwmstlesxnglpblrurqj"
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.seats-checkout]
+verify_jwt = true
+
+[functions.billing-portal]
+verify_jwt = true
+
+[functions.retry-seats]
+verify_jwt = true
+
+[functions.create-checkout]
+verify_jwt = true
+
+[functions.extract-cv]
+verify_jwt = true
+
+[functions.integrations]
+verify_jwt = true

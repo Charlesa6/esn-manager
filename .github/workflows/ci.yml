@@ -31,6 +31,27 @@ jobs:
           set -e
           for f in js/*.js; do node --check "$f"; done
 
+      - name: Vérification syntaxe des <script> inline (index/login)
+        run: |
+          node -e '
+            const fs=require("fs"),vm=require("vm");
+            const JS=new Set(["","text/javascript","application/javascript","module"]);
+            let bad=0;
+            for(const file of ["index.html","esn_login.html"]){
+              const h=fs.readFileSync(file,"utf8");
+              let m,re=/<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
+              while((m=re.exec(h))){
+                const attrs=m[1]||"";
+                if(/\bsrc\s*=/i.test(attrs)) continue;                 // script externe
+                const tm=attrs.match(/\btype\s*=\s*["\x27]?([^"\x27\s>]+)/i);
+                if(tm && !JS.has(tm[1].toLowerCase())) continue;        // JSON-LD etc. : pas du JS
+                try{ new vm.Script(m[2]); }catch(e){ bad++; console.error(file+": "+e.message); }
+              }
+            }
+            if(bad){ console.error("Scripts inline invalides: "+bad); process.exit(1); }
+            console.log("Scripts inline OK");
+          '
+
       - name: Tests unitaires (logique pure)
         run: node tests/unit.cjs
 

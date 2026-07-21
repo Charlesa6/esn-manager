@@ -662,9 +662,9 @@ function tModal(){
       var nm=((p.first_name||'')+' '+(p.last_name||'')).trim();
       var me=(p.id===S._userId);
       if(!nm&&me)nm=(S.profileFirstName+' '+S.profileLastName).trim()||S._userEmail||'Moi';
-      if(nm&&_mgrNames.indexOf(nm)<0)_mgrNames.push(nm+(me?' me':''));
+      if(nm&&_mgrNames.indexOf(nm)<0)_mgrNames.push(nm+(me?'':''));
     });
-    _mgrNames=_mgrNames.map(function(x){return x.replace(' me','');});
+    _mgrNames=_mgrNames.map(function(x){return x.replace('','');});
     _rl.forEach(function(r){if(_mgrNames.indexOf(r)<0)_mgrNames.push(r);});
     var _curDir=it?(it.dir||''):'';
     if(_curDir&&_mgrNames.indexOf(_curDir)<0)_mgrNames.push(_curDir);

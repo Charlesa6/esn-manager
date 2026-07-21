@@ -110,7 +110,7 @@ async function bizApproveRequest(id,approved,motif){
   var ap=S.bizApprovals.find(function(x){return x.id===id;});if(!ap)return;
   if(approved){var o=ap.data;var ex=S.bizOpps.find(function(x){return x.id===o.id;});
     if(ex){S.bizOpps=S.bizOpps.map(function(x){return x.id===o.id?o:x;});}
-    else{S.bizOpps=S.bizOpps.concat([o]);}sbUpsertOpp(o);}
+    else{S.bizOpps=S.bizOpps.concat([o]);}sbUpsertCrmOpp(o);}
   S.bizApprovals=S.bizApprovals.map(function(x){
     return x.id===id?Object.assign({},x,{status:approved?'approved':'rejected',reviewed_by:S._userEmail,motif_rejet:motif||null}):x;
   });
@@ -119,7 +119,7 @@ async function bizApproveRequest(id,approved,motif){
 }
 async function sbUpsertAcc(a){if(!sb||!SB_CID)return;return sb.from('crm_accounts').upsert(Object.assign({},a,{company_id:SB_CID}),{onConflict:'id'});}
 async function sbUpsertCt(c){if(!sb||!SB_CID)return;return sb.from('crm_contacts').upsert(Object.assign({},c,{company_id:SB_CID}),{onConflict:'id'});}
-async function sbUpsertOpp(o){
+async function sbUpsertCrmOpp(o){
   if(!sb||!SB_CID)return;
   var payload={
     id:o.id,company_id:SB_CID,
@@ -276,7 +276,7 @@ function bizSaveOpp(){
   }
   if(it){S.bizOpps=S.bizOpps.map(function(x){return x.id===it.id?o:x;});}
   else{S.bizOpps=S.bizOpps.concat([o]);}
-  sbUpsertOpp(o);S.bizModal=null;render();
+  sbUpsertCrmOpp(o);S.bizModal=null;render();
 }
 function bizSaveAct(){
   var it=S.bizModal&&S.bizModal.item;
@@ -361,7 +361,7 @@ function bizOppToMission(oppId){
   S.miss=S.miss.concat(missions);
   var firstId=missions[0].id;
   S.bizOpps=S.bizOpps.map(function(x){return x.id===oppId?Object.assign({},x,{linked_mission_id:firstId,status:'gagne'}):x;});
-  sbUpsertOpp(S.bizOpps.find(function(x){return x.id===oppId;}));
+  sbUpsertCrmOpp(S.bizOpps.find(function(x){return x.id===oppId;}));
   if(sb&&SB_CID){
     missions.forEach(function(m){
       sb.from('missions').insert({
