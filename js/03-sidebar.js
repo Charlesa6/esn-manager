@@ -81,9 +81,9 @@ function tSB(){
     return true;
   });
   var nav=NAV.map(function(n){
-    return '<button class="nb'+(S.tab===n.id?' act':'')+'" data-nav="'+n.id+'">'
-      +'<span class="nbi">'+n.ic+'</span><span>'+n.lb+'</span>'
-      +(n.id==='approvals'&&alC>0?'<span class="nbb">'+alC+'</span>':'')+'</button>';
+    return '<button class="nb'+(S.tab===n.id?' act':'')+'" data-nav="'+n.id+'"'+(S.tab===n.id?' aria-current="page"':'')+'>'
+      +'<span class="nbi" aria-hidden="true">'+n.ic+'</span><span>'+n.lb+'</span>'
+      +(n.id==='approvals'&&alC>0?'<span class="nbb" aria-label="'+alC+' en attente">'+alC+'</span>':'')+'</button>';
   }).join('');
   /* ── bloc filtre directeur (gestionnaire) / libellé équipe (directeur) ── */
   var _allC=(S._all&&S._all.cons)||S.cons;
@@ -157,7 +157,7 @@ function tSB(){
     +'</div>'
     +'</div>'
     +dirBlock
-    +'<nav class="snv">'+nav+'</nav>'
+    +'<nav class="snv" aria-label="Navigation principale">'+nav+'</nav>'
     +'<div class="sft">'
     +'<div style="font-size:10px;color:#475569;padding:0 2px">'+S.cons.length+' collab. \u00b7 '+S.miss.length+' missions</div>'
     +'</div>';

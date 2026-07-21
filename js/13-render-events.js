@@ -50,8 +50,8 @@ function render(){
     +'<a href="/login" style="color:#e9d5ff;font-size:12px;font-weight:600;background:rgba(255,255,255,.15);padding:4px 12px;border-radius:6px;text-decoration:none">'
     +'Cr\u00e9er un compte \u2192</a></div>'
     :'';
-  var _topbar='<div class="topbar"><button class="topsearch" data-act="cmdk-open" title="Rechercher (⌘K)">'
-    +'<span style="opacity:.7">🔍</span><span class="tsp">Rechercher une fonctionnalité, une page…</span>'
+  var _topbar='<div class="topbar"><button class="topsearch" data-act="cmdk-open" title="Rechercher (⌘K)" aria-label="Rechercher (Ctrl+K)">'
+    +'<span style="opacity:.7" aria-hidden="true">🔍</span><span class="tsp">Rechercher une fonctionnalité, une page…</span>'
     +'<span class="tsk">⌘K</span></button></div>';
   document.getElementById('mc').innerHTML=_demoBanner+_topbar+'<div class="inn'+(_tabChanged?' vin':'')+'" style="position:relative">'+_pfBtn+v+'</div>';
   document.getElementById('md').innerHTML=tModal()+(S.bizModal?tBizModal():'');
@@ -59,6 +59,17 @@ function render(){
      (la barre latérale reste sur son fond navy, déjà adapté au sombre). */
   themify(document.getElementById('mc'));
   themify(document.getElementById('md'));
+  /* Accessibilité des modales : rôle dialog + libellé + bouton fermer (attributs
+     seulement — pas de gestion de focus, l'app re-rend la modale à chaque frappe). */
+  (function(){
+    var _mov=document.getElementById('md').querySelector('.mov');
+    if(!_mov)return;
+    _mov.setAttribute('role','dialog');_mov.setAttribute('aria-modal','true');
+    var _mot=_mov.querySelector('.mot');
+    if(_mot)_mov.setAttribute('aria-label',(_mot.textContent||'').trim()||'Fenêtre');
+    var _mocs=_mov.querySelectorAll('.moc');
+    for(var _i=0;_i<_mocs.length;_i++)_mocs[_i].setAttribute('aria-label','Fermer');
+  })();
   /* on restaure les données maîtres (les handlers de bind() mutent l'ensemble complet) */
   S.cons=S._all.cons;S.miss=S._all.miss;S.lvs=S._all.lvs;
   bind();
