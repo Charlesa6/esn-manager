@@ -17,11 +17,12 @@ function render(){
   var _mdBody=document.querySelector('#md .mody,#md .mbody');
   var _mdBodyScroll=_mdBody?_mdBody.scrollTop:0;
   var _tabChanged=(S.tab!==S._lastTab);
-  if(S._ks)S._ks._valid=false;
+  S._ksSig=null; /* invalide la signature ; recalculée sur la vue filtrée juste après */
   if(!S.demo)saveLocal(); /* sauvegarde automatique — désactivée en mode démo */
   /* ═══ filtrage par rôle / directeur : on bascule sur la vue filtrée le temps du rendu ═══ */
   S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
   var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;
+  S._ksSig=_ksSignature(); /* signature du jeu de cartes KPI sur les données filtrées */
   document.getElementById('sb').innerHTML=tSB();
   /* ── Contrôle d'accès central : chaque rôle a ses onglets autorisés ──
      NB : 'svp_acces' et 'svp_settings' sont TEMPORAIREMENT retirés (onglets

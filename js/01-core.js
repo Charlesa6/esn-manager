@@ -568,9 +568,31 @@ function rLabel(role){
   return custom||_ROLE_DEFAULTS[role]||role;
 }
 
+/* Signature de contenu des données qui influent sur kpi() (cons/miss/lvs).
+   Change dès qu'un champ pertinent change => permet un cache fiable (pas de KPI
+   périmé). Champs alignés sur ce que kpi() consomme réellement. */
+function _kpiDataSig(){
+  var s='',m=S.miss||[],i,x;
+  for(i=0;i<m.length;i++){x=m[i];
+    s+=(x.id||'')+','+(x.cid||'')+','+(x.sd||'')+','+(x.ed||'')+','+(x.tjm||0)+','+(x.deal||0)+','
+      +(x.btype||'')+','+(x.wmode||'')+','+((x.wdays||[]).join(''))+','+((x.manualDays||[]).join('|'))+';';
+  }
+  s+='#';var l=S.lvs||[],j,y;
+  for(j=0;j<l.length;j++){y=l[j];s+=(y.cid||'')+','+(y.s||'')+','+(y.e||'')+','+(y.type||'')+';';}
+  s+='#';var c=S.cons||[],q,z;
+  for(q=0;q<c.length;q++){z=c[q];s+=(z.id||'')+','+(z.scr||0)+','+(z.contract||'')+','+(z.arrive||'')+','+(z.depart||'')+';';}
+  return s;
+}
+/* Signature complète du jeu de cartes KPI courant (année + trimestre + mois fiscal + données). */
+function _ksSignature(){
+  return (S.year||0)+'|'+(S.quarter||'')+'|'+((S.settings&&S.settings.fyStartMonth)||10)+'|'+_kpiDataSig();
+}
 function buildKS(){
-  /* Cache par render — évite de recalculer pour chaque template */
-  if(S._ks&&S._ks._valid)return S._ks.data;
+  /* Cache par signature de contenu — réutilisé d'un render à l'autre tant que les
+     données (filtrées) et la période n'ont pas changé. render() rafraîchit S._ksSig
+     après avoir basculé sur la vue filtrée ; sinon on le calcule à la volée. */
+  var _sig=S._ksSig||(S._ksSig=_ksSignature());
+  if(S._ks&&S._ks.sig===_sig)return S._ks.data;
   var _rng=S.quarter?curRange(S.year):null;
   /* On ne compte que les consultants présents durant la période sélectionnée :
      un consultant qui arrive après la fin de la période (pas encore embauché sur

@@ -47,17 +47,7 @@ function srvRowToKS(r){
    Change dès qu'une donnée pertinente change => invalide le cache sans risque de
    valeur périmée. O(missions+congés+consultants), bien moins cher que le recalcul. */
 function _prevKpiSig(){
-  var s=(S.year||0)+'|'+((S.settings&&S.settings.fyStartMonth)||10)+'|';
-  var m=S.miss||[],i,x;
-  for(i=0;i<m.length;i++){x=m[i];
-    s+=(x.id||'')+','+(x.cid||'')+','+(x.sd||'')+','+(x.ed||'')+','+(x.tjm||0)+','+(x.deal||0)+','
-      +(x.btype||'')+','+(x.wmode||'')+','+(x.tmar||'')+','+((x.wdays||[]).join(''))+','+((x.manualDays||[]).join('|'))+';';
-  }
-  s+='#';var l=S.lvs||[],j,y;
-  for(j=0;j<l.length;j++){y=l[j];s+=(y.id||'')+','+(y.cid||'')+','+(y.s||'')+','+(y.e||'')+','+(y.type||'')+';';}
-  s+='#';var c=S.cons||[],q,z;
-  for(q=0;q<c.length;q++){z=c[q];s+=(z.id||'')+','+(z.scr||0)+','+(z.contract||'')+','+(z.arrive||'')+','+(z.depart||'')+';';}
-  return s;
+  return (S.year||0)+'|'+((S.settings&&S.settings.fyStartMonth)||10)+'|'+_kpiDataSig();
 }
 function tKPIs(){
   /* Montée en charge : quand le drapeau est on ET que l'agrégat entreprise ET la
