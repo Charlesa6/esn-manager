@@ -742,6 +742,27 @@ function isConsMyReport(c){
   if(S.role==='gestionnaire')return c.managerId===S._userId || (!!S.dirName && (c.dir||'')===S.dirName);
   return false;
 }
+/* Puis-je modifier la HIÉRARCHIE (N+1) et la BU de cette fiche depuis l'onglet
+   Équipe ? Principe : uniquement mes subordonnés (N-1 et en dessous), jamais
+   moi-même ni quelqu'un au-dessus de moi. Règle unique, alignée sur les RPC
+   serveur (set_member_manager / set_member_bu).
+   - super_admin : tout le monde sauf lui-même (propriétaire au sommet) ;
+   - admin : tout le monde sauf lui-même et les autres admin/super_admin (pairs
+     ou au-dessus) ;
+   - gestionnaire : uniquement ses reports directs ;
+   - sales / recruteur / utilisateur : personne. */
+function canEditConsHierarchy(c){
+  if(!c)return canEditTeam();          /* création : grade encadrant */
+  if(consIsSelf(c))return false;       /* jamais soi-même */
+  if(S.role==='super_admin')return true;
+  if(S.role==='admin'){
+    var p=consProfile(c);
+    if(p&&(p.role==='admin'||p.role==='super_admin'))return false; /* pair / au-dessus */
+    return true;
+  }
+  if(S.role==='gestionnaire')return isConsMyReport(c); /* ses reports uniquement */
+  return false;
+}
 
 /* BU d'un consultant : BU stockée sur la fiche si présente, sinon via le profil
    lié (cons_id), sinon via son directeur (gestionnaire) s'il a une BU. */

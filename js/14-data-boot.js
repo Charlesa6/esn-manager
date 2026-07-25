@@ -2443,9 +2443,9 @@ function tProfile(){
         +'</div>';
     })():'')
 
-    /* ── Hiérarchie (N+1) & BU — gestion de l'organisation (rôles encadrants),
-       déplacée ici depuis « Gestion des accès » ── */
-    +tHierCard()
+    /* ── Hiérarchie (N+1) & BU : plus affichée ici. La modification du N+1 et de
+       la BU se fait désormais directement dans la fiche du membre (onglet Équipe),
+       restreinte aux subordonnés (N-1 et en dessous). ── */
 
     /* ── Changer le mot de passe ── */
     +'<div class="card" style="padding:24px;margin-bottom:16px">'

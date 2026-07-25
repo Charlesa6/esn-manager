@@ -430,17 +430,18 @@ function bind(){
         var n=gv('mn'),t=gv('mti'),s=+gv('ms'),em=gv('me');
         var arr=gv('marr')||null,dep=gv('mdep')||null;
         var it=S.modal.item;
-        /* Rattachement d'équipe (directeur/N+1) : réservé au grade gestionnaire et
-           au-dessus. Sinon on conserve l'existant. On résout aussi le managerId. */
+        /* Hiérarchie (N+1) & BU : modifiables uniquement pour mes subordonnés
+           (N-1 et en dessous), jamais moi-même ni au-dessus. Sinon on conserve
+           l'existant. On résout aussi le managerId. */
+        var _canHier=it?canEditConsHierarchy(it):canEditTeam();
         var rdir,mgrId;
-        if(canEditTeam()){
+        if(_canHier){
           rdir=(S.role==='gestionnaire')?S.dirName:gv('mdir');
           var _mgr=mgrAccountByName(rdir);
           mgrId=_mgr?_mgr.id:(it?it.managerId:null);
         }else{rdir=it?(it.dir||''):'';mgrId=it?it.managerId:null;}
-        /* BU : réservée au N+1 du consultant (admin/super_admin au-dessus). En
-           création ou si vide, hérite de la BU du N+1. */
-        var _canBU=it?isConsMyReport(it):canEditTeam();
+        /* BU : même règle que le N+1. En création ou si vide, hérite du N+1. */
+        var _canBU=_canHier;
         var buId;
         if(_canBU){
           buId=gv('mbu')||'';

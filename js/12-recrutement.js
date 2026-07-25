@@ -668,12 +668,14 @@ function tModal(){
     _rl.forEach(function(r){if(_mgrNames.indexOf(r)<0)_mgrNames.push(r);});
     var _curDir=it?(it.dir||''):'';
     if(_curDir&&_mgrNames.indexOf(_curDir)<0)_mgrNames.push(_curDir);
+    /* Hi\u00e9rarchie (N+1) & BU : modifiables uniquement pour mes subordonn\u00e9s
+       (N-1 et en dessous), jamais moi-m\u00eame ni une personne au-dessus de moi. */
+    var _canHier=it?canEditConsHierarchy(it):canEditTeam();
     var dirFld=(S.role==='gestionnaire')
       ? '<div class="fd"><label class="fl">Responsable (N+1)</label><input class="ic" id="mdir" value="'+esc(S.dirName)+'" disabled style="background:#f1f5f9;color:#64748b"><p class="fh">Membre rattach\u00e9 automatiquement \u00e0 votre \u00e9quipe</p></div>'
-      : '<div class="fd"><label class="fl">Responsable (N+1)</label><select class="ic" id="mdir"><option value="">\u2014 Aucun \u2014</option>'+_mgrNames.map(function(n){return '<option value="'+esc(n)+'"'+(n===_curDir?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select><p class="fh">Vous ou un gestionnaire de votre organisation</p></div>';
-    /* Champ Business Unit : modifiable uniquement par le N+1 du consultant
-       (admin/super_admin au-dessus). En cr\u00e9ation, h\u00e9rite du N+1 choisi. */
-    var _canBU=it?isConsMyReport(it):canEditTeam();
+      : '<div class="fd"><label class="fl">Responsable (N+1)</label><select class="ic" id="mdir"'+(_canHier?'':' disabled title="Vous ne pouvez modifier que la hi\u00e9rarchie de votre \u00e9quipe (N-1 et en dessous)"')+'><option value="">\u2014 Aucun \u2014</option>'+_mgrNames.map(function(n){return '<option value="'+esc(n)+'"'+(n===_curDir?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select><p class="fh">'+(_canHier?'Vous ou un gestionnaire de votre organisation':'Modification r\u00e9serv\u00e9e \u00e0 votre \u00e9quipe (N-1 et en dessous)')+'</p></div>';
+    /* Champ Business Unit : m\u00eame r\u00e8gle que le N+1 (subordonn\u00e9s uniquement). */
+    var _canBU=_canHier;
     var _curBU=it?(it.buId||''):'';
     var buFld=buNodes().length
       ? '<div class="fd"><label class="fl">Business Unit</label><select class="ic" id="mbu"'+(_canBU?'':' disabled title="Seul le N+1 (gestionnaire direct) peut modifier la BU"')+'>'
