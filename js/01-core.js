@@ -649,6 +649,16 @@ function consInScope(c){
 /* Périmètre « équipe » : le périmètre visible MOINS ses supérieurs hiérarchiques. */
 function consInTeamScope(c){return consInScope(c)&&!consIsAboveMe(c);}
 
+/* Liste de consultants pour les onglets PERSONNELS (Activité, Absences).
+   Le Business Manager (sales) opère sur toute sa BU dans Opportunités et pour
+   construire ses équipes de deal, mais ses onglets Activité/Absences restent sur
+   SA propre fiche. Les autres rôles utilisent S.cons tel quel (déjà au bon
+   périmètre : self pour utilisateur/recruteur, équipe/tout pour les encadrants). */
+function personalCons(){
+  if(S.role!=='sales')return S.cons;
+  return S.cons.filter(function(c){return c.id===S.consId||c.email===S._userEmail;});
+}
+
 function visibleConsIds(){
   var base=(S._all&&S._all.cons)||S.cons;
   var s={};base.forEach(function(c){if(consInScope(c))s[c.id]=1;});return s;

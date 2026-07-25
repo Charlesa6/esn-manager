@@ -45,10 +45,11 @@ function tAdmin(){
    TEMPLATE - MODAL
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function tActivite(){
-  if(!S.cons.length)return '<div class="emp">Aucun consultant.</div>';
-  if(!S.actCid||!S.cons.find(function(c){return c.id===S.actCid;}))S.actCid=S.cons[0].id;
   if(!S.actMonth)S.actMonth=TODAY.slice(0,7);
-  var cid=S.actCid,c=S.cons.find(function(x){return x.id===cid;});
+  var _pc=personalCons();
+  if(!_pc.length)return '<div class="emp">Aucun consultant.</div>';
+  if(!_pc.find(function(x){return x.id===S.actCid;}))S.actCid=_pc[0].id;
+  var cid=S.actCid,c=_pc.find(function(x){return x.id===cid;});
   var ym=S.actMonth.split('-'),year=+ym[0],mon=+ym[1];
   var hset=frHols(year);
   var Hy=fyHols(S.year);
@@ -105,7 +106,7 @@ function tActivite(){
   var firstDow=(new Date(year,mon-1,1).getDay()+6)%7;
   var dim=new Date(year,mon,0).getDate();
   var MNAMES=['Janvier','F\u00e9vrier','Mars','Avril','Mai','Juin','Juillet','Ao\u00fbt','Septembre','Octobre','Novembre','D\u00e9cembre'];
-  var consSortedM=S.cons.slice().sort(function(a,b){if(a.id===S.consId)return -1;if(b.id===S.consId)return 1;return 0;});
+  var consSortedM=_pc.slice().sort(function(a,b){if(a.id===S.consId)return -1;if(b.id===S.consId)return 1;return 0;});
   var co=consSortedM.map(function(x){var lbl=(x.id===S.consId)?('\u2605 Moi \u2014 '+x.name):x.name;return '<option value="'+x.id+'"'+(x.id===cid?' selected':'')+'>'+esc(lbl)+'</option>';}).join('');
   var cells='',billed=0,leaveD=0,internD=0;
   for(var i=0;i<firstDow;i++)cells+='<div style="background:#f8fafc;border-radius:8px;min-height:62px"></div>';

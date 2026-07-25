@@ -11,7 +11,8 @@ function tLeaves(){
     return l.e>=fyS&&l.s<=fyE;
   }).sort(function(a,b){return a.s.localeCompare(b.s);});
 
-  var co='<option value="all">Tous les consultants</option>'+S.cons.map(function(c){
+  var _pc=personalCons();
+  var co='<option value="all">Tous les consultants</option>'+_pc.map(function(c){
     return '<option value="'+c.id+'"'+(c.id===S.flc?' selected':'')+'>'+esc(c.name)+'</option>';
   }).join('');
 
@@ -27,7 +28,7 @@ function tLeaves(){
 
   if(S.flc==='all'){
     /* ── Vue synth\u00e8se : indicateur par consultant ── */
-    var sumRows=S.cons.map(function(c){
+    var sumRows=_pc.map(function(c){
       var clvs=S.lvs.filter(function(l){return l.cid===c.id&&l.e>=fyS&&l.s<=fyE;});
       if(!clvs.length)return '';
       var cpJ=0,arJ=0;
