@@ -77,7 +77,7 @@ function tSB(){
      Business Manager (Business) dont la licence inclut l'accès. */
   NAV=NAV.filter(function(n){
     if(n.id==='recrutement')return S.role==='recruteur'||!!(S.settings&&S.settings.hasRecrutementModule);
-    if(n.id==='business')return S.role==='sales'||!!(S.settings&&S.settings.hasBusinessModule);
+    if(n.id==='business')return S.role!=='utilisateur'&&(S.role==='sales'||!!(S.settings&&S.settings.hasBusinessModule));
     return true;
   });
   var nav=NAV.map(function(n){

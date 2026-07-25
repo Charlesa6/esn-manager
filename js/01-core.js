@@ -735,6 +735,20 @@ function canEditMemberBU(p){
   }
   return false;
 }
+/* Qui peut modifier le lien hiérarchique (N+1) d'un membre :
+   super_admin = tout le monde ; admin & gestionnaire = uniquement leurs
+   subordonnés (jamais eux-mêmes ni une personne au-dessus d'eux) ; autres = personne.
+   (La règle est aussi imposée côté serveur par set_member_manager.) */
+function canEditMemberManager(p){
+  if(!p)return false;
+  if(S.role==='super_admin')return true;
+  if(S.role==='admin'||S.role==='gestionnaire'){
+    if(p.id===S._userId)return false;
+    if(p.role==='admin'||p.role==='super_admin')return false;
+    return isHierDescendant(p.id,S._userId);
+  }
+  return false;
+}
 function consBU(c){
   if(!c)return null;
   if(c.buId)return c.buId;

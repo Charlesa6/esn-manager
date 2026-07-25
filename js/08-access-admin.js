@@ -426,6 +426,7 @@ function tHierCard(){
   var _buOpts=buNodes().slice().sort(function(a,b){return buPathLabel(a.id).localeCompare(buPathLabel(b.id),'fr');});
   var hierRows=members.map(function(p){
     var _canBU=canEditMemberBU(p);
+    var _canMgr=canEditMemberManager(p);
     var opts='<option value="">— Aucun —</option>'+members.filter(function(q){return q.id!==p.id;}).map(function(q){
       var nmq=((q.first_name||'')+' '+(q.last_name||'')).trim()||q.id;
       return '<option value="'+q.id+'"'+(p.manager_id===q.id?' selected':'')+'>'+esc(nmq)+' ('+rLabel(q.role)+')</option>';
@@ -435,7 +436,7 @@ function tHierCard(){
     }).join('');
     var nm=((p.first_name||'')+' '+(p.last_name||'')).trim()||p.id;
     return '<tr><td>'+esc(nm)+'</td><td>'+rLabel(p.role)+'</td>'
-      +'<td><select class="ic" onchange="setNplus1(\''+p.id+'\',this.value)"'+(sbOn?'':' disabled')+'>'+opts+'</select></td>'
+      +'<td><select class="ic" onchange="setNplus1(\''+p.id+'\',this.value)"'+(sbOn&&_canMgr?'':' disabled title="Vous ne pouvez modifier que la hiérarchie de votre équipe"')+'>'+opts+'</select></td>'
       +'<td><select class="ic" onchange="setMemberBU(\''+p.id+'\',this.value)"'+(sbOn&&_canBU?'':' disabled title="Vous ne pouvez pas modifier cette unité"')+'>'+buOpts+'</select></td></tr>';
   }).join('');
   return '<div class="card ov" style="margin-bottom:16px"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'

@@ -31,7 +31,7 @@ function render(){
     super_admin:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','opportunites','approvals','svp_integrations','param','help','profile','kpis_dir'],
     admin:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','opportunites','approvals','param','help','profile','kpis_dir'],
     gestionnaire:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','opportunites','approvals','param','help','profile','kpis_dir'],
-    utilisateur:['activite','missions','planning','leaves','approvals','business','help','profile'],
+    utilisateur:['activite','missions','planning','leaves','approvals','help','profile'],
     recruteur:['recrutement','activite','leaves','help','profile'],
     sales:['business','recrutement','activite','leaves','help','profile']
   };
