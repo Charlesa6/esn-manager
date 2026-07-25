@@ -663,6 +663,49 @@ function tBizKpis(){
         +'<span style="font-size:13px;font-weight:800;color:#1B2B3A">'+fEur(accCA[aid])+'</span></div>';
     }).join('')+'</div>':'';
 
+  /* ── Performance par commercial ──────────────────────────────────────
+     Chaque opportunité porte son créateur (owner_email/owner_name/owner_role).
+     Une opportunité gagnée = une mission générée (bizOppToMission). On agrège
+     donc, par personne : affaires gagnées (missions), CA gagné, pipeline
+     pondéré et win rate. Le périmètre suit déjà le rôle via visibleOpps(). */
+  var roleLbl={super_admin:'Super Admin',admin:'Admin',gestionnaire:'Gestionnaire',sales:'Business Manager',recruteur:'Recruteur',utilisateur:'Utilisateur'};
+  var byOwner={};
+  vo.forEach(function(o){
+    var key=(o.owner_email||o.owner_name||'—').toLowerCase();
+    if(!byOwner[key])byOwner[key]={name:o.owner_name||o.owner_email||'Non attribué',role:o.owner_role||'',total:0,won:0,caWon:0,pipe:0,miss:0};
+    var b=byOwner[key];
+    b.total++;
+    if(o.status==='gagne'){b.won++;b.caWon+=caPot(o);if(o.linked_mission_id)b.miss++;}
+    else if(o.status!=='perdu'){b.pipe+=caPot(o)*(o.probability||0)/100;}
+  });
+  var owners=Object.keys(byOwner).map(function(k){return byOwner[k];})
+    .sort(function(a,b){return b.caWon-a.caWon||b.won-a.won||b.total-a.total;});
+  var maxCaOwn=owners.reduce(function(m,o){return Math.max(m,o.caWon);},0)||1;
+  var totMiss=owners.reduce(function(s,o){return s+o.won;},0);
+  var totCaWon=owners.reduce(function(s,o){return s+o.caWon;},0);
+  var ownerHtml=owners.length?'<div class="card" style="padding:24px;margin-top:16px">'
+    +'<div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">'
+      +'<div style="font-size:13px;font-weight:800;color:#0f172a">Performance par commercial</div>'
+      +'<div style="font-size:12px;color:#64748b">'+totMiss+' mission'+(totMiss>1?'s':'')+' générée'+(totMiss>1?'s':'')+' · '+fEur(totCaWon)+' de CA gagné</div>'
+    +'</div>'
+    +'<div style="font-size:12px;color:#64748b;margin-bottom:16px">Affaires gagnées (chaque opportunité gagnée génère une mission) et chiffre d\'affaires, par créateur d\'opportunité.</div>'
+    +'<div class="ov"><table><thead><tr><th>Commercial</th>'
+      +'<th class="tc">Missions gagnées</th><th class="tc">CA gagné</th>'
+      +'<th class="tc">Pipeline pondéré</th><th class="tc">Opp. total</th><th class="tc">Win rate</th></tr></thead><tbody>'
+    +owners.map(function(o){
+      var wr=o.total?Math.round(o.won/o.total*100):0;
+      var caPctBar=Math.round(o.caWon/maxCaOwn*100);
+      return '<tr>'
+        +'<td><div style="font-weight:700;color:#0f172a">'+esc(o.name)+'</div>'+(o.role?'<div style="font-size:10px;color:#94a3b8">'+esc(roleLbl[o.role]||o.role)+'</div>':'')+'</td>'
+        +'<td class="tc"><span style="font-weight:800;color:#065f46">'+o.won+'</span></td>'
+        +'<td class="tc"><div style="font-weight:800;color:#1B2B3A">'+(o.caWon>0?fEur(o.caWon):'—')+'</div>'
+          +(o.caWon>0?'<div style="height:4px;width:90px;margin:3px 0 0 auto;background:#e2e8f0;border-radius:2px"><div style="height:100%;width:'+caPctBar+'%;background:#84CC16;border-radius:2px"></div></div>':'')+'</td>'
+        +'<td class="tc" style="font-size:13px;color:#64748b">'+(o.pipe>0?fEur(o.pipe):'—')+'</td>'
+        +'<td class="tc" style="font-size:13px">'+o.total+'</td>'
+        +'<td class="tc" style="font-size:13px;font-weight:700;color:'+(wr>=50?'#16a34a':wr>=25?'#d97706':'#64748b')+'">'+wr+'%</td>'
+        +'</tr>';
+    }).join('')+'</tbody></table></div></div>':'';
+
   return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'
     +'<div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">'
@@ -671,7 +714,8 @@ function tBizKpis(){
     +kbCard('Durée moy. pipeline',pipeline.length?Math.round(pipeline.reduce(function(s,o){return s+(o.duree_mois||0);},0)/pipeline.length)+' mois':'—','','#5b21b6')
     +kbCard('CA gagné total',won.length?fEur(won.reduce(function(s,o){return s+caPot(o);},0)):'—','','#c2410c')
     +'</div>'+topHtml+'</div>'
-    +'<div>'+funnelHtml+'</div></div>';
+    +'<div>'+funnelHtml+'</div></div>'
+    +ownerHtml;
 }
 
 /* ── Modals ── */
