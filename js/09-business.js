@@ -668,7 +668,6 @@ function tBizKpis(){
      Une opportunité gagnée = une mission générée (bizOppToMission). On agrège
      donc, par personne : affaires gagnées (missions), CA gagné, pipeline
      pondéré et win rate. Le périmètre suit déjà le rôle via visibleOpps(). */
-  var roleLbl={super_admin:'Super Admin',admin:'Admin',gestionnaire:'Gestionnaire',sales:'Business Manager',recruteur:'Recruteur',utilisateur:'Utilisateur'};
   var byOwner={};
   vo.forEach(function(o){
     var key=(o.owner_email||o.owner_name||'—').toLowerCase();
@@ -696,7 +695,7 @@ function tBizKpis(){
       var wr=o.total?Math.round(o.won/o.total*100):0;
       var caPctBar=Math.round(o.caWon/maxCaOwn*100);
       return '<tr>'
-        +'<td><div style="font-weight:700;color:#0f172a">'+esc(o.name)+'</div>'+(o.role?'<div style="font-size:10px;color:#94a3b8">'+esc(roleLbl[o.role]||o.role)+'</div>':'')+'</td>'
+        +'<td><div style="font-weight:700;color:#0f172a">'+esc(o.name)+'</div>'+(o.role?'<div style="font-size:10px;color:#94a3b8">'+esc(rLabel(o.role))+'</div>':'')+'</td>'
         +'<td class="tc"><span style="font-weight:800;color:#065f46">'+o.won+'</span></td>'
         +'<td class="tc"><div style="font-weight:800;color:#1B2B3A">'+(o.caWon>0?fEur(o.caWon):'—')+'</div>'
           +(o.caWon>0?'<div style="height:4px;width:90px;margin:3px 0 0 auto;background:#e2e8f0;border-radius:2px"><div style="height:100%;width:'+caPctBar+'%;background:#84CC16;border-radius:2px"></div></div>':'')+'</td>'
