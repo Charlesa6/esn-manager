@@ -123,6 +123,10 @@ function tSB(){
           :'<div data-vp-clear style="font-size:10px;color:#60a5fa;margin-top:3px;cursor:pointer;text-decoration:underline">Tout afficher</div>')
         :'<div style="font-size:11px;color:#475569">Aucun VP invité</div>')
       +'</div>';
+  }else if(S.role==='sales'||S.role==='recruteur'){
+    /* Ingénieur d'affaires / Recruteur : rôles non-encadrants → pas de filtre
+       « Directeur » dans la barre latérale (ils ne pilotent pas d'équipe). */
+    dirBlock='';
   }else{
     var _none=(!S.fdir||!S.fdir.length);
     var _items=_dirs.map(function(r){
