@@ -637,7 +637,7 @@ function tHelp(){
       return '<button data-act="open-tutorial" data-tutid="'+k+'" style="text-align:left;border:1px solid '+tut.color+'30;background:'+tut.color+'0a;border-radius:12px;padding:18px;cursor:pointer;transition:all .15s;width:100%"'
         +' onmouseover="this.style.background=\''+tut.color+'18\'" onmouseout="this.style.background=\''+tut.color+'0a\'">'
         +'<div style="font-size:28px;margin-bottom:8px">'+(k==='recrutement'?'\uD83C\uDFAF':k==='business'?'\uD83D\uDCBC':k==='missions'?'\uD83D\uDCCB':k==='kpis'?'\uD83D\uDCC8':k==='absences'?'\uD83C\uDFD6\uFE0F':'\uD83D\uDCCA')+'</div>'
-        +'<div style="font-weight:800;color:'+tut.color+';font-size:14px;margin-bottom:4px">'+esc(tut.title.split('\u2014')[0].trim())+'</div>'
+        +'<div style="font-weight:800;color:'+tut.color+';font-size:14px;margin-bottom:4px">'+esc(_relabelRoles(tut.title.split('\u2014')[0].trim()))+'</div>'
         +'<div style="font-size:12px;color:#64748b;margin-bottom:8px">'+tut.steps.length+' \u00e9tapes guid\u00e9es</div>'
         +'<div style="font-size:11px;font-weight:700;color:'+tut.color+';background:'+tut.color+'15;padding:4px 10px;border-radius:99px;display:inline-block">\u25b6 D\u00e9marrer le tutoriel</div>'
         +'</button>';

@@ -760,10 +760,10 @@ function tModal(){
     var step=(m.step||0);
     var st=steps[step]||steps[0];
     var isLast=step===steps.length-1;
-    title=st.icon+' '+st.title;
+    title=st.icon+' '+_relabelRoles(st.title);
     body='<div style="text-align:center;padding:10px 0">'
       +'<div style="font-size:52px;margin-bottom:12px">'+st.icon+'</div>'
-      +'<div style="font-size:15px;color:#374151;line-height:1.6;margin-bottom:16px">'+st.desc+'</div>'
+      +'<div style="font-size:15px;color:#374151;line-height:1.6;margin-bottom:16px">'+_relabelRoles(st.desc)+'</div>'
       /* Progress dots */
       +'<div style="display:flex;justify-content:center;gap:6px;margin-bottom:20px">'
       +steps.map(function(_,i){return '<div style="width:8px;height:8px;border-radius:50%;background:'+(i===step?'#1B2B3A':'#e2e8f0')+'"></div>';}).join('')
@@ -791,7 +791,7 @@ function tModal(){
     var isLast=step>=steps.length-1;
     return '<div class="mov"><div class="mob" style="max-width:720px;height:90vh;display:flex;flex-direction:column">'
       +'<div class="moh" style="background:'+tut.color+';border-radius:16px 16px 0 0">'
-      +'<div style="display:flex;align-items:center;gap:10px;flex:1"><div style="color:#fff;font-weight:800;font-size:15px">'+esc(tut.title)+'</div></div>'
+      +'<div style="display:flex;align-items:center;gap:10px;flex:1"><div style="color:#fff;font-weight:800;font-size:15px">'+esc(_relabelRoles(tut.title))+'</div></div>'
       +'<button class="moc" style="color:rgba(255,255,255,.7)" onclick="S.modal=null;render()">✕</button></div>'
       +'<div class="mody" style="flex:1;overflow-y:auto;padding:20px">'
       /* Progress bar */
@@ -803,16 +803,16 @@ function tModal(){
       /* Numéro étape */
       +'<div style="font-size:11px;font-weight:700;color:'+tut.color+';text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Étape '+(step+1)+' / '+steps.length+'</div>'
       /* Titre étape */
-      +'<div style="font-size:18px;font-weight:800;color:#0f172a;margin-bottom:10px">'+esc(st.title)+'</div>'
+      +'<div style="font-size:18px;font-weight:800;color:#0f172a;margin-bottom:10px">'+esc(_relabelRoles(st.title))+'</div>'
       /* Description */
-      +'<div style="font-size:13px;color:#374151;line-height:1.7;margin-bottom:16px">'+st.desc+'</div>'
+      +'<div style="font-size:13px;color:#374151;line-height:1.7;margin-bottom:16px">'+_relabelRoles(st.desc)+'</div>'
       /* Visuel SVG */
       +(st.svg?'<div style="border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:16px">'+st.svg()+'</div>':'')
       +'</div>'
       /* Navigation */
       +'<div style="padding:14px 20px;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">'
       +(step>0?'<button class="bsec" onclick="tutPrev()">← Précédent</button>':'<span></span>')
-      +'<span style="font-size:12px;color:#94a3b8">'+esc(tut.title)+'</span>'
+      +'<span style="font-size:12px;color:#94a3b8">'+esc(_relabelRoles(tut.title))+'</span>'
       +(isLast
         ?'<button class="bp" style="background:'+tut.color+'" onclick="S.modal=null;render()">✓ Terminé</button>'
         :'<button class="bp" style="background:'+tut.color+'" onclick="tutNext()">Suivant →</button>')

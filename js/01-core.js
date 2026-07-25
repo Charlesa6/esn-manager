@@ -567,6 +567,25 @@ function rLabel(role){
   var custom=S.settings&&S.settings.roleLabels&&S.settings.roleLabels[role];
   return custom||_ROLE_DEFAULTS[role]||role;
 }
+/* Remplace, dans un texte figé (Aide, onboarding), les libellés de rôle PAR
+   DÉFAUT par les libellés personnalisés du tenant (S.settings.roleLabels).
+   No-op si aucune personnalisation → sans effet pour les entreprises par défaut.
+   Traite le pluriel simple ("Gestionnaires" → "Directeurs"). Ordre par libellé
+   décroissant pour ne pas remplacer "Admin" avant "Super Admin". */
+function _relabelRoles(s){
+  if(!s||!(S.settings&&S.settings.roleLabels))return s;
+  var pairs=Object.keys(_ROLE_DEFAULTS).map(function(k){return [k,_ROLE_DEFAULTS[k]];})
+    .sort(function(a,b){return b[1].length-a[1].length;});
+  pairs.forEach(function(p){
+    var custom=S.settings.roleLabels[p[0]];
+    if(!custom||custom===p[1])return;
+    /* Pluriel : « Directeurs », « Consultants »… mais invariable si le libellé
+       se termine déjà par « s » (ex. « Ingénieur d'affaires »). */
+    var pluralCustom=/s$/.test(custom)?custom:custom+'s';
+    s=s.split(p[1]+'s').join(pluralCustom).split(p[1]).join(custom);
+  });
+  return s;
+}
 
 /* Signature de contenu des données qui influent sur kpi() (cons/miss/lvs).
    Change dès qu'un champ pertinent change => permet un cache fiable (pas de KPI
