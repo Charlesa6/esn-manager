@@ -1204,8 +1204,8 @@ function tOpps(){
       ?'<span data-act="opp-add" data-id="'+c.id+'" title="'+esc(oppTip)+'" style="cursor:pointer;border-bottom:1px dotted #94a3b8"><span style="font-weight:800;color:#1B2B3A">'+r.opps.length+'</span> <span style="font-size:11px;color:#94a3b8">'+esc(r.opps.map(function(o){return o.cli;}).join(', '))+'</span></span>'
       :'<span style="color:#cbd5e1">—</span>';
     return '<tr>'
-      +'<td><div style="display:flex;align-items:center;gap:10px">'+av(c.name,30)
-      +'<div><div style="font-weight:600;font-size:13px">'+esc(c.name)+'</div>'
+      +'<td><div data-act="opp-add" data-id="'+c.id+'" title="Voir le profil (compétences, secteurs) et les opportunités" style="display:flex;align-items:center;gap:10px;cursor:pointer">'+av(c.name,30)
+      +'<div><div style="font-weight:600;font-size:13px;border-bottom:1px dotted #cbd5e1;display:inline-block">'+esc(c.name)+'</div>'
       +'<div style="font-size:11px;color:#94a3b8">'+esc(c.title||'')+'</div></div></div></td>'
       +'<td>'+badge+'</td>'
       +'<td>'+oppTxt+'</td>'
@@ -1289,8 +1289,16 @@ function tStaffOppModal(){
       +'<td>'+stBadge+'</td>'
       +'<td class="tr">'+acts+'</td></tr>';
   }).join('');
-  return '<div style="margin-bottom:14px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;font-size:12px">'
-    +'<strong>'+esc(c.name)+'</strong> · '+esc(c.title||'')+' · <span style="color:#64748b">'+stTxt+'</span></div>'
+  /* Compétences (expertise) et secteurs du consultant — chips. */
+  var _chips=function(arr,bg,fg){
+    arr=arr||[];
+    return arr.length?arr.map(function(t){return '<span style="display:inline-block;background:'+bg+';color:'+fg+';padding:2px 9px;border-radius:99px;font-size:11px;font-weight:700;margin:0 5px 5px 0">'+esc(t)+'</span>';}).join(''):'<span style="color:#cbd5e1;font-size:11px">Non renseigné</span>';
+  };
+  return '<div style="margin-bottom:14px;padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;font-size:12px">'
+    +'<div><strong>'+esc(c.name)+'</strong> · '+esc(c.title||'')+' · <span style="color:#64748b">'+stTxt+'</span></div>'
+    +'<div style="margin-top:10px"><div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">🧩 Compétences</div>'+_chips(c.expertise,'#eef2ff','#3730a3')+'</div>'
+    +'<div style="margin-top:8px"><div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">🏢 Secteurs</div>'+_chips(c.sectors,'#ecfeff','#155e75')+'</div>'
+    +'</div>'
     +'<div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:8px">'
     +(editing?'✏️ Modifier l\'opportunité — '+esc(editing.cli):'➕ Nouvelle opportunité pressentie')+'</div>'
     +'<div class="g2">'
