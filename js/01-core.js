@@ -635,7 +635,8 @@ function clientRev(ks){
 function consInScope(c){
   if(!c)return false;
   if(S.role==='gestionnaire')return c.managerId===S._userId || (!c.managerId && (c.dir||'')===S.dirName) || c.id===S.consId;
-  if(S.role==='utilisateur'||S.role==='sales'||S.role==='recruteur')return c.id===S.consId||c.email===S._userEmail;
+  if(S.role==='utilisateur'||S.role==='recruteur')return c.id===S.consId||c.email===S._userEmail;
+  if(S.role==='sales')return true; /* Business Manager : périmètre = sa BU, déjà cloisonnée par RLS au chargement */
   if(S.role==='super_admin'&&S.fvp&&S.fvp.length){
     /* Filtre par VP sélectionné : directeurs rattachés aux VPs cochés. */
     var allowedDirs=[];

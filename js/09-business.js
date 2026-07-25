@@ -1118,7 +1118,7 @@ function oppTimeline(cons,view){
 var MLB_OPP=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
 
 function tOpps(){
-  if(!['super_admin','admin','gestionnaire'].includes(S.role))return '<div class="emp">Accès non autorisé.</div>';
+  if(!['super_admin','admin','gestionnaire','sales'].includes(S.role))return '<div class="emp">Accès non autorisé.</div>';
   /* Consultants du périmètre (S.cons est déjà la vue filtrée par rôle), actifs
      ou à venir — les partis sont exclus. Hors profils Business Manager. */
   var cons=S.cons.filter(function(c){return c.grade!=='sales_grade'&&!(c.depart&&c.depart<TODAY);});

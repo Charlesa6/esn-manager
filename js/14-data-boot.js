@@ -328,9 +328,12 @@ async function loadSB(){
           || cc.email===S._userEmail;
       });
     }
-    /* Sales (Business Manager), Recruteur, Utilisateur : ne voient QUE leur propre fiche.
-       Ils n'ont aucune visibilité sur les consultants de l'organisation. */
-    if(S.role==='sales'||S.role==='recruteur'||S.role==='utilisateur'){
+    /* Recruteur & Utilisateur : ne voient QUE leur propre fiche.
+       Le Business Manager (sales) voit les consultants de sa Business Unit
+       (cloisonnés par RLS : bu_scope_consultants + cons_limited_roles_self_only
+       dont sales est retiré) — SCR/coût inclus, pré-requis pour proposer un
+       profil à un client. Aucun filtre client supplémentaire pour lui. */
+    if(S.role==='recruteur'||S.role==='utilisateur'){
       cons=cons.filter(function(cc){ return cc.id===S.consId || cc.email===S._userEmail; });
     }
     /* Gestionnaire : missions/absences limitees a son equipe (ids). */

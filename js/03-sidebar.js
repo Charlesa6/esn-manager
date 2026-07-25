@@ -21,9 +21,10 @@ function tSB(){
   }else if(S.role==='sales'){
     /* Licence Business Manager : Business + Activité + Absences */
     NAV=[
-      {id:'business',   ic:'\uD83D\uDCBC',lb:'Business'},
+      {id:'business',   ic:'\ud83d\uDCBC',lb:'Business'},
+      {id:'opportunites',ic:'\ud83d\uDEEC',lb:'Opportunit\u00e9s'},
       {id:'recrutement',ic:'\uD83C\uDFAF',lb:'Recrutement'},
-      {id:'activite',   ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'},
+      {id:'activite',   ic:'\ud83d\uDDD3\uFE0F',lb:'Activit\u00e9'},
       {id:'leaves',     ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
       {id:'approvals',  ic:'\ud83d\udd14',lb:'Approbations'},
       {id:'help',      ic:'\u2753',lb:'Aide'}
