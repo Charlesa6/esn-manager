@@ -768,7 +768,6 @@ function tModal(){
       +'<div style="display:flex;justify-content:center;gap:6px;margin-bottom:20px">'
       +steps.map(function(_,i){return '<div style="width:8px;height:8px;border-radius:50%;background:'+(i===step?'#1B2B3A':'#e2e8f0')+'"></div>';}).join('')
       +'</div></div>';
-    saveAction=null;
     return '<div class="mov"><div class="mob" style="max-width:480px">'
       +'<div class="moh"><div class="mot">'+title+'</div></div>'
       +'<div class="mody">'+body
