@@ -302,10 +302,10 @@ function tKPIs(){
     +'<div style="margin-bottom:24px"><div class="pt">KPIs &mdash; '+fyLbl(S.year)+(S.quarter?' \u00b7 '+curRangeLbl():'')+'</div></div>'
     +hero
     +tForecastSection()
-    +'<div style="display:grid;grid-template-columns:3fr 200px;gap:16px;margin-bottom:16px">'
-    +'<div class="card" style="padding:20px">'
-    +'<div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:8px">Staffing par consultant (%)</div>'
-    +srBars+'</div>'
+    /* Graphe « Staffing par consultant » retiré : illisible dès qu'il y a beaucoup
+       de consultants. Le détail par consultant reste dans le tableau trié/paginé
+       « KPIs par Consultant » ci-dessous. On conserve le Top clients. */
+    +'<div style="margin-bottom:16px">'
     +'<div class="card" style="padding:16px"><div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:12px">Top clients &mdash; CA</div>'+clientHtml+'</div>'
     +'</div>'
     +(S.role==='admin'?tKPIsDirSection()+(_useCards?consKpiSection:''):S.role==='super_admin'?tKPIsSVPSection()+(_useCards?consKpiSection:''):consKpiSection)

@@ -126,7 +126,7 @@ async function newPage(browser) {
     const bodyTxt = await p.evaluate(() => document.body.innerText);
     check('KPIs : prévisionnel de CA affiché', /Prévisionnel de CA/.test(bodyTxt));
     check('KPIs : marge consolidée par unité affichée', /Marge consolidée par unité/.test(bodyTxt));
-    check('KPIs : staffing par consultant affiché', /Staffing par consultant/.test(bodyTxt));
+    check('KPIs : Top clients affiché', /Top clients/.test(bodyTxt));
 
     // Garde-fou anti-régression du PÉRIMÈTRE : l'onglet Équipe ne doit PAS être vide
     // (un filtre de visibilité trop agressif l'avait vidé — cf. sanity check). On
