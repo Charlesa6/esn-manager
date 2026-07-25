@@ -20,8 +20,8 @@ function render(){
   S._ksSig=null; /* invalide la signature ; recalculée sur la vue filtrée juste après */
   if(!S.demo)saveLocal(); /* sauvegarde automatique — désactivée en mode démo */
   /* ═══ filtrage par rôle / directeur : on bascule sur la vue filtrée le temps du rendu ═══ */
-  S._all={cons:S.cons,miss:S.miss,lvs:S.lvs};
-  var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;
+  S._all={cons:S.cons,miss:S.miss,lvs:S.lvs,bizOpps:S.bizOpps};
+  var _vis=visibleData();S.cons=_vis.cons;S.miss=_vis.miss;S.lvs=_vis.lvs;S.bizOpps=_vis.bizOpps;
   S._ksSig=_ksSignature(); /* signature du jeu de cartes KPI sur les données filtrées */
   document.getElementById('sb').innerHTML=tSB();
   /* ── Contrôle d'accès central : chaque rôle a ses onglets autorisés ──
@@ -72,7 +72,7 @@ function render(){
     for(var _i=0;_i<_mocs.length;_i++)_mocs[_i].setAttribute('aria-label','Fermer');
   })();
   /* on restaure les données maîtres (les handlers de bind() mutent l'ensemble complet) */
-  S.cons=S._all.cons;S.miss=S._all.miss;S.lvs=S._all.lvs;
+  S.cons=S._all.cons;S.miss=S._all.miss;S.lvs=S._all.lvs;S.bizOpps=S._all.bizOpps;
   bind();
   /* Restauration des scrolls (voir en tête de render) */
   var _mc2=document.getElementById('mc');

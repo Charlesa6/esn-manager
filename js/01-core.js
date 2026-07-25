@@ -683,12 +683,38 @@ function visibleConsIds(){
   var s={};base.forEach(function(c){if(consInScope(c))s[c.id]=1;});return s;
 }
 function visibleData(){
-  var ids=visibleConsIds(),src=S._all||{cons:S.cons,miss:S.miss,lvs:S.lvs};
+  var ids=visibleConsIds(),src=S._all||{cons:S.cons,miss:S.miss,lvs:S.lvs,bizOpps:S.bizOpps};
   return{
     cons:src.cons.filter(function(c){return ids[c.id];}),
     miss:src.miss.filter(function(m){return ids[m.cid];}),
-    lvs:src.lvs.filter(function(l){return ids[l.cid];})
+    lvs:src.lvs.filter(function(l){return ids[l.cid];}),
+    bizOpps:(src.bizOpps||[]).filter(oppInScope)
   };
+}
+/* ═══ PÉRIMÈTRE DES OPPORTUNITÉS (pipeline) ═══
+   Un VP secteur est responsable d'UN secteur : il ne doit voir que le pipeline de
+   son secteur. Or les opportunités ne sont pas rattachées à un directeur (pas de
+   `dir`) — le filtre missions ne les couvre pas. On les cloisonne donc par BU :
+   l'ensemble des BU réellement couvertes par les consultants du périmètre visible.
+   scopeBuSet() renvoie null quand aucune restriction n'est active (admin /
+   super_admin sans filtre) → on ne filtre pas. */
+function scopeBuSet(){
+  var restrict=(S.role==='super_admin'&&S.fvp&&S.fvp.length)
+    ||((S.role==='admin'||S.role==='super_admin')&&S.fdir&&S.fdir.length)
+    ||(S.role==='gestionnaire'||S.role==='sales'||S.role==='utilisateur'||S.role==='recruteur')
+    ||!!myBuId();
+  if(!restrict)return null;
+  var ids=visibleConsIds(),src=S._all||{cons:S.cons},bus={};
+  (src.cons||[]).forEach(function(c){if(ids[c.id]){var b=consBU(c);if(b)bus[b]=1;}});
+  return bus;
+}
+function oppInScope(o){
+  var set=scopeBuSet();
+  if(!set)return true;              /* aucune restriction → tout le pipeline */
+  var b=o&&o.bu_id;
+  if(!b)return false;               /* opportunité hors hiérarchie → hors périmètre */
+  if(set[b])return true;
+  return buPath(b).some(function(n){return set[n.id];}); /* sous-secteur d'une BU du périmètre */
 }
 
 
