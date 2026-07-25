@@ -32,8 +32,8 @@ function render(){
     admin:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','opportunites','approvals','param','help','profile','kpis_dir'],
     gestionnaire:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','opportunites','approvals','param','help','profile','kpis_dir'],
     utilisateur:['activite','missions','planning','leaves','approvals','help','profile'],
-    recruteur:['recrutement','activite','leaves','help','profile'],
-    sales:['business','recrutement','activite','leaves','help','profile']
+    recruteur:['recrutement','activite','leaves','approvals','help','profile'],
+    sales:['business','recrutement','activite','leaves','approvals','help','profile']
   };
   var _myTabs=_allowedTabs[S.role]||_allowedTabs.admin;
   if(_myTabs.indexOf(S.tab)<0){

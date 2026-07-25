@@ -15,6 +15,7 @@ function tSB(){
       {id:'recrutement',ic:'\uD83C\uDFAF',lb:'Recrutement'},
       {id:'activite',   ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'},
       {id:'leaves',     ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
+      {id:'approvals',  ic:'\ud83d\udd14',lb:'Approbations'},
       {id:'help',      ic:'\u2753',lb:'Aide'}
     ];
   }else if(S.role==='sales'){
@@ -24,6 +25,7 @@ function tSB(){
       {id:'recrutement',ic:'\uD83C\uDFAF',lb:'Recrutement'},
       {id:'activite',   ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'},
       {id:'leaves',     ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
+      {id:'approvals',  ic:'\ud83d\udd14',lb:'Approbations'},
       {id:'help',      ic:'\u2753',lb:'Aide'}
     ];
   }else if(S.role==='utilisateur'){
@@ -33,7 +35,6 @@ function tSB(){
       {id:'planning',   ic:'\uD83D\uDCC5',lb:'Planning'},
       {id:'leaves',     ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
       {id:'approvals',  ic:'\uD83D\uDD14',lb:'Approbations'},
-      {id:'business',   ic:'\uD83D\uDCBC',lb:'Business'},
       {id:'help',      ic:'\u2753',lb:'Aide'}
     ];
   }else{
