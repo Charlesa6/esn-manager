@@ -49,7 +49,7 @@ function importJSON(file){
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    SUPABASE - helpers (synchronisation non-bloquante)
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
-function mapC(r){return{id:r.id,name:r.name,title:r.title||'',scr:r.scr||0,email:r.email||'',dir:r.directeur||'',managerId:r.manager_id||null,buId:r.bu_id||null,region:r.region||'',mobility:Array.isArray(r.mobility)?r.mobility:[],arrive:r.arrive||null,depart:r.depart||null,expertise:r.expertise||[],sectors:r.sectors||[],contract:r.contract||'salarie',grade:r.grade||''};}
+function mapC(r){return{id:r.id,name:r.name,title:r.title||'',scr:r.scr||0,email:r.email||'',dir:r.directeur||'',managerId:r.manager_id||null,buId:r.bu_id||null,region:r.region||'',mobility:Array.isArray(r.mobility)?r.mobility:[],arrive:r.arrive||null,depart:r.depart||null,expertise:r.expertise||[],sectors:r.sectors||[],contract:r.contract||'salarie',grade:r.grade||'',modalite:r.modalite||'MS',q2Days:(r.q2_days!=null?+r.q2_days:0)};}
 function mapM(r){return{id:r.id,cid:r.consultant_id,name:r.name,cli:r.client_name||'',tjm:r.tjm||0,sd:r.start_date,ed:r.end_date||null,loc:r.location||'',mgr:r.manager_name||'',ccn:r.client_contact_name||'',ccr:r.client_contact_role||'',pcode:r.code_projet||'',btype:r.billing_type||'at',wdays:(Array.isArray(r.work_days)?r.work_days:(r.work_days?String(r.work_days).split(',').map(Number):[1,2,3,4,5])),wmode:r.wmode||'rec',manualDays:(Array.isArray(r.manual_days)?r.manual_days:[]),deal:r.deal_amount||0,tmar:(r.target_margin!=null?r.target_margin:null),team:r.team||[]};}
 function mapL(r){return{id:r.id,cid:r.consultant_id,type:r.type||'Congé payé',s:r.start_date,e:r.end_date};}
 /* Opportunité staffing (pilotage des intercontrats) : mission pressentie pour un
@@ -405,7 +405,7 @@ function sbWriteErr(label,err){
 }
 async function sbUpsertCons(c){
   if(!sb||!SB_CID)return;
-  var res=await sb.from('consultants').upsert({id:c.id,company_id:SB_CID,name:c.name,title:c.title,scr:c.scr,email:c.email,directeur:c.dir||null,manager_id:c.managerId||null,bu_id:c.buId||null,region:c.region||null,mobility:c.mobility||[],arrive:c.arrive||null,depart:c.depart||null,expertise:c.expertise||[],sectors:c.sectors||[],contract:c.contract||'salarie',grade:c.grade||null});
+  var res=await sb.from('consultants').upsert({id:c.id,company_id:SB_CID,name:c.name,title:c.title,scr:c.scr,email:c.email,directeur:c.dir||null,manager_id:c.managerId||null,bu_id:c.buId||null,region:c.region||null,mobility:c.mobility||[],arrive:c.arrive||null,depart:c.depart||null,expertise:c.expertise||[],sectors:c.sectors||[],contract:c.contract||'salarie',grade:c.grade||null,modalite:c.modalite||'MS',q2_days:(c.q2Days!=null?c.q2Days:0)});
   if(res.error){sbWriteErr('consultant « '+c.name+' »',res.error);throw new Error(c.name+': '+res.error.message);}
 }
 async function sbUpsertMiss(m){

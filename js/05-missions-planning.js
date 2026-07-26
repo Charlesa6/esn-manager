@@ -166,7 +166,7 @@ function tPlan(){
   var _fm=((S.settings&&S.settings.fyStartMonth)||10)-1;
   var fyMonths=ALL_MONTHS.slice(_fm).concat(ALL_MONTHS.slice(0,_fm));
   var COL={active:'#22c55e',critical:'#ef4444',soon:'#f59e0b',future:'#22c55e',ended:'#d1d5db'};
-  var LVC={'Maladie':'#1d4ed8','Cong\u00e9 maternit\u00e9':'#1d4ed8','Cong\u00e9 pay\u00e9':'#fbbf24','RTT':'#a78bfa','Formation':'#34d399','Cong\u00e9 sans solde':'#cbd5e1','Mission interne':'#60a5fa','Autre':'#d1d5db'};
+  var LVC={'Maladie':'#1d4ed8','Cong\u00e9 maternit\u00e9':'#1d4ed8','Cong\u00e9 pay\u00e9':'#fbbf24','RTT':'#a78bfa','RTT Q2':'#c084fc','Formation':'#34d399','Cong\u00e9 sans solde':'#cbd5e1','Mission interne':'#60a5fa','Autre':'#d1d5db'};
 
   var activeCons=S.cons.filter(function(c){return !isGone(c);});
 

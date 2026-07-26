@@ -102,7 +102,7 @@ var QUARTERS=[
   {id:4,lb:'T4',months:[7,8,9]}
 ];
 var MOIS_ABR=['','Janv','F\u00e9vr','Mars','Avr','Mai','Juin','Juil','Ao\u00fbt','Sept','Oct','Nov','D\u00e9c'];
-var LTYPES=['Cong\u00e9 pay\u00e9','RTT','Formation','Inter-contrat','Maladie','Cong\u00e9 maternit\u00e9','Cong\u00e9 sans solde','Mission interne','Autre'];
+var LTYPES=['Cong\u00e9 pay\u00e9','RTT','RTT Q2','Formation','Inter-contrat','Maladie','Cong\u00e9 maternit\u00e9','Cong\u00e9 sans solde','Mission interne','Autre'];
 /* Reconstruire QUARTERS selon le mois de début du FY */
 function rebuildQuarters(){
   var fm=((S&&S.settings&&S.settings.fyStartMonth)||10);

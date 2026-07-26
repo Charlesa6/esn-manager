@@ -695,6 +695,9 @@ function tModal(){
       +'<div class="fd"><label class="fl">Email</label><input class="ic" id="me" type="email" value="'+esc(it?it.email:'')+'" placeholder="prenom.nom@exemple.com"></div>'
       +'<div class="fd"><label class="fl">Date d\'arriv\u00e9e</label><input class="ic" id="marr" type="date" value="'+esc(it&&it.arrive?it.arrive:'')+'"><p class="fh">Laissez vide si pr\u00e9sent depuis le d\u00e9but du FY</p></div>'
       +'<div class="fd"><label class="fl">Date de d\u00e9part</label><input class="ic" id="mdep" type="date" value="'+esc(it&&it.depart?it.depart:'')+'"><p class="fh">Laissez vide si toujours en poste</p></div>'
+      +(function(){var _mod=(it&&it.modalite)||'MS';var _opts=[['MS','Standard (12 RTT/an)'],['RM','R\u00e9alisation de mission (\u224810)'],['AC','Autonomie compl\u00e8te (\u224810, prise \u2192 31 mars)'],['CD','Cadre dirigeant (0 RTT)'],['CD210','Cadre dirigeant coeff. 210 (5 RTT)']];
+        return '<div class="fd"><label class="fl">Modalit\u00e9 temps de travail</label><select class="ic" id="mmodalite">'+_opts.map(function(o){return '<option value="'+o[0]+'"'+(_mod===o[0]?' selected':'')+'>'+esc(o[1])+'</option>';}).join('')+'</select><p class="fh">Pilote le quota de RTT Q1 et la date limite de prise (Syntec/CGI).</p></div>';})()
+      +'<div class="fd"><label class="fl">Jours Q2 souscrits</label><input class="ic" id="mq2" type="number" min="0" step="0.5" value="'+esc(it&&it.q2Days!=null?String(it.q2Days):'0')+'"><p class="fh">Repos compl\u00e9mentaires financ\u00e9s (0 si non souscrits) \u2014 \u00e0 prendre avant le 31 d\u00e9c.</p></div>'
       +'<div class="fd cs2">'+dirFld+'</div>'
       +buFld
       +'<div class="fd cs2" id="cons-mob-block">'+consMobInner()+'</div>'

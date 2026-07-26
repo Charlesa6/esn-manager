@@ -455,10 +455,11 @@ function bind(){
         var expArr=(S.modal.expSel||[]).slice();
         var secArr=(S.modal.secSel||[]).slice();
         var ctrct=gv('mcontract')||'salarie';var grade=gv('mgrade')||'';
+        var modalite=gv('mmodalite')||'MS';var q2Days=(gv('mq2')===''?0:+gv('mq2'));if(isNaN(q2Days)||q2Days<0)q2Days=0;
         if(!n){alert('Le nom est obligatoire.');return;}
         if(!s||s<0)s=0;
         var nc;
-        var _fields={name:n,title:t,scr:s,email:em,dir:rdir,managerId:mgrId,buId:buId||null,region:(S.modal.region||''),mobility:(S.modal.mobility||[]).slice(),arrive:arr,depart:dep,expertise:expArr,sectors:secArr,contract:ctrct,grade:grade};
+        var _fields={name:n,title:t,scr:s,email:em,dir:rdir,managerId:mgrId,buId:buId||null,region:(S.modal.region||''),mobility:(S.modal.mobility||[]).slice(),arrive:arr,depart:dep,expertise:expArr,sectors:secArr,contract:ctrct,grade:grade,modalite:modalite,q2Days:q2Days};
         if(it){S.cons=S.cons.map(function(c){return c.id===it.id?(nc=Object.assign({},c,_fields)):c;});}
         else{nc=Object.assign({id:uid()},_fields);S.cons=S.cons.concat([nc]);}
         sbUpsertCons(nc);

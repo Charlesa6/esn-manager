@@ -36,10 +36,57 @@ function setLeaveQuota(kind,val){
 }
 /* Formatage d'un nombre de jours (entiers ou demi-journées) avec l'unité. */
 function fmtJ(n){n=Math.round((n||0)*2)/2;return (n%1===0?String(n):n.toFixed(1))+' j';}
-/* Carte tableau de bord des soldes CP/RTT pour une liste de consultants. */
+function round2(n){return Math.round((n||0)*2)/2;}
+
+/* ── Ancienneté (CPA) : jours de CP supplémentaires selon le barème CGI ── */
+function seniorityYears(c){
+  if(!c||!c.arrive)return 0;
+  var a=pD(c.arrive),t=pD(TODAY),y=t.getFullYear()-a.getFullYear();
+  if(t.getMonth()<a.getMonth()||(t.getMonth()===a.getMonth()&&t.getDate()<a.getDate()))y--;
+  return Math.max(0,y);
+}
+function cpaDays(years){return years>=8?4:years>=5?3:years>=3?2:years>=2?1:0;}
+
+/* ── Modalité temps de travail → quota RTT Q1 et date limite de prise ── */
+var MODALITE_LB={MS:'Standard',RM:'Réalisation de mission',AC:'Autonomie complète',CD:'Cadre dirigeant',CD210:'Cadre dirigeant 210'};
+function rttBaseForModalite(m){switch(m){case 'RM':return 10;case 'AC':return 10;case 'CD':return 0;case 'CD210':return 5;default:return rttQuota();/* MS = quota éditable */}}
+/* Fenêtre de prise RTT Q1 : 31 jan A+1 (MS/RM) ou 31 mars A+1 (AC / CD210). */
+function rttPeriodFor(c){var A=leaveCampaignYear();var late=c&&(c.modalite==='AC'||c.modalite==='CD210');return {s:A+'-01-01',e:(A+1)+(late?'-03-31':'-01-31'),N:A};}
+/* Fenêtre de prise des jours Q2 : jusqu'au 31 décembre A. */
+function q2Period(){var A=leaveCampaignYear();return {s:A+'-01-01',e:A+'-12-31',N:A};}
+
+/* ── Proration entrants / sortants : fraction de présence sur une fenêtre ── */
+function presenceFraction(c,rs,re){
+  var a=(c.arrive&&c.arrive>rs)?c.arrive:rs;
+  var d=(c.depart&&c.depart<re)?c.depart:re;
+  if(a>d)return 0;                                  /* aucune présence sur la fenêtre */
+  var dm=86400000;
+  var total=Math.round((pD(re)-pD(rs))/dm)+1;
+  var pres=Math.round((pD(d)-pD(a))/dm)+1;
+  return Math.max(0,Math.min(1,pres/total));
+}
+
+/* Quotas annualisés d'un consultant (CP avec ancienneté + proration, RTT selon
+   modalité + proration, Q2 souscrits). */
+function leaveQuotasFor(c){
+  var A=leaveCampaignYear();
+  var sen=seniorityYears(c);
+  var cpFrac=presenceFraction(c,(A-1)+'-06-01',A+'-05-31');   /* acquisition CP */
+  var rttFrac=presenceFraction(c,A+'-01-01',A+'-12-31');       /* acquisition RTT */
+  var cpBase=cpQuota()+cpaDays(sen);
+  return {
+    sen:sen, cpa:cpaDays(sen), modalite:c.modalite||'MS',
+    cpFrac:cpFrac, rttFrac:rttFrac,
+    cp:round2(cpBase*cpFrac), cpBase:cpBase,
+    rtt:round2(rttBaseForModalite(c.modalite)*rttFrac),
+    q2:(c.q2Days!=null?+c.q2Days:0)
+  };
+}
+
+/* Carte tableau de bord des soldes CP / RTT Q1 / Q2 pour une liste de consultants. */
 function leaveBalanceCard(consList){
-  var cpQ=cpQuota(),rttQ=rttQuota(),cpP=cpPeriod(),rttP=rttPeriod();
   var canEdit=(S.role==='admin'||S.role==='super_admin');
+  var cpP=cpPeriod();
   function qFld(kind,q){
     return canEdit
       ?'<input type="number" min="0" step="0.5" value="'+q+'" onchange="setLeaveQuota(\''+kind+'\',this.value)" style="width:52px;padding:3px 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;font-weight:800;text-align:center">'
@@ -49,26 +96,40 @@ function leaveBalanceCard(consList){
     var pct=q>0?Math.min(Math.round(taken/q*100),100):0;
     return '<div style="height:5px;background:#eef2f6;border-radius:3px;margin-top:5px;max-width:120px"><div style="height:100%;width:'+pct+'%;background:'+col+';border-radius:3px"></div></div>';
   }
-  function balCells(taken,q,col){
+  function balCells(taken,q,col,title){
+    if(q<=0&&taken<=0)return '<td class="tc" style="color:#cbd5e1">—</td><td class="tc" style="color:#cbd5e1">—</td>';
     var rem=q-taken;var remCol=rem<0?'#dc2626':'#0f172a';
-    return '<td class="tc" style="white-space:nowrap"><span style="font-weight:800;color:#0f172a">'+fmtJ(taken)+'</span><span style="color:#94a3b8;font-size:11px"> / '+fmtJ(q)+'</span>'+bar(taken,q,col)+'</td>'
+    return '<td class="tc" style="white-space:nowrap"'+(title?' title="'+esc(title)+'"':'')+'><span style="font-weight:800;color:#0f172a">'+fmtJ(taken)+'</span><span style="color:#94a3b8;font-size:11px"> / '+fmtJ(q)+'</span>'+bar(taken,q,col)+'</td>'
       +'<td class="tc" style="font-weight:800;color:'+remCol+'">'+fmtJ(rem)+'</td>';
   }
   var rows=consList.map(function(c){
-    var cpT=leaveDaysTaken(c.id,'Congé payé',cpP),rttT=leaveDaysTaken(c.id,'RTT',rttP);
-    return '<tr><td style="font-weight:600;color:#0f172a">'+esc(c.name)+'</td>'
-      +balCells(cpT,cpQ,'#2563eb')+balCells(rttT,rttQ,'#7c3aed')+'</tr>';
+    var Q=leaveQuotasFor(c);
+    var cpT=leaveDaysTaken(c.id,'Congé payé',cpP);
+    var rttT=leaveDaysTaken(c.id,'RTT',rttPeriodFor(c));
+    var q2T=leaveDaysTaken(c.id,'RTT Q2',q2Period());
+    var prorata=(Q.cpFrac<0.999||Q.rttFrac<0.999);
+    var sub=(MODALITE_LB[Q.modalite]||Q.modalite)+(Q.sen>0?' · '+Q.sen+' an'+(Q.sen>1?'s':''):'')+(prorata?' · prorata':'');
+    var cpTitle='CP plein temps '+fmtJ(cpQuota())+(Q.cpa?' + '+fmtJ(Q.cpa)+' ancienneté':'')+(Q.cpFrac<0.999?' × '+Math.round(Q.cpFrac*100)+'% présence':'');
+    var rttTitle='RTT Q1 modalité '+(MODALITE_LB[Q.modalite]||Q.modalite)+(Q.rttFrac<0.999?' × '+Math.round(Q.rttFrac*100)+'% présence':'');
+    return '<tr><td><div style="font-weight:600;color:#0f172a">'+esc(c.name)+'</div>'
+      +'<div style="font-size:10px;color:#94a3b8">'+esc(sub)+'</div></td>'
+      +balCells(cpT,Q.cp,'#2563eb',cpTitle)
+      +balCells(rttT,Q.rtt,'#7c3aed',rttTitle)
+      +balCells(q2T,Q.q2,'#c026d3','Jours Q2 souscrits (financés)')
+      +'</tr>';
   }).join('');
   return '<div class="card" style="padding:18px 20px;margin-bottom:16px">'
     +'<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px">'
-    +'<div style="font-size:14px;font-weight:800;color:#0f172a">🏖️ Soldes congés &amp; RTT <span style="font-weight:500;color:#94a3b8;font-size:12px">— Syntec · cadres · en jours ouvrés</span></div>'
+    +'<div style="font-size:14px;font-weight:800;color:#0f172a">🏖️ Soldes congés &amp; RTT <span style="font-weight:500;color:#94a3b8;font-size:12px">— règles CGI · cadres · jours ouvrés</span></div>'
     +'<div style="font-size:12px;color:#475569;display:flex;gap:16px;flex-wrap:wrap">'
-    +'<span>Quota CP : '+qFld('cp',cpQ)+' j</span><span>Quota RTT : '+qFld('rtt',rttQ)+' j</span></div></div>'
-    +'<div style="font-size:11px;color:#94a3b8;margin-bottom:12px">Période de prise (CP &amp; RTT Q1) : '+esc(cpP.lb)+' — reliquats perdus au-delà</div>'
+    +'<span>Quota CP plein temps : '+qFld('cp',cpQuota())+' j</span><span>Quota RTT (Standard) : '+qFld('rtt',rttQuota())+' j</span></div></div>'
+    +'<div style="font-size:11px;color:#94a3b8;margin-bottom:12px">Prise CP &amp; RTT Q1 : '+esc(cpP.lb)+' (AC / CD 210 → 31 mars A+1) · Q2 : jusqu\'au 31 déc. '
+    +'Quota CP ajusté par l\'ancienneté (CPA) et la présence (prorata entrants/sortants) ; RTT selon la modalité de chaque personne.</div>'
     +'<div class="ov"><table><thead><tr><th>'+rLabel('utilisateur')+'</th>'
     +'<th class="tc">CP posés</th><th class="tc">CP restants</th>'
-    +'<th class="tc">RTT posés</th><th class="tc">RTT restants</th></tr></thead>'
-    +'<tbody>'+(rows||'<tr><td colspan="5" class="emp">Aucun consultant.</td></tr>')+'</tbody></table></div>'
+    +'<th class="tc">RTT posés</th><th class="tc">RTT restants</th>'
+    +'<th class="tc">Q2 posés</th><th class="tc">Q2 restants</th></tr></thead>'
+    +'<tbody>'+(rows||'<tr><td colspan="7" class="emp">Aucun consultant.</td></tr>')+'</tbody></table></div>'
     +'</div>';
 }
 function tLeaves(){
@@ -86,7 +147,7 @@ function tLeaves(){
   }).join('');
 
   var TCC={
-    'Cong\u00e9 pay\u00e9':'#dbeafe|#1e40af','RTT':'#ede9fe|#5b21b6',
+    'Cong\u00e9 pay\u00e9':'#dbeafe|#1e40af','RTT':'#ede9fe|#5b21b6','RTT Q2':'#fae8ff|#86198f',
     'Formation':'#dcfce7|#15803d','Inter-contrat':'#ffedd5|#c2410c',
     'Maladie':'#fee2e2|#b91c1c','Cong\u00e9 maternit\u00e9':'#fce7f3|#9d174d',
     'Cong\u00e9 sans solde':'#f1f5f9|#475569','Mission interne':'#ccfbf1|#0f766e','Autre':'#f1f5f9|#475569'
