@@ -53,8 +53,7 @@ function tSB(){
       {id:'missions',  ic:'\uD83D\uDCCB',lb:'Missions'},
       {id:'planning',  ic:'\uD83D\uDCC5',lb:'Planning'},
       {id:'leaves',    ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
-      {id:'approvals',  ic:'\uD83D\uDD14',lb:'Approbations'},
-      {id:'param',     ic:'\uD83D\uDCA1',lb:'Pr\u00e9conisations'}
+      {id:'approvals',  ic:'\uD83D\uDD14',lb:'Approbations'}
     ];
     /* \u00ab Gestion des acc\u00e8s \u00bb et \u00ab Param\u00e8tres \u00bb : TEMPORAIREMENT MASQU\u00c9S sur toutes
        les licences (la hi\u00e9rarchie N+1 vit d\u00e9sormais dans \u00ab Mon Profil \u00bb). Pour les
@@ -93,7 +92,7 @@ function tSB(){
      les sous-onglets d'un pôle replié restent dans le DOM, masqués via [hidden]). */
   var navById={};NAV.forEach(function(n){navById[n.id]=n;});
   var NAV_PLAN=[
-    {gid:'g_pilotage',  ic:'🧭',lb:'Pilotage',         members:['kpis','dashboard','param']},
+    {gid:'g_pilotage',  ic:'🧭',lb:'Pilotage',         members:['kpis','dashboard']},
     {gid:'g_commercial',ic:'🤝',lb:'Commercial',       members:['business','opportunites']},
     {leaf:'recrutement'},
     {gid:'g_delivery',  ic:'🚀',lb:'Delivery',         members:['missions','planning']},

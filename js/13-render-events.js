@@ -28,9 +28,9 @@ function render(){
      NB : 'svp_acces' et 'svp_settings' sont TEMPORAIREMENT retirés (onglets
      masqués — voir js/03-sidebar.js pour les réactiver). */
   var _allowedTabs={
-    super_admin:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','opportunites','approvals','svp_integrations','param','help','profile','kpis_dir'],
-    admin:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','opportunites','approvals','param','help','profile','kpis_dir'],
-    gestionnaire:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','opportunites','approvals','param','help','profile','kpis_dir'],
+    super_admin:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','opportunites','approvals','svp_integrations','help','profile','kpis_dir'],
+    admin:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','opportunites','approvals','help','profile','kpis_dir'],
+    gestionnaire:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','opportunites','approvals','help','profile','kpis_dir'],
     utilisateur:['activite','missions','planning','leaves','approvals','help','profile'],
     recruteur:['recrutement','activite','leaves','approvals','help','profile'],
     sales:['business','opportunites','recrutement','activite','leaves','approvals','help','profile']
@@ -40,7 +40,7 @@ function render(){
     /* Onglet non autorisé pour ce rôle → rediriger vers son onglet d'accueil */
     S.tab=(S.role==='sales')?'business':(S.role==='recruteur')?'recrutement':(S.role==='utilisateur')?'activite':'kpis';
   }
-  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tSVPAcces():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDirSection():S.tab==='svp_acces'?tSVPAcces():S.tab==='svp_settings'?tSettings():S.tab==='svp_integrations'?tIntegrations():S.tab==='business'?tBusiness():S.tab==='opportunites'?tOpps():S.tab==='help'?tHelp():tParam();
+  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tSVPAcces():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDirSection():S.tab==='svp_acces'?tSVPAcces():S.tab==='svp_settings'?tSettings():S.tab==='svp_integrations'?tIntegrations():S.tab==='business'?tBusiness():S.tab==='opportunites'?tOpps():tHelp();
   var _ini=function(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();};
   var _av=S._userEmail?_ini(S._userEmail.split('@')[0].replace(/[._]/g,' ')):'?';
   var _pfBtn=''; /* Profil déplacé dans la sidebar gauche */
@@ -91,7 +91,7 @@ function render(){
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 function bind(){
   var el=function(id){return document.getElementById(id);};
-  var yr=el('yrs');if(yr)yr.onchange=function(){S.year=+this.value;H=fyHols(S.year);S.precs={};render();refreshServerKpis();};
+  var yr=el('yrs');if(yr)yr.onchange=function(){S.year=+this.value;H=fyHols(S.year);render();refreshServerKpis();};
   /* Recherche serveur des cartes KPI (debounce ; conserve le focus/curseur). */
   var kcs=el('kpiCardsSearch');if(kcs)kcs.oninput=function(){
     var v=this.value;
@@ -246,12 +246,9 @@ function bind(){
       else if(a==='qsel'){S.quarter=id?+id:null;render();refreshServerKpis();}
       else if(a==='bu-fc-toggle'){if(!S.buFcOpen)S.buFcOpen={};S.buFcOpen[id]=!S.buFcOpen[id];render();}
       else if(a==='cmdk-open'){openCmdK();return;}
-      else if(a==='yr-prev'){if(S.year>CFY-2){S.year--;H=fyHols(S.year);S.precs={};render();}}
-      else if(a==='yr-next'){if(S.year<CFY+1){S.year++;H=fyHols(S.year);S.precs={};render();}}
+      else if(a==='yr-prev'){if(S.year>CFY-2){S.year--;H=fyHols(S.year);render();}}
+      else if(a==='yr-next'){if(S.year<CFY+1){S.year++;H=fyHols(S.year);render();}}
       else if(a==='lvc'){S.flc=id;render();return;}
-      else if(a==='gen-ca'){genRecs('ca');}
-      else if(a==='gen-util'){genRecs('util');}
-      else if(a==='gen-tjm'){genRecs('tjm');}
       else if(a==='ac'){S.modal={type:'utilisateur',item:null,expSel:[],secSel:[],region:'',mobility:[]};render();}
       /* Chips expertise + suggestions candidats du formulaire d'opportunité (modal,
          hors #rec-list-wrap) : gérés ici dans le binding direct global. */

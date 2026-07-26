@@ -29,7 +29,6 @@ var HELP_FEATURES=[
       '\uD83D\uDCCA <strong>4 indicateurs cl\u00e9s</strong> : taux de staffing (% de jours factur\u00e9s vs jours ouvrables), CA total factur\u00e9, TJM moyen pond\u00e9r\u00e9, et contribution nette (CA \u2212 co\u00fbts employeur).',
       '\uD83D\uDD0D <strong>3 niveaux de d\u00e9tail</strong> : vue par Consultant (tri par n\'importe quel indicateur), vue par Gestionnaire (lignes d\u00e9pliables pour voir les consultants), vue VP (3 niveaux hi\u00e9rarchiques).',
       '\uD83D\uDCC5 <strong>Filtrage temporel</strong> : exercice fiscal complet ou trimestre (Q1/Q2/Q3/Q4). Le d\u00e9marrage de l\'exercice est configurable dans Param\u00e8tres (ex. octobre pour un FY Oct-Sept).',
-      '\u26A0\uFE0F <strong>Alertes automatiques</strong> : les consultants sous 80% de taux d\'utilisation apparaissent en orange dans les Pr\u00e9conisations.',
       '\uD83E\uDDEE <strong>Calcul du SCR</strong> : co\u00fbt journalier = SCR \u00d7 113,35 (jours ouvrables annuels) \u00d7 1,25 (charges patronales). La marge = (TJM \u2212 co\u00fbt) / TJM.',
     ]
   },
@@ -124,17 +123,6 @@ var HELP_FEATURES=[
     ]
   },
   {
-    icon:'\uD83D\uDCA1',title:'Pr\u00e9conisations',roles:['super_admin','admin','gestionnaire'],
-    desc:'Recommandations personnalis\u00e9es g\u00e9n\u00e9r\u00e9es automatiquement \u00e0 partir de vos KPIs.',
-    details:[
-      '\uD83D\uDE80 <strong>Diversification client</strong> : alerte si un client repr\u00e9sente plus de 30% du CA. Recommandation de cibles dans les secteurs compl\u00e9mentaires.',
-      '\uD83D\uDCC8 <strong>Taux d\'utilisation</strong> : identifie les consultants sous 80% et sugg\u00e8re une action imm\u00e9diate (relancer le pipeline, mission interne).',
-      '\uD83D\uDCB0 <strong>Optimisation tarifaire</strong> : compare le TJM de chaque consultant \u00e0 la moyenne \u00e9quipe. Calcule le gain potentiel d\'une hausse de 5% sur l\'exercice.',
-      '\uD83D\uDCC5 <strong>Anticipation inter-contrats</strong> : liste les consultants dont la mission se termine dans moins de 30 jours sans suite identifi\u00e9e. Priorit\u00e9 d\'action.',
-      '\uD83D\uDD04 <strong>Mise \u00e0 jour automatique</strong> : les pr\u00e9conisations se recalculent \u00e0 chaque saisie. Elles sont filtr\u00e9es par exercice fiscal et trimestre.',
-    ]
-  },
-  {
     icon:'\u2699',title:'Param\u00e8tres',roles:['super_admin'],
     desc:'Configuration g\u00e9n\u00e9rale de votre espace Konsilys.',
     details:[
@@ -153,7 +141,7 @@ var ONBOARDING_STEPS={
     {icon:'\u2699',title:'Configurez votre espace',desc:'Commencez par les Param\u00e8tres (\u274F sidebar) : d\u00e9finissez votre devise, le mois de d\u00e9marrage de votre exercice fiscal, et personnalisez les noms des r\u00f4les si besoin.'},
     {icon:'\uD83D\uDD11',title:'Invitez votre \u00e9quipe',desc:'Dans Gestion des acc\u00e8s, invitez vos Admins et Recruteurs par email. Ils s\'inscrivent sur konsilys.fr et sont rattach\u00e9s automatiquement.'},
     {icon:'\uD83D\uDC65',title:'Ajoutez vos collaborateurs',desc:'Dans l\'onglet \u00c9quipe, ajoutez chaque consultant avec son SCR journalier. Le syst\u00e8me calcule automatiquement les co\u00fbts et marges.'},
-    {icon:'\uD83C\uDF89',title:'Vous \u00eates pr\u00eat !',desc:'Explorez les KPIs, le Dashboard et les Pr\u00e9conisations. Tout se met \u00e0 jour automatiquement au fil des saisies.'},
+    {icon:'\uD83C\uDF89',title:'Vous \u00eates pr\u00eat !',desc:'Explorez les KPIs et le Dashboard. Tout se met \u00e0 jour automatiquement au fil des saisies.'},
   ],
   'admin':[
     {icon:'\uD83D\uDC4B',title:'Bienvenue, Admin !',desc:'Vous supervisez plusieurs \u00e9quipes de Gestionnaires. Voici comment d\u00e9marrer.'},
@@ -647,48 +635,6 @@ function tHelp(){
 }
 
 
-function tParam(){
-  var ks=buildKS();
-  var totR=ks.reduce(function(s,x){return s+x.k.rev;},0);
-  var totBill=ks.reduce(function(s,x){return s+x.k.bill;},0);
-  var _aktWD=ks.reduce(function(s,x){return s+(x.k.tWD||0);},0);
-  var avgSr=_aktWD>0?ks.reduce(function(s,x){return s+x.k.sr*(x.k.tWD||0);},0)/_aktWD:0;
-  var avgTJMv=totBill>0?totR/totBill:0;
-  var _fyTWD=wDays(fyStart(S.year),fyEnd(S.year),H);
-  var netC=totR-(_fyTWD>0?ks.reduce(function(s,x){return s+(x.c.contract==='freelance'?x.c.scr*x.k.bill:x.c.scr*SCR_FACTOR*EMPLOYER_FACTOR*(x.k.tWD/_fyTWD));},0):0);
-
-  var context='<div class="card" style="padding:20px;margin-bottom:20px">'
-    +'<div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:14px">\uD83D\uDCCC Situation actuelle - '+fyLbl(S.year)+'</div>'
-    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">'
-    +[['Staffing moyen',avgSr.toFixed(1)+'%'],['CA total',fEur(totR)],['TJM moyen',avgTJMv>0?fEur(Math.round(avgTJMv)):'\u2014'],['Contribution nette',fEur(netC)]].map(function(x){
-      return '<div style="text-align:center;padding:12px;background:#f8fafc;border-radius:8px">'
-        +'<div style="font-size:16px;font-weight:800;color:#0f172a">'+x[1]+'</div>'
-        +'<div style="font-size:11px;color:#64748b;margin-top:2px">'+x[0]+'</div></div>';
-    }).join('')+'</div></div>';
-
-  var goals=[
-    {id:'ca',  icon:'\uD83D\uDCB6', title:'Augmenter le Chiffre d\'Affaires',       sub:'Maximiser les revenus de votre équipe de conseil'},
-    {id:'util',icon:'\uD83D\uDCCA', title:'Améliorer le Taux d\'Utilisation',        sub:'Optimiser le staffing et réduire les jours non facturés'},
-    {id:'tjm', icon:'\uD83D\uDCC8', title:'Augmenter le TJM Moyen',                  sub:'Améliorer les tarifs et la marge de votre équipe'}
-  ];
-
-  var sections=goals.map(function(g){
-    var recs=S.precs&&S.precs[g.id];
-    var recHtml=recs?recs.map(function(r,i){
-      return '<div class="rec-card">'
-        +'<div class="rec-title">'+esc((i+1)+'. '+r.title)+'</div>'
-        +'<div class="rec-detail">'+esc(r.detail)+'</div></div>';
-    }).join(''):'<div style="font-size:12px;color:#94a3b8;font-style:italic;padding:8px 0">Cliquez sur \u00ab\u00a0G\u00e9n\u00e9rer\u00a0\u00bb pour obtenir des pr\u00e9conisations personnalis\u00e9es bas\u00e9es sur vos donn\u00e9es '+fyLbl(S.year)+'.</div>';
-    return '<div class="goal-card"><div class="goal-header">'
-      +'<div class="goal-icon">'+g.icon+'</div>'
-      +'<div style="flex:1"><div class="goal-title">'+esc(g.title)+'</div><div class="goal-sub">'+esc(g.sub)+'</div></div>'
-      +'<button class="bp" style="flex-shrink:0" data-act="gen-'+g.id+'">\u26A1 Générer les préconisations</button>'
-      +'</div>'+recHtml+'</div>';
-  }).join('');
-
-  return '<div class="vw">'
-    +'<div><div class="pt">Param\u00e9trage & Pr\u00e9conisations</div>'
-    +'<div class="ps">Analyse intelligente de vos donn\u00e9es '+fyLbl(S.year)+' pour vous aider \u00e0 atteindre vos objectifs</div></div>'
-    +context+sections+'</div>';
-}
+/* La page « Préconisations » (tParam) et son moteur (js/02-recommendations.js)
+   ont été retirés — fonctionnalité jugée peu utile. */
 
