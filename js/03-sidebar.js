@@ -8,6 +8,17 @@ function qSeg(id,lb,active,title){
     +' style="flex:1;min-width:0;padding:6px 2px;border:none;border-radius:6px;font-size:10.5px;font-weight:800;cursor:pointer;transition:all .14s;'
     +(active?'background:#84CC16;color:#16240a;box-shadow:0 1px 4px rgba(132,204,22,.35)':'background:transparent;color:#9fb0c2')+'">'+lb+'</button>';
 }
+/* Pôles de la barre latérale (regroupement des onglets). Global : partagé entre
+   le rendu (tSB) et la navigation (navGo, qui déplie le pôle de l'onglet visé).
+   Chaque pôle est REPLIÉ par défaut ; l'ouverture est manuelle (S.navOpen[gid]). */
+var NAV_GROUPS=[
+  {gid:'g_pilotage',  ic:'🧭',lb:'Pilotage',         members:['kpis','dashboard']},
+  {gid:'g_commercial',ic:'🤝',lb:'Commercial',       members:['business','opportunites']},
+  {gid:'g_delivery',  ic:'🚀',lb:'Delivery',         members:['missions','planning']},
+  {gid:'g_temps',     ic:'⏱️',lb:'Temps & absences', members:['activite','leaves']}
+];
+function navGroupOf(tab){for(var i=0;i<NAV_GROUPS.length;i++){if(NAV_GROUPS[i].members.indexOf(tab)>=0)return NAV_GROUPS[i].gid;}return null;}
+function navGroupById(gid){for(var i=0;i<NAV_GROUPS.length;i++){if(NAV_GROUPS[i].gid===gid)return NAV_GROUPS[i];}return null;}
 function tSB(){
   var NAV;
   if(S.role==='recruteur'){
@@ -84,19 +95,20 @@ function tSB(){
   /* ── Regroupement en pôles repliables (allègement de la barre) ──
      Chaque pôle n'affiche que les onglets réellement accessibles pour le rôle :
      0 accessible → pôle masqué ; 1 → onglet simple (sans pôle) ; ≥2 → pôle
-     repliable, déplié quand il contient l'onglet actif. Les onglets « système »
-     (Aide, Intégrations) passent en pied, après un séparateur.
-     Un pôle n'a PAS d'onglet propre : son en-tête (data-navgroup) mène à son
-     onglet primaire (le 1er accessible). Les sous-onglets gardent leur data-nav
-     (donc la palette ⌘K et le handler de nav existants continuent de marcher ;
-     les sous-onglets d'un pôle replié restent dans le DOM, masqués via [hidden]). */
+     replié par défaut, déplié UNIQUEMENT sur clic (S.navOpen[gid]). Un pôle qui
+     contient l'onglet actif mais reste replié affiche un discret point d'accent.
+     Les onglets « système » (Aide, Intégrations) passent en pied, après un
+     séparateur. L'en-tête d'un pôle (data-navtoggle) plie/déplie ; les sous-
+     onglets gardent leur data-nav (palette ⌘K + handler de nav inchangés ; les
+     sous-onglets d'un pôle replié restent dans le DOM, masqués via [hidden]). */
   var navById={};NAV.forEach(function(n){navById[n.id]=n;});
+  if(!S.navOpen)S.navOpen={};
   var NAV_PLAN=[
-    {gid:'g_pilotage',  ic:'🧭',lb:'Pilotage',         members:['kpis','dashboard']},
-    {gid:'g_commercial',ic:'🤝',lb:'Commercial',       members:['business','opportunites']},
+    NAV_GROUPS[0],           /* Pilotage   */
+    NAV_GROUPS[1],           /* Commercial */
     {leaf:'recrutement'},
-    {gid:'g_delivery',  ic:'🚀',lb:'Delivery',         members:['missions','planning']},
-    {gid:'g_temps',     ic:'⏱️',lb:'Temps & absences', members:['activite','leaves']},
+    NAV_GROUPS[2],           /* Delivery   */
+    NAV_GROUPS[3],           /* Temps & absences */
     {leaf:'teams'},
     {leaf:'approvals'},
     {sysdiv:true},
@@ -114,9 +126,11 @@ function tSB(){
     var mem=blk.members.filter(function(id){return navById[id];});
     if(!mem.length)return '';
     if(mem.length===1)return _leafBtn(navById[mem[0]]); /* un seul onglet accessible → pas de pôle */
-    var open=mem.indexOf(S.tab)>=0;
-    var head='<button class="nb grp'+(open?' open':'')+'" data-navgroup="'+mem[0]+'" aria-expanded="'+(open?'true':'false')+'">'
+    var open=!!S.navOpen[blk.gid];              /* replié par défaut ; ouverture manuelle */
+    var cur=mem.indexOf(S.tab)>=0;              /* le pôle contient l'onglet actif */
+    var head='<button class="nb grp'+(open?' open':'')+(cur&&!open?' cur':'')+'" data-navtoggle="'+blk.gid+'" aria-expanded="'+(open?'true':'false')+'">'
       +'<span class="nbi" aria-hidden="true">'+blk.ic+'</span><span>'+esc(blk.lb)+'</span>'
+      +(cur&&!open?'<span class="nbdot" aria-hidden="true"></span>':'')
       +'<span class="nbchev" aria-hidden="true">▸</span></button>';
     var subs='<div class="nsub"'+(open?'':' hidden')+'>'+mem.map(function(id){return _leafBtn(navById[id],'nsb');}).join('')+'</div>';
     return head+subs;

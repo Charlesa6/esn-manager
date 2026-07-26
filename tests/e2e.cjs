@@ -133,17 +133,19 @@ async function newPage(browser) {
       check('navigation vers « ' + t +' » sans erreur JS', errCount === 0, p._appErrors.join(' | '));
     }
 
-    // Barre latérale groupée : cliquer l'en-tête d'un pôle déplie ses sous-onglets
-    // (le pôle « Delivery » contient Missions + Planning).
+    // Barre latérale groupée : les pôles sont REPLIÉS par défaut ; cliquer l'en-tête
+    // (data-navtoggle) déplie ce pôle et expose ses sous-onglets.
     const poleOk = await p.evaluate(() => {
-      var head = document.querySelector('[data-navgroup]');
+      S.navOpen = {}; render();                                          // état plié par défaut
+      var foldedBefore = document.querySelectorAll('.nsub:not([hidden])').length;
+      var head = document.querySelector('[data-navtoggle]');
       if (!head) return { ok:false, why:'aucun pôle' };
-      head.click(); // navigue vers l'onglet primaire du pôle → le déplie
-      var openGroups = document.querySelectorAll('.nsub:not([hidden])').length;
+      head.click();                                                       // déplie CE pôle
+      var openAfter = document.querySelectorAll('.nsub:not([hidden])').length;
       var subVisible = !!document.querySelector('.nsub:not([hidden]) .nsb');
-      return { ok: openGroups >= 1 && subVisible, openGroups: openGroups };
+      return { ok: foldedBefore === 0 && openAfter === 1 && subVisible, foldedBefore: foldedBefore, openAfter: openAfter };
     });
-    check('Sidebar : les pôles se déplient et exposent leurs sous-onglets', poleOk.ok, JSON.stringify(poleOk));
+    check('Sidebar : pôles repliés par défaut, l’en-tête les déplie', poleOk.ok, JSON.stringify(poleOk));
 
     // Feature : Prévisionnel + marge consolidée BU/Practice (onglet KPIs)
     await goTab('kpis'); await p.waitForTimeout(300);

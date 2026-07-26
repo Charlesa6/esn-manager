@@ -96,6 +96,11 @@ body.sb-col #sb-open{display:flex}
 .nb.grp .nbchev{margin-left:auto;font-size:9px;opacity:.55;transition:transform .16s}
 .nb.grp.open{color:#e2e8f0}
 .nb.grp.open .nbchev{transform:rotate(90deg);opacity:.8}
+/* Pôle replié contenant l'onglet actif : libellé en accent + petit point */
+.nb.grp.cur{color:#cbe89a}
+.nb.grp.cur .nbi{filter:none}
+.nbdot{width:6px;height:6px;border-radius:99px;background:var(--brand);margin-left:auto;flex-shrink:0;box-shadow:0 0 6px rgba(132,204,22,.6)}
+.nb.grp.cur .nbdot+.nbchev{margin-left:8px}
 .nsub{display:flex;flex-direction:column;gap:1px;margin:1px 0 5px 10px;padding-left:11px;border-left:1px solid rgba(255,255,255,.10)}
 .nsub[hidden]{display:none}
 .nsb{width:100%;display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;border:none;background:transparent;color:#8ba0b4;font-size:12px;font-weight:600;text-align:left;cursor:pointer;transition:background .14s,color .14s}

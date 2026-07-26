@@ -107,6 +107,8 @@ function bind(){
     if(!nv)return;
     if(nv==='recrutement'){S.recSel=null;S.recAddMeet=false;S.recAddCgi=false;S.recAddCv=false;S.recEditMeetId=null;S.recEditCgiId=null;}
     S.tab=nv;
+    /* Naviguer vers un onglet déplie son pôle (pour situer l'utilisateur). */
+    if(typeof navGroupOf==='function'){var _g=navGroupOf(nv);if(_g){if(!S.navOpen)S.navOpen={};S.navOpen[_g]=true;}}
     /* Mobile : refermer la sidebar (overlay) après navigation */
     if(window.innerWidth<=767)document.body.classList.add('sb-col');
     /* Rafraîchir les données en temps réel sur les onglets sensibles */
@@ -123,9 +125,9 @@ function bind(){
   }
   var nbs=document.querySelectorAll('[data-nav]');
   for(var i=0;i<nbs.length;i++){(function(b){b.onclick=function(){navGo(b.getAttribute('data-nav'));};})(nbs[i]);}
-  /* En-tête d'un pôle repliable → mène à son onglet primaire (ce qui le déplie). */
-  var ngs=document.querySelectorAll('[data-navgroup]');
-  for(var gi=0;gi<ngs.length;gi++){(function(b){b.onclick=function(){navGo(b.getAttribute('data-navgroup'));};})(ngs[gi]);}
+  /* En-tête d'un pôle → plie / déplie (sans naviguer). Replié par défaut. */
+  var ngs=document.querySelectorAll('[data-navtoggle]');
+  for(var gi=0;gi<ngs.length;gi++){(function(b){b.onclick=function(){var g=b.getAttribute('data-navtoggle');if(!S.navOpen)S.navOpen={};S.navOpen[g]=!S.navOpen[g];render();};})(ngs[gi]);}
   /* filters */
   var fc=el('fmc');if(fc)fc.onchange=function(){S.fmc=this.value;render();};
   var fs=el('fms');if(fs)fs.onchange=function(){S.fms=this.value;render();};
