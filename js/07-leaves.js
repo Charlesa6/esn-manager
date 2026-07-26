@@ -83,6 +83,49 @@ function leaveQuotasFor(c){
   };
 }
 
+/* ═══ Contrôle de solde avant demande de congé (CP / RTT Q1 / Q2) ═══
+   Renvoie {capped:false} pour un type non plafonné (maladie, formation…), sinon
+   {capped:true, ok, need, remaining, quota, taken, label, period}. `excludeLvId`
+   exclut la demande en cours d'édition pour ne pas la compter deux fois. */
+function checkLeaveBalance(cid,type,s,e,excludeLvId){
+  if(type!=='Congé payé'&&type!=='RTT'&&type!=='RTT Q2')return {capped:false};
+  var c=((S._all&&S._all.cons)||S.cons||[]).find(function(x){return x.id===cid;});
+  if(!c)return {capped:false};
+  var Q=leaveQuotasFor(c),period,quota,label;
+  if(type==='Congé payé'){period=cpPeriod();quota=Q.cp;label='congés payés';}
+  else if(type==='RTT'){period=rttPeriodFor(c);quota=Q.rtt;label='RTT Q1';}
+  else{period=q2Period();quota=Q.q2;label='jours Q2';}
+  var HS=holRange(period.s,period.e),taken=0;
+  ((S._all&&S._all.lvs)||S.lvs||[]).forEach(function(l){
+    if(l.cid!==cid||l.type!==type)return;
+    if(excludeLvId&&l.id===excludeLvId)return;
+    if(l.e<period.s||l.s>period.e)return;
+    var a=l.s>period.s?l.s:period.s,b=l.e<period.e?l.e:period.e;
+    taken+=wDays(a,b,HS);
+  });
+  var need=0;
+  if(s&&e&&!(e<period.s||s>period.e)){var na=s>period.s?s:period.s,nb=e<period.e?e:period.e;need=wDays(na,nb,HS);}
+  var remaining=round2(quota-taken);
+  return {capped:true,ok:need<=remaining+1e-9,need:round2(need),remaining:remaining,quota:round2(quota),taken:round2(taken),label:label,period:period};
+}
+/* Indicateur de solde affiché dans le modal de demande d'absence. */
+function leaveBalanceHintHTML(cid,type,s,e,excludeLvId){
+  var r=checkLeaveBalance(cid,type,s,e,excludeLvId);
+  if(!r.capped)return '';
+  var remCol=r.remaining<0?'#dc2626':'#15803d';
+  var h='<div style="font-size:12px;color:#475569">Solde '+r.label+' : <strong style="color:'+remCol+'">'+fmtJ(r.remaining)+'</strong> restants / '+fmtJ(r.quota)+' ('+fmtJ(r.taken)+' déjà posés) · '+esc(r.period.lb)+'</div>';
+  if(s&&e&&r.need>0){
+    h+='<div style="font-size:12px;font-weight:800;margin-top:3px;color:'+(r.ok?'#15803d':'#dc2626')+'">Cette demande : '+fmtJ(r.need)+' ouvrés → '+(r.ok?'✓ dans le solde':'✗ dépasse le solde de '+fmtJ(r.need-r.remaining))+'</div>';
+  }
+  return h;
+}
+function updateLeaveBalanceHint(){
+  var el=document.getElementById('lv-bal-hint');if(!el)return;
+  var g=function(id){var x=document.getElementById(id);return x?x.value:'';};
+  var exclude=(S.modal&&S.modal.item)?S.modal.item.id:null;
+  var html=leaveBalanceHintHTML(g('mlc'),g('mlt'),g('mls'),g('mle'),exclude);
+  el.innerHTML=html;el.style.display=html?'block':'none';
+}
 /* Carte tableau de bord des soldes CP / RTT Q1 / Q2 pour une liste de consultants. */
 function leaveBalanceCard(consList){
   var canEdit=(S.role==='admin'||S.role==='super_admin');

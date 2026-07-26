@@ -516,6 +516,16 @@ function bind(){
         var lci=gv('mlc'),lt=gv('mlt'),ls=gv('mls'),le=gv('mle');
         if(!lci||!ls||!le){alert('Veuillez remplir les champs obligatoires (*).');return;}
         var it=S.modal.item;
+        /* Contrôle de solde AVANT toute soumission : congés / RTT / Q2 ne peuvent
+           être demandés que si le solde restant les couvre (pour soi ou l'équipe). */
+        var _bal=checkLeaveBalance(lci,lt,ls,le,it?it.id:null);
+        if(_bal.capped&&!_bal.ok){
+          alert('Solde insuffisant pour '+_bal.label+' — demande non soumise.\n\n'
+            +'Demande : '+fmtJ(_bal.need)+' ouvrés\n'
+            +'Solde restant : '+fmtJ(_bal.remaining)+' / '+fmtJ(_bal.quota)+' ('+fmtJ(_bal.taken)+' déjà posés)\n'
+            +'Période de prise : '+_bal.period.lb);
+          return;
+        }
         /* Qui est mon approbateur ? = mon N+1 effectif (suit délégation, remonte au N+2 si absent) */
         var approverId=resolveApprover(S._userId);
         /* R\u00e8gle : seule une demande de cong\u00e9s POUR SOI-M\u00caME passe par l'approbation du N+1.

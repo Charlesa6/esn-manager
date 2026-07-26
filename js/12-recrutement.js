@@ -905,10 +905,12 @@ function tModal(){
       var label=(x.id===S.consId)?('\u2605 Moi \u2014 '+x.name):x.name;
       return '<option value="'+x.id+'"'+(x.id===selfCid?' selected':'')+'>'+esc(label)+'</option>';
     }).join('');
-    body='<div class="fd"><label class="fl">'+rLabel('utilisateur')+'</label><select class="ic" id="mlc">'+coLeave+'</select></div>'
-      +'<div class="fd"><label class="fl">Type *</label><select class="ic" id="mlt">'+lo+'</select></div>'
-      +'<div class="g2"><div class="fd"><label class="fl">Du *</label><input class="ic" id="mls" type="date" value="'+esc(it?it.s:'')+'"></div>'
-      +'<div class="fd"><label class="fl">Au *</label><input class="ic" id="mle" type="date" value="'+esc(it?it.e:'')+'"></div></div>'
+    body='<div class="fd"><label class="fl">'+rLabel('utilisateur')+'</label><select class="ic" id="mlc" onchange="updateLeaveBalanceHint()">'+coLeave+'</select></div>'
+      +'<div class="fd"><label class="fl">Type *</label><select class="ic" id="mlt" onchange="updateLeaveBalanceHint()">'+lo+'</select></div>'
+      +'<div class="g2"><div class="fd"><label class="fl">Du *</label><input class="ic" id="mls" type="date" value="'+esc(it?it.s:'')+'" onchange="updateLeaveBalanceHint()"></div>'
+      +'<div class="fd"><label class="fl">Au *</label><input class="ic" id="mle" type="date" value="'+esc(it?it.e:'')+'" onchange="updateLeaveBalanceHint()"></div></div>'
+      +(function(){var _h=leaveBalanceHintHTML(selfCid,dt,(it?it.s:''),(it?it.e:''),(it?it.id:null));return '<div id="lv-bal-hint" style="margin-top:4px;padding:9px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;display:'+(_h?'block':'none')+'">'+_h+'</div>';})()
+      +'<p class="fh">Un solde suffisant est requis pour soumettre une demande de congés, RTT ou Q2 ; elle passe ensuite en validation N+1.</p>'
       +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="sl">'+(it?'Enregistrer':'Ajouter')+'</button></div>';
   }
   if(tp==='dayexc'){
