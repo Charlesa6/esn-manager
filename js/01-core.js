@@ -424,12 +424,17 @@ function loadDemoData(){
   S.year=2026;
   S.quarter=null;
   S.tab=S.role==='utilisateur'?'activite':S.role==='recruteur'?'recrutement':S.role==='sales'?'business':'kpis';
+  /* Dates d'arrivée futures relatives à aujourd'hui (démo « prochaines arrivées »
+     toujours à venir quel que soit le jour de la présentation). */
+  var _fut=function(n){var d=new Date();d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
   S.cons=[
     {id:'d1',name:'Sophie Martin',   title:'Consultante Senior',scr:520,email:'s.martin@demo.fr',   dir:'Thomas Bernard',arrive:'2018-03-01',depart:null,modalite:'MS',q2Days:0},
     {id:'d2',name:'Lucas Dupont',    title:'Architecte Cloud',  scr:610,email:'l.dupont@demo.fr',   dir:'Thomas Bernard',arrive:'2021-06-01',depart:null,modalite:'AC',q2Days:5},
     {id:'d3',name:'Inès Rousseau',   title:'Data Engineer',     scr:480,email:'i.rousseau@demo.fr', dir:'Marie Lefebvre',arrive:'2022-09-01',depart:null,modalite:'RM',q2Days:0},
     {id:'d4',name:'Karim Belhaj',    title:'Chef de projet',    scr:560,email:'k.belhaj@demo.fr',   dir:'Marie Lefebvre',arrive:'2020-01-01',depart:null,modalite:'MS',q2Days:0},
-    {id:'d5',name:'Claire Morin',    title:'Développeuse BI',   scr:450,email:'c.morin@demo.fr',    dir:'Thomas Bernard',arrive:'2023-05-01',depart:null,modalite:'RM',q2Days:0}
+    {id:'d5',name:'Claire Morin',    title:'Développeuse BI',   scr:450,email:'c.morin@demo.fr',    dir:'Thomas Bernard',arrive:'2023-05-01',depart:null,modalite:'RM',q2Days:0},
+    {id:'d6',name:'Yasmine Cherif', title:'Consultante Cloud', scr:470,email:'y.cherif@demo.fr',   dir:'Thomas Bernard',arrive:_fut(9), depart:null,modalite:'RM',q2Days:0,expertise:['Cloud','Azure','DevOps'],sectors:['Banque & Assurance']},
+    {id:'d7',name:'Thomas Nguyen',  title:'Data Scientist',    scr:520,email:'t.nguyen@demo.fr',   dir:'Marie Lefebvre',arrive:_fut(23),depart:null,modalite:'AC',q2Days:0,expertise:['Machine Learning','Python'],sectors:['Énergie & Utilities']}
   ];
   /* Format aligné sur mapM (cli/name/btype/wdays…) pour un rendu correct partout. */
   S.miss=[
