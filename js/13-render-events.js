@@ -406,6 +406,7 @@ function bind(){
         }
       }
       /* ── Approbations directeur ── */
+      else if(a==='appr-toggle'){if(!S.apprOpen)S.apprOpen={};S.apprOpen[id]=!S.apprOpen[id];render();}
       else if(a==='appr-ok'){
         var req=S.approvals.find(function(r){return r.id===id;});
         if(!req)return;

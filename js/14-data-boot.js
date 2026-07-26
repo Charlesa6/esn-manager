@@ -1875,6 +1875,21 @@ function tApprovals(){
   }
   var isValidator=myApprovalRoles.length>0;
 
+  /* Groupe de demandes repliable (plié par défaut) — évite les longues listes.
+     Le compteur reste visible dans l'en-tête, quel que soit le statut. */
+  if(!S.apprOpen)S.apprOpen={};
+  function apprGroup(key,title,count,inner,accent){
+    var open=!!S.apprOpen[key];
+    return '<div class="card" style="padding:0;margin-bottom:12px;overflow:hidden">'
+      +'<button class="apgh" data-act="appr-toggle" data-id="'+key+'" aria-expanded="'+(open?'true':'false')+'">'
+      +'<span style="font-size:13px;font-weight:800;color:#0f172a">'+title+'</span>'
+      +'<span style="font-size:12px;font-weight:800;color:#fff;background:'+(count?(accent||'#94a3b8'):'#cbd5e1')+';border-radius:99px;padding:1px 9px;min-width:22px;text-align:center">'+count+'</span>'
+      +'<span class="apgc" style="margin-left:auto;font-size:11px;color:#94a3b8;transform:rotate('+(open?'90':'0')+'deg)">▶</span>'
+      +'</button>'
+      +(open?'<div style="padding:2px 18px 14px">'+(count?inner:'<div style="color:#94a3b8;font-size:13px;padding:6px 0">Aucune demande.</div>')+'</div>':'')
+      +'</div>';
+  }
+
   /* ── Bloc VALIDATEUR : demandes que je dois valider ── */
   var validatorHtml='';
   if(isValidator){
@@ -1907,9 +1922,8 @@ function tApprovals(){
         +'</div></div></div>';
     }).join('');
     validatorHtml=
-      (lvRows?'<div class="card" style="padding:20px;margin-bottom:16px"><div style="font-weight:700;color:#0f172a;margin-bottom:12px">⏳ Absences en attente ('+pendingLv.length+')</div>'+lvRows+'</div>':'')
-      +(apprRows?'<div class="card" style="padding:20px;margin-bottom:16px"><div style="font-weight:700;color:#0f172a;margin-bottom:12px">⏳ Demandes en attente ('+pending.length+')</div>'+apprRows+'</div>':'')
-      +((!lvRows&&!apprRows)?'<div class="emp" style="margin-bottom:8px">Aucune demande en attente de votre validation.</div>':'');
+      apprGroup('v_lv','⏳ Absences à valider',pendingLv.length,lvRows,'#f59e0b')
+      +apprGroup('v_appr','⏳ Demandes à valider',pending.length,apprRows,'#f59e0b');
   }
 
   /* ── Bloc DEMANDEUR : mes propres demandes (tous rôles, y compris validateurs) ── */
@@ -1934,17 +1948,10 @@ function tApprovals(){
       +'</div>'
       +'<div style="font-size:22px;font-weight:900;color:'+ic2+'">'+icon+'</div></div></div>';
   }
-  function section(title,list,emptyMsg){
-    return '<div style="margin-bottom:24px">'
-      +'<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:12px">'+title+' ('+list.length+')</div>'
-      +(list.length?list.map(apRow).join(''):'<div style="color:#94a3b8;font-size:13px;padding:8px 0">'+emptyMsg+'</div>')
-      +'</div>';
-  }
-  var mineHtml='<div class="card" style="padding:24px">'
-    +section('⏳ En cours d’analyse',pending2,'Aucune demande en attente.')
-    +section('✓ Approuvées',approved,'Aucune demande approuvée.')
-    +section('✕ Refusées',rejected,'Aucune demande refusée.')
-    +'</div>';
+  var mineHtml=
+    apprGroup('m_pending','⏳ En cours d’analyse',pending2.length,pending2.map(apRow).join(''),'#f59e0b')
+    +apprGroup('m_approved','✓ Approuvées',approved.length,approved.map(apRow).join(''),'#16a34a')
+    +apprGroup('m_rejected','✕ Refusées',rejected.length,rejected.map(apRow).join(''),'#dc2626');
 
   return '<div class="vw">'
     +'<div class="ph"><div><div class="pt">🔔 Approbations</div>'

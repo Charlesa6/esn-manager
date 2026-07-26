@@ -399,7 +399,7 @@ var S={
   consInvites:[], /* codes d'accès générés pour les consultants */
   adminCode:null, /* dernier code généré (affiché dans Admin) */
   year:CFY,quarter:null,modal:null,fmc:'all',fms:'all',fmt:'all',flc:'all',precs:{},
-  role:'admin',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,kpiDirOpen:{},invites:[],svpInvites:[],recruteurInvites:[],vpDirMap:{},vpName:'',profileFirstName:'',profileLastName:'',profileTitle:'',fvp:[],settings:{currency:'EUR',currencySymbol:'€',fyStartMonth:10,fyStartDay:1,roleLabels:{},hasBusinessModule:false,hasRecrutementModule:false},kpiVPOpen:{},kpiDirDirOpen:{},navOpen:{},actCid:'',actMonth:'',_all:null,leaveApprovalRole:'super_admin',allInvites:[],managerId:null,approvalDelegateTo:null,approvalDelegateUntil:null,orgProfiles:[],
+  role:'admin',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,kpiDirOpen:{},invites:[],svpInvites:[],recruteurInvites:[],vpDirMap:{},vpName:'',profileFirstName:'',profileLastName:'',profileTitle:'',fvp:[],settings:{currency:'EUR',currencySymbol:'€',fyStartMonth:10,fyStartDay:1,roleLabels:{},hasBusinessModule:false,hasRecrutementModule:false},kpiVPOpen:{},kpiDirDirOpen:{},navOpen:{},apprOpen:{},actCid:'',actMonth:'',_all:null,leaveApprovalRole:'super_admin',allInvites:[],managerId:null,approvalDelegateTo:null,approvalDelegateUntil:null,orgProfiles:[],
   /* CRM Business */
   bizTab:'pipeline',bizAccounts:[],bizContacts:[],bizOpps:[],bizActivities:[],bizApprovals:[],bizModal:null,bizFilter:{status:'all',account:'',exp:''},
   sbSt:'\uD83D\uDFE2 Sauvegarde locale active',
