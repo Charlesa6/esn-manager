@@ -425,11 +425,11 @@ function loadDemoData(){
   S.quarter=null;
   S.tab=S.role==='utilisateur'?'activite':S.role==='recruteur'?'recrutement':S.role==='sales'?'business':'kpis';
   S.cons=[
-    {id:'d1',name:'Sophie Martin',   title:'Consultante Senior',scr:520,email:'s.martin@demo.fr',   dir:'Thomas Bernard',arrive:'2024-10-01',depart:null},
-    {id:'d2',name:'Lucas Dupont',    title:'Architecte Cloud',  scr:610,email:'l.dupont@demo.fr',   dir:'Thomas Bernard',arrive:'2024-10-01',depart:null},
-    {id:'d3',name:'Inès Rousseau',   title:'Data Engineer',     scr:480,email:'i.rousseau@demo.fr', dir:'Marie Lefebvre',arrive:'2025-01-06',depart:null},
-    {id:'d4',name:'Karim Belhaj',    title:'Chef de projet',    scr:560,email:'k.belhaj@demo.fr',   dir:'Marie Lefebvre',arrive:'2024-10-01',depart:null},
-    {id:'d5',name:'Claire Morin',    title:'Développeuse BI',   scr:450,email:'c.morin@demo.fr',    dir:'Thomas Bernard',arrive:'2025-04-01',depart:null}
+    {id:'d1',name:'Sophie Martin',   title:'Consultante Senior',scr:520,email:'s.martin@demo.fr',   dir:'Thomas Bernard',arrive:'2018-03-01',depart:null,modalite:'MS',q2Days:0},
+    {id:'d2',name:'Lucas Dupont',    title:'Architecte Cloud',  scr:610,email:'l.dupont@demo.fr',   dir:'Thomas Bernard',arrive:'2021-06-01',depart:null,modalite:'AC',q2Days:5},
+    {id:'d3',name:'Inès Rousseau',   title:'Data Engineer',     scr:480,email:'i.rousseau@demo.fr', dir:'Marie Lefebvre',arrive:'2022-09-01',depart:null,modalite:'RM',q2Days:0},
+    {id:'d4',name:'Karim Belhaj',    title:'Chef de projet',    scr:560,email:'k.belhaj@demo.fr',   dir:'Marie Lefebvre',arrive:'2020-01-01',depart:null,modalite:'MS',q2Days:0},
+    {id:'d5',name:'Claire Morin',    title:'Développeuse BI',   scr:450,email:'c.morin@demo.fr',    dir:'Thomas Bernard',arrive:'2023-05-01',depart:null,modalite:'RM',q2Days:0}
   ];
   /* Format aligné sur mapM (cli/name/btype/wdays…) pour un rendu correct partout. */
   S.miss=[
@@ -441,11 +441,14 @@ function loadDemoData(){
     {id:'m6',cid:'d1',cli:'BNP Paribas',       name:'Phase 2 Risques',  pcode:'300100006',tjm:800,sd:'2026-04-01',ed:'2026-09-30',btype:'at',     wdays:[1,2,3,4,5]}
   ];
   S.lvs=[
-    {id:'v1',cid:'d1',type:'Congé payé',s:'2025-12-22',e:'2026-01-03'},
-    {id:'v2',cid:'d2',type:'RTT',       s:'2025-11-10',e:'2025-11-10'},
-    {id:'v3',cid:'d3',type:'Congé payé',s:'2026-02-17',e:'2026-02-21'},
-    {id:'v4',cid:'d4',type:'Maladie',   s:'2026-01-13',e:'2026-01-17'},
-    {id:'v5',cid:'d5',type:'RTT',       s:'2025-12-29',e:'2025-12-31'}
+    {id:'v1',cid:'d1',type:'Congé payé',s:'2026-07-06',e:'2026-07-17'},
+    {id:'v2',cid:'d1',type:'RTT',       s:'2026-05-04',e:'2026-05-05'},
+    {id:'v3',cid:'d2',type:'Congé payé',s:'2026-08-03',e:'2026-08-07'},
+    {id:'v4',cid:'d2',type:'RTT Q2',    s:'2026-11-12',e:'2026-11-13'},
+    {id:'v5',cid:'d3',type:'Congé payé',s:'2026-04-13',e:'2026-04-17'},
+    {id:'v6',cid:'d4',type:'Maladie',   s:'2026-03-09',e:'2026-03-11'},
+    {id:'v7',cid:'d4',type:'RTT',       s:'2026-06-01',e:'2026-06-03'},
+    {id:'v8',cid:'d5',type:'Congé payé',s:'2026-09-07',e:'2026-09-11'}
   ];
   S.cands=[
     {id:'c1',name:'Maxime Guillot',expertise:['React','TypeScript'],sectors:['Banque & Finance'],locations:['Lyon'],nationality:'Française',reqSalary:48000,yearsExp:4,status:'entretien',marginPct:28,createdBy:'demo',feedbacks:[],cgiMeetings:[],cvFiles:[]}
