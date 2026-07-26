@@ -2,6 +2,75 @@
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    TEMPLATE - LEAVES
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+/* ═══ Soldes Congés payés & RTT Q1 (règles CGI — mémo Congés Payés) ═══
+   Décompte en jours ouvrés (lun–ven, hors fériés). Fenêtres de PRISE (calendaires,
+   indépendantes du FY) — identiques pour CP et RTT Q1 (modalités MS/RM) :
+     du 1er janvier de l'année A au 31 janvier A+1 (reliquats perdus au-delà).
+   Quotas plein temps par défaut : CP 27 j ouvrés (acquis 1 juin A-1 → 31 mai A),
+   RTT Q1 12 j (modalité Standard). Éditables (accord d'entreprise / modalité).
+   Année de campagne A = année courante ; en janvier on reste sur la campagne A-1
+   (sa prise court jusqu'au 31 jan). NB : CPA ancienneté et jours Q2 non modélisés. */
+function leaveCampaignYear(){var d=pD(TODAY);return d.getMonth()===0?d.getFullYear()-1:d.getFullYear();}
+function cpPeriod(){var A=leaveCampaignYear();return {s:A+'-01-01',e:(A+1)+'-01-31',N:A,lb:'prise 1 jan '+A+' → 31 jan '+(A+1)};}
+function rttPeriod(){return cpPeriod();}
+function cpQuota(){return (S.settings&&S.settings.cpQuota!=null)?+S.settings.cpQuota:27;}
+function rttQuota(){return (S.settings&&S.settings.rttQuota!=null)?+S.settings.rttQuota:12;}
+/* Jours ouvrés posés d'un type d'absence pour un consultant, dans une fenêtre. */
+function leaveDaysTaken(cid,type,p){
+  var HS=holRange(p.s,p.e),sum=0;
+  (S.lvs||[]).forEach(function(l){
+    if(l.cid!==cid||l.type!==type)return;
+    if(l.e<p.s||l.s>p.e)return;                 /* hors fenêtre */
+    var a=l.s>p.s?l.s:p.s,b=l.e<p.e?l.e:p.e;    /* clamp à la fenêtre */
+    sum+=wDays(a,b,HS);
+  });
+  return sum;
+}
+/* Réglage global des quotas (admin/super_admin) — persisté dans company_settings. */
+function setLeaveQuota(kind,val){
+  var n=parseFloat(val);if(isNaN(n)||n<0)n=0;
+  if(!S.settings)S.settings={};
+  if(kind==='cp')S.settings.cpQuota=n;else S.settings.rttQuota=n;
+  if(typeof persistImportPresets==='function')persistImportPresets();
+  render();
+}
+/* Formatage d'un nombre de jours (entiers ou demi-journées) avec l'unité. */
+function fmtJ(n){n=Math.round((n||0)*2)/2;return (n%1===0?String(n):n.toFixed(1))+' j';}
+/* Carte tableau de bord des soldes CP/RTT pour une liste de consultants. */
+function leaveBalanceCard(consList){
+  var cpQ=cpQuota(),rttQ=rttQuota(),cpP=cpPeriod(),rttP=rttPeriod();
+  var canEdit=(S.role==='admin'||S.role==='super_admin');
+  function qFld(kind,q){
+    return canEdit
+      ?'<input type="number" min="0" step="0.5" value="'+q+'" onchange="setLeaveQuota(\''+kind+'\',this.value)" style="width:52px;padding:3px 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;font-weight:800;text-align:center">'
+      :'<strong>'+q+'</strong>';
+  }
+  function bar(taken,q,col){
+    var pct=q>0?Math.min(Math.round(taken/q*100),100):0;
+    return '<div style="height:5px;background:#eef2f6;border-radius:3px;margin-top:5px;max-width:120px"><div style="height:100%;width:'+pct+'%;background:'+col+';border-radius:3px"></div></div>';
+  }
+  function balCells(taken,q,col){
+    var rem=q-taken;var remCol=rem<0?'#dc2626':'#0f172a';
+    return '<td class="tc" style="white-space:nowrap"><span style="font-weight:800;color:#0f172a">'+fmtJ(taken)+'</span><span style="color:#94a3b8;font-size:11px"> / '+fmtJ(q)+'</span>'+bar(taken,q,col)+'</td>'
+      +'<td class="tc" style="font-weight:800;color:'+remCol+'">'+fmtJ(rem)+'</td>';
+  }
+  var rows=consList.map(function(c){
+    var cpT=leaveDaysTaken(c.id,'Congé payé',cpP),rttT=leaveDaysTaken(c.id,'RTT',rttP);
+    return '<tr><td style="font-weight:600;color:#0f172a">'+esc(c.name)+'</td>'
+      +balCells(cpT,cpQ,'#2563eb')+balCells(rttT,rttQ,'#7c3aed')+'</tr>';
+  }).join('');
+  return '<div class="card" style="padding:18px 20px;margin-bottom:16px">'
+    +'<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px">'
+    +'<div style="font-size:14px;font-weight:800;color:#0f172a">🏖️ Soldes congés &amp; RTT <span style="font-weight:500;color:#94a3b8;font-size:12px">— Syntec · cadres · en jours ouvrés</span></div>'
+    +'<div style="font-size:12px;color:#475569;display:flex;gap:16px;flex-wrap:wrap">'
+    +'<span>Quota CP : '+qFld('cp',cpQ)+' j</span><span>Quota RTT : '+qFld('rtt',rttQ)+' j</span></div></div>'
+    +'<div style="font-size:11px;color:#94a3b8;margin-bottom:12px">Période de prise (CP &amp; RTT Q1) : '+esc(cpP.lb)+' — reliquats perdus au-delà</div>'
+    +'<div class="ov"><table><thead><tr><th>'+rLabel('utilisateur')+'</th>'
+    +'<th class="tc">CP posés</th><th class="tc">CP restants</th>'
+    +'<th class="tc">RTT posés</th><th class="tc">RTT restants</th></tr></thead>'
+    +'<tbody>'+(rows||'<tr><td colspan="5" class="emp">Aucun consultant.</td></tr>')+'</tbody></table></div>'
+    +'</div>';
+}
 function tLeaves(){
   var H=fyHols(S.year);
   var _r=curRange(S.year);var fyS=_r[0],fyE=_r[1];
@@ -101,11 +170,16 @@ function tLeaves(){
     ?fil.length+' p\u00e9riode'+(fil.length!==1?'s':'')+' \u00b7 '+curLbl()
     :esc((S.cons.find(function(c){return c.id===S.flc;})||{name:''}).name)+' \u00b7 '+curLbl();
 
+  /* Tableau de bord des soldes CP/RTT : tous les consultants du p\u00e9rim\u00e8tre en vue
+     synth\u00e8se, la personne s\u00e9lectionn\u00e9e en vue d\u00e9tail. */
+  var balList=S.flc==='all'?_pc:_pc.filter(function(c){return c.id===S.flc;});
+
   return '<div><div class="ph"><div><div class="pt">Absences &amp; Cong\u00e9s</div><div class="ps">'+sub+'</div></div>'
     +'<div style="display:flex;gap:8px;align-items:center">'
     +'<button class="bp" data-act="al">+ Ajouter une absence</button>'
     +'<button class="bg" onclick="document.getElementById(\'lv-xls-inp\').click()">\u2191 Importer un fichier</button>'
     +'<input type="file" id="lv-xls-inp" accept=".xlsx" style="display:none" onchange="importStaffingXLS(this.files[0]);this.value=\'\'"></div></div>'
+    +leaveBalanceCard(balList)
     +'<div style="margin-bottom:16px"><select class="ic" style="max-width:240px" id="flc">'+co+'</select></div>'
     +'<div class="card ov" style="margin-bottom:16px">'+bodyHtml+'</div>'
     +'<details><summary>\uD83D\uDCC5 Jours f\u00e9ri\u00e9s fran\u00e7ais int\u00e9gr\u00e9s dans les calculs</summary>'
