@@ -82,10 +82,45 @@ function tSB(){
     if(n.id==='business')return S.role!=='utilisateur'&&(S.role==='sales'||!!(S.settings&&S.settings.hasBusinessModule));
     return true;
   });
-  var nav=NAV.map(function(n){
-    return '<button class="nb'+(S.tab===n.id?' act':'')+'" data-nav="'+n.id+'"'+(S.tab===n.id?' aria-current="page"':'')+'>'
-      +'<span class="nbi" aria-hidden="true">'+n.ic+'</span><span>'+n.lb+'</span>'
-      +(n.id==='approvals'&&alC>0?'<span class="nbb" aria-label="'+alC+' en attente">'+alC+'</span>':'')+'</button>';
+  /* ── Regroupement en pôles repliables (allègement de la barre) ──
+     Chaque pôle n'affiche que les onglets réellement accessibles pour le rôle :
+     0 accessible → pôle masqué ; 1 → onglet simple (sans pôle) ; ≥2 → pôle
+     repliable, déplié quand il contient l'onglet actif. Les onglets « système »
+     (Aide, Intégrations) passent en pied, après un séparateur.
+     Un pôle n'a PAS d'onglet propre : son en-tête (data-navgroup) mène à son
+     onglet primaire (le 1er accessible). Les sous-onglets gardent leur data-nav
+     (donc la palette ⌘K et le handler de nav existants continuent de marcher ;
+     les sous-onglets d'un pôle replié restent dans le DOM, masqués via [hidden]). */
+  var navById={};NAV.forEach(function(n){navById[n.id]=n;});
+  var NAV_PLAN=[
+    {gid:'g_pilotage',  ic:'🧭',lb:'Pilotage',         members:['kpis','dashboard','param']},
+    {gid:'g_commercial',ic:'🤝',lb:'Commercial',       members:['business','opportunites']},
+    {leaf:'recrutement'},
+    {gid:'g_delivery',  ic:'🚀',lb:'Delivery',         members:['missions','planning']},
+    {gid:'g_temps',     ic:'⏱️',lb:'Temps & absences', members:['activite','leaves']},
+    {leaf:'teams'},
+    {leaf:'approvals'},
+    {sysdiv:true},
+    {leaf:'help'},
+    {leaf:'svp_integrations'}
+  ];
+  function _navBadge(id){return (id==='approvals'&&alC>0)?'<span class="nbb" aria-label="'+alC+' en attente">'+alC+'</span>':'';}
+  function _leafBtn(n,cls){
+    return '<button class="'+(cls||'nb')+(S.tab===n.id?' act':'')+'" data-nav="'+n.id+'"'+(S.tab===n.id?' aria-current="page"':'')+'>'
+      +'<span class="nbi" aria-hidden="true">'+n.ic+'</span><span>'+n.lb+'</span>'+_navBadge(n.id)+'</button>';
+  }
+  var nav=NAV_PLAN.map(function(blk){
+    if(blk.sysdiv)return '<div class="nvdiv" role="separator"></div>';
+    if(blk.leaf){var ln=navById[blk.leaf];return ln?_leafBtn(ln):'';}
+    var mem=blk.members.filter(function(id){return navById[id];});
+    if(!mem.length)return '';
+    if(mem.length===1)return _leafBtn(navById[mem[0]]); /* un seul onglet accessible → pas de pôle */
+    var open=mem.indexOf(S.tab)>=0;
+    var head='<button class="nb grp'+(open?' open':'')+'" data-navgroup="'+mem[0]+'" aria-expanded="'+(open?'true':'false')+'">'
+      +'<span class="nbi" aria-hidden="true">'+blk.ic+'</span><span>'+esc(blk.lb)+'</span>'
+      +'<span class="nbchev" aria-hidden="true">▸</span></button>';
+    var subs='<div class="nsub"'+(open?'':' hidden')+'>'+mem.map(function(id){return _leafBtn(navById[id],'nsb');}).join('')+'</div>';
+    return head+subs;
   }).join('');
   /* ── bloc filtre directeur (gestionnaire) / libellé équipe (directeur) ── */
   var _allC=(S._all&&S._all.cons)||S.cons;

@@ -101,10 +101,10 @@ function bind(){
       loadKpiCardsPage().then(function(){render();var f=document.getElementById('kpiCardsSearch');if(f){f.focus();var n=f.value.length;try{f.setSelectionRange(n,n);}catch(e){}}});
     },350);
   };
-  /* nav */
-  var nbs=document.querySelectorAll('[data-nav]');
-  for(var i=0;i<nbs.length;i++){(function(b){b.onclick=function(){
-    var nv=b.getAttribute('data-nav');
+  /* nav — navigation vers un onglet (réutilisée par les onglets simples ET par
+     l'en-tête des pôles repliables). */
+  function navGo(nv){
+    if(!nv)return;
     if(nv==='recrutement'){S.recSel=null;S.recAddMeet=false;S.recAddCgi=false;S.recAddCv=false;S.recEditMeetId=null;S.recEditCgiId=null;}
     S.tab=nv;
     /* Mobile : refermer la sidebar (overlay) après navigation */
@@ -120,7 +120,12 @@ function bind(){
       if(!serverKpiCards()){loadKpiCardsPage().then(function(){render();});}
     }
     else{render();}
-  };})(nbs[i]);}
+  }
+  var nbs=document.querySelectorAll('[data-nav]');
+  for(var i=0;i<nbs.length;i++){(function(b){b.onclick=function(){navGo(b.getAttribute('data-nav'));};})(nbs[i]);}
+  /* En-tête d'un pôle repliable → mène à son onglet primaire (ce qui le déplie). */
+  var ngs=document.querySelectorAll('[data-navgroup]');
+  for(var gi=0;gi<ngs.length;gi++){(function(b){b.onclick=function(){navGo(b.getAttribute('data-navgroup'));};})(ngs[gi]);}
   /* filters */
   var fc=el('fmc');if(fc)fc.onchange=function(){S.fmc=this.value;render();};
   var fs=el('fms');if(fs)fs.onchange=function(){S.fms=this.value;render();};

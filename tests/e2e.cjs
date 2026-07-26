@@ -110,19 +110,43 @@ async function newPage(browser) {
     const role = await p.evaluate(() => window.S && S.role);
     check('l’app démarre (état S initialisé, rôle=' + role + ')', !!role);
 
+    // Navigation via la barre latérale groupée en pôles : un sous-onglet peut être
+    // dans un pôle replié (donc masqué). goTab déclenche le vrai handler de nav
+    // (navGo), qu'il s'agisse d'un onglet simple ou d'un sous-onglet de pôle.
+    async function goTab(t) {
+      const ok = await p.evaluate((tab) => {
+        var b = document.querySelector('[data-nav="' + tab + '"]');
+        if (!b) return false;
+        b.click(); // déclenche navGo(tab) — fonctionne même si le pôle est replié
+        return true;
+      }, t);
+      await p.waitForTimeout(500);
+      return ok;
+    }
+
     // Navigation : chaque onglet principal se rend sans planter
     const tabs = ['kpis', 'dashboard', 'teams', 'missions', 'planning', 'leaves', 'opportunites'];
     for (const t of tabs) {
-      const btn = await p.$('[data-nav="' + t + '"]');
-      if (!btn) { check('onglet ' + t + ' présent', false, 'bouton nav absent'); continue; }
-      await btn.click();
-      await p.waitForTimeout(500);
+      const ok = await goTab(t);
+      if (!ok) { check('onglet ' + t + ' présent', false, 'bouton nav absent'); continue; }
       const errCount = p._appErrors.length;
       check('navigation vers « ' + t +' » sans erreur JS', errCount === 0, p._appErrors.join(' | '));
     }
 
+    // Barre latérale groupée : cliquer l'en-tête d'un pôle déplie ses sous-onglets
+    // (le pôle « Delivery » contient Missions + Planning).
+    const poleOk = await p.evaluate(() => {
+      var head = document.querySelector('[data-navgroup]');
+      if (!head) return { ok:false, why:'aucun pôle' };
+      head.click(); // navigue vers l'onglet primaire du pôle → le déplie
+      var openGroups = document.querySelectorAll('.nsub:not([hidden])').length;
+      var subVisible = !!document.querySelector('.nsub:not([hidden]) .nsb');
+      return { ok: openGroups >= 1 && subVisible, openGroups: openGroups };
+    });
+    check('Sidebar : les pôles se déplient et exposent leurs sous-onglets', poleOk.ok, JSON.stringify(poleOk));
+
     // Feature : Prévisionnel + marge consolidée BU/Practice (onglet KPIs)
-    const kb = await p.$('[data-nav="kpis"]'); if (kb) { await kb.click(); await p.waitForTimeout(800); }
+    await goTab('kpis'); await p.waitForTimeout(300);
     const bodyTxt = await p.evaluate(() => document.body.innerText);
     check('KPIs : prévisionnel de CA affiché', /Prévisionnel de CA/.test(bodyTxt));
     check('KPIs : marge consolidée par unité affichée', /Marge consolidée par unité/.test(bodyTxt));
@@ -131,12 +155,12 @@ async function newPage(browser) {
     // Garde-fou anti-régression du PÉRIMÈTRE : l'onglet Équipe ne doit PAS être vide
     // (un filtre de visibilité trop agressif l'avait vidé — cf. sanity check). On
     // compte les lignes consultant (bouton « Modifier » = data-act="ec").
-    const tb = await p.$('[data-nav="teams"]'); if (tb) { await tb.click(); await p.waitForTimeout(500); }
+    await goTab('teams');
     const teamRows = await p.evaluate(() => document.querySelectorAll('button[data-act="ec"]').length);
     check('Équipe : consultants affichés (' + teamRows + ' ligne(s), attendu > 0)', teamRows > 0, 'onglet Équipe vide');
 
     // Opportunités (pilotage des intercontrats) : contenu + modal + onglets masqués
-    const ob = await p.$('[data-nav="opportunites"]'); if (ob) { await ob.click(); await p.waitForTimeout(500); }
+    await goTab('opportunites');
     const oppTxt = await p.evaluate(() => document.body.innerText);
     check('Opportunités : pilotage des intercontrats affiché', /pilotage des intercontrats/i.test(oppTxt));
     check('Opportunités : timeline semaine/mois présente', /Semaines/.test(oppTxt) && /Mois/.test(oppTxt));
@@ -158,10 +182,9 @@ async function newPage(browser) {
     await p.evaluate(() => { S.settings = S.settings || {}; S.settings.hasBusinessModule = true; S.settings.hasRecrutementModule = true; render(); });
     await p.waitForTimeout(400);
     for (const t of ['business', 'recrutement']) {
-      const btn = await p.$('[data-nav="' + t + '"]');
-      if (!btn) { check('onglet ' + t + ' présent (module activé)', false, 'bouton nav absent'); continue; }
       const before = p._appErrors.length;
-      await btn.click(); await p.waitForTimeout(500);
+      const ok = await goTab(t);
+      if (!ok) { check('onglet ' + t + ' présent (module activé)', false, 'bouton nav absent'); continue; }
       check('navigation vers « ' + t + ' » sans erreur JS', p._appErrors.length === before, p._appErrors.slice(before).join(' | '));
     }
     // Ouverture d'un modal (nouveau candidat) — exerce tModal + widgets recrutement
