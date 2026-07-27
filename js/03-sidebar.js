@@ -111,7 +111,6 @@ function tSB(){
     NAV_GROUPS[3],           /* Temps & absences */
     {leaf:'teams'},
     {leaf:'approvals'},
-    {sysdiv:true},
     {leaf:'help'},
     {leaf:'svp_integrations'}
   ];
