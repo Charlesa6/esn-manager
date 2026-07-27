@@ -717,6 +717,15 @@ function tModal(){
       +'<div class="fd"><label class="fl">Rémunération max. (€/an)</label><input class="ic" id="jbsmax" type="number" min="0" step="500" value="'+(jd.salaryMax!=null?esc(String(jd.salaryMax)):'')+'" placeholder="55000"></div>'
       +'<div class="fd"><label class="fl">TJM cible de revente (€)</label><input class="ic" id="jbtjm" type="number" min="0" step="10" value="'+(jd.tjmTarget!=null?esc(String(jd.tjmTarget)):'')+'" placeholder="650"></div>'
       +'<div class="fd"><label class="fl">Recruteur assigné</label><select class="ic" id="jbrec">'+jRecOpts+'</select></div>'
+      /* Type de facturation de la mission créée au passage « pourvu ». */
+      +'<div class="fd"><label class="fl">Type de facturation</label><select class="ic" id="jbbt" onchange="var f=document.getElementById(\'jb-forfait\');if(f)f.style.display=this.value===\'forfait\'?\'\':\'none\'">'
+        +'<option value="at"'+((jd.billingType||'at')==='at'?' selected':'')+'>AT — Assistance Technique</option>'
+        +'<option value="forfait"'+(jd.billingType==='forfait'?' selected':'')+'>Forfait</option></select></div>'
+      +'<div class="fd cs2" id="jb-forfait" style="display:'+(jd.billingType==='forfait'?'':'none')+'"><div style="display:flex;gap:16px;flex-wrap:wrap;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px">'
+        +'<div style="flex:1;min-width:180px"><label class="fl">Montant du deal (€)</label><input class="ic" id="jbdeal" type="number" min="0" step="1000" value="'+(jd.dealAmount!=null?esc(String(jd.dealAmount)):'')+'" placeholder="150000"></div>'
+        +'<div style="flex:1;min-width:140px"><label class="fl">Marge cible (%)</label><input class="ic" id="jbtmar" type="number" min="0" max="99" step="1" value="'+(jd.targetMargin!=null?esc(String(jd.targetMargin)):'25')+'" placeholder="25"></div>'
+        +'<p class="fh" style="width:100%;margin:2px 0 0">Le montant sera réparti entre les candidats assignés (au prorata du SCR) pour créer la/les mission(s) forfait.</p>'
+        +'</div></div>'
       +(it?'<div class="fd cs2"><label class="fl">Annonce externe rédigée <span style="font-weight:400;color:#94a3b8">(vide = génération auto ; « ✨ IA » remplit ce champ)</span></label><textarea class="ic" id="jbext" rows="4" placeholder="Laissez vide pour une annonce générée automatiquement depuis les champs ci-dessus.">'+esc(it.extBody||'')+'</textarea></div>':'')
       +'</div>'
       +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="jsave">'+(it?'Enregistrer':'Créer la fiche de poste')+'</button></div>';
@@ -1285,16 +1294,15 @@ function jobFillToMissions(job){
   var client=job.clientName||(opp?accName(opp.account_id):'')||'';
   var sd=job.startDate||(opp&&opp.date_start)||fD(new Date());
   var ed=(opp&&opp.date_end)||null;
-  var tjm=job.tjmTarget||(opp&&opp.tjm_cible)||0;
+  var isForfait=(job.billingType==='forfait');
+  var atTjm=job.tjmTarget||(opp&&opp.tjm_cible)||0;
   var names=assigned.map(function(c){return c.name;}).join(', ');
-  if(!confirm('Marquer « '+(job.title||'ce poste')+' » comme pourvu et créer la/les mission(s) pour : '+names+' ?\n\nLes candidats pas encore « recrutés » seront intégrés à l\'équipe comme consultants.')){
+  if(!confirm('Marquer « '+(job.title||'ce poste')+' » comme pourvu et créer la/les mission(s) '+(isForfait?'FORFAIT':'AT')+' pour : '+names+' ?\n\nLes candidats pas encore « recrutés » seront intégrés à l\'équipe comme consultants.')){
     return;
   }
-  var created=[];
-  assigned.forEach(function(c){
-    /* 1. Garantir un consultant (recruter à la volée si besoin). */
-    var consId=c.consId;
-    var cons=consId?(S.cons||[]).find(function(x){return x.id===consId;}):null;
+  /* 1. Garantir un consultant par candidat assigné (recruter à la volée si besoin). */
+  var pairs=assigned.map(function(c){
+    var cons=c.consId?(S.cons||[]).find(function(x){return x.id===c.consId;}):null;
     if(!cons){
       cons={id:uid(),name:c.name,title:job.title||'',scr:Math.round(recScr(c.reqSalary||0)),
         email:c.email||'',dir:'',managerId:null,buId:c.buId||job.buId||myBuId()||null,
@@ -1304,14 +1312,30 @@ function jobFillToMissions(job){
       var nc=Object.assign({},c,{recruited:true,status:'recrute',recruitStart:sd,recruitPoste:job.title||'',consId:cons.id});
       S.cands=(S.cands||[]).map(function(x){return x.id===c.id?nc:x;});
       sbUpsertCand(nc).catch(function(err){console.warn('sbUpsertCand (pourvu):',err);});
-      consId=cons.id;
     }
-    /* 2. Créer la mission (AT). */
-    var m={id:uid(),name:(job.title||'Mission')+(client?' — '+client:''),cid:consId,cli:client,
-      tjm:tjm||0,btype:'at',sd:sd,ed:ed,wdays:[1,2,3,4,5]};
+    return {cand:c,cons:cons};
+  });
+  /* 2. Créer la/les mission(s). Forfait : montant réparti au prorata du SCR, TJM
+     déduit du SCR et de la marge cible (comme bizOppToMission). AT : TJM cible direct. */
+  var tmar=(job.targetMargin!=null?job.targetMargin:25);
+  var totalScr=pairs.reduce(function(s,p){return s+(p.cons.scr||0);},0)||1;
+  var deal=job.dealAmount||0;
+  var created=pairs.map(function(p){
+    var mName=(job.title||'Mission')+(client?' — '+client:'');
+    var m;
+    if(isForfait){
+      var scr=p.cons.scr||0;
+      var portion=Math.round(deal*(scr||1)/totalScr);
+      var tjmF=scr>0?Math.round(scr*113.35*1.25/(1-Math.min(tmar,99)/100)):0;
+      m={id:uid(),name:mName,cid:p.cons.id,cli:client,btype:'forfait',
+        deal:portion,tmar:tmar,tjm:tjmF,sd:sd,ed:ed,wdays:[1,2,3,4,5]};
+    }else{
+      m={id:uid(),name:mName,cid:p.cons.id,cli:client,btype:'at',
+        tjm:atTjm||0,sd:sd,ed:ed,wdays:[1,2,3,4,5]};
+    }
     S.miss=(S.miss||[]).concat([m]);
     sbUpsertMiss(m).catch(function(err){console.warn('sbUpsertMiss (pourvu):',err);alert('⚠ Erreur de synchronisation (mission) : '+err.message);});
-    created.push(m);
+    return m;
   });
   /* 3. Lier l'opportunité (gagnée + 1re mission) si présente. */
   if(opp&&created.length){
@@ -1343,6 +1367,7 @@ function tJobDetail(j){
   var compCard='<div style="display:flex;gap:32px;flex-wrap:wrap;margin-top:18px;padding-top:18px;border-top:1px solid #e2e8f0">'
     +'<div><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase">Rémunération (interne)</div><div style="font-size:18px;font-weight:800;color:#0f172a">'+((j.salaryMin||j.salaryMax)?[j.salaryMin,j.salaryMax].filter(Boolean).map(function(v){return (+v).toLocaleString('fr-FR')+' €';}).join(' – '):'—')+'</div></div>'
     +'<div><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase">TJM cible</div><div style="font-size:18px;font-weight:800;color:#2563eb">'+(j.tjmTarget?(+j.tjmTarget).toLocaleString('fr-FR')+' €':'—')+'</div></div>'
+    +'<div><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase">Facturation</div><div style="font-size:18px;font-weight:800;color:#0f172a">'+(j.billingType==='forfait'?('Forfait'+(j.dealAmount?' · '+(+j.dealAmount).toLocaleString('fr-FR')+' €':'')+(j.targetMargin!=null?' · marge '+j.targetMargin+'%':'')):'AT')+'</div></div>'
     +'</div>';
 
   /* Candidats suggérés depuis le vivier (matching réutilisé du CRM). */

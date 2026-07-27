@@ -461,6 +461,28 @@ async function newPage(browser) {
     check('Poste pourvu : mission auto (bon consultant, client, TJM)', flow.missionOk);
     check('Poste pourvu : candidat recruté + consultant créé à la volée', flow.consCreated && flow.recruited);
     check('Poste pourvu : opportunité liée passée « gagné »', flow.oppWon);
+
+    // Poste pourvu en FORFAIT : une mission forfait par candidat, deal réparti au prorata SCR.
+    const forfait = await p.evaluate(() => {
+      const oc = window.confirm, oa = window.alert; window.confirm = () => true; window.alert = () => {};
+      const save = { role: S.role, jobs: S.jobs, cands: S.cands, miss: S.miss, cons: S.cons };
+      S.role = 'super_admin';
+      S.cands = [{ id: 'cF1', name: 'F One', reqSalary: 48000, consId: null }, { id: 'cF2', name: 'F Two', reqSalary: 48000, consId: null }];
+      const job = { id: 'jF', title: 'Poste Forfait', status: 'ouvert', candidateIds: ['cF1', 'cF2'], oppId: null, clientName: 'ClientF', billingType: 'forfait', dealAmount: 200000, targetMargin: 25, startDate: '2026-10-01', buId: null, reqExpertise: [], nbPositions: 2 };
+      S.jobs = [job]; S.tab = 'recrutement'; S.recTab = 'jobs'; S.jobSel = 'jF';
+      const jobPourvu = Object.assign({}, job, { status: 'pourvu' });
+      S.jobs = [jobPourvu];
+      jobFillToMissions(jobPourvu);
+      const ms = (S.miss || []).filter(m => m.name && m.name.indexOf('Poste Forfait') >= 0);
+      const twoForfait = ms.length === 2 && ms.every(m => m.btype === 'forfait' && m.deal > 0 && m.tmar === 25 && m.tjm > 0);
+      const splitOk = Math.abs(ms.reduce((s, m) => s + (m.deal || 0), 0) - 200000) <= 2;
+      S.role = save.role; S.jobs = save.jobs; S.cands = save.cands; S.miss = save.miss; S.cons = save.cons;
+      S.jobSel = null; S.tab = 'kpis';
+      window.confirm = oc; window.alert = oa;
+      return { twoForfait, splitOk };
+    });
+    check('Poste pourvu forfait : une mission forfait par candidat (TJM déduit de la marge)', forfait.twoForfait);
+    check('Poste pourvu forfait : montant du deal réparti au prorata (≈ total)', forfait.splitOk);
     await p.evaluate(() => { S.modal = null; S.bizModal = null; S.recTab = 'cands'; S.jobSel = null; S.tab = 'kpis'; render(); });
 
     // Montée en charge : la hero-bande KPIs lit l'agrégat serveur derrière le
