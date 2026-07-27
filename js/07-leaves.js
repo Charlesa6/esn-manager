@@ -289,3 +289,165 @@ function tLeaves(){
     +'<div style="margin-top:8px;padding:14px 16px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px 16px">'+hols+'</div></details></div>';
 }
 
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   TIME SHEET (CRA) \u2014 document mensuel par consultant, valid\u00e9 par le N+1
+   \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+   Un Time Sheet = un (consultant, mois) avec un cycle de vie
+   brouillon \u2192 soumis \u2192 approuv\u00e9/refus\u00e9. Le contenu est AUTO-D\u00c9RIV\u00c9 du calendrier
+   (missions + planning + cong\u00e9s) : le consultant relit son mois et le soumet, le
+   N+1 le valide dans \u00ab Approbations \u00bb. Un mois approuv\u00e9 est VERROUILL\u00c9 (plus de
+   modif des missions/absences de ce mois) tant que le N+1 ne l'a pas d\u00e9-valid\u00e9.
+   \u2192 \u00ab r\u00e9alis\u00e9 & approuv\u00e9 \u00bb vs \u00ab r\u00e9alis\u00e9 non approuv\u00e9 \u00bb = le STATUT du TS du mois. */
+var TS_MNAMES=['Janvier','F\u00e9vrier','Mars','Avril','Mai','Juin','Juillet','Ao\u00fbt','Septembre','Octobre','Novembre','D\u00e9cembre'];
+function tsMonthLabel(month){var y=month.slice(0,4),m=+month.slice(5,7);return TS_MNAMES[m-1]+' '+y;}
+var TS_STATUS={
+  none:     {lb:'\u00c0 soumettre',bg:'#f1f5f9',fg:'#475569'},
+  draft:    {lb:'Brouillon',      bg:'#f1f5f9',fg:'#475569'},
+  submitted:{lb:'En attente',     bg:'#fef3c7',fg:'#92400e'},
+  approved: {lb:'Valid\u00e9',     bg:'#dcfce7',fg:'#15803d'},
+  rejected: {lb:'Refus\u00e9',     bg:'#fee2e2',fg:'#b91c1c'}
+};
+function tsPill(status){var s=TS_STATUS[status]||TS_STATUS.none;return '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;background:'+s.bg+';color:'+s.fg+'">'+(status==='approved'?'\uD83D\udd12 ':'')+esc(s.lb)+'</span>';}
+
+/* Le TS d'un (consultant, mois), ou null. */
+function tsFor(cid,month){return (S.timesheets||[]).find(function(t){return t.cid===cid&&t.month===month;})||null;}
+function tsById(id){return (S.timesheets||[]).find(function(t){return t.id===id;})||null;}
+function tsStatus(cid,month){var t=tsFor(cid,month);return t?t.status:'none';}
+function tsApprovedMonth(cid,month){return tsStatus(cid,month)==='approved';}
+
+/* R\u00e9partition auto-d\u00e9riv\u00e9e d'un mois pour un consultant (m\u00eame classification que
+   le calendrier Activit\u00e9) : jours factur\u00e9s / interne / cong\u00e9s-arr\u00eats / dispo. */
+function tsMonthBreakdown(cid,month){
+  var y=+month.slice(0,4),m=+month.slice(5,7);
+  var dim=new Date(y,m,0).getDate();
+  var hset=frHols(y);
+  var c=((S._all&&S._all.cons)||S.cons||[]).find(function(x){return x.id===cid;})||{};
+  var billed=0,internal=0,leave=0,avail=0,workdays=0;
+  for(var d=1;d<=dim;d++){
+    var ds=fD(new Date(y,m-1,d));
+    if(isWE(ds)||hset.has(ds))continue;
+    if(c.arrive&&ds<c.arrive)continue;
+    if(c.depart&&ds>c.depart)continue;
+    workdays++;
+    var lv=leaveOnDay(cid,ds);
+    if(lv){ if(lv.type==='Mission interne'||lv.type==='Inter-contrat')internal++; else leave++; }
+    else if(missOnDay(cid,ds))billed++;
+    else avail++;
+  }
+  return {billed:billed,internal:internal,leave:leave,avail:avail,workdays:workdays};
+}
+
+/* \u2500\u2500 Verrouillage : un mois approuv\u00e9 bloque toute modif de missions/absences \u2500\u2500 */
+/* L'intervalle [s,e] (dates 'YYYY-MM-DD') touche-t-il un mois approuv\u00e9 du consultant ?
+   e nul = mission en cours (sans fin) \u2192 verrou d\u00e8s qu'un mois approuv\u00e9 \u2265 mois de d\u00e9but. */
+function tsRangeLocked(cid,s,e){
+  if(!cid||!s)return false;
+  var ms=s.slice(0,7),me=e?e.slice(0,7):null;
+  return (S.timesheets||[]).some(function(t){
+    if(t.cid!==cid||t.status!=='approved')return false;
+    if(t.month<ms)return false;
+    if(me&&t.month>me)return false;
+    return true;
+  });
+}
+/* Une liste de jours 'YYYY-MM-DD' touche-t-elle un mois approuv\u00e9 du consultant ? */
+function tsDaysLocked(cid,days){
+  if(!cid||!days||!days.length)return false;
+  return days.some(function(d){return tsApprovedMonth(cid,String(d).slice(0,7));});
+}
+function tsLockAlert(){
+  alert('Ce mois a un Time Sheet approuv\u00e9 : il est verrouill\u00e9.\n\n'
+    +'Le N+1 doit le d\u00e9-valider (onglet Time Sheet) avant toute modification des '
+    +'missions ou absences de ce mois.');
+}
+
+/* Qui peut valider / d\u00e9-valider un TS ? Son approbateur d\u00e9sign\u00e9, ou \u00e0 d\u00e9faut un
+   r\u00f4le encadrant (fallback d\u00e9mo / TS appliqu\u00e9 directement sans N+1). */
+function canValidateTs(t){
+  if(t&&t.approverId&&S._userId)return t.approverId===S._userId;
+  return S.role==='super_admin'||S.role==='admin'||S.role==='gestionnaire';
+}
+
+/* Suite de mois 'YYYY-MM' couvrant l'intervalle de dates [s,e]. */
+function tsMonthsInRange(s,e){
+  var out=[],y=+s.slice(0,4),m=+s.slice(5,7),ey=+e.slice(0,4),em=+e.slice(5,7);
+  while(y<ey||(y===ey&&m<=em)){out.push(y+'-'+String(m).padStart(2,'0'));m++;if(m>12){m=1;y++;}}
+  return out;
+}
+
+function tTimesheet(){
+  var _pc=personalCons();
+  if(!_pc.length)return '<div class="emp">Aucun consultant.</div>';
+  if(!_pc.find(function(x){return x.id===S.tsCid;}))S.tsCid=(_pc.find(function(x){return x.id===S.consId;})||_pc[0]).id;
+  var cid=S.tsCid,c=_pc.find(function(x){return x.id===cid;})||{};
+  var isSelf=(cid===S.consId);
+  var curMonth=TODAY.slice(0,7);
+  var _r=curRange(S.year);
+  var months=tsMonthsInRange(_r[0],_r[1]).filter(function(m){return m<=curMonth;}).reverse(); /* \u00e9coul\u00e9s + en cours, plus r\u00e9cent en t\u00eate */
+
+  var consSorted=_pc.slice().sort(function(a,b){if(a.id===S.consId)return -1;if(b.id===S.consId)return 1;return 0;});
+  var co=consSorted.map(function(x){var lbl=(x.id===S.consId)?('\u2605 Moi \u2014 '+x.name):x.name;return '<option value="'+x.id+'"'+(x.id===cid?' selected':'')+'>'+esc(lbl)+'</option>';}).join('');
+
+  function bCell(v,col){return '<td class="tc" style="font-weight:700;color:'+(v>0?col:'#cbd5e1')+'">'+v+'</td>';}
+  var rows=months.map(function(month){
+    var t=tsFor(cid,month);
+    var st=t?t.status:'none';
+    /* R\u00e9alis\u00e9 : snapshot fig\u00e9 si le TS est soumis/valid\u00e9, sinon calcul live. */
+    var bd=(t&&t.days&&(st==='submitted'||st==='approved'))?t.days:tsMonthBreakdown(cid,month);
+    var future=month>curMonth;
+    var act='';
+    if(future){act='<span style="color:#cbd5e1;font-size:12px">\u00e0 venir</span>';}
+    else if(st==='approved'){
+      act=canValidateTs(t)
+        ?'<button class="lb" data-act="ts-reopen" data-id="'+t.id+'" title="Rouvrir le mois pour modification">D\u00e9-valider</button>'
+        :'<span style="color:#15803d;font-size:12px;font-weight:700">\u2713 Valid\u00e9</span>';
+    }else if(st==='submitted'){
+      act=isSelf
+        ?'<button class="lb" data-act="ts-cancel" data-id="'+(t?t.id:'')+'" data-month="'+month+'" title="Retirer la demande">Annuler</button>'
+        :'<span style="color:#92400e;font-size:12px;font-weight:700">\u23f3 En attente</span>';
+    }else{ /* none | draft | rejected */
+      act=isSelf
+        ?'<button class="bp" style="padding:5px 12px;font-size:12px" data-act="ts-submit" data-id="'+cid+'" data-month="'+month+'">'+(st==='rejected'?'Re-soumettre':'Soumettre')+'</button>'
+        :'<span style="color:#94a3b8;font-size:12px">\u2014</span>';
+    }
+    var mainRow='<tr>'
+      +'<td style="font-weight:600;color:#0f172a">'+esc(tsMonthLabel(month))+'</td>'
+      +bCell(bd.billed,'#2563eb')+bCell(bd.internal,'#0f766e')+bCell(bd.leave,'#b45309')+bCell(bd.avail,bd.avail>0?'#b91c1c':'#15803d')
+      +'<td class="tc">'+tsPill(st)+'</td>'
+      +'<td class="tr">'+act+'</td></tr>';
+    var reasonRow=(st==='rejected'&&t&&t.rejectionReason)
+      ?'<tr><td colspan="7" style="padding-top:0"><div style="background:#fff1f2;border:1px solid #fecdd3;border-radius:6px;padding:6px 10px;font-size:12px;color:#b91c1c"><strong>Motif du refus :</strong> '+esc(t.rejectionReason)+'</div></td></tr>'
+      :'';
+    return mainRow+reasonRow;
+  }).join('');
+
+  /* \u2500\u2500 Vue \u00e9quipe (encadrants) : statut des 3 derniers mois par consultant \u2500\u2500 */
+  var teamCard='';
+  var isManager=(S.role==='super_admin'||S.role==='admin'||S.role==='gestionnaire');
+  if(isManager&&_pc.length>1){
+    var last3=[];(function(){var y=+curMonth.slice(0,4),m=+curMonth.slice(5,7);for(var k=0;k<3;k++){last3.push(y+'-'+String(m).padStart(2,'0'));m--;if(m<1){m=12;y--;}}}());
+    var head=last3.map(function(mm){return '<th class="tc">'+esc(tsMonthLabel(mm))+'</th>';}).join('');
+    var trows=_pc.map(function(cc){
+      var cells=last3.map(function(mm){return '<td class="tc">'+tsPill(tsStatus(cc.id,mm))+'</td>';}).join('');
+      return '<tr><td style="font-weight:600;color:#0f172a">'+esc(cc.name)+'</td>'+cells+'</tr>';
+    }).join('');
+    teamCard='<details class="card" style="padding:0;margin-bottom:16px;overflow:hidden"><summary style="padding:14px 20px;font-size:13px;font-weight:800;color:#0f172a;cursor:pointer">\uD83D\udc65 Vue \u00e9quipe \u2014 statut des Time Sheet (3 derniers mois)</summary>'
+      +'<div class="ov" style="padding:0 6px 6px"><table><thead><tr><th>Consultant</th>'+head+'</tr></thead><tbody>'+trows+'</tbody></table></div></details>';
+  }
+
+  return '<div class="vw">'
+    +'<div class="ph"><div><div class="pt">\uD83D\udd52 Time Sheet</div>'
+    +'<div class="ps">Compte rendu d\u2019activit\u00e9 mensuel \u2014 soumis pour validation \u00e0 votre N+1 \u00b7 '+esc(curLbl())+'</div></div></div>'
+    +'<div class="ac acs" style="margin-bottom:16px;display:flex;gap:10px;align-items:flex-start"><div style="font-size:18px">\u2139\ufe0f</div>'
+    +'<div style="font-size:12px;color:#334155;line-height:1.5">Le Time Sheet reprend automatiquement votre activit\u00e9 d\u00e9j\u00e0 saisie (missions, planning, cong\u00e9s). '
+    +'Relisez le mois puis <strong>soumettez-le</strong> : votre N+1 le valide dans l\u2019onglet <strong>Approbations</strong>. '
+    +'Une fois <strong>Valid\u00e9</strong> \uD83D\udd12, le mois est verrouill\u00e9 (plus de modification des missions/absences) jusqu\u2019\u00e0 une \u00e9ventuelle d\u00e9-validation.</div></div>'
+    +teamCard
+    +'<div style="margin-bottom:16px"><select class="ic" style="max-width:280px" id="ts-cid">'+co+'</select></div>'
+    +'<div class="card ov"><table><thead><tr><th>Mois</th>'
+    +'<th class="tc">Factur\u00e9s</th><th class="tc">Interne</th><th class="tc">Cong\u00e9s</th><th class="tc">Dispo</th>'
+    +'<th class="tc">Statut</th><th class="tr">Action</th></tr></thead>'
+    +'<tbody>'+(rows||'<tr><td colspan="7" class="emp">Aucun mois \u00e0 afficher sur '+esc(curLbl())+'.</td></tr>')+'</tbody></table></div>'
+    +'</div>';
+}
+

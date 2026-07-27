@@ -567,6 +567,89 @@ async function sbDelConsInvite(id){
   if(r.error)console.warn('consInvite del:',r.error.message);
 }
 
+/* ── Time Sheet (CRA mensuels) — chargement + persistance ── */
+function _mapTs(d){
+  return {
+    id:d.id, cid:d.consultant_id, month:d.month, status:d.status,
+    days:d.days||null, approverId:d.approver_id||null, requesterId:d.requester_id||null,
+    submittedAt:d.submitted_at||null, resolvedAt:d.resolved_at||null,
+    rejectionReason:d.rejection_reason||''
+  };
+}
+async function loadTimesheets(){
+  if(!sb||!SB_CID)return;
+  try{
+    var q=sb.from('timesheets').select('*').eq('company_id',SB_CID);
+    if(S.role==='utilisateur'&&S.consId)q=q.eq('consultant_id',S.consId);
+    var r=await q.order('month',{ascending:false});
+    if(r.error){console.error('[Timesheets] Erreur:',r.error.message,'(table timesheets existe-t-elle ?)');return;}
+    if(r.data)S.timesheets=r.data.map(_mapTs);
+  }catch(e){console.warn('[Timesheets] Exception:',e.message);}
+}
+async function sbUpsertTimesheet(t){
+  if(!sb||!SB_CID){console.warn('[Timesheet] SB_CID manquant');return;}
+  var res=await sb.from('timesheets').upsert({
+    id:t.id, company_id:SB_CID, consultant_id:t.cid, month:t.month, status:t.status,
+    days:t.days||null, approver_id:t.approverId||null, requester_id:t.requesterId||null,
+    submitted_at:t.submittedAt||null, resolved_at:t.resolvedAt||null,
+    rejection_reason:t.rejectionReason||null, updated_at:new Date().toISOString()
+  },{onConflict:'id'});
+  if(res.error)console.error('[Timesheet] Erreur écriture:',res.error.message);
+}
+/* Insère/remplace un TS dans l'état local (par id). */
+function upsertTimesheetState(t){
+  var found=false;
+  S.timesheets=(S.timesheets||[]).map(function(x){if(x.id===t.id){found=true;return t;}return x;});
+  if(!found)S.timesheets=S.timesheets.concat([t]);
+}
+/* Soumission d'un mois par le consultant lui-même → validation N+1 (ou directe si
+   pas de N+1, comme pour les congés). Fige le réalisé dans days. */
+function submitTimesheet(cid,month){
+  var approverId=(cid===S.consId)?resolveApprover(S._userId):null;
+  var directApprove=!approverId; /* pas de N+1 (Super Admin au sommet) → validé direct */
+  var existing=tsFor(cid,month);
+  var nowISO=new Date().toISOString();
+  var t={
+    id:existing?existing.id:uid(), cid:cid, month:month,
+    status:directApprove?'approved':'submitted',
+    days:tsMonthBreakdown(cid,month),
+    approverId:approverId||null, requesterId:S._userId||null,
+    submittedAt:nowISO, resolvedAt:directApprove?nowISO:null, rejectionReason:''
+  };
+  upsertTimesheetState(t);
+  saveLocal();
+  sbUpsertTimesheet(t).catch(function(e){console.warn('sbUpsertTimesheet:',e);});
+  render();
+}
+/* Le consultant retire sa demande en attente → retour brouillon. */
+function cancelTimesheet(id,cid,month){
+  var t=id?tsById(id):tsFor(cid,month);
+  if(!t)return;
+  var nt=Object.assign({},t,{status:'draft',submittedAt:null,resolvedAt:null});
+  upsertTimesheetState(nt);saveLocal();
+  sbUpsertTimesheet(nt).catch(function(e){console.warn(e);});
+  render();
+}
+/* Le N+1 approuve / refuse un TS soumis (mirroir de approveLv). */
+function approveTs(id,approved){
+  var t=tsById(id);if(!t)return;
+  var reason='';
+  if(!approved){reason=prompt('Motif du refus (visible par le consultant) :','');if(reason===null)return;}
+  var nt=Object.assign({},t,{status:approved?'approved':'rejected',resolvedAt:new Date().toISOString(),rejectionReason:approved?'':(reason||'')});
+  upsertTimesheetState(nt);saveLocal();
+  sbUpsertTimesheet(nt).catch(function(e){console.warn(e);});
+  render();
+}
+/* Le N+1 dé-valide un mois approuvé → redevient brouillon (mois déverrouillé). */
+function reopenTimesheet(id){
+  var t=tsById(id);if(!t)return;
+  if(!confirm('Dé-valider ce Time Sheet ?\n\nLe mois « '+tsMonthLabel(t.month)+' » redevient modifiable et devra être re-soumis puis re-validé.'))return;
+  var nt=Object.assign({},t,{status:'draft',resolvedAt:null});
+  upsertTimesheetState(nt);saveLocal();
+  sbUpsertTimesheet(nt).catch(function(e){console.warn(e);});
+  render();
+}
+
 async function syncToSB(){
   if(!sb){alert('Supabase non configuré.');return;}
   if(!SB_CID){alert('Session expirée - rechargez la page et reconnectez-vous via esn_login.html');return;}
@@ -760,6 +843,7 @@ async function initApp(){
       await loadInvites();
       await loadConsInvites();
       await loadApprovals();
+      await loadTimesheets();
 
       /* ── 4. Listener pour d\u00e9connexion / expiration de token ── */
       sb.auth.onAuthStateChange(function(event){
@@ -1895,6 +1979,7 @@ function tApprovals(){
   if(isValidator){
     var allLvs=(S._all&&S._all.lvs)||S.lvs;
     var pendingLv=allLvs.filter(function(lv){return _isMyApproval(lv)&&lv.approved===false;});
+    var pendingTs=(S.timesheets||[]).filter(function(t){return t.status==='submitted'&&_isMyApproval(t);}).sort(function(a,b){return String(b.submittedAt||'').localeCompare(String(a.submittedAt||''));});
     var pending=S.approvals.filter(function(r){return r.status==='pending'&&_isMyApproval(r);}).sort(function(a,b){return b.createdAt.localeCompare(a.createdAt);});
     var lvRows=pendingLv.map(function(lv){
       var who=((S._all&&S._all.cons)||S.cons).find(function(c){return c.id===lv.cid;});
@@ -1921,8 +2006,21 @@ function tApprovals(){
         +'<button class="bg" style="padding:6px 14px;font-size:12px;color:#b91c1c;border-color:#fecdd3" data-act="appr-ko" data-id="'+r.id+'">Refuser</button>'
         +'</div></div></div>';
     }).join('');
+    var tsRows=pendingTs.map(function(t){
+      var who=((S._all&&S._all.cons)||S.cons).find(function(c){return c.id===t.cid;});
+      var bd=t.days||tsMonthBreakdown(t.cid,t.month);
+      return '<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px">'
+        +'<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#0f172a">Time Sheet — '+esc(tsMonthLabel(t.month))+'</div>'
+        +'<div style="font-size:12px;color:#64748b;margin-top:3px">'+esc(who?who.name:t.cid)+' · '
+        +bd.billed+'j facturés · '+bd.internal+'j interne · '+bd.leave+'j congés · '+bd.avail+'j dispo</div></div>'
+        +'<div style="display:flex;gap:8px">'
+        +'<button class="bp" style="background:#16a34a;font-size:12px;padding:6px 12px" onclick="approveTs(\''+t.id+'\',true)">✓ Approuver</button>'
+        +'<button class="bp" style="background:#dc2626;font-size:12px;padding:6px 12px" onclick="approveTs(\''+t.id+'\',false)">✗ Refuser</button>'
+        +'</div></div>';
+    }).join('');
     validatorHtml=
-      apprGroup('v_lv','⏳ Absences à valider',pendingLv.length,lvRows,'#f59e0b')
+      apprGroup('v_ts','⏳ Time Sheet à valider',pendingTs.length,tsRows,'#f59e0b')
+      +apprGroup('v_lv','⏳ Absences à valider',pendingLv.length,lvRows,'#f59e0b')
       +apprGroup('v_appr','⏳ Demandes à valider',pending.length,apprRows,'#f59e0b');
   }
 

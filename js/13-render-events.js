@@ -28,19 +28,19 @@ function render(){
      NB : 'svp_acces' et 'svp_settings' sont TEMPORAIREMENT retirés (onglets
      masqués — voir js/03-sidebar.js pour les réactiver). */
   var _allowedTabs={
-    super_admin:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','opportunites','approvals','svp_integrations','help','profile','kpis_dir'],
-    admin:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','opportunites','approvals','help','profile','kpis_dir'],
-    gestionnaire:['kpis','dashboard','teams','activite','recrutement','missions','planning','leaves','business','opportunites','approvals','help','profile','kpis_dir'],
-    utilisateur:['activite','missions','planning','leaves','approvals','help','profile'],
-    recruteur:['recrutement','activite','leaves','approvals','help','profile'],
-    sales:['business','opportunites','recrutement','activite','leaves','approvals','help','profile']
+    super_admin:['kpis','dashboard','teams','activite','timesheet','recrutement','missions','planning','leaves','business','opportunites','approvals','svp_integrations','help','profile','kpis_dir'],
+    admin:['kpis','dashboard','teams','activite','timesheet','recrutement','missions','planning','leaves','business','opportunites','approvals','help','profile','kpis_dir'],
+    gestionnaire:['kpis','dashboard','teams','activite','timesheet','recrutement','missions','planning','leaves','business','opportunites','approvals','help','profile','kpis_dir'],
+    utilisateur:['activite','timesheet','missions','planning','leaves','approvals','help','profile'],
+    recruteur:['recrutement','activite','timesheet','leaves','approvals','help','profile'],
+    sales:['business','opportunites','recrutement','activite','timesheet','leaves','approvals','help','profile']
   };
   var _myTabs=_allowedTabs[S.role]||_allowedTabs.admin;
   if(_myTabs.indexOf(S.tab)<0){
     /* Onglet non autorisé pour ce rôle → rediriger vers son onglet d'accueil */
     S.tab=(S.role==='sales')?'business':(S.role==='recruteur')?'recrutement':(S.role==='utilisateur')?'activite':'kpis';
   }
-  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='activite'?tActivite():S.tab==='directeurs'?tSVPAcces():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDirSection():S.tab==='svp_acces'?tSVPAcces():S.tab==='svp_settings'?tSettings():S.tab==='svp_integrations'?tIntegrations():S.tab==='business'?tBusiness():S.tab==='opportunites'?tOpps():tHelp();
+  var v=S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='timesheet'?tTimesheet():S.tab==='activite'?tActivite():S.tab==='directeurs'?tSVPAcces():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDirSection():S.tab==='svp_acces'?tSVPAcces():S.tab==='svp_settings'?tSettings():S.tab==='svp_integrations'?tIntegrations():S.tab==='business'?tBusiness():S.tab==='opportunites'?tOpps():tHelp();
   var _ini=function(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();};
   var _av=S._userEmail?_ini(S._userEmail.split('@')[0].replace(/[._]/g,' ')):'?';
   var _pfBtn=''; /* Profil déplacé dans la sidebar gauche */
@@ -135,6 +135,7 @@ function bind(){
   var fmn=el('fmn');if(fmn)fmn.onchange=function(){S.fmn=this.value;render();};
   var acc=el('act-cid');if(acc)acc.onchange=function(){S.actCid=this.value;render();};
   var lc=el('flc');if(lc)lc.onchange=function(){S.flc=this.value;render();};
+  var tsc=el('ts-cid');if(tsc)tsc.onchange=function(){S.tsCid=this.value;render();};
   var rq=el('recq');
   if(rq){
     rq.oninput=function(){
@@ -386,6 +387,8 @@ function bind(){
       else if(a==='el'){S.modal={type:'leave',item:S.lvs.find(function(l){return l.id===id;})};render();}
       else if(a==='dc'){var c=S.cons.find(function(c){return c.id===id;});if(c&&confirm('Supprimer '+c.name+' ?')){S.cons=S.cons.filter(function(c){return c.id!==id;});sbDel('consultants',id);render();}}
       else if(a==='dm'){
+        var _mLk=S.miss.find(function(m){return m.id===id;});
+        if(_mLk&&((_mLk.wmode==='man')?tsDaysLocked(_mLk.cid,_mLk.manualDays):tsRangeLocked(_mLk.cid,_mLk.sd,_mLk.ed))){tsLockAlert();return;}
         if(S.role==='utilisateur'){
           var mDel=S.miss.find(function(m){return m.id===id;});
           if(mDel&&confirm('Soumettre une demande de suppression de cette mission ?')){
@@ -396,6 +399,8 @@ function bind(){
         }
       }
       else if(a==='dl'){
+        var _lvLk=S.lvs.find(function(l){return l.id===id;});
+        if(_lvLk&&tsRangeLocked(_lvLk.cid,_lvLk.s,_lvLk.e)){tsLockAlert();return;}
         if(S.role==='utilisateur'){
           var lvDel=S.lvs.find(function(l){return l.id===id;});
           if(lvDel&&confirm('Soumettre une demande de suppression de cette absence ?')){
@@ -405,6 +410,10 @@ function bind(){
           if(confirm('Supprimer cette absence ?')){S.lvs=S.lvs.filter(function(l){return l.id!==id;});sbDel('leaves',id);render();}
         }
       }
+      /* ── Time Sheet (CRA) ── */
+      else if(a==='ts-submit'){var _tsm=b.getAttribute('data-month');if(id&&_tsm)submitTimesheet(id,_tsm);}
+      else if(a==='ts-cancel'){cancelTimesheet(id,S.tsCid,b.getAttribute('data-month'));}
+      else if(a==='ts-reopen'){reopenTimesheet(id);}
       /* ── Approbations directeur ── */
       else if(a==='appr-toggle'){if(!S.apprOpen)S.apprOpen={};S.apprOpen[id]=!S.apprOpen[id];render();}
       else if(a==='appr-ok'){
@@ -493,6 +502,10 @@ function bind(){
         var pcode=gv('mpcd')||'';
         var d={cid:cid,name:mn,cli:cl,tjm:tj,sd:sd,ed:ed,loc:lo,mgr:mg,ccn:cc,ccr:cr,btype:bt,wdays:wdays,deal:deal,tmar:tmar,pcode:pcode,wmode:wmode2,manualDays:manualDays2};
         var it=S.modal.item;
+        /* Verrouillage : impossible de créer/modifier une mission touchant un mois
+           dont le Time Sheet d'un consultant visé est approuvé. */
+        var _tsTargets=it?[cid]:((bt==='forfait')?[cid]:selCids);
+        if(_tsTargets.some(function(_c){return (wmode2==='man')?tsDaysLocked(_c,manualDays2):tsRangeLocked(_c,sd,ed);})){tsLockAlert();return;}
         if(S.role==='utilisateur'){
           var mDesc=(it?'Modification':'Ajout')+' de mission — '+esc(cl)+' · '+esc(mn)+' début '+fDt(sd)+(ed?' fin '+fDt(ed):'');
           var mPl=it?Object.assign({},it,d,{approver_id:resolveApprover(S._userId)}):Object.assign({id:uid(),approver_id:resolveApprover(S._userId)},d);
@@ -515,6 +528,7 @@ function bind(){
       else if(a==='sl'){
         var lci=gv('mlc'),lt=gv('mlt'),ls=gv('mls'),le=gv('mle');
         if(!lci||!ls||!le){alert('Veuillez remplir les champs obligatoires (*).');return;}
+        if(tsRangeLocked(lci,ls,le)){tsLockAlert();return;}
         var it=S.modal.item;
         /* Contrôle de solde AVANT toute soumission : congés / RTT / Q2 ne peuvent
            être demandés que si le solde restant les couvre (pour soi ou l'équipe). */
@@ -921,7 +935,7 @@ function bind(){
         }
       }
       /* activité jour par jour */
-      else if(a==='day'){S.modal={type:'dayexc',day:b.getAttribute('data-day'),cid:S.actCid};render();}
+      else if(a==='day'){var _dd=b.getAttribute('data-day');if(tsApprovedMonth(S.actCid,_dd.slice(0,7))){tsLockAlert();return;}S.modal={type:'dayexc',day:_dd,cid:S.actCid};render();}
       else if(a==='day-set'){
         var dt=gv('dexc-type'),dd=S.modal.day,dcid=S.modal.cid;
         if(S.role==='utilisateur'){

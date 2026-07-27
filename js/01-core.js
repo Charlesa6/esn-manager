@@ -396,6 +396,8 @@ var S={
   oppView:'week', /* granularité de la timeline intercontrats : 'week' | 'month' */
   oppFocus:null,  /* focus sur une période de la timeline : {day,end} ou null */
   approvals:[],   /* demandes d'approbation des consultants */
+  timesheets:[],  /* Time Sheet (CRA) mensuels — {id,cid,month,status,days,approverId,requesterId,submittedAt,resolvedAt,rejectionReason} */
+  tsCid:'',       /* consultant sélectionné dans l'onglet Time Sheet */
   consInvites:[], /* codes d'accès générés pour les consultants */
   adminCode:null, /* dernier code généré (affiché dans Admin) */
   year:CFY,quarter:null,modal:null,fmc:'all',fms:'all',fmt:'all',flc:'all',precs:{},
@@ -454,6 +456,13 @@ function loadDemoData(){
     {id:'v6',cid:'d4',type:'Maladie',   s:'2026-03-09',e:'2026-03-11'},
     {id:'v7',cid:'d4',type:'RTT',       s:'2026-06-01',e:'2026-06-03'},
     {id:'v8',cid:'d5',type:'Congé payé',s:'2026-09-07',e:'2026-09-11'}
+  ];
+  /* Time Sheet (CRA) mensuels — illustrent les 4 statuts (mois écoulés / en cours). */
+  S.timesheets=[
+    {id:'t1',cid:'d1',month:'2026-05',status:'approved', days:null,approverId:null,requesterId:null,submittedAt:'2026-06-02T09:00:00Z',resolvedAt:'2026-06-03T10:00:00Z',rejectionReason:''},
+    {id:'t2',cid:'d1',month:'2026-06',status:'submitted',days:null,approverId:null,requesterId:null,submittedAt:'2026-07-01T09:00:00Z',resolvedAt:null,rejectionReason:''},
+    {id:'t3',cid:'d3',month:'2026-05',status:'rejected', days:null,approverId:null,requesterId:null,submittedAt:'2026-06-02T09:00:00Z',resolvedAt:'2026-06-04T10:00:00Z',rejectionReason:'Jours interne manquants à compléter.'},
+    {id:'t4',cid:'d2',month:'2026-05',status:'approved', days:null,approverId:null,requesterId:null,submittedAt:'2026-06-01T09:00:00Z',resolvedAt:'2026-06-02T10:00:00Z',rejectionReason:''}
   ];
   S.cands=[
     {id:'c1',name:'Maxime Guillot',expertise:['React','TypeScript'],sectors:['Banque & Finance'],locations:['Lyon'],nationality:'Française',reqSalary:48000,yearsExp:4,status:'entretien',marginPct:28,createdBy:'demo',feedbacks:[],cgiMeetings:[],cvFiles:[]}

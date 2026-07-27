@@ -15,7 +15,7 @@ var NAV_GROUPS=[
   {gid:'g_pilotage',  ic:'🧭',lb:'Pilotage',         members:['kpis','dashboard']},
   {gid:'g_commercial',ic:'🤝',lb:'Commercial',       members:['business','opportunites']},
   {gid:'g_delivery',  ic:'🚀',lb:'Delivery',         members:['missions','planning']},
-  {gid:'g_temps',     ic:'⏱️',lb:'Temps & absences', members:['activite','leaves']}
+  {gid:'g_temps',     ic:'⏱️',lb:'Temps & absences', members:['activite','timesheet','leaves']}
 ];
 function navGroupOf(tab){for(var i=0;i<NAV_GROUPS.length;i++){if(NAV_GROUPS[i].members.indexOf(tab)>=0)return NAV_GROUPS[i].gid;}return null;}
 function navGroupById(gid){for(var i=0;i<NAV_GROUPS.length;i++){if(NAV_GROUPS[i].gid===gid)return NAV_GROUPS[i];}return null;}
@@ -24,7 +24,8 @@ function tSB(){
   if(S.role==='recruteur'){
     NAV=[
       {id:'recrutement',ic:'\uD83C\uDFAF',lb:'Recrutement'},
-      {id:'activite',   ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'},
+      {id:'activite',   ic:'\ud83d\uDDD3\uFE0F',lb:'Activit\u00e9'},
+      {id:'timesheet',  ic:'\ud83d\uDD52',lb:'Time Sheet'},
       {id:'leaves',     ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
       {id:'approvals',  ic:'\ud83d\udd14',lb:'Approbations'},
       {id:'help',      ic:'\u2753',lb:'Aide'}
@@ -36,6 +37,7 @@ function tSB(){
       {id:'opportunites',ic:'\ud83d\uDEEC',lb:'Opportunit\u00e9s'},
       {id:'recrutement',ic:'\uD83C\uDFAF',lb:'Recrutement'},
       {id:'activite',   ic:'\ud83d\uDDD3\uFE0F',lb:'Activit\u00e9'},
+      {id:'timesheet',  ic:'\ud83d\uDD52',lb:'Time Sheet'},
       {id:'leaves',     ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
       {id:'approvals',  ic:'\ud83d\udd14',lb:'Approbations'},
       {id:'help',      ic:'\u2753',lb:'Aide'}
@@ -43,6 +45,7 @@ function tSB(){
   }else if(S.role==='utilisateur'){
     NAV=[
       {id:'activite',   ic:'\uD83D\uDCC5',lb:'Activit\u00e9'},
+      {id:'timesheet',  ic:'\uD83D\uDD52',lb:'Time Sheet'},
       {id:'missions',   ic:'\uD83D\uDCCB',lb:'Missions'},
       {id:'planning',   ic:'\uD83D\uDCC5',lb:'Planning'},
       {id:'leaves',     ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
@@ -61,6 +64,7 @@ function tSB(){
       {id:'recrutement',ic:'\uD83C\uDFAF',lb:'Recrutement'},
       {id:'teams',     ic:'\uD83D\uDC65',lb:'\u00c9quipe'},
       {id:'activite',  ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'},
+      {id:'timesheet', ic:'\uD83D\uDD52',lb:'Time Sheet'},
       {id:'missions',  ic:'\uD83D\uDCCB',lb:'Missions'},
       {id:'planning',  ic:'\uD83D\uDCC5',lb:'Planning'},
       {id:'leaves',    ic:'\uD83C\uDFD6\uFE0F',lb:'Absences'},
@@ -81,7 +85,8 @@ function tSB(){
     function _mine(rec){var aid=rec.approver_id||rec.approverId||(rec.payload&&rec.payload.approver_id);if(aid)return aid===S._userId;if(rec.approval_role){var mr=S.role==='super_admin'?'super_admin':S.role==='admin'?'admin':S.role==='gestionnaire'?'gestionnaire':'';return rec.approval_role===mr;}if(rec.dirName!==undefined)return rec.dirName===S.dirName;return false;}
     var a1=(S.approvals||[]).filter(function(r){return r.status==='pending'&&_mine(r);}).length;
     var a2=(S.lvs||[]).filter(function(lv){return _mine(lv)&&lv.approved===false;}).length;
-    return a1+a2;
+    var a3=(S.timesheets||[]).filter(function(t){return _mine(t)&&t.status==='submitted';}).length;
+    return a1+a2+a3;
   })();
   var fyOpts=[CFY-2,CFY-1,CFY,CFY+1].map(function(fy){return '<option value="'+fy+'"'+(fy===S.year?' selected':'')+'>'+fyLbl(fy)+'</option>';}).join('');
   /* Onglets modules masqués tant que le module n'est pas payé (actif au niveau

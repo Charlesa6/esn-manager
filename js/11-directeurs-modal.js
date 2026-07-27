@@ -154,6 +154,14 @@ function tActivite(){
 
     +statsGrid
 
+    +(typeof tsPill==='function'
+      ?'<div style="margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+        +'<span style="font-size:12px;color:#475569">Time Sheet '+esc(tsMonthLabel(S.actMonth))+' :</span>'
+        +tsPill(tsStatus(cid,S.actMonth))
+        +(tsApprovedMonth(cid,S.actMonth)?'<span style="font-size:12px;color:#b45309">🔒 Mois verrouillé — dé-valider dans « Time Sheet » pour modifier</span>':'')
+        +'</div>'
+      :'')
+
     +'<div class="card" style="padding:16px">'
     +'<div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:10px">Planning \u2014 '+MNAMES[mon-1]+' '+year
     +'<span style="font-weight:400;color:#94a3b8;margin-left:10px">('+billed+'j facturés ce mois \u00b7 cliquez un jour pour le marquer)</span></div>'

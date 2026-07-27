@@ -179,6 +179,41 @@ async function newPage(browser) {
       !!document.querySelector('[data-nav="svp_acces"]') || !!document.querySelector('[data-nav="svp_settings"]'));
     check('Sidebar : Gestion des accès & Paramètres masqués', hiddenTabs === false);
 
+    // Time Sheet (CRA) : onglet, rendu, statuts, soumission, verrouillage du mois
+    {
+      const before = p._appErrors.length;
+      const okTab = await goTab('timesheet');
+      check('onglet Time Sheet présent', okTab, 'bouton nav absent');
+      if (okTab) {
+        const tsTxt = await p.evaluate(() => document.body.innerText);
+        check('Time Sheet : en-tête affiché', /Time Sheet/.test(tsTxt));
+        check('Time Sheet : navigation sans erreur JS', p._appErrors.length === before, p._appErrors.slice(before).join(' | '));
+        // d1 (Sophie) a un mois validé (2026-05) et un soumis (2026-06) en démo
+        const statusTxt = await p.evaluate(() => {
+          S.tsCid = 'd1'; render();
+          var c = document.querySelector('.card.ov');
+          return c ? c.innerText : '';
+        });
+        check('Time Sheet : statut « Validé » affiché (mois approuvé)', /Validé/.test(statusTxt));
+        check('Time Sheet : statut « En attente » affiché (mois soumis)', /En attente/.test(statusTxt));
+        // Soumission d'un mois brouillon → devient validé (pas de N+1 en démo) sans erreur
+        const subStatus = await p.evaluate(() => {
+          S.consId = 'd1'; S.tsCid = 'd1'; render();
+          submitTimesheet('d1', '2026-04');
+          var t = (S.timesheets || []).find(x => x.cid === 'd1' && x.month === '2026-04');
+          return t ? t.status : 'none';
+        });
+        check('Time Sheet : soumission d\'un mois (statut = ' + subStatus + ')', subStatus !== 'none');
+        // Verrouillage : le mois désormais approuvé bloque l'édition (indicateur calendrier)
+        const lockTxt = await p.evaluate(() => {
+          S.tab = 'activite'; S.actCid = 'd1'; S.actMonth = '2026-04'; render();
+          return document.body.innerText;
+        });
+        check('Time Sheet : mois approuvé verrouillé dans le calendrier', /verrouillé/.test(lockTxt));
+        await p.evaluate(() => { S.consId = null; S.tab = 'kpis'; render(); });
+      }
+    }
+
     // Force l'activation des modules Business + Recrutement pour exercer ces
     // écrans (sinon masqués en démo) — couvre les modules js/09 et js/12.
     await p.evaluate(() => { S.settings = S.settings || {}; S.settings.hasBusinessModule = true; S.settings.hasRecrutementModule = true; render(); });
