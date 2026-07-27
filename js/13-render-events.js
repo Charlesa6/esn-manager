@@ -614,7 +614,6 @@ function bind(){
           clientName:gv('jbcli'),assignedTo:gv('jbassign'),
           salaryMin:_num('jbsmin'),salaryMax:_num('jbsmax'),tjmTarget:_num('jbtjm'),
           recruiter:gv('jbrec'),
-          billingType:gv('jbbt')||'at',dealAmount:_num('jbdeal'),targetMargin:_num('jbtmar'),
           extBody:(itJ?gv('jbext'):'')
         };
         var njob;
@@ -666,7 +665,6 @@ function bind(){
           missionDesc:oJ.notes||'',expectations:'',
           clientName:accJ.name||'',assignedTo:oJ.assigned_to||oJ.owner_name||'',
           salaryMin:null,salaryMax:null,tjmTarget:oJ.tjm_cible||null,
-          billingType:oJ.btype||'at',dealAmount:(oJ.btype==='forfait'?(oJ.deal_amount||null):null),targetMargin:(oJ.btype==='forfait'?25:null),
           recruiter:'',extBody:''
         };
         S.bizModal=null;
