@@ -1265,7 +1265,7 @@ function tOpps(){
   }
 
   return '<div class="vw">'
-    +'<div class="ph"><div><div class="pt">🛬 Staffing — pilotage des intercontrats</div>'
+    +'<div class="ph"><div><div class="pt">🛬 Intercontrats — pilotage du staffing</div>'
     +'<div class="ps">Consultants par date d\'atterrissage · opportunités pressenties · concrétisation en mission</div></div></div>'
     +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">'
     +tile('Taux d\'intercontrat '+fyLbl(S.year)+(S.quarter?' · '+curRangeLbl():''),icRateFY.toFixed(1)+'%','= 100 % − staffing moyen (KPIs)',icRateFY<=10?'#15803d':icRateFY<=25?'#b45309':'#b91c1c')

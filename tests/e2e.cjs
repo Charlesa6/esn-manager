@@ -161,10 +161,10 @@ async function newPage(browser) {
     const teamRows = await p.evaluate(() => document.querySelectorAll('button[data-act="ec"]').length);
     check('Équipe : consultants affichés (' + teamRows + ' ligne(s), attendu > 0)', teamRows > 0, 'onglet Équipe vide');
 
-    // Opportunités (pilotage des intercontrats) : contenu + modal + onglets masqués
+    // Intercontrats (pilotage du staffing) : contenu + modal + onglets masqués
     await goTab('opportunites');
     const oppTxt = await p.evaluate(() => document.body.innerText);
-    check('Opportunités : pilotage des intercontrats affiché', /pilotage des intercontrats/i.test(oppTxt));
+    check('Intercontrats : en-tête « pilotage du staffing » affiché', /Intercontrats\s*—\s*pilotage du staffing/i.test(oppTxt));
     check('Opportunités : timeline semaine/mois présente', /Semaines/.test(oppTxt) && /Mois/.test(oppTxt));
     const oppAddBtn = await p.$('[data-act="opp-add"]');
     check('Opportunités : bouton « + Opportunité » présent', !!oppAddBtn);
