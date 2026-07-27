@@ -1029,16 +1029,19 @@ function tModal(){
       var _nKo=_leaveDays.filter(function(d){return tsLeaveCheck(_t.cid,d).state!=='ok';}).length;
       var _billed=tsBilledSummary(_days);
       var _dow=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+      /* Écarts prévu (planning) vs imputé (Time Sheet). */
+      var _dev=tsDeviations(_t.cid,_days);var _devMap={};_dev.forEach(function(x){_devMap[x.day]=x;});
       /* Détail par jour : ce qui a été imputé chaque jour (mission/client ou catégorie),
-         avec le statut de cohérence congé pour les jours en « Congé ». */
+         avec le statut de cohérence congé et le signalement d'un écart au planning. */
       var _allDays=Object.keys(_days).sort();
       var _dayRows=_allDays.length?_allDays.map(function(d){
         var v=_days[d];
         var lc='';
         if(v==='leave'){var st=tsLeaveCheck(_t.cid,d).state,xx=TS_LEAVE_BADGE[st];lc=' <span style="font-size:10px;font-weight:700;color:'+xx[1]+'">'+xx[2]+'</span>';}
-        return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:12px">'
-          +'<span style="color:#475569;min-width:92px">'+_dow[pD(d).getDay()]+' '+fDt(d)+'</span>'
-          +'<span style="text-align:right">'+tsCatBadge(v)+lc+'</span></div>';
+        var dv=_devMap[d]?'<div style="font-size:10px;font-weight:700;color:#b45309;margin-top:2px">≠ prévu : '+esc(tsDayLabel(_devMap[d].planned))+'</div>':'';
+        return '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:12px">'
+          +'<span style="color:#475569;min-width:92px">'+_dow[pD(d).getDay()]+' '+fDt(d)+(_devMap[d]?' <span title="Modifié par rapport au planning" style="color:#b45309">✎</span>':'')+'</span>'
+          +'<span style="text-align:right">'+tsCatBadge(v)+lc+dv+'</span></div>';
       }).join(''):'<div style="font-size:12px;color:#94a3b8">Aucun jour travaillé sur cette semaine.</div>';
       var _actBtns=_submitted
         ?'<button class="bg" style="color:#b91c1c;border-color:#fecdd3" data-act="ts-reject" data-id="'+_t.id+'">Refuser</button>'
@@ -1051,6 +1054,7 @@ function tModal(){
         +(_billed?'<div style="font-size:12px;color:#1e40af;font-weight:700;margin-bottom:10px">Facturation par client : '+_billed+'</div>':'<div style="height:4px"></div>')
         +'<div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:4px">Détail par jour</div>'
         +'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:4px 12px;margin-bottom:8px">'+_dayRows+'</div>'
+        +(_dev.length?'<div style="font-size:12px;color:#b45309;font-weight:700;margin-bottom:10px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px">✎ '+_dev.length+' jour(s) modifié(s) par rapport au planning prévu (repérés « ≠ prévu » ci-dessus).</div>':'<div style="font-size:12px;color:#15803d;font-weight:600;margin-bottom:10px">✓ Conforme au planning prévu.</div>')
         +(_leaveDays.length?(_nKo>0?'<div style="font-size:12px;color:#b91c1c;font-weight:700;margin-bottom:12px">⚠ '+_nKo+' jour(s) de congé sans demande validée en amont. À vérifier avant de valider.</div>':'<div style="font-size:12px;color:#15803d;font-weight:700;margin-bottom:12px">✓ Tous les congés imputés sont validés en amont.</div>'):'<div style="height:2px"></div>')
         +'<div class="br">'+_actBtns+'</div>';
     }

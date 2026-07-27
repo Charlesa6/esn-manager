@@ -248,6 +248,14 @@ async function newPage(browser) {
         // Détail par jour dans le pop-up de validation (imputation de chaque jour)
         const dayDetail = await p.evaluate(() => { S.modal = { type: 'ts_approve', id: 't4' }; render(); return document.getElementById('md').innerText; });
         check('Time Sheet : détail par jour dans la validation N+1', /Détail par jour/.test(dayDetail) && /Facturé · Société Générale/.test(dayDetail));
+        // Écart prévu vs imputé : t1 (d1) imputé 2j Orange alors que prévu BNP → alerte
+        const devInfo = await p.evaluate(() => {
+          var n = tsDeviations('d1', (S.timesheets.find(x => x.id === 't1') || {}).days).length;
+          S.modal = { type: 'ts_approve', id: 't1' }; render();
+          return { n: n, txt: document.getElementById('md').innerText };
+        });
+        check('Time Sheet : écart planning détecté (2 jours)', devInfo.n === 2);
+        check('Time Sheet : approbateur averti de l\'écart au planning', /modifié\(s\) par rapport au planning/.test(devInfo.txt) && /≠ prévu/.test(devInfo.txt));
         // Sélecteur de date de semaine (passé/futur) présent côté demandeur
         const hasDatePicker = await p.evaluate(() => {
           S.modal = null; S.consId = 'd1'; S.tsCid = 'd1'; S.tab = 'timesheet'; render();

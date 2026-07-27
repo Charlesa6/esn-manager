@@ -2045,7 +2045,9 @@ function tApprovals(){
       /* Cohérence congé : jours en « leave » sans demande validée en amont. */
       var leaveDays=Object.keys(t.days||{}).filter(function(d){return t.days[d]==='leave';});
       var nKo=leaveDays.filter(function(d){return tsLeaveCheck(t.cid,d).state!=='ok';}).length;
-      var warn=nKo>0?'<div style="font-size:11px;font-weight:700;color:#b91c1c;margin-top:4px">⚠ '+nKo+' jour(s) de congé sans validation en amont</div>':(leaveDays.length?'<div style="font-size:11px;font-weight:700;color:#15803d;margin-top:4px">✓ Congés imputés validés en amont</div>':'');
+      var nDev=tsDeviations(t.cid,t.days).length;
+      var warn=(nKo>0?'<div style="font-size:11px;font-weight:700;color:#b91c1c;margin-top:4px">⚠ '+nKo+' jour(s) de congé sans validation en amont</div>':(leaveDays.length?'<div style="font-size:11px;font-weight:700;color:#15803d;margin-top:4px">✓ Congés imputés validés en amont</div>':''))
+        +(nDev>0?'<div style="font-size:11px;font-weight:700;color:#b45309;margin-top:2px">✎ '+nDev+' jour(s) modifié(s) vs planning prévu</div>':'');
       return '<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px">'
         +'<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#0f172a">Time Sheet — '+esc(tsWeekLabel(t.week))+'</div>'
         +'<div style="font-size:12px;color:#64748b;margin-top:3px">'+esc(who?who.name:t.cid)+' · '

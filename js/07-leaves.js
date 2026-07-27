@@ -382,6 +382,17 @@ function tsDayAuto(cid,dateStr){
 }
 /* Carte des jours travaillés d'une semaine, auto-dérivée. */
 function tsAutoDays(cid,monday){var map={};tsWeekDays(monday).forEach(function(d){var c=tsDayAuto(cid,d);if(c)map[d]=c;});return map;}
+/* Écarts entre l'IMPUTÉ (days) et le PRÉVU (auto-dérivé du planning) → liste
+   {day, planned, imputed} des jours dont l'imputation diffère du prévu. */
+function tsDeviations(cid,daysMap){
+  var out=[];
+  Object.keys(daysMap||{}).sort().forEach(function(d){
+    var imp=daysMap[d],plan=tsDayAuto(cid,d);
+    if(plan==null)return;                    /* jour non travaillé au planning */
+    if(imp!==plan)out.push({day:d,planned:plan,imputed:imp});
+  });
+  return out;
+}
 /* Répartition (compteurs) depuis une carte de jours. */
 function tsBreakdown(daysMap){
   var b={billed:0,internal:0,leave:0,avail:0,workdays:0};
@@ -503,9 +514,11 @@ function tTimesheet(){
     }else{
       body=tsCatBadge(cat);
     }
-    return '<div style="flex:1;min-width:120px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px">'+head
+    var deviated=(auto!=null&&cat!==auto);
+    return '<div style="flex:1;min-width:120px;background:#fff;border:1px solid '+(deviated?'#fde68a':'#e2e8f0')+';border-radius:10px;padding:10px">'+head
       +body
       +(cat==='leave'?tsLeaveBadge(cid,d):'')
+      +(deviated?'<div style="margin-top:5px;font-size:9px;font-weight:700;color:#b45309" title="Différent du planning prévu">✎ ≠ prévu : '+esc(tsDayLabel(auto))+'</div>':'')
       +'</div>';
   }).join('');
 
