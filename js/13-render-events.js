@@ -579,6 +579,18 @@ function bind(){
       }
       else if(a==='jopen'){S.jobSel=id;render();}
       else if(a==='jback'){S.jobSel=null;render();}
+      /* Assignation candidat ↔ fiche. Depuis la fiche : id = candidat (fiche = S.jobSel).
+         Depuis le candidat : id = fiche (candidat = S.recSel). */
+      else if(a==='job-assign-cand'){jobToggleCand(S.jobSel,id,true);}
+      else if(a==='job-unassign-cand'){jobToggleCand(S.jobSel,id,false);}
+      else if(a==='cand-assign-job'){jobToggleCand(id,S.recSel,true);}
+      else if(a==='cand-unassign-job'){jobToggleCand(id,S.recSel,false);}
+      else if(a==='job-goto-opp'){openOppById(id);}
+      /* Ouvrir un candidat depuis le détail d'une fiche (hors #rec-list-wrap, donc
+         recopen n'y est pas délégué) : bascule sur le vivier + ouvre le candidat. */
+      else if(a==='job-open-cand'){S.recTab='cands';S.jobSel=null;S.recSel=id;render();}
+      /* Ouvrir une fiche de poste depuis le détail d'un candidat. */
+      else if(a==='cand-open-job'){S.recTab='jobs';S.recSel=null;S.jobSel=id;render();}
       else if(a==='jdel'){
         var jDel=(S.jobs||[]).find(function(j){return j.id===id;});
         if(jDel&&confirm('Supprimer la fiche de poste « '+(jDel.title||'')+' » ? Irréversible.')){
@@ -609,11 +621,16 @@ function bind(){
           njob=Object.assign({},itJ,jfields);
           S.jobs=(S.jobs||[]).map(function(x){return x.id===itJ.id?njob:x;});
         }else{
-          njob=Object.assign({id:uid(),createdBy:S._userEmail||'',oppId:(S.modal.oppId||null),buId:((S.modal.prefill&&S.modal.prefill.buId)||myBuId()),extBody:''},jfields);
+          njob=Object.assign({id:uid(),createdBy:S._userEmail||'',oppId:(S.modal.oppId||null),buId:((S.modal.prefill&&S.modal.prefill.buId)||myBuId()),candidateIds:[],extBody:''},jfields);
           S.jobs=(S.jobs||[]).concat([njob]);
         }
         sbUpsertJob(njob).catch(function(err){console.warn('sbUpsertJob:',err);alert('⚠ Erreur de synchronisation : '+err.message);});
-        S.modal=null;S.recTab='jobs';S.jobSel=njob.id;render();
+        /* Transition → « pourvu » : créer automatiquement la/les mission(s). Uniquement
+           sur le passage (idempotent : ne se déclenche pas si déjà pourvu). */
+        var _becamePourvu=(njob.status==='pourvu')&&(!itJ||itJ.status!=='pourvu');
+        S.modal=null;S.recTab='jobs';S.jobSel=njob.id;
+        if(_becamePourvu)jobFillToMissions(njob);
+        render();
       }
       else if(a==='jcopy'){
         var jC=(S.jobs||[]).find(function(j){return j.id===id;});

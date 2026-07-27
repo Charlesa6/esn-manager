@@ -319,6 +319,19 @@ function tCandDetail(c){
     +'<div style="margin-top:14px"><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Connaissance secteur</div>'+secHtml+'</div>'
     +compCard+'</div>'
 
+    /* Fiches de poste auxquelles ce candidat est assigné (relation gérée aussi côté fiche). */
+    +'<div class="card" style="padding:24px;margin-bottom:18px">'
+    +'<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:12px">📋 Fiches de poste assignées ('+jobsForCand(c.id).length+')</div>'
+    +'<div style="margin-bottom:12px">'+(jobsForCand(c.id).length?jobsForCand(c.id).map(function(jb){
+        return '<span style="display:inline-flex;align-items:center;gap:7px;padding:5px 6px 5px 12px;border-radius:99px;font-size:12px;font-weight:600;background:#ecfeff;color:#155e75;margin:0 6px 6px 0">'
+          +'<span data-act="cand-open-job" data-id="'+jb.id+'" style="cursor:pointer">'+esc(jb.title||'(sans titre)')+' · '+esc(jobStLb(jb.status))+'</span>'
+          +'<button data-act="cand-unassign-job" data-id="'+jb.id+'" title="Retirer l\'assignation" style="border:none;background:none;color:#0891b2;cursor:pointer;font-weight:800;font-size:13px;padding:0 4px;line-height:1">✕</button></span>';
+      }).join(''):'<span style="color:#94a3b8;font-size:12px">Non assigné à une fiche de poste pour l\'instant.</span>')+'</div>'
+    +(function(){var una=(S.jobs||[]).filter(jobVisibleForRole).filter(function(jb){return (jb.candidateIds||[]).indexOf(c.id)<0;});
+      return una.length?'<select class="ic" style="max-width:360px" onchange="candAssignFromSel(this)"><option value="">+ Assigner à une fiche de poste…</option>'
+        +una.map(function(jb){return '<option value="'+jb.id+'">'+esc(jb.title||'(sans titre)')+(jb.clientName?' — '+esc(jb.clientName):'')+'</option>';}).join('')+'</select>'
+        :'<span style="color:#cbd5e1;font-size:12px">Aucune autre fiche disponible.</span>';})()+'</div>'
+
     +'<div class="card" style="padding:24px;margin-bottom:18px">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
     +'<div style="font-size:13px;font-weight:800;color:#0f172a">Comptes rendus ('+(c.comptesRendus||[]).length+')</div>'
@@ -1161,7 +1174,7 @@ function tJobList(){
     var expHtml=exp.slice(0,3).map(tag).join('')+(exp.length>3?'<span style="font-size:11px;color:#94a3b8">+'+(exp.length-3)+'</span>':'');
     var nMatch=oppMatches(j.reqExpertise,j.location,j.reqMinYears,j.reqSector,j.tjmTarget,j.startDate).length;
     return '<tr data-act="jopen" data-id="'+j.id+'" style="cursor:pointer">'
-      +'<td style="font-weight:700;color:#0f172a">'+esc(j.title||'(sans titre)')+(j.oppId?' <span title="Issue d\'un deal CRM" style="font-size:11px">🔗</span>':'')+'</td>'
+      +'<td style="font-weight:700;color:#0f172a">'+esc(j.title||'(sans titre)')+(j.oppId?' <span title="Ouvrir l\'opportunité liée" onclick="event.stopPropagation();openOppById(\''+esc(j.oppId)+'\')" style="font-size:11px;cursor:pointer">🔗</span>':'')+'</td>'
       +'<td>'+(expHtml||'<span style="color:#cbd5e1">—</span>')+'</td>'
       +'<td>'+esc(j.location||'—')+'</td>'
       +'<td>'+esc(j.clientName||'—')+'</td>'
@@ -1236,9 +1249,84 @@ function jobInternalText(j){
   return L.join('\n');
 }
 
+/* ── Assignation candidat ↔ fiche de poste (source de vérité = job.candidateIds) ── */
+function jobToggleCand(jobId,candId,assign){
+  var j=(S.jobs||[]).find(function(x){return x.id===jobId;});
+  if(!j||!candId)return;
+  var ids=(j.candidateIds||[]).slice();
+  var i=ids.indexOf(candId);
+  if(assign&&i<0)ids.push(candId);
+  else if(!assign&&i>=0)ids.splice(i,1);
+  else return; /* aucun changement */
+  var nj=Object.assign({},j,{candidateIds:ids});
+  S.jobs=(S.jobs||[]).map(function(x){return x.id===j.id?nj:x;});
+  sbUpsertJob(nj).catch(function(err){console.warn('sbUpsertJob (assign):',err);alert('⚠ Erreur de synchronisation : '+err.message);});
+  render();
+}
+/* onchange des <select> d'assignation (fiche → candidat, et candidat → fiche) */
+function jobAssignFromSel(sel){if(sel&&sel.value&&S.jobSel)jobToggleCand(S.jobSel,sel.value,true);}
+function candAssignFromSel(sel){if(sel&&sel.value&&S.recSel)jobToggleCand(sel.value,S.recSel,true);}
+/* Fiches de poste (visibles) auxquelles un candidat est assigné. */
+function jobsForCand(candId){return (S.jobs||[]).filter(jobVisibleForRole).filter(function(j){return (j.candidateIds||[]).indexOf(candId)>=0;});}
+
+/* Poste « pourvu » → mission(s) automatique(s). Pour chaque candidat assigné :
+   on garantit un consultant (recrutement à la volée si le candidat n'est pas déjà
+   passé « recruté »), puis on crée une mission (client / TJM / dates repris de la
+   fiche, complétés par l'opportunité liée). L'opportunité liée passe « gagné » et
+   pointe vers la 1re mission (linked_mission_id). Appelé sur la transition
+   → pourvu uniquement (idempotence gérée par l'appelant). */
+function jobFillToMissions(job){
+  var assigned=(S.cands||[]).filter(function(c){return (job.candidateIds||[]).indexOf(c.id)>=0;});
+  if(!assigned.length){
+    setTimeout(function(){alert('Poste marqué « pourvu ».\n\nAucun candidat n\'est assigné à cette fiche : aucune mission n\'a été créée. Assignez un candidat puis re-marquez le poste « pourvu » pour générer automatiquement la mission.');},60);
+    return;
+  }
+  var opp=job.oppId?(S.bizOpps||[]).find(function(o){return o.id===job.oppId;}):null;
+  var client=job.clientName||(opp?accName(opp.account_id):'')||'';
+  var sd=job.startDate||(opp&&opp.date_start)||fD(new Date());
+  var ed=(opp&&opp.date_end)||null;
+  var tjm=job.tjmTarget||(opp&&opp.tjm_cible)||0;
+  var names=assigned.map(function(c){return c.name;}).join(', ');
+  if(!confirm('Marquer « '+(job.title||'ce poste')+' » comme pourvu et créer la/les mission(s) pour : '+names+' ?\n\nLes candidats pas encore « recrutés » seront intégrés à l\'équipe comme consultants.')){
+    return;
+  }
+  var created=[];
+  assigned.forEach(function(c){
+    /* 1. Garantir un consultant (recruter à la volée si besoin). */
+    var consId=c.consId;
+    var cons=consId?(S.cons||[]).find(function(x){return x.id===consId;}):null;
+    if(!cons){
+      cons={id:uid(),name:c.name,title:job.title||'',scr:Math.round(recScr(c.reqSalary||0)),
+        email:c.email||'',dir:'',managerId:null,buId:c.buId||job.buId||myBuId()||null,
+        arrive:sd,depart:null,phone:c.phone||''};
+      S.cons=(S.cons||[]).concat([cons]);
+      sbUpsertCons(cons).catch(function(err){console.warn('sbUpsertCons (pourvu):',err);});
+      var nc=Object.assign({},c,{recruited:true,status:'recrute',recruitStart:sd,recruitPoste:job.title||'',consId:cons.id});
+      S.cands=(S.cands||[]).map(function(x){return x.id===c.id?nc:x;});
+      sbUpsertCand(nc).catch(function(err){console.warn('sbUpsertCand (pourvu):',err);});
+      consId=cons.id;
+    }
+    /* 2. Créer la mission (AT). */
+    var m={id:uid(),name:(job.title||'Mission')+(client?' — '+client:''),cid:consId,cli:client,
+      tjm:tjm||0,btype:'at',sd:sd,ed:ed,wdays:[1,2,3,4,5]};
+    S.miss=(S.miss||[]).concat([m]);
+    sbUpsertMiss(m).catch(function(err){console.warn('sbUpsertMiss (pourvu):',err);alert('⚠ Erreur de synchronisation (mission) : '+err.message);});
+    created.push(m);
+  });
+  /* 3. Lier l'opportunité (gagnée + 1re mission) si présente. */
+  if(opp&&created.length){
+    var no=Object.assign({},opp,{linked_mission_id:opp.linked_mission_id||created[0].id,status:'gagne'});
+    S.bizOpps=(S.bizOpps||[]).map(function(x){return x.id===opp.id?no:x;});
+    if(typeof sbUpsertCrmOpp==='function')sbUpsertCrmOpp(no).catch(function(err){console.warn('sbUpsertCrmOpp (pourvu):',err);});
+  }
+  setTimeout(function(){alert('✅ '+created.length+' mission'+(created.length>1?'s':'')+' créée'+(created.length>1?'s':'')+' pour ce poste. Retrouvez-la'+(created.length>1?'s':'')+' dans Missions / Planning.');},60);
+}
+
 function tJobDetail(j){
   var col=jobStCol(j.status);
   var opp=j.oppId?(S.bizOpps||[]).find(function(o){return o.id===j.oppId;}):null;
+  var assignedCands=(S.cands||[]).filter(function(c){return (j.candidateIds||[]).indexOf(c.id)>=0;});
+  var unassignedCands=(S.cands||[]).filter(function(c){return (j.candidateIds||[]).indexOf(c.id)<0;});
   function info(label,val){return '<div><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">'+label+'</div><div style="font-size:13px;color:#0f172a;font-weight:600">'+val+'</div></div>';}
   function tag(t){return '<span style="display:inline-block;padding:3px 10px;border-radius:7px;font-size:12px;font-weight:600;background:#f1f5f9;color:#475569;margin:0 5px 5px 0">'+esc(t)+'</span>';}
   var infoGrid='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px 24px">'
@@ -1260,15 +1348,17 @@ function tJobDetail(j){
   /* Candidats suggérés depuis le vivier (matching réutilisé du CRM). */
   var matches=oppMatches(j.reqExpertise,j.location,j.reqMinYears,j.reqSector,j.tjmTarget,j.startDate);
   var matchHtml=matches.length
-    ? '<div class="ov"><table><thead><tr><th>Candidat</th><th>Statut</th><th>Expertises en commun</th><th>Loc.</th><th class="tr">TJM revente</th></tr></thead><tbody>'
+    ? '<div class="ov"><table><thead><tr><th>Candidat</th><th>Statut</th><th>Expertises en commun</th><th>Loc.</th><th class="tr">TJM revente</th><th class="tr">Assignation</th></tr></thead><tbody>'
       +matches.slice(0,8).map(function(m){
         var c=m.c;var lk=m.locKind==='target'?'✓ cible':m.locKind==='secondary'?'~ secondaire':m.locKind==='france'?'🇫🇷 France':'—';
-        return '<tr data-act="recopen" data-id="'+c.id+'" style="cursor:pointer">'
+        var asg=(j.candidateIds||[]).indexOf(c.id)>=0;
+        return '<tr data-act="job-open-cand" data-id="'+c.id+'" style="cursor:pointer">'
           +'<td style="font-weight:700;color:#0f172a">'+esc(c.name)+'</td>'
           +'<td style="font-size:11px">'+esc(recStLbD(c.status))+'</td>'
           +'<td>'+(m.overlap.length?m.overlap.map(function(e){return '<span style="display:inline-block;padding:2px 7px;border-radius:6px;font-size:11px;background:#dbeafe;color:#1e40af;margin:0 3px 2px 0">'+esc(e)+'</span>';}).join(''):'<span style="color:#cbd5e1">—</span>')+'</td>'
           +'<td style="font-size:11px;color:#64748b">'+esc(lk)+'</td>'
           +'<td class="tr" style="font-weight:700;color:#2563eb">'+(m.tjmC?m.tjmC.toFixed(0)+' €/j':'—')+'</td>'
+          +'<td class="tr"><button class="lb" data-act="'+(asg?'job-unassign-cand':'job-assign-cand')+'" data-id="'+c.id+'"'+(asg?' style="color:#16a34a;border-color:#86efac"':'')+'>'+(asg?'✓ Assigné':'+ Assigner')+'</button></td>'
           +'</tr>';
       }).join('')+'</tbody></table></div>'
     : '<div class="emp">Aucun candidat du vivier ne correspond encore à ce profil. Ajoutez des candidats ou élargissez les critères.</div>';
@@ -1280,7 +1370,7 @@ function tJobDetail(j){
     +'<button class="lb" data-act="jback" style="margin-bottom:14px">← Retour aux postes</button>'
     +'<div class="ph"><div><div class="pt">'+esc(j.title||'(sans titre)')+'</div>'
     +'<div class="ps"><span style="padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;background:'+col[0]+';color:'+col[1]+'">'+esc(jobStLb(j.status))+'</span>'
-    +(opp?' · <span style="font-size:12px">🔗 Issue du deal <strong>'+esc(opp.name||'')+'</strong></span>':'')+'</div></div>'
+    +(opp?' · <span style="font-size:12px">🔗 Issue du deal <button class="lk" data-act="job-goto-opp" data-id="'+esc(opp.id)+'" style="background:none;border:none;padding:0;font:inherit;color:#2563eb;font-weight:700;cursor:pointer;text-decoration:underline">'+esc(opp.name||'(opportunité)')+'</button></span>':'')+'</div></div>'
     +'<div style="display:flex;gap:8px"><button class="bg" data-act="jedit" data-id="'+j.id+'">Modifier</button>'
     +'<button class="bg" style="color:#dc2626;border-color:#fca5a5" data-act="jdel" data-id="'+j.id+'">Supprimer</button></div></div>'
 
@@ -1289,6 +1379,17 @@ function tJobDetail(j){
     +(j.missionDesc?'<div style="margin-top:16px"><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:6px">Missions</div><div style="font-size:13px;color:#334155;white-space:pre-wrap;line-height:1.5">'+esc(j.missionDesc)+'</div></div>':'')
     +(j.expectations?'<div style="margin-top:14px"><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:6px">Compétences & qualités attendues</div><div style="font-size:13px;color:#334155;white-space:pre-wrap;line-height:1.5">'+esc(j.expectations)+'</div></div>':'')
     +compCard+'</div>'
+
+    /* Candidats assignés manuellement à cette fiche (relation gérée aussi côté candidat). */
+    +'<div class="card" style="padding:24px;margin-bottom:18px">'
+    +'<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:12px">👥 Candidats assignés ('+assignedCands.length+')</div>'
+    +'<div style="margin-bottom:12px">'+(assignedCands.length?assignedCands.map(function(c){
+        return '<span style="display:inline-flex;align-items:center;gap:7px;padding:5px 6px 5px 12px;border-radius:99px;font-size:12px;font-weight:600;background:#eef2ff;color:#3730a3;margin:0 6px 6px 0">'
+          +'<span data-act="job-open-cand" data-id="'+c.id+'" style="cursor:pointer">'+esc(c.name)+'</span>'
+          +'<button data-act="job-unassign-cand" data-id="'+c.id+'" title="Retirer l\'assignation" style="border:none;background:none;color:#6366f1;cursor:pointer;font-weight:800;font-size:13px;padding:0 4px;line-height:1">✕</button></span>';
+      }).join(''):'<span style="color:#94a3b8;font-size:12px">Aucun candidat assigné — utilisez « + Assigner » ci-dessous ou sur un candidat suggéré.</span>')+'</div>'
+    +'<select class="ic" style="max-width:320px" onchange="jobAssignFromSel(this)"><option value="">+ Assigner un candidat du vivier…</option>'
+    +unassignedCands.map(function(c){return '<option value="'+c.id+'">'+esc(c.name)+(c.status?' — '+esc(recStLbD(c.status)):'')+'</option>';}).join('')+'</select></div>'
 
     +'<div class="card" style="padding:24px;margin-bottom:18px">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'

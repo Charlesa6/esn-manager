@@ -99,6 +99,7 @@ function mapJob(r){return{
   clientName:r.client_name||'',status:r.status||'ouvert',
   recruiter:r.recruiter||'',assignedTo:r.assigned_to||'',
   oppId:r.opp_id||null,extBody:r.ext_body||'',
+  candidateIds:Array.isArray(r.candidate_ids)?r.candidate_ids:[],
   buId:r.bu_id||null,createdBy:r.created_by||'',
   createdAt:r.created_at||'',updatedAt:r.updated_at||''
 };}
@@ -483,6 +484,7 @@ async function sbUpsertJob(o){
     client_name:_n(o.clientName),status:o.status||'ouvert',
     recruiter:_n(o.recruiter),assigned_to:_n(o.assignedTo),
     opp_id:_n(o.oppId),ext_body:_n(o.extBody),
+    candidate_ids:o.candidateIds||[],
     bu_id:_n(o.buId),created_by:_n(o.createdBy),
     updated_at:new Date().toISOString()
   },{onConflict:'id'});

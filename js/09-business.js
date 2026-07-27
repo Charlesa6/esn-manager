@@ -363,6 +363,16 @@ function bizDelItem(table,id,arr){
   if(table==='crm_activities')S.bizActivities=S.bizActivities.filter(function(x){return x.id!==id;});
   sbDelBiz(table,id);render();
 }
+/* Ouvre le modal d'édition d'une opportunité CRM par son id (navigation depuis
+   ailleurs, ex. une fiche de poste). Reproduit le handler data-act 'biz-edit-opp'. */
+function openOppById(oppId){
+  var o=(S.bizOpps||[]).find(function(x){return x.id===oppId;});
+  if(!o){alert('Opportunité introuvable (elle a peut-être été supprimée).');return;}
+  S.tab='business';S.jobSel=null;S.recSel=null;
+  S.bizModal={type:'opp',item:o,btype:(o.btype)||'at',consPickerSel:(o.consultant_ids)||[],
+    oppTeam:(o.opp_team&&o.opp_team.length?o.opp_team:(o.consultant_ids||[]).map(function(cid){return {cid:cid,taux:Math.round(100/Math.max((o.consultant_ids||[]).length,1)),wdays:[1,2],tmar:25};}))||[{cid:'',taux:100,wdays:[1,2],tmar:25}]};
+  render();
+}
 /* Opportunité gagnée → créer mission */
 function bizOppToMission(oppId){
   var o=S.bizOpps.find(function(x){return x.id===oppId;});

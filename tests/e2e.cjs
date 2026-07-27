@@ -419,6 +419,50 @@ async function newPage(browser) {
     check('Postes : super_admin voit toutes les fiches (aucun cloisonnement BU)', buScope.sa.length === 4);
     await p.evaluate(() => { S.modal = null; S.bizModal = null; S.recTab = 'cands'; S.jobSel = null; S.tab = 'kpis'; render(); });
 
+    // Assignation candidat ↔ fiche + lien opportunité + mission auto au passage « pourvu ».
+    const flow = await p.evaluate(() => {
+      const oc = window.confirm, oa = window.alert;
+      window.confirm = () => true; window.alert = () => {};
+      const save = { role: S.role, jobs: S.jobs, cands: S.cands, opps: S.bizOpps, miss: S.miss, cons: S.cons };
+      S.settings = Object.assign({}, S.settings, { hasRecrutementModule: true });
+      S.role = 'super_admin';
+      S.cands = [{ id: 'cQA', name: 'Cand QA', reqSalary: 45000, expertise: ['Java'], status: 'pipe', buId: null, consId: null, email: 'qa@x.fr' }];
+      S.bizOpps = (S.bizOpps || []).concat([{ id: 'oppQA', name: 'Deal QA', account_id: null, tjm_cible: 600, date_start: '2026-09-01', date_end: '2027-03-01', status: 'identification', btype: 'at' }]);
+      S.jobs = [{ id: 'jQA', title: 'Poste QA', status: 'ouvert', candidateIds: [], oppId: 'oppQA', clientName: 'ClientQA', tjmTarget: 650, startDate: '2026-09-01', buId: null, reqExpertise: ['Java'], nbPositions: 1 }];
+      S.tab = 'recrutement'; S.recTab = 'jobs'; S.jobSel = 'jQA'; S.recSel = null;
+
+      jobToggleCand('jQA', 'cQA', true);
+      const assignedJobSide = (S.jobs.find(j => j.id === 'jQA').candidateIds || []).indexOf('cQA') >= 0;
+      const candSideSees = jobsForCand('cQA').some(j => j.id === 'jQA');
+
+      openOppById('oppQA');
+      const oppOpened = S.tab === 'business' && !!(S.bizModal && S.bizModal.type === 'opp' && S.bizModal.item && S.bizModal.item.id === 'oppQA');
+      S.bizModal = null; S.tab = 'recrutement'; S.recTab = 'jobs'; S.jobSel = 'jQA';
+
+      const jobPourvu = Object.assign({}, S.jobs.find(j => j.id === 'jQA'), { status: 'pourvu' });
+      S.jobs = S.jobs.map(j => j.id === 'jQA' ? jobPourvu : j);
+      jobFillToMissions(jobPourvu);
+      const cand = S.cands.find(c => c.id === 'cQA');
+      const newMiss = (S.miss || []).find(m => m.name && m.name.indexOf('Poste QA') >= 0);
+      const consCreated = !!cand.consId && (S.cons || []).some(cn => cn.id === cand.consId);
+      const missionOk = !!newMiss && newMiss.cid === cand.consId && newMiss.cli === 'ClientQA' && newMiss.tjm === 650;
+      const recruited = cand.recruited === true && cand.status === 'recrute';
+      const opp = S.bizOpps.find(o => o.id === 'oppQA');
+      const oppWon = opp.status === 'gagne' && !!opp.linked_mission_id;
+
+      S.role = save.role; S.jobs = save.jobs; S.cands = save.cands; S.bizOpps = save.opps; S.miss = save.miss; S.cons = save.cons;
+      S.jobSel = null; S.recSel = null; S.bizModal = null; S.tab = 'kpis';
+      window.confirm = oc; window.alert = oa;
+      return { assignedJobSide, candSideSees, oppOpened, missionOk, consCreated, recruited, oppWon };
+    });
+    check('Assignation depuis la fiche : candidat ajouté', flow.assignedJobSide);
+    check('Assignation visible côté candidat (jobsForCand)', flow.candSideSees);
+    check('Lien fiche → opportunité : ouvre le modal opp CRM', flow.oppOpened);
+    check('Poste pourvu : mission auto (bon consultant, client, TJM)', flow.missionOk);
+    check('Poste pourvu : candidat recruté + consultant créé à la volée', flow.consCreated && flow.recruited);
+    check('Poste pourvu : opportunité liée passée « gagné »', flow.oppWon);
+    await p.evaluate(() => { S.modal = null; S.bizModal = null; S.recTab = 'cands'; S.jobSel = null; S.tab = 'kpis'; render(); });
+
     // Montée en charge : la hero-bande KPIs lit l'agrégat serveur derrière le
     // drapeau KPI_SERVER_AGG. On injecte un agrégat distinctif (staffing 87,6 %)
     // pour la fenêtre courante et on vérifie que la hero l'affiche, puis on remet
