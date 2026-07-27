@@ -34,7 +34,7 @@ create table if not exists public.job_postings (
   assigned_to    text,                         -- commercial référent
   opp_id         text,                         -- opportunité CRM d'origine (crm_opportunities.id)
   ext_body       text,                         -- corps de l'annonce externe (généré / IA)
-  bu_id          uuid,                          -- BU du créateur (reporting)
+  bu_id          text,                          -- BU du créateur (business_units.id est du texte)
   created_by     text,
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now()
