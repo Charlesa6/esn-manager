@@ -994,6 +994,51 @@ function tModal(){
     title='📥 Importer des consultants';
     body=tImportConsBody();
   }
+  /* ── Time Sheet : pop-up cohérence congé (à la saisie d'un jour « Congé ») ── */
+  if(tp==='ts_leavecheck'){
+    var _r=tsLeaveCheck(m.cid,m.day);
+    var _mp={
+      ok:['#dcfce7','#15803d','✓ Une demande de congé validée couvre bien ce jour.'],
+      pending:['#fef3c7','#92400e','⏳ Une demande de congé a été posée pour ce jour, mais elle n’est pas encore validée par le N+1.'],
+      missing:['#fee2e2','#b91c1c','⚠ Aucune demande de congé n’a été posée pour ce jour.']
+    };
+    var _x=_mp[_r.state];
+    title='Congé du '+fDt(m.day);
+    var _typeSel='';
+    if(_r.state==='missing'){
+      var _lo=LTYPES.map(function(t){return '<option value="'+t+'"'+(t==='Congé payé'?' selected':'')+'>'+esc(t)+'</option>';}).join('');
+      _typeSel='<div class="fd" style="margin-top:12px"><label class="fl">Type de congé à poser</label><select class="ic" id="ts-lv-type">'+_lo+'</select></div>';
+    }
+    body='<div style="padding:12px 14px;border-radius:10px;background:'+_x[0]+';color:'+_x[1]+';font-size:13px;font-weight:600">'+_x[2]+'</div>'
+      +'<p style="font-size:12px;color:#64748b;margin-top:10px">Vous avez marqué ce jour en <strong>Congé / Absence</strong> sur votre Time Sheet. La demande de congé se gère séparément (onglet Absences) et suit sa propre validation N+1.</p>'
+      +_typeSel
+      +'<div class="br"><button class="bg" data-act="mc">Compris</button>'
+      +((_r.state==='missing'&&m.cid===S.consId)?'<button class="bp" data-act="ts-leave-request" data-id="'+esc(m.cid)+'" data-day="'+esc(m.day)+'">Poser la demande de congé</button>':'')
+      +'</div>';
+  }
+  /* ── Time Sheet : pop-up de validation N+1 (récap cohérence des congés imputés) ── */
+  if(tp==='ts_approve'){
+    var _t=tsById(m.id);
+    if(_t){
+      var _who=((S._all&&S._all.cons)||S.cons).find(function(c){return c.id===_t.cid;});
+      title='Valider le Time Sheet';
+      var _days=_t.days||{};
+      var _leaveDays=Object.keys(_days).filter(function(d){return _days[d]==='leave';}).sort();
+      var _bd=tsBreakdown(_days);
+      var _lvList=_leaveDays.length?_leaveDays.map(function(d){
+        var r=tsLeaveCheck(_t.cid,d),xx=TS_LEAVE_BADGE[r.state];
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:12px"><span>'+fDt(d)+'</span><span style="font-weight:700;color:'+xx[1]+'">'+xx[2]+'</span></div>';
+      }).join(''):'<div style="font-size:12px;color:#94a3b8">Aucun jour de congé imputé sur cette semaine.</div>';
+      var _nKo=_leaveDays.filter(function(d){return tsLeaveCheck(_t.cid,d).state!=='ok';}).length;
+      body='<div style="font-size:13px;color:#0f172a;font-weight:700;margin-bottom:4px">'+esc(_who?_who.name:_t.cid)+' — '+esc(tsWeekLabel(_t.week))+'</div>'
+        +'<div style="font-size:12px;color:#64748b;margin-bottom:12px">'+_bd.billed+'j facturés · '+_bd.internal+'j interne · '+_bd.leave+'j congés · '+_bd.avail+'j dispo</div>'
+        +'<div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:4px">Cohérence des congés imputés</div>'
+        +'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:6px 12px;margin-bottom:8px">'+_lvList+'</div>'
+        +(_nKo>0?'<div style="font-size:12px;color:#b91c1c;font-weight:700;margin-bottom:12px">⚠ '+_nKo+' jour(s) de congé sans demande validée en amont. À vérifier avant de valider.</div>':(_leaveDays.length?'<div style="font-size:12px;color:#15803d;font-weight:700;margin-bottom:12px">✓ Tous les congés imputés sont validés en amont.</div>':'<div style="height:4px"></div>'))
+        +'<div class="br"><button class="bg" style="color:#b91c1c;border-color:#fecdd3" data-act="ts-reject" data-id="'+_t.id+'">Refuser</button>'
+        +'<button class="bp" style="background:#16a34a;border-color:#16a34a" data-act="ts-approve-ok" data-id="'+_t.id+'">Approuver la semaine</button></div>';
+    }
+  }
   return '<div class="mov" id="mov"><div class="mbox '+(wide?'mw':'mn')+'">'
     +'<div class="mhd"><h3>'+esc(title)+'</h3><button class="mcl" data-act="mc">&times;</button></div>'
     +'<div class="mbd">'+body+'</div></div></div>';

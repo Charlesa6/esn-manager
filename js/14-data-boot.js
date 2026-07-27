@@ -567,10 +567,10 @@ async function sbDelConsInvite(id){
   if(r.error)console.warn('consInvite del:',r.error.message);
 }
 
-/* ── Time Sheet (CRA mensuels) — chargement + persistance ── */
+/* ── Time Sheet (CRA hebdomadaires) — chargement + persistance ── */
 function _mapTs(d){
   return {
-    id:d.id, cid:d.consultant_id, month:d.month, status:d.status,
+    id:d.id, cid:d.consultant_id, week:d.week, status:d.status,
     days:d.days||null, approverId:d.approver_id||null, requesterId:d.requester_id||null,
     submittedAt:d.submitted_at||null, resolvedAt:d.resolved_at||null,
     rejectionReason:d.rejection_reason||''
@@ -581,7 +581,7 @@ async function loadTimesheets(){
   try{
     var q=sb.from('timesheets').select('*').eq('company_id',SB_CID);
     if(S.role==='utilisateur'&&S.consId)q=q.eq('consultant_id',S.consId);
-    var r=await q.order('month',{ascending:false});
+    var r=await q.order('week',{ascending:false});
     if(r.error){console.error('[Timesheets] Erreur:',r.error.message,'(table timesheets existe-t-elle ?)');return;}
     if(r.data)S.timesheets=r.data.map(_mapTs);
   }catch(e){console.warn('[Timesheets] Exception:',e.message);}
@@ -589,7 +589,7 @@ async function loadTimesheets(){
 async function sbUpsertTimesheet(t){
   if(!sb||!SB_CID){console.warn('[Timesheet] SB_CID manquant');return;}
   var res=await sb.from('timesheets').upsert({
-    id:t.id, company_id:SB_CID, consultant_id:t.cid, month:t.month, status:t.status,
+    id:t.id, company_id:SB_CID, consultant_id:t.cid, week:t.week, status:t.status,
     days:t.days||null, approver_id:t.approverId||null, requester_id:t.requesterId||null,
     submitted_at:t.submittedAt||null, resolved_at:t.resolvedAt||null,
     rejection_reason:t.rejectionReason||null, updated_at:new Date().toISOString()
@@ -602,17 +602,19 @@ function upsertTimesheetState(t){
   S.timesheets=(S.timesheets||[]).map(function(x){if(x.id===t.id){found=true;return t;}return x;});
   if(!found)S.timesheets=S.timesheets.concat([t]);
 }
-/* Soumission d'un mois par le consultant lui-même → validation N+1 (ou directe si
-   pas de N+1, comme pour les congés). Fige le réalisé dans days. */
-function submitTimesheet(cid,month){
+/* Soumission d'une semaine par le consultant lui-même → validation N+1 (ou directe
+   si pas de N+1, comme pour les congés). Fige les catégories SAISIES (tampon
+   d'édition) dans days. */
+function submitTimesheet(cid,week){
+  var days=(S.tsEdit&&S.tsEdit.cid===cid&&S.tsEdit.week===week)?Object.assign({},S.tsEdit.days):tsAutoDays(cid,week);
   var approverId=(cid===S.consId)?resolveApprover(S._userId):null;
   var directApprove=!approverId; /* pas de N+1 (Super Admin au sommet) → validé direct */
-  var existing=tsFor(cid,month);
+  var existing=tsFor(cid,week);
   var nowISO=new Date().toISOString();
   var t={
-    id:existing?existing.id:uid(), cid:cid, month:month,
+    id:existing?existing.id:uid(), cid:cid, week:week,
     status:directApprove?'approved':'submitted',
-    days:tsMonthBreakdown(cid,month),
+    days:days,
     approverId:approverId||null, requesterId:S._userId||null,
     submittedAt:nowISO, resolvedAt:directApprove?nowISO:null, rejectionReason:''
   };
@@ -622,28 +624,43 @@ function submitTimesheet(cid,month){
   render();
 }
 /* Le consultant retire sa demande en attente → retour brouillon. */
-function cancelTimesheet(id,cid,month){
-  var t=id?tsById(id):tsFor(cid,month);
+function cancelTimesheet(id,cid,week){
+  var t=id?tsById(id):tsFor(cid,week);
   if(!t)return;
   var nt=Object.assign({},t,{status:'draft',submittedAt:null,resolvedAt:null});
   upsertTimesheetState(nt);saveLocal();
   sbUpsertTimesheet(nt).catch(function(e){console.warn(e);});
   render();
 }
-/* Le N+1 approuve / refuse un TS soumis (mirroir de approveLv). */
-function approveTs(id,approved){
+/* Le N+1 approuve / refuse un TS soumis. Le refus passe par le pop-up ts_approve
+   (qui rappelle avec reason) ; approveTs applique la décision. */
+function approveTs(id,approved,reason){
   var t=tsById(id);if(!t)return;
-  var reason='';
-  if(!approved){reason=prompt('Motif du refus (visible par le consultant) :','');if(reason===null)return;}
   var nt=Object.assign({},t,{status:approved?'approved':'rejected',resolvedAt:new Date().toISOString(),rejectionReason:approved?'':(reason||'')});
   upsertTimesheetState(nt);saveLocal();
   sbUpsertTimesheet(nt).catch(function(e){console.warn(e);});
+  if(S.modal&&S.modal.type==='ts_approve')S.modal=null;
   render();
 }
-/* Le N+1 dé-valide un mois approuvé → redevient brouillon (mois déverrouillé). */
+/* Depuis le pop-up de cohérence : poser une demande de congé pour UN jour (réutilise
+   la logique du marquage rapide — soi-même → validation N+1, sinon application directe). */
+function tsRequestLeaveForDay(cid,day,type){
+  type=type||'Congé payé';
+  var isSelf=(cid===S.consId);
+  var approverId=resolveApprover(S._userId);
+  if(!approverId||!isSelf){
+    var nl={id:uid(),cid:cid,type:type,s:day,e:day};
+    S.lvs=S.lvs.concat([nl]);sbUpsertLeave(nl);
+    S.modal=null;render();
+  }else{
+    submitApproval('leave_add',{id:uid(),cid:cid,type:type,s:day,e:day,approver_id:approverId},
+      'Ajout d’absence — '+esc(type)+' le '+fDt(day));
+  }
+}
+/* Le N+1 dé-valide une semaine approuvée → redevient brouillon (semaine déverrouillée). */
 function reopenTimesheet(id){
   var t=tsById(id);if(!t)return;
-  if(!confirm('Dé-valider ce Time Sheet ?\n\nLe mois « '+tsMonthLabel(t.month)+' » redevient modifiable et devra être re-soumis puis re-validé.'))return;
+  if(!confirm('Dé-valider ce Time Sheet ?\n\nLa semaine « '+tsWeekLabel(t.week)+' » redevient modifiable et devra être re-soumise puis re-validée.'))return;
   var nt=Object.assign({},t,{status:'draft',resolvedAt:null});
   upsertTimesheetState(nt);saveLocal();
   sbUpsertTimesheet(nt).catch(function(e){console.warn(e);});
@@ -2008,14 +2025,17 @@ function tApprovals(){
     }).join('');
     var tsRows=pendingTs.map(function(t){
       var who=((S._all&&S._all.cons)||S.cons).find(function(c){return c.id===t.cid;});
-      var bd=t.days||tsMonthBreakdown(t.cid,t.month);
+      var bd=tsBreakdown(t.days);
+      /* Cohérence congé : jours en « leave » sans demande validée en amont. */
+      var leaveDays=Object.keys(t.days||{}).filter(function(d){return t.days[d]==='leave';});
+      var nKo=leaveDays.filter(function(d){return tsLeaveCheck(t.cid,d).state!=='ok';}).length;
+      var warn=nKo>0?'<div style="font-size:11px;font-weight:700;color:#b91c1c;margin-top:4px">⚠ '+nKo+' jour(s) de congé sans validation en amont</div>':(leaveDays.length?'<div style="font-size:11px;font-weight:700;color:#15803d;margin-top:4px">✓ Congés imputés validés en amont</div>':'');
       return '<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px">'
-        +'<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#0f172a">Time Sheet — '+esc(tsMonthLabel(t.month))+'</div>'
+        +'<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#0f172a">Time Sheet — '+esc(tsWeekLabel(t.week))+'</div>'
         +'<div style="font-size:12px;color:#64748b;margin-top:3px">'+esc(who?who.name:t.cid)+' · '
-        +bd.billed+'j facturés · '+bd.internal+'j interne · '+bd.leave+'j congés · '+bd.avail+'j dispo</div></div>'
+        +bd.billed+'j facturés · '+bd.internal+'j interne · '+bd.leave+'j congés · '+bd.avail+'j dispo</div>'+warn+'</div>'
         +'<div style="display:flex;gap:8px">'
-        +'<button class="bp" style="background:#16a34a;font-size:12px;padding:6px 12px" onclick="approveTs(\''+t.id+'\',true)">✓ Approuver</button>'
-        +'<button class="bp" style="background:#dc2626;font-size:12px;padding:6px 12px" onclick="approveTs(\''+t.id+'\',false)">✗ Refuser</button>'
+        +'<button class="bp" style="font-size:12px;padding:6px 12px" data-act="ts-review" data-id="'+t.id+'">Examiner</button>'
         +'</div></div>';
     }).join('');
     validatorHtml=

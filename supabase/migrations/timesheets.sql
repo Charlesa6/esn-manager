@@ -1,13 +1,17 @@
--- Time Sheet (CRA) mensuel par consultant, avec workflow de validation N+1.
--- Un TS = un (company_id, consultant_id, month 'YYYY-MM') avec un cycle de vie
--- draft -> submitted -> approved/rejected. Le snapshot des jours (days jsonb) fige
--- le réalisé du mois au moment de la soumission.
+-- Time Sheet (CRA) HEBDOMADAIRE par consultant, avec workflow de validation N+1.
+-- Un TS = un (company_id, consultant_id, week) où `week` = date du lundi de la
+-- semaine ('YYYY-MM-DD'), avec un cycle de vie draft -> submitted -> approved/
+-- rejected. `days` (jsonb) fige la catégorie SAISIE par jour (éditable par le
+-- consultant, pré-remplie depuis le calendrier) :
+--   { 'YYYY-MM-DD': 'billed'|'internal'|'leave'|'available' }.
 -- Appliqué en prod via MCP (apply_migration) — ce fichier est le record.
+-- NB : la colonne a d'abord été créée sous le nom `month` (version mensuelle)
+-- puis renommée en `week` (migration timesheets_weekly).
 create table if not exists public.timesheets (
   id text primary key default (gen_random_uuid())::text,
   company_id uuid not null,
   consultant_id text not null references public.consultants(id) on delete cascade,
-  month text not null,
+  week text not null,
   status text not null default 'draft',
   days jsonb,
   approver_id uuid,
@@ -17,7 +21,7 @@ create table if not exists public.timesheets (
   rejection_reason text,
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
-  unique (company_id, consultant_id, month)
+  unique (company_id, consultant_id, week)
 );
 
 create index if not exists timesheets_company_idx on public.timesheets(company_id);

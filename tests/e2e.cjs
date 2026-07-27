@@ -179,38 +179,58 @@ async function newPage(browser) {
       !!document.querySelector('[data-nav="svp_acces"]') || !!document.querySelector('[data-nav="svp_settings"]'));
     check('Sidebar : Gestion des accès & Paramètres masqués', hiddenTabs === false);
 
-    // Time Sheet (CRA) : onglet, rendu, statuts, soumission, verrouillage du mois
+    // Time Sheet (CRA hebdo) : onglet, statuts, cohérence congé, soumission, verrou
     {
       const before = p._appErrors.length;
       const okTab = await goTab('timesheet');
       check('onglet Time Sheet présent', okTab, 'bouton nav absent');
       if (okTab) {
         const tsTxt = await p.evaluate(() => document.body.innerText);
-        check('Time Sheet : en-tête affiché', /Time Sheet/.test(tsTxt));
+        check('Time Sheet : en-tête hebdomadaire affiché', /Time Sheet/.test(tsTxt) && /hebdomadaire/.test(tsTxt));
         check('Time Sheet : navigation sans erreur JS', p._appErrors.length === before, p._appErrors.slice(before).join(' | '));
-        // d1 (Sophie) a un mois validé (2026-05) et un soumis (2026-06) en démo
+        // d1 : semaine validée (2026-07-20) et soumise (2026-07-13) en démo → historique
         const statusTxt = await p.evaluate(() => {
-          S.tsCid = 'd1'; render();
-          var c = document.querySelector('.card.ov');
-          return c ? c.innerText : '';
-        });
-        check('Time Sheet : statut « Validé » affiché (mois approuvé)', /Validé/.test(statusTxt));
-        check('Time Sheet : statut « En attente » affiché (mois soumis)', /En attente/.test(statusTxt));
-        // Soumission d'un mois brouillon → devient validé (pas de N+1 en démo) sans erreur
-        const subStatus = await p.evaluate(() => {
-          S.consId = 'd1'; S.tsCid = 'd1'; render();
-          submitTimesheet('d1', '2026-04');
-          var t = (S.timesheets || []).find(x => x.cid === 'd1' && x.month === '2026-04');
-          return t ? t.status : 'none';
-        });
-        check('Time Sheet : soumission d\'un mois (statut = ' + subStatus + ')', subStatus !== 'none');
-        // Verrouillage : le mois désormais approuvé bloque l'édition (indicateur calendrier)
-        const lockTxt = await p.evaluate(() => {
-          S.tab = 'activite'; S.actCid = 'd1'; S.actMonth = '2026-04'; render();
+          S.tsCid = 'd1'; S.tsWeek = ''; render();
           return document.body.innerText;
         });
-        check('Time Sheet : mois approuvé verrouillé dans le calendrier', /verrouillé/.test(lockTxt));
-        await p.evaluate(() => { S.consId = null; S.tab = 'kpis'; render(); });
+        check('Time Sheet : statut « Validé » affiché (semaine approuvée)', /Validé/.test(statusTxt));
+        check('Time Sheet : statut « En attente » affiché (semaine soumise)', /En attente/.test(statusTxt));
+        // Cohérence congé : semaine 2026-07-13 de d1 (congés couverts par un congé validé)
+        const okBadge = await p.evaluate(() => {
+          S.tsCid = 'd1'; S.tsWeek = '2026-07-13'; render();
+          return document.body.innerText;
+        });
+        check('Time Sheet : congé imputé validé en amont (✓ Congé validé)', /Congé validé/.test(okBadge));
+        // Cohérence congé : semaine 2026-07-13 de d3 (jeudi en congé SANS demande posée)
+        const koBadge = await p.evaluate(() => {
+          S.tsCid = 'd3'; S.tsWeek = '2026-07-13'; render();
+          return document.body.innerText;
+        });
+        check('Time Sheet : congé sans demande signalé (⚠ Aucune demande)', /Aucune demande/.test(koBadge));
+        // Pop-up de cohérence à la saisie : mettre un jour en « Congé » ouvre ts_leavecheck
+        const popupType = await p.evaluate(() => {
+          S.consId = 'd1'; S.tsCid = 'd1'; var wk = tsWeekMonday('2026-06-15'); S.tsWeek = wk; S.tsEdit = null; render();
+          tsEnsureEdit('d1', wk);
+          var day = tsWeekDays(wk)[3]; // jeudi
+          tsSetDay(day, 'leave');
+          return S.modal && S.modal.type;
+        });
+        check('Time Sheet : pop-up cohérence congé à la saisie', popupType === 'ts_leavecheck');
+        // Soumission d'une semaine → validée (pas de N+1 en démo) sans erreur
+        const subStatus = await p.evaluate(() => {
+          S.modal = null; var wk = tsWeekMonday('2026-06-15'); S.consId = 'd1'; S.tsCid = 'd1'; S.tsWeek = wk; render();
+          submitTimesheet('d1', wk);
+          var t = (S.timesheets || []).find(x => x.cid === 'd1' && x.week === wk);
+          return t ? t.status : 'none';
+        });
+        check('Time Sheet : soumission d\'une semaine (statut = ' + subStatus + ')', subStatus !== 'none');
+        // Verrouillage : la semaine approuvée marque ses jours 🔒 dans le calendrier
+        const lockTxt = await p.evaluate(() => {
+          S.tab = 'activite'; S.actCid = 'd1'; S.actMonth = '2026-06'; render();
+          return document.body.innerText;
+        });
+        check('Time Sheet : semaine approuvée verrouillée (🔒) dans le calendrier', /🔒/.test(lockTxt));
+        await p.evaluate(() => { S.consId = null; S.modal = null; S.tab = 'kpis'; render(); });
       }
     }
 

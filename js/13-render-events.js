@@ -410,10 +410,18 @@ function bind(){
           if(confirm('Supprimer cette absence ?')){S.lvs=S.lvs.filter(function(l){return l.id!==id;});sbDel('leaves',id);render();}
         }
       }
-      /* ── Time Sheet (CRA) ── */
-      else if(a==='ts-submit'){var _tsm=b.getAttribute('data-month');if(id&&_tsm)submitTimesheet(id,_tsm);}
-      else if(a==='ts-cancel'){cancelTimesheet(id,S.tsCid,b.getAttribute('data-month'));}
+      /* ── Time Sheet (CRA hebdomadaire) ── */
+      else if(a==='ts-submit'){var _tsw=b.getAttribute('data-week');if(id&&_tsw)submitTimesheet(id,_tsw);}
+      else if(a==='ts-cancel'){cancelTimesheet(id,S.tsCid,b.getAttribute('data-week'));}
       else if(a==='ts-reopen'){reopenTimesheet(id);}
+      else if(a==='ts-week-prev'){S.tsWeek=tsShiftWeek(S.tsWeek||tsWeekMonday(TODAY),-1);S.tsEdit=null;render();}
+      else if(a==='ts-week-next'){S.tsWeek=tsShiftWeek(S.tsWeek||tsWeekMonday(TODAY),1);S.tsEdit=null;render();}
+      else if(a==='ts-week-cur'){S.tsWeek=tsWeekMonday(TODAY);S.tsEdit=null;render();}
+      else if(a==='ts-week'){S.tsWeek=b.getAttribute('data-week');S.tsEdit=null;render();}
+      else if(a==='ts-review'){S.modal={type:'ts_approve',id:id};render();}
+      else if(a==='ts-approve-ok'){approveTs(id,true);}
+      else if(a==='ts-reject'){var _rs=prompt('Motif du refus (visible par le consultant) :','');if(_rs===null)return;approveTs(id,false,_rs);}
+      else if(a==='ts-leave-request'){tsRequestLeaveForDay(id,b.getAttribute('data-day'),gv('ts-lv-type')||'Congé payé');}
       /* ── Approbations directeur ── */
       else if(a==='appr-toggle'){if(!S.apprOpen)S.apprOpen={};S.apprOpen[id]=!S.apprOpen[id];render();}
       else if(a==='appr-ok'){
@@ -935,7 +943,7 @@ function bind(){
         }
       }
       /* activité jour par jour */
-      else if(a==='day'){var _dd=b.getAttribute('data-day');if(tsApprovedMonth(S.actCid,_dd.slice(0,7))){tsLockAlert();return;}S.modal={type:'dayexc',day:_dd,cid:S.actCid};render();}
+      else if(a==='day'){var _dd=b.getAttribute('data-day');if(tsApprovedWeek(S.actCid,tsWeekMonday(_dd))){tsLockAlert();return;}S.modal={type:'dayexc',day:_dd,cid:S.actCid};render();}
       else if(a==='day-set'){
         var dt=gv('dexc-type'),dd=S.modal.day,dcid=S.modal.cid;
         if(S.role==='utilisateur'){

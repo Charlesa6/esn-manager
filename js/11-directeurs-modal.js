@@ -128,10 +128,12 @@ function tActivite(){
         else{main='Disponible';txt='#94a3b8';clk=true;}
       }
     }
+    var wkLocked=(!we&&!hol)&&(typeof tsApprovedWeek==='function')&&tsApprovedWeek(cid,tsWeekMonday(ds));
+    if(wkLocked)clk=false;
     var isToday=(ds===TODAY);
     var style='background:'+bg+';border:'+(isToday?'2px solid #2563eb':'1px solid '+bd)+';border-radius:8px;min-height:62px;padding:5px 7px;overflow:hidden;'+(clk?'cursor:pointer':'');
     cells+='<div'+(clk?' data-act="day" data-day="'+ds+'"':'')+' style="'+style+'">'
-      +'<div style="font-size:11px;font-weight:700;color:'+txt+'">'+d+'</div>'
+      +'<div style="font-size:11px;font-weight:700;color:'+txt+'">'+d+(wkLocked?' <span title="Semaine validée — verrouillée" style="color:#15803d">🔒</span>':'')+'</div>'
       +(main?'<div style="font-size:10px;font-weight:600;color:#0f172a;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(main)+'</div>':'')
       +(sub?'<div style="font-size:9px;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(sub)+'</div>':'')
       +'</div>';
@@ -153,14 +155,6 @@ function tActivite(){
     +'</div></div>'
 
     +statsGrid
-
-    +(typeof tsPill==='function'
-      ?'<div style="margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
-        +'<span style="font-size:12px;color:#475569">Time Sheet '+esc(tsMonthLabel(S.actMonth))+' :</span>'
-        +tsPill(tsStatus(cid,S.actMonth))
-        +(tsApprovedMonth(cid,S.actMonth)?'<span style="font-size:12px;color:#b45309">🔒 Mois verrouillé — dé-valider dans « Time Sheet » pour modifier</span>':'')
-        +'</div>'
-      :'')
 
     +'<div class="card" style="padding:16px">'
     +'<div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:10px">Planning \u2014 '+MNAMES[mon-1]+' '+year
