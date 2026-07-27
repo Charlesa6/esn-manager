@@ -48,6 +48,7 @@ function render(){
   var _demoBanner=S.demo
     ?'<div style="background:#7c3aed;color:#fff;text-align:center;padding:9px 16px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:16px;flex-shrink:0">'
     +'\uD83C\uDFAE MODE D\u00c9MO — donn\u00e9es fictives, aucune modification sauvegard\u00e9e'
+    +'<button onclick="startGuidedTour()" style="color:#fff;font-size:12px;font-weight:700;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.35);padding:4px 12px;border-radius:6px;cursor:pointer">\u25b6 Visite guid\u00e9e (10 min)</button>'
     +'<a href="/login" style="color:#e9d5ff;font-size:12px;font-weight:600;background:rgba(255,255,255,.15);padding:4px 12px;border-radius:6px;text-decoration:none">'
     +'Cr\u00e9er un compte \u2192</a></div>'
     :'';
