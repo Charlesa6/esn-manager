@@ -631,12 +631,14 @@ var JOB_STATUS=[
 function jobStLb(id){var s=JOB_STATUS.find(function(x){return x.id===id;});return s?s.lb:id;}
 function jobStCol(id){var s=JOB_STATUS.find(function(x){return x.id===id;});return s?[s.bg,s.fg]:['#f1f5f9','#475569'];}
 var JOB_SENIORITY=[
-  {id:'junior',  lb:'Junior (0-2 ans)'},
-  {id:'confirme',lb:'Confirmé (3-6 ans)'},
-  {id:'senior',  lb:'Senior (7-10 ans)'},
-  {id:'lead',    lb:'Lead / Expert (10+ ans)'},
+  {id:'junior',  lb:'Junior (0-2 ans)',        min:0},
+  {id:'confirme',lb:'Confirmé (3-6 ans)',      min:3},
+  {id:'senior',  lb:'Senior (7-10 ans)',       min:7},
+  {id:'lead',    lb:'Lead / Expert (10+ ans)', min:10},
 ];
 function jobSenLb(id){var s=JOB_SENIORITY.find(function(x){return x.id===id;});return s?s.lb:'';}
+/* Séniorité → seuil d'années d'expérience minimum (pour le matching candidats). */
+function senMinYears(id){var s=JOB_SENIORITY.find(function(x){return x.id===id;});return s?s.min:0;}
 var JOB_CONTRACTS=['CDI','CDD','Freelance','Alternance','Stage'];
 
 /* Grandes villes de France (fiche candidat : localisation cible / secondaires,

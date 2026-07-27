@@ -140,6 +140,7 @@ async function sbUpsertCrmOpp(o){
     opp_team:o.opp_team||null,
     req_expertise:o.req_expertise||[],
     location:o.location||null,
+    req_seniority:o.req_seniority||null,
     req_min_years:o.req_min_years||null,
     req_sector:o.req_sector||null,
     bu_id:o.bu_id||null
@@ -195,6 +196,57 @@ function oppMatches(reqExp,loc,minYears,sector,tjmCible,dateStart){
   return res.slice(0,15);
 }
 async function sbDelBiz(table,id){if(!sb||!SB_CID)return;return sb.from(table).delete().eq('id',id).eq('company_id',SB_CID);}
+
+/* ── Modal opportunité : expertises + candidats suggérés (rafraîchis SANS
+   re-render global pour éviter le « clignotement » à chaque saisie) ── */
+function _oppExpUniverse(){
+  var u={};
+  (S.cands||[]).forEach(function(c){(c.expertise||[]).forEach(function(e){if(e)u[e]=1;});});
+  ((S._all&&S._all.cons)||S.cons||[]).forEach(function(c){(c.expertise||[]).forEach(function(e){if(e)u[e]=1;});});
+  return Object.keys(u).sort();
+}
+function oppExpChipsHTML(){
+  var reqExp=(S.bizModal&&S.bizModal.reqExp)||[];
+  var list=_oppExpUniverse();
+  if(!list.length)return '<span style="font-size:12px;color:#94a3b8">Renseignez des expertises sur vos candidats/consultants pour activer le matching.</span>';
+  return list.map(function(e){var on=reqExp.indexOf(e)>=0;return '<button type="button" data-act="opp-exp-tog" data-id="'+esc(e)+'" style="padding:4px 12px;border-radius:99px;font-size:12px;font-weight:600;border:1px solid '+(on?'#0891b2':'#e2e8f0')+';background:'+(on?'#0891b2':'#fff')+';color:'+(on?'#fff':'#475569')+';cursor:pointer;margin:0 4px 4px 0">'+esc(e)+'</button>';}).join('');
+}
+function oppSuggHTML(){
+  var m=S.bizModal||{},it=m.item||{};
+  var reqExp=m.reqExp||[],loc=m.loc||'',sen=m.seniority||'',sector=m.sector||'';
+  var minYears=senMinYears(sen);
+  var nbActive=(reqExp.length?1:0)+(loc?1:0)+(sen?1:0)+(sector?1:0);
+  var chip=function(lb,tip,ok){return ok==null?'':'<span title="'+tip+'" style="color:'+(ok?'#16a34a':'#cbd5e1')+'">'+lb+'</span>';};
+  var locStr=function(c){if(c.mobileFrance)return 'France entière';var t=c.locTarget||'';var n=(c.locSecondary||[]).length;if(t)return t+(n?' +'+n:'');return (c.locations||[]).join(', ')||'—';};
+  var card=function(mm){var c=mm.c;
+    return '<div data-act="opp-see-cand" data-id="'+c.id+'" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;cursor:pointer;background:#fff">'
+      +'<div style="min-width:0"><div style="font-weight:700;font-size:13px;color:#0f172a">'+esc(c.name)+'</div>'
+      +'<div style="font-size:11px;color:#64748b">'+esc(locStr(c))+' · '+(c.yearsExp?c.yearsExp+' an'+(c.yearsExp>1?'s':''):'exp ?')+' · '+(mm.tjmC?mm.tjmC.toFixed(0)+' €/j':'TJM ?')+' · dispo '+(c.availDate?fDt(c.availDate):'?')+'</div></div>'
+      +'<div style="display:flex;gap:7px;flex-shrink:0;font-size:11px;font-weight:700;align-items:center">'
+      +chip('💡'+mm.overlap.length,'Expertises en commun',mm.expOk)
+      +(mm.locKind==='france'?chip('🇫🇷','Mobile France entière',true):chip('📍',mm.locKind==='secondary'?'Localisation secondaire (prêt à aller)':'Localisation cible (priorité)',mm.locOk))
+      +chip('⏳','Séniorité / années d\'expérience',mm.yrsOk)
+      +chip('🏭','Secteur',mm.secOk)
+      +'<span title="Prix (TJM revente ≤ cible)" style="color:'+(mm.priceOk===true?'#16a34a':mm.priceOk===false?'#dc2626':'#cbd5e1')+'">💶</span>'
+      +'<span title="Disponible avant démarrage" style="color:'+(mm.availOk===true?'#16a34a':mm.availOk===false?'#dc2626':'#cbd5e1')+'">📅</span>'
+      +'</div></div>';
+  };
+  if(!nbActive)return '<div style="font-size:12px;color:#94a3b8;padding:6px 0">Renseignez au moins un critère (expertise, localisation, séniorité ou secteur) pour voir des candidats suggérés.</div>';
+  var sugg=oppMatches(reqExp,loc,minYears,sector,+(it.tjm_cible||0),it.date_start||null);
+  if(!sugg.length)return '<div style="font-size:12px;color:#94a3b8;padding:6px 0">Aucun candidat ne correspond aux critères pour l\'instant.</div>';
+  var grp={};sugg.forEach(function(mm){(grp[mm.matchCount]=grp[mm.matchCount]||[]).push(mm);});
+  var ks=Object.keys(grp).map(Number).sort(function(a,b){return b-a;});
+  return ks.map(function(k){
+    var full=(k===nbActive);
+    var head='<div style="font-size:11px;font-weight:800;color:'+(full?'#16a34a':'#64748b')+';margin:10px 0 5px;display:flex;align-items:center;gap:6px">'+(full?'✅':'•')+' '+k+'/'+nbActive+' critère'+(k>1?'s':'')+' <span style="font-weight:600;color:#94a3b8">('+grp[k].length+' candidat'+(grp[k].length>1?'s':'')+')</span></div>';
+    return head+grp[k].map(card).join('');
+  }).join('');
+}
+/* Refresh partiel des puces expertises + de la liste des candidats suggérés. */
+function bizOppRefresh(){
+  var ec=document.getElementById('opp-exp-chips');if(ec)ec.innerHTML=oppExpChipsHTML();
+  var sg=document.getElementById('opp-sugg');if(sg)sg.innerHTML=oppSuggHTML();
+}
 
 /* ── Actions CRM ── */
 function bizSaveAcc(){
@@ -257,7 +309,10 @@ function bizSaveOpp(){
     notes:gv('biz-opp-notes'),
     req_expertise:(S.bizModal&&S.bizModal.reqExp)||(it&&it.req_expertise)||[],
     location:gv('biz-opp-loc')||null,
-    req_min_years:+gv('biz-opp-minyears')||null,
+    req_seniority:(S.bizModal&&S.bizModal.seniority)||gv('biz-opp-sen')||null,
+    /* Années min. dérivées de la séniorité (source de vérité = séniorité) — conservées
+       pour le matching et la compatibilité. */
+    req_min_years:(senMinYears((S.bizModal&&S.bizModal.seniority)||gv('biz-opp-sen'))||null),
     req_sector:gv('biz-opp-sector')||null,
     owner_email:it?(it.owner_email||S._userEmail||''):S._userEmail||'',
     owner_name:it?(it.owner_name||S.profileFirstName||''):S.profileFirstName||'',
@@ -946,53 +1001,17 @@ function tBizModal(){
     var stOpts=OPP_STATUS.map(function(s){return '<option value="'+s.id+'"'+(it.status===s.id?' selected':(!it.id&&s.id==='identification'?' selected':''))+'>'+s.lb+'</option>';}).join('');
     var btOpp=m.btype||it.btype||'at';
     var consOpts='<option value="">-- Aucun --</option>'+S.cons.map(function(cc){return '<option value="'+cc.id+'"'+((it.consultant_ids||[]).indexOf(cc.id)>=0?' selected':'')+'>'+esc(cc.name)+'</option>';}).join('');
-    /* Matching recrutement : expertise recherchée + localisation → candidats suggérés */
+    /* Matching recrutement : expertise + localisation + séniorité + secteur → candidats.
+       État conservé sur S.bizModal ; les puces et la liste se rafraîchissent en
+       partiel (bizOppRefresh) sans re-render global. */
     if(S.bizModal.reqExp==null)S.bizModal.reqExp=((it.req_expertise)||[]).slice();
     if(S.bizModal.loc==null)S.bizModal.loc=(it.location||'');
-    if(S.bizModal.minYears==null)S.bizModal.minYears=(+it.req_min_years||0);
+    if(S.bizModal.seniority==null)S.bizModal.seniority=(it.req_seniority||'');
     if(S.bizModal.sector==null)S.bizModal.sector=(it.req_sector||'');
-    var _reqExp=S.bizModal.reqExp,_oppLoc=S.bizModal.loc,_minYears=+S.bizModal.minYears||0,_sector=S.bizModal.sector||'';
-    var _expU={};(S.cands||[]).forEach(function(c){(c.expertise||[]).forEach(function(e){if(e)_expU[e]=1;});});((S._all&&S._all.cons)||S.cons||[]).forEach(function(c){(c.expertise||[]).forEach(function(e){if(e)_expU[e]=1;});});
-    var _expList=Object.keys(_expU).sort();
-    var _expChips=_expList.length?_expList.map(function(e){var on=_reqExp.indexOf(e)>=0;return '<button type="button" data-act="opp-exp-tog" data-id="'+esc(e)+'" style="padding:4px 12px;border-radius:99px;font-size:12px;font-weight:600;border:1px solid '+(on?'#0891b2':'#e2e8f0')+';background:'+(on?'#0891b2':'#fff')+';color:'+(on?'#fff':'#475569')+';cursor:pointer;margin:0 4px 4px 0">'+esc(e)+'</button>';}).join(''):'<span style="font-size:12px;color:#94a3b8">Renseignez des expertises sur vos candidats/consultants pour activer le matching.</span>';
+    var _oppLoc=S.bizModal.loc,_sector=S.bizModal.sector||'',_sen=S.bizModal.seniority||'';
     var _locOpts='<option value="">— Indifférent —</option>'+REC_LOCATIONS.map(function(l){return '<option value="'+esc(l)+'"'+(_oppLoc===l?' selected':'')+'>'+esc(l)+'</option>';}).join('');
     var _secOpts='<option value="">— Indifférent —</option>'+SECTOR_LIST.map(function(s){return '<option value="'+esc(s)+'"'+(_sector===s?' selected':'')+'>'+esc(s)+'</option>';}).join('');
-    var _nbActive=(_reqExp.length?1:0)+(_oppLoc?1:0)+(_minYears>0?1:0)+(_sector?1:0);
-    /* Chip d'indicateur d'un critère : vert si satisfait, gris pâle sinon ; masqué si le critère n'est pas renseigné (ok===null) */
-    var _chip=function(lb,tip,ok){return ok==null?'':'<span title="'+tip+'" style="color:'+(ok?'#16a34a':'#cbd5e1')+'">'+lb+'</span>';};
-    var _sugg=oppMatches(_reqExp,_oppLoc,_minYears,_sector,+(it.tjm_cible||0),it.date_start||null);
-    var _locStr=function(c){
-      if(c.mobileFrance)return 'France entière';
-      var t=c.locTarget||'';var n=(c.locSecondary||[]).length;
-      if(t)return t+(n?' +'+n:'');
-      return (c.locations||[]).join(', ')||'—';
-    };
-    var _card=function(mm){var c=mm.c;
-      return '<div data-act="opp-see-cand" data-id="'+c.id+'" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;cursor:pointer;background:#fff">'
-        +'<div style="min-width:0"><div style="font-weight:700;font-size:13px;color:#0f172a">'+esc(c.name)+'</div>'
-        +'<div style="font-size:11px;color:#64748b">'+esc(_locStr(c))+' · '+(c.yearsExp?c.yearsExp+' an'+(c.yearsExp>1?'s':''):'exp ?')+' · '+(mm.tjmC?mm.tjmC.toFixed(0)+' €/j':'TJM ?')+' · dispo '+(c.availDate?fDt(c.availDate):'?')+'</div></div>'
-        +'<div style="display:flex;gap:7px;flex-shrink:0;font-size:11px;font-weight:700;align-items:center">'
-        +_chip('💡'+mm.overlap.length,'Expertises en commun',mm.expOk)
-        +(mm.locKind==='france'?_chip('🇫🇷','Mobile France entière',true):_chip('📍',mm.locKind==='secondary'?'Localisation secondaire (prêt à aller)':'Localisation cible (priorité)',mm.locOk))
-        +_chip('⏳','Années d\'expérience',mm.yrsOk)
-        +_chip('🏭','Secteur',mm.secOk)
-        +'<span title="Prix (TJM revente ≤ cible)" style="color:'+(mm.priceOk===true?'#16a34a':mm.priceOk===false?'#dc2626':'#cbd5e1')+'">💶</span>'
-        +'<span title="Disponible avant démarrage" style="color:'+(mm.availOk===true?'#16a34a':mm.availOk===false?'#dc2626':'#cbd5e1')+'">📅</span>'
-        +'</div></div>';
-    };
-    var _suggHtml;
-    if(!_nbActive){_suggHtml='<div style="font-size:12px;color:#94a3b8;padding:6px 0">Renseignez au moins un critère (expertise, localisation, années d\'expérience ou secteur) pour voir des candidats suggérés.</div>';}
-    else if(!_sugg.length){_suggHtml='<div style="font-size:12px;color:#94a3b8;padding:6px 0">Aucun candidat ne correspond aux critères pour l\'instant.</div>';}
-    else{
-      var _grp={};_sugg.forEach(function(mm){(_grp[mm.matchCount]=_grp[mm.matchCount]||[]).push(mm);});
-      var _ks=Object.keys(_grp).map(Number).sort(function(a,b){return b-a;});
-      _suggHtml=_ks.map(function(k){
-        var full=(k===_nbActive);
-        var head='<div style="font-size:11px;font-weight:800;color:'+(full?'#16a34a':'#64748b')+';margin:10px 0 5px;display:flex;align-items:center;gap:6px">'
-          +(full?'✅':'•')+' '+k+'/'+_nbActive+' critère'+(k>1?'s':'')+' <span style="font-weight:600;color:#94a3b8">('+_grp[k].length+' candidat'+(_grp[k].length>1?'s':'')+')</span></div>';
-        return head+_grp[k].map(_card).join('');
-      }).join('');
-    }
+    var _senOpts='<option value="">— Indifférent —</option>'+JOB_SENIORITY.map(function(s){return '<option value="'+s.id+'"'+(_sen===s.id?' selected':'')+'>'+esc(s.lb)+'</option>';}).join('');
     body='<div class="g2">'
       +'<div class="fd cs2"><label class="fl">Nom de l\'opportunit\u00e9 *</label><input class="ic" id="biz-opp-name" value="'+esc(it.name||'')+'" placeholder="Ex: Refonte SI DSI BNP"></div>'
       +'<div class="fd"><label class="fl">Compte</label><select class="ic" id="biz-opp-acc">'+accOpts+'</select></div>'
@@ -1022,11 +1041,11 @@ function tBizModal(){
       /* Consultant(s) pr\u00e9sent\u00e9(s) */
       +'<div class="fd cs2"><label class="fl">Consultant(s) pr\u00e9sent\u00e9(s)</label><div id="opp-cons-wrap">'+oppConsPickerHTML()+'</div></div>'
       +(it.status==='perdu'?'<div class="fd cs2"><label class="fl">Motif de perte</label><input class="ic" id="biz-opp-motif" value="'+esc(it.motif_perte||'')+'"></div>':'<input type="hidden" id="biz-opp-motif">')
-      +'<div class="fd"><label class="fl">Localisation recherchée</label><select class="ic" id="biz-opp-loc" onchange="S.bizModal.loc=this.value;render()">'+_locOpts+'</select></div>'
-      +'<div class="fd"><label class="fl">Années d\'expérience (min.)</label><input class="ic" type="number" min="0" step="0.5" id="biz-opp-minyears" value="'+(_minYears||'')+'" placeholder="Ex : 5" onchange="S.bizModal.minYears=+this.value||0;render()"></div>'
-      +'<div class="fd"><label class="fl">Secteur recherché</label><select class="ic" id="biz-opp-sector" onchange="S.bizModal.sector=this.value;render()">'+_secOpts+'</select></div>'
-      +'<div class="fd cs2"><label class="fl">Expertise / compétences recherchées</label><div style="margin-top:4px">'+_expChips+'</div><p class="fh">Sert à suggérer des candidats du pipeline recrutement.</p></div>'
-      +'<div class="fd cs2"><label class="fl">🎯 Candidats suggérés</label><div style="margin-top:4px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px">'+_suggHtml+'</div><p class="fh">Classés par nombre de critères satisfaits (expertise, localisation, années d\'expérience, secteur) ; 💶 prix et 📅 disponibilité servent de départage.</p></div>'
+      +'<div class="fd"><label class="fl">Localisation recherchée</label><select class="ic" id="biz-opp-loc" onchange="S.bizModal.loc=this.value;bizOppRefresh()">'+_locOpts+'</select></div>'
+      +'<div class="fd"><label class="fl">Séniorité recherchée</label><select class="ic" id="biz-opp-sen" onchange="S.bizModal.seniority=this.value;bizOppRefresh()">'+_senOpts+'</select></div>'
+      +'<div class="fd"><label class="fl">Secteur recherché</label><select class="ic" id="biz-opp-sector" onchange="S.bizModal.sector=this.value;bizOppRefresh()">'+_secOpts+'</select></div>'
+      +'<div class="fd cs2"><label class="fl">Expertise / compétences recherchées</label><div id="opp-exp-chips" style="margin-top:4px">'+oppExpChipsHTML()+'</div><p class="fh">Sert à suggérer des candidats du pipeline recrutement.</p></div>'
+      +'<div class="fd cs2"><label class="fl">🎯 Candidats suggérés</label><div id="opp-sugg" style="margin-top:4px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px">'+oppSuggHTML()+'</div><p class="fh">Classés par nombre de critères satisfaits (expertise, localisation, séniorité, secteur) ; 💶 prix et 📅 disponibilité servent de départage.</p></div>'
       +'<div class="fd cs2"><label class="fl">Notes</label><textarea class="ic" id="biz-opp-notes" rows="2">'+esc(it.notes||'')+'</textarea></div>'
       +'</div>';
   }

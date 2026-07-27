@@ -185,7 +185,7 @@ function bind(){
         var oi=oe.indexOf(rid);
         if(oi>=0)oe.splice(oi,1);else oe.push(rid);
         if(S.bizModal)S.bizModal.reqExp=oe;
-        render();
+        bizOppRefresh();
       }
       else if(ra==='opp-see-cand'){S.bizModal=null;S.tab='recrutement';S.recSel=rid;render();}
       else if(ra==='recopen'){S.recSel=rid;S.recAddMeet=false;S.recAddCgi=false;S.recAddCv=false;S.recAddCr=false;S.recEditMeetId=null;S.recEditCgiId=null;S.recEditCrId=null;render();}
@@ -261,7 +261,7 @@ function bind(){
         var oi=oe.indexOf(id);
         if(oi>=0)oe.splice(oi,1);else oe.push(id);
         if(S.bizModal)S.bizModal.reqExp=oe;
-        render();
+        bizOppRefresh();
       }
       else if(a==='opp-see-cand'){S.bizModal=null;S.tab='recrutement';S.recSel=id;render();}
       else if(a==='fexp-tog'){
@@ -597,7 +597,7 @@ function bind(){
           title:jt,seniority:gv('jbsen'),status:gv('jbst')||'ouvert',
           location:gv('jbloc'),reqSector:gv('jbsec'),contractKind:gv('jbck'),
           startDate:gv('jbsd'),nbPositions:(+gv('jbnp')||1),
-          reqMinYears:_num('jbyrs'),reqExpertise:(S.modal.expSel||[]).slice(),
+          reqMinYears:(senMinYears(gv('jbsen'))||null),reqExpertise:(S.modal.expSel||[]).slice(),
           missionDesc:gv('jbmis'),expectations:gv('jbexp'),
           clientName:gv('jbcli'),assignedTo:gv('jbassign'),
           salaryMin:_num('jbsmin'),salaryMax:_num('jbsmax'),tjmTarget:_num('jbtjm'),
@@ -635,13 +635,15 @@ function bind(){
         var oJ=(S.bizModal&&S.bizModal.item)||(S.bizOpps||[]).find(function(o){return o.id===id;});
         if(!oJ){alert('Opportunité introuvable.');return;}
         var accJ=(S.bizAccounts||[]).find(function(x){return x.id===oJ.account_id;})||{};
+        /* Séniorité issue du deal ; repli sur une déduction des anciennes opportunités
+           (qui n'avaient qu'un nombre d'années). */
         var minY=oJ.req_min_years||null;
-        var senGuess=minY==null?'':(minY<3?'junior':minY<7?'confirme':minY<10?'senior':'lead');
+        var sen=oJ.req_seniority||(minY==null?'':(minY<3?'junior':minY<7?'confirme':minY<10?'senior':'lead'));
         var preJob={
           id:uid(),createdBy:S._userEmail||'',oppId:oJ.id,buId:oJ.bu_id||myBuId(),
-          title:oJ.name||'',seniority:senGuess,status:'ouvert',
+          title:oJ.name||'',seniority:sen,status:'ouvert',
           location:oJ.location||'',reqSector:oJ.req_sector||'',contractKind:'',
-          startDate:oJ.date_start||'',nbPositions:1,reqMinYears:minY,
+          startDate:oJ.date_start||'',nbPositions:1,reqMinYears:senMinYears(sen)||null,
           reqExpertise:(oJ.req_expertise||[]).slice(),
           missionDesc:oJ.notes||'',expectations:'',
           clientName:accJ.name||'',assignedTo:oJ.assigned_to||oJ.owner_name||'',

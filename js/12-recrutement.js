@@ -693,7 +693,6 @@ function tModal(){
       +'<div class="fd"><label class="fl">Type de contrat</label><select class="ic" id="jbck">'+jCkOpts+'</select></div>'
       +'<div class="fd"><label class="fl">Démarrage souhaité</label><input class="ic" id="jbsd" type="date" value="'+esc(jd.startDate||'')+'"></div>'
       +'<div class="fd"><label class="fl">Nombre de postes</label><input class="ic" id="jbnp" type="number" min="1" step="1" value="'+(jd.nbPositions||1)+'"></div>'
-      +'<div class="fd"><label class="fl">Expérience min. (années)</label><input class="ic" id="jbyrs" type="number" min="0" step="1" value="'+(jd.reqMinYears!=null?esc(String(jd.reqMinYears)):'')+'" placeholder="4"></div>'
       +'<div class="fd cs2"><label class="fl">Expertises requises</label><div id="exp-wrap">'+expPickerHTML()+'</div></div>'
       +'<div class="fd cs2"><label class="fl">Missions / attendus du poste</label><textarea class="ic" id="jbmis" rows="4" placeholder="Décrivez le contexte et les missions principales...">'+esc(jd.missionDesc||'')+'</textarea></div>'
       +'<div class="fd cs2"><label class="fl">Compétences & qualités attendues</label><textarea class="ic" id="jbexp" rows="3" placeholder="Savoir-faire, savoir-être, certifications...">'+esc(jd.expectations||'')+'</textarea></div>'
@@ -1221,7 +1220,6 @@ function jobInternalText(j){
   L.push('');
   L.push('PROFIL RECHERCHÉ');
   if(j.seniority)L.push('• Séniorité : '+jobSenLb(j.seniority));
-  if(j.reqMinYears)L.push('• Expérience min. : '+j.reqMinYears+' an'+(j.reqMinYears>1?'s':''));
   if(j.location)L.push('• Localisation : '+j.location);
   if(j.reqSector)L.push('• Secteur : '+j.reqSector);
   if(j.contractKind)L.push('• Contrat : '+j.contractKind);
@@ -1243,7 +1241,6 @@ function tJobDetail(j){
   function tag(t){return '<span style="display:inline-block;padding:3px 10px;border-radius:7px;font-size:12px;font-weight:600;background:#f1f5f9;color:#475569;margin:0 5px 5px 0">'+esc(t)+'</span>';}
   var infoGrid='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px 24px">'
     +info('Séniorité',esc(jobSenLb(j.seniority)||'—'))
-    +info('Expérience min.',j.reqMinYears?j.reqMinYears+' an'+(j.reqMinYears>1?'s':''):'—')
     +info('Localisation',esc(j.location||'—'))
     +info('Secteur',esc(j.reqSector||'—'))
     +info('Contrat',esc(j.contractKind||'—'))

@@ -373,6 +373,22 @@ async function newPage(browser) {
     });
     check('CRM → fiche de poste : modal pré-rempli (intitulé + client + localisation)',
       prefilled.isJob && /Besoin Data Engineer/.test(prefilled.title) && /ClientDemoSA/.test(prefilled.client) && /Lyon/.test(prefilled.loc));
+
+    // Cohérence Business/Recrutement : l'opportunité utilise « Séniorité » (plus
+    // « années d'expérience »), et le rafraîchissement des candidats suggérés est
+    // PARTIEL (bizOppRefresh) — pas un re-render global qui ferait « clignoter » la page.
+    const oppSen = await p.evaluate(() => {
+      S.modal = null; S.bizModal = { type: 'opp', item: null }; S.tab = 'business'; render();
+      const hasSen = !!document.getElementById('biz-opp-sen');
+      const noYears = !document.getElementById('biz-opp-minyears');
+      S.bizModal.seniority = 'senior';
+      let threw = false;
+      try { if (typeof bizOppRefresh === 'function') bizOppRefresh(); } catch (e) { threw = true; }
+      const stillOpen = !!(S.bizModal && document.getElementById('biz-opp-name'));
+      return { hasSen, noYears, stillOpen, threw };
+    });
+    check('Opportunité : champ Séniorité présent (remplace années d’expérience)', oppSen.hasSen && oppSen.noYears);
+    check('Opportunité : refresh candidats partiel, modal conservé (pas de re-render)', oppSen.stillOpen && !oppSen.threw);
     await p.evaluate(() => { S.modal = null; S.bizModal = null; S.recTab = 'cands'; S.jobSel = null; S.tab = 'kpis'; render(); });
 
     // Montée en charge : la hero-bande KPIs lit l'agrégat serveur derrière le
