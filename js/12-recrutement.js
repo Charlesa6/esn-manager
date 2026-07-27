@@ -1275,7 +1275,7 @@ function jobsForCand(candId){return (S.jobs||[]).filter(jobVisibleForRole).filte
    fiche, complétés par l'opportunité liée). L'opportunité liée passe « gagné » et
    pointe vers la 1re mission (linked_mission_id). Appelé sur la transition
    → pourvu uniquement (idempotence gérée par l'appelant). */
-function jobFillToMissions(job){
+async function jobFillToMissions(job){
   var assigned=(S.cands||[]).filter(function(c){return (job.candidateIds||[]).indexOf(c.id)>=0;});
   if(!assigned.length){
     setTimeout(function(){alert('Poste marqué « pourvu ».\n\nAucun candidat n\'est assigné à cette fiche : aucune mission n\'a été créée. Assignez un candidat puis re-marquez le poste « pourvu » pour générer automatiquement la mission.');},60);
@@ -1293,24 +1293,34 @@ function jobFillToMissions(job){
   if(!confirm('Marquer « '+(job.title||'ce poste')+' » comme pourvu et créer la/les mission(s) '+(isForfait?'FORFAIT':'AT')+' pour : '+names+' ?\n\nLes candidats pas encore « recrutés » seront intégrés à l\'équipe comme consultants.')){
     return;
   }
-  /* 1. Garantir un consultant par candidat assigné (recruter à la volée si besoin). */
-  var pairs=assigned.map(function(c){
+  /* Persistance réelle uniquement si connecté (sinon démo : état local seul). */
+  var persist=!!(sb&&SB_CID);
+  /* 1. Garantir un consultant par candidat assigné (recruter à la volée si besoin).
+     ⚠ Les consultants doivent être PERSISTÉS AVANT les missions : la table missions
+     porte une FK consultant_id → consultants. On attend donc leur écriture (Promise.all)
+     avant de créer les missions, sinon l'insert mission viole la contrainte. */
+  var pairs=[],consWrites=[];
+  assigned.forEach(function(c){
     var cons=c.consId?(S.cons||[]).find(function(x){return x.id===c.consId;}):null;
     if(!cons){
       cons={id:uid(),name:c.name,title:job.title||'',scr:Math.round(recScr(c.reqSalary||0)),
         email:c.email||'',dir:'',managerId:null,buId:c.buId||job.buId||myBuId()||null,
         arrive:sd,depart:null,phone:c.phone||''};
       S.cons=(S.cons||[]).concat([cons]);
-      sbUpsertCons(cons).catch(function(err){console.warn('sbUpsertCons (pourvu):',err);});
       var nc=Object.assign({},c,{recruited:true,status:'recrute',recruitStart:sd,recruitPoste:job.title||'',consId:cons.id});
       S.cands=(S.cands||[]).map(function(x){return x.id===c.id?nc:x;});
-      sbUpsertCand(nc).catch(function(err){console.warn('sbUpsertCand (pourvu):',err);});
+      if(persist){consWrites.push(sbUpsertCons(cons));consWrites.push(sbUpsertCand(nc));}
     }
-    return {cand:c,cons:cons};
+    pairs.push({cand:c,cons:cons});
   });
-  /* 2. Créer la/les mission(s). Forfait : montant (deal de l'opportunité) réparti au
-     prorata du SCR, TJM déduit du SCR et de la marge cible (comme bizOppToMission).
-     AT : TJM cible direct. */
+  render(); /* état visible immédiatement (recrutement) */
+  if(persist&&consWrites.length){
+    try{await Promise.all(consWrites);}
+    catch(err){console.warn('sbUpsertCons/Cand (pourvu):',err);setTimeout(function(){alert('⚠ Erreur de synchronisation (consultant) : '+((err&&err.message)||err)+'\nAucune mission n\'a été créée.');},60);return;}
+  }
+  /* 2. Créer la/les mission(s), les consultants existant désormais en base. Forfait :
+     montant (deal de l'opportunité) réparti au prorata du SCR, TJM déduit du SCR et de
+     la marge cible (comme bizOppToMission). AT : TJM cible direct. */
   var tmar=(function(){
     if(opp&&opp.opp_team&&opp.opp_team.length){
       var ts=opp.opp_team.filter(function(t){return t.tmar!=null;});
@@ -1334,14 +1344,19 @@ function jobFillToMissions(job){
         tjm:atTjm||0,sd:sd,ed:ed,wdays:[1,2,3,4,5]};
     }
     S.miss=(S.miss||[]).concat([m]);
-    sbUpsertMiss(m).catch(function(err){console.warn('sbUpsertMiss (pourvu):',err);alert('⚠ Erreur de synchronisation (mission) : '+err.message);});
     return m;
   });
+  render();
+  if(persist){
+    try{await Promise.all(created.map(function(m){return sbUpsertMiss(m);}));}
+    catch(err){console.warn('sbUpsertMiss (pourvu):',err);setTimeout(function(){alert('⚠ Erreur de synchronisation (mission) : '+((err&&err.message)||err));},60);}
+  }
   /* 3. Lier l'opportunité (gagnée + 1re mission) si présente. */
   if(opp&&created.length){
     var no=Object.assign({},opp,{linked_mission_id:opp.linked_mission_id||created[0].id,status:'gagne'});
     S.bizOpps=(S.bizOpps||[]).map(function(x){return x.id===opp.id?no:x;});
-    if(typeof sbUpsertCrmOpp==='function')sbUpsertCrmOpp(no).catch(function(err){console.warn('sbUpsertCrmOpp (pourvu):',err);});
+    if(persist&&typeof sbUpsertCrmOpp==='function')sbUpsertCrmOpp(no).catch(function(err){console.warn('sbUpsertCrmOpp (pourvu):',err);});
+    render();
   }
   setTimeout(function(){alert('✅ '+created.length+' mission'+(created.length>1?'s':'')+' créée'+(created.length>1?'s':'')+' pour ce poste. Retrouvez-la'+(created.length>1?'s':'')+' dans Missions / Planning.');},60);
 }

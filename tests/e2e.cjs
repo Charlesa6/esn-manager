@@ -420,7 +420,7 @@ async function newPage(browser) {
     await p.evaluate(() => { S.modal = null; S.bizModal = null; S.recTab = 'cands'; S.jobSel = null; S.tab = 'kpis'; render(); });
 
     // Assignation candidat ↔ fiche + lien opportunité + mission auto au passage « pourvu ».
-    const flow = await p.evaluate(() => {
+    const flow = await p.evaluate(async () => {
       const oc = window.confirm, oa = window.alert;
       window.confirm = () => true; window.alert = () => {};
       const save = { role: S.role, jobs: S.jobs, cands: S.cands, opps: S.bizOpps, miss: S.miss, cons: S.cons };
@@ -441,7 +441,7 @@ async function newPage(browser) {
 
       const jobPourvu = Object.assign({}, S.jobs.find(j => j.id === 'jQA'), { status: 'pourvu' });
       S.jobs = S.jobs.map(j => j.id === 'jQA' ? jobPourvu : j);
-      jobFillToMissions(jobPourvu);
+      await jobFillToMissions(jobPourvu);
       const cand = S.cands.find(c => c.id === 'cQA');
       const newMiss = (S.miss || []).find(m => m.name && m.name.indexOf('Poste QA') >= 0);
       const consCreated = !!cand.consId && (S.cons || []).some(cn => cn.id === cand.consId);
@@ -464,7 +464,7 @@ async function newPage(browser) {
 
     // Poste pourvu en FORFAIT : le type est dérivé de l'OPPORTUNITÉ liée (deal forfait),
     // pas de la fiche. Une mission forfait par candidat, deal réparti au prorata SCR.
-    const forfait = await p.evaluate(() => {
+    const forfait = await p.evaluate(async () => {
       const oc = window.confirm, oa = window.alert; window.confirm = () => true; window.alert = () => {};
       const save = { role: S.role, jobs: S.jobs, cands: S.cands, miss: S.miss, cons: S.cons, opps: S.bizOpps };
       S.role = 'super_admin';
@@ -474,7 +474,7 @@ async function newPage(browser) {
       S.jobs = [job]; S.tab = 'recrutement'; S.recTab = 'jobs'; S.jobSel = 'jF';
       const jobPourvu = Object.assign({}, job, { status: 'pourvu' });
       S.jobs = [jobPourvu];
-      jobFillToMissions(jobPourvu);
+      await jobFillToMissions(jobPourvu);
       const ms = (S.miss || []).filter(m => m.name && m.name.indexOf('Poste Forfait') >= 0);
       const twoForfait = ms.length === 2 && ms.every(m => m.btype === 'forfait' && m.deal > 0 && m.tmar === 30 && m.tjm > 0);
       const splitOk = Math.abs(ms.reduce((s, m) => s + (m.deal || 0), 0) - 200000) <= 2;
@@ -532,11 +532,14 @@ async function newPage(browser) {
     await p.evaluate(() => { window.KPI_SERVER_AGG = false; S.role = S._roleBak; S.kpiCards = null; render(); });
 
     // Visite guidée : déroule tout le scénario (création candidat + opportunité gagnée + missions).
-    const tour = await p.evaluate(() => {
+    const tour = await p.evaluate(async () => {
       S.demo = true;
       startGuidedTour();
       const started = !!(S.tour && S.tour.active) && !!document.getElementById('tour-ov');
       let n = 0; while (S.tour && !S.tour.finished && n < 40) { tourNext(); n++; }
+      // Les créations de mission (jobFillToMissions) sont async : on laisse les
+      // microtâches se vider avant de vérifier l'état.
+      await new Promise(r => setTimeout(r, 50));
       const cand = (S.cands || []).some(c => c.id === 'tour_cand');
       const opp = (S.bizOpps || []).find(o => o.id === 'tour_opp');
       const oppWon = !!opp && opp.status === 'gagne';
