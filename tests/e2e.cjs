@@ -327,6 +327,54 @@ async function newPage(browser) {
       check('ouverture du modal « Nouveau candidat » sans erreur', modalOpen && p._appErrors.length === before, p._appErrors.slice(before).join(' | '));
     }
 
+    // ── Fiches de poste (besoins de recrutement, pont Business → Recrutement) ──
+    const beforeJobs = p._appErrors.length;
+    const jobList = await p.evaluate(() => {
+      S.modal = null; S.bizModal = null; S.tab = 'recrutement'; S.recTab = 'jobs'; S.jobSel = null; render();
+      return document.body.innerText;
+    });
+    check('Postes à pourvoir : bascule + liste des fiches de démo',
+      /Postes à pourvoir/.test(jobList) && /Développeur Fullstack React\/Node/.test(jobList) && p._appErrors.length === beforeJobs,
+      p._appErrors.slice(beforeJobs).join(' | '));
+
+    const jobDetail = await p.evaluate(() => { S.jobSel = 'j1'; render(); return document.body.innerText; });
+    check('Fiche de poste : détail (version interne + externe) sans erreur',
+      /Version interne/.test(jobDetail) && /Annonce externe/.test(jobDetail) && /Candidats suggérés/.test(jobDetail));
+
+    // Anonymisation : le client final apparaît en interne mais JAMAIS dans l'annonce externe.
+    const anon = await p.evaluate(() => {
+      const j = S.jobs.find(x => x.id === 'j1');
+      return { ext: jobExternalText(j), intt: jobInternalText(j) };
+    });
+    check('Annonce externe anonymisée : client masqué', !/BNP Paribas/.test(anon.ext));
+    check('Fiche interne : client présent (confidentiel)', /BNP Paribas/.test(anon.intt));
+
+    // Ouverture du modal « Nouveau poste » — exerce la branche tp==='job' + widget expertises.
+    const jobModalOpen = await p.evaluate(() => {
+      S.jobSel = null; S.modal = { type: 'job', item: null, expSel: [] }; render();
+      return !!document.getElementById('jbn') && !!document.getElementById('exp-wrap');
+    });
+    check('Modal « Nouveau poste » : formulaire rendu (intitulé + expertises)', jobModalOpen);
+
+    // Pont CRM → Recrutement : le bouton « Créer une fiche de poste » pré-remplit le modal depuis le deal.
+    const hasJobBtn = await p.evaluate(() => {
+      S.modal = null;
+      S.bizAccounts = [{ id: 'accX', name: 'ClientDemoSA' }];
+      S.bizOpps = [{ id: 'oppX', name: 'Besoin Data Engineer', account_id: 'accX', req_expertise: ['Python', 'SQL'], location: 'Lyon', req_min_years: 5, req_sector: 'Banque & Finance', tjm_cible: 600, date_start: '2026-09-01', assigned_to: 'Marie', notes: 'Contexte projet data' }];
+      S.bizModal = { type: 'opp', item: S.bizOpps[0] }; render();
+      return !!document.querySelector('[data-act="jfromopp"]');
+    });
+    check('CRM : bouton « Créer une fiche de poste » sur une opportunité', hasJobBtn);
+    await p.evaluate(() => { const b = document.querySelector('[data-act="jfromopp"]'); if (b) b.click(); });
+    await p.waitForTimeout(300);
+    const prefilled = await p.evaluate(() => {
+      const v = (id) => { const e = document.getElementById(id); return e ? e.value : ''; };
+      return { isJob: !!(S.modal && S.modal.type === 'job'), title: v('jbn'), client: v('jbcli'), loc: v('jbloc') };
+    });
+    check('CRM → fiche de poste : modal pré-rempli (intitulé + client + localisation)',
+      prefilled.isJob && /Besoin Data Engineer/.test(prefilled.title) && /ClientDemoSA/.test(prefilled.client) && /Lyon/.test(prefilled.loc));
+    await p.evaluate(() => { S.modal = null; S.bizModal = null; S.recTab = 'cands'; S.jobSel = null; S.tab = 'kpis'; render(); });
+
     // Montée en charge : la hero-bande KPIs lit l'agrégat serveur derrière le
     // drapeau KPI_SERVER_AGG. On injecte un agrégat distinctif (staffing 87,6 %)
     // pour la fenêtre courante et on vérifie que la hero l'affiche, puis on remet

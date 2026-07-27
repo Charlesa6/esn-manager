@@ -193,6 +193,7 @@ function bind(){
   }
   /* widgets multi-sélection Expertises / Secteurs (uniquement si le modal candidat est ouvert) */
   if(S.modal&&(S.modal.type==='candidate'||S.modal.type==='utilisateur')){bindExpWidget();bindSecWidget();}
+  if(S.modal&&S.modal.type==='job'){bindExpWidget();}
   if(S.modal&&S.modal.type==='candidate'){bindCandLoc();}
   if(S.modal&&S.modal.type==='utilisateur'){bindConsMobility();}
 
@@ -567,6 +568,90 @@ function bind(){
           var plL=it?Object.assign({},it,{cid:lci,type:lt,s:ls,e:le}):{id:uid(),cid:lci,type:lt,s:ls,e:le};
           submitApproval(it?'leave_edit':'leave_add',Object.assign({},plL,{approver_id:approverId}),descL);
         }
+      }
+      /* ════════════════════ FICHES DE POSTE ════════════════════ */
+      else if(a==='rectab'){S.recTab=id;S.recSel=null;S.jobSel=null;render();}
+      else if(a==='jobf-st'){if(!S.jobF)S.jobF={status:'all',q:''};S.jobF.status=id;jobListRefresh();}
+      else if(a==='jadd'){S.modal={type:'job',item:null,expSel:[]};render();}
+      else if(a==='jedit'){
+        var jEd=(S.jobs||[]).find(function(j){return j.id===id;});
+        S.modal={type:'job',item:jEd,expSel:(jEd&&jEd.reqExpertise)?jEd.reqExpertise.slice():[]};render();
+      }
+      else if(a==='jopen'){S.jobSel=id;render();}
+      else if(a==='jback'){S.jobSel=null;render();}
+      else if(a==='jdel'){
+        var jDel=(S.jobs||[]).find(function(j){return j.id===id;});
+        if(jDel&&confirm('Supprimer la fiche de poste « '+(jDel.title||'')+' » ? Irréversible.')){
+          S.jobs=(S.jobs||[]).filter(function(j){return j.id!==id;});
+          if(S.jobSel===id)S.jobSel=null;
+          sbDel('job_postings',id);
+          render();
+        }
+      }
+      else if(a==='jsave'){
+        var jt=gv('jbn');
+        if(!jt){alert('L\'intitulé du poste est obligatoire.');return;}
+        var itJ=S.modal.item;
+        function _num(k){var v=gv(k);return v!==''?+v:null;}
+        var jfields={
+          title:jt,seniority:gv('jbsen'),status:gv('jbst')||'ouvert',
+          location:gv('jbloc'),reqSector:gv('jbsec'),contractKind:gv('jbck'),
+          startDate:gv('jbsd'),nbPositions:(+gv('jbnp')||1),
+          reqMinYears:_num('jbyrs'),reqExpertise:(S.modal.expSel||[]).slice(),
+          missionDesc:gv('jbmis'),expectations:gv('jbexp'),
+          clientName:gv('jbcli'),assignedTo:gv('jbassign'),
+          salaryMin:_num('jbsmin'),salaryMax:_num('jbsmax'),tjmTarget:_num('jbtjm'),
+          recruiter:gv('jbrec'),
+          extBody:(itJ?gv('jbext'):'')
+        };
+        var njob;
+        if(itJ){
+          njob=Object.assign({},itJ,jfields);
+          S.jobs=(S.jobs||[]).map(function(x){return x.id===itJ.id?njob:x;});
+        }else{
+          njob=Object.assign({id:uid(),createdBy:S._userEmail||'',oppId:(S.modal.oppId||null),buId:myBuId(),extBody:''},jfields);
+          S.jobs=(S.jobs||[]).concat([njob]);
+        }
+        sbUpsertJob(njob).catch(function(err){console.warn('sbUpsertJob:',err);alert('⚠ Erreur de synchronisation : '+err.message);});
+        S.modal=null;S.recTab='jobs';S.jobSel=njob.id;render();
+      }
+      else if(a==='jcopy'){
+        var jC=(S.jobs||[]).find(function(j){return j.id===id;});
+        if(jC){
+          var isInt=(fb==='int');
+          copyText(isInt?jobInternalText(jC):jobExternalText(jC),isInt?'Fiche interne copiée':'Annonce externe copiée');
+        }
+      }
+      else if(a==='jprint'){
+        var jP=(S.jobs||[]).find(function(j){return j.id===id;});
+        if(jP)printJobExternal(jP);
+      }
+      else if(a==='jai'){
+        var jAi=(S.jobs||[]).find(function(j){return j.id===id;});
+        if(jAi)await generateJobExternalAI(jAi);
+      }
+      /* CRM → créer une fiche de poste pré-remplie depuis l'opportunité */
+      else if(a==='jfromopp'){
+        var oJ=(S.bizModal&&S.bizModal.item)||(S.bizOpps||[]).find(function(o){return o.id===id;});
+        if(!oJ){alert('Opportunité introuvable.');return;}
+        var accJ=(S.bizAccounts||[]).find(function(x){return x.id===oJ.account_id;})||{};
+        var minY=oJ.req_min_years||null;
+        var senGuess=minY==null?'':(minY<3?'junior':minY<7?'confirme':minY<10?'senior':'lead');
+        var preJob={
+          id:uid(),createdBy:S._userEmail||'',oppId:oJ.id,buId:oJ.bu_id||myBuId(),
+          title:oJ.name||'',seniority:senGuess,status:'ouvert',
+          location:oJ.location||'',reqSector:oJ.req_sector||'',contractKind:'',
+          startDate:oJ.date_start||'',nbPositions:1,reqMinYears:minY,
+          reqExpertise:(oJ.req_expertise||[]).slice(),
+          missionDesc:oJ.notes||'',expectations:'',
+          clientName:accJ.name||'',assignedTo:oJ.assigned_to||oJ.owner_name||'',
+          salaryMin:null,salaryMax:null,tjmTarget:oJ.tjm_cible||null,
+          recruiter:'',extBody:''
+        };
+        S.bizModal=null;
+        S.tab='recrutement';S.recTab='jobs';S.jobSel=null;
+        S.modal={type:'job',item:null,expSel:preJob.reqExpertise.slice(),oppId:oJ.id,prefill:preJob};
+        render();
       }
       /* ════════════════════ RECRUTEMENT ════════════════════ */
       else if(a==='arec'){S.modal={type:'candidate',item:null,expSel:[],secSel:[],locSel:[],locTarget:'',locSecondary:[],mobileFrance:false,locSecQ:''};render();}

@@ -1053,11 +1053,19 @@ function tBizModal(){
       +'</div>';
   }
 
+  /* Pont Business → Recrutement : depuis une opportunité enregistrée, générer une
+     fiche de poste pré-remplie (profil, client, TJM, dates). Disponible dès qu'un
+     deal est prometteur — pas seulement gagné — pour que les recruteurs sachent
+     quoi recruter quand un profil manque. */
+  var jobBtn=(m.type==='opp'&&m.item&&m.item.id)
+    ? '<button class="bsec" data-act="jfromopp" data-id="'+esc(m.item.id)+'" title="Créer un besoin de recrutement à partir de ce deal" style="margin-right:auto;border-color:#84CC16;color:#3f6212">📋 Créer une fiche de poste</button>'
+    : '';
   return '<div class="mov"><div class="mob" style="max-width:680px">'
     +'<div class="moh"><div class="mot">'+title+'</div>'
     +'<button class="moc" onclick="S.bizModal=null;render()">✕</button></div>'
     +'<div class="mody" style="padding:20px">'+body
-    +'<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px">'
+    +'<div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:18px">'
+    +jobBtn
     +'<button class="bsec" onclick="S.bizModal=null;render()">Annuler</button>'
     +'<button class="bp" onclick="'+saveAction+'">Enregistrer</button>'
     +'</div></div></div></div>';

@@ -478,6 +478,10 @@ var S={
   miss:IM.map(function(m){return Object.assign({},m);}),
   lvs:IL.map(function(l){return Object.assign({},l);}),
   cands:[],
+  jobs:[],        /* fiches de poste (besoins de recrutement) — pont Business → Recrutement */
+  recTab:'cands', /* sous-vue de l'onglet Recrutement : 'cands' (vivier) | 'jobs' (postes à pourvoir) */
+  jobSel:null,    /* fiche de poste ouverte en détail (id) ou null */
+  jobF:{status:'all',q:''}, /* filtres de la liste des postes */
   staffOpps:[],   /* opportunités staffing (pilotage des intercontrats) */
   oppView:'week', /* granularité de la timeline intercontrats : 'week' | 'month' */
   oppFocus:null,  /* focus sur une période de la timeline : {day,end} ou null */
@@ -558,6 +562,11 @@ function loadDemoData(){
   S.cands=[
     {id:'c1',name:'Maxime Guillot',expertise:['React','TypeScript'],sectors:['Banque & Finance'],locations:['Lyon'],nationality:'Française',reqSalary:48000,yearsExp:4,status:'entretien',marginPct:28,createdBy:'demo',feedbacks:[],cgiMeetings:[],cvFiles:[]}
   ];
+  /* Fiches de poste de démonstration — l'une issue d'un deal CRM (oppId), l'autre saisie à la main. */
+  S.jobs=[
+    {id:'j1',title:'Développeur Fullstack React/Node',seniority:'confirme',reqExpertise:['React','Node.js','TypeScript'],reqSector:'Banque & Finance',reqMinYears:4,location:'Lyon',startDate:_fut(30),nbPositions:2,contractKind:'CDI',missionDesc:'Renforcer l\'équipe de développement de la plateforme risques d\'un client grand compte bancaire : conception, développement et mise en production de nouvelles fonctionnalités.',expectations:'Maîtrise de React et Node.js, culture DevOps, autonomie, bon relationnel client.',salaryMin:45000,salaryMax:55000,tjmTarget:650,clientName:'BNP Paribas',status:'ouvert',recruiter:'',assignedTo:'Thomas Bernard',oppId:null,extBody:'',buId:null,createdBy:'demo'},
+    {id:'j2',title:'Architecte Cloud Azure',seniority:'senior',reqExpertise:['Azure','Cloud','DevOps'],reqSector:'Énergie & Utilities',reqMinYears:7,location:'Paris',startDate:_fut(60),nbPositions:1,contractKind:'CDI',missionDesc:'Piloter la migration cloud d\'un acteur majeur de l\'énergie : architecture cible, gouvernance, accompagnement des équipes.',expectations:'Expertise Azure confirmée, certifications appréciées, leadership technique.',salaryMin:65000,salaryMax:80000,tjmTarget:900,clientName:'TotalEnergies',status:'en_cours',recruiter:'',assignedTo:'Marie Lefebvre',oppId:null,extBody:'',buId:null,createdBy:'demo'}
+  ];
   H=fyHols(2026);
 }
 var SCR_FACTOR=113.35;   /* SCR × coeff = salaire brut annuel employé */
@@ -611,6 +620,24 @@ var SECTOR_LIST=[
 ].sort(function(a,b){return a.localeCompare(b,'fr');});
 
 var REC_LOCATIONS=['Lyon','Grenoble','Clermont-Ferrand','Dijon'];
+
+/* ═══ FICHES DE POSTE (besoins de recrutement) : statuts, séniorité, contrat ═══ */
+var JOB_STATUS=[
+  {id:'ouvert',  lb:'Ouvert',    bg:'#dcfce7',fg:'#166534'},
+  {id:'en_cours',lb:'En cours',  bg:'#fef3c7',fg:'#92400e'},
+  {id:'pourvu',  lb:'Pourvu',    bg:'#dbeafe',fg:'#1e40af'},
+  {id:'annule',  lb:'Annulé',    bg:'#f1f5f9',fg:'#64748b'},
+];
+function jobStLb(id){var s=JOB_STATUS.find(function(x){return x.id===id;});return s?s.lb:id;}
+function jobStCol(id){var s=JOB_STATUS.find(function(x){return x.id===id;});return s?[s.bg,s.fg]:['#f1f5f9','#475569'];}
+var JOB_SENIORITY=[
+  {id:'junior',  lb:'Junior (0-2 ans)'},
+  {id:'confirme',lb:'Confirmé (3-6 ans)'},
+  {id:'senior',  lb:'Senior (7-10 ans)'},
+  {id:'lead',    lb:'Lead / Expert (10+ ans)'},
+];
+function jobSenLb(id){var s=JOB_SENIORITY.find(function(x){return x.id===id;});return s?s.lb:'';}
+var JOB_CONTRACTS=['CDI','CDD','Freelance','Alternance','Stage'];
 
 /* Grandes villes de France (fiche candidat : localisation cible / secondaires,
    avec recherche). Liste triée alphabétiquement. */

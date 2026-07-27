@@ -19,12 +19,33 @@ function tRecrut(){
   /* Recruteur et Business Manager ont toujours accès ; les autres doivent avoir le module */
   /* Recruteur a toujours accès ; TOUS les autres (y compris Super Admin) ont besoin du module */
   if(S.role!=='recruteur'&&!(S.settings&&S.settings.hasRecrutementModule))return tRecrutementPaywall();
+  /* Sous-vue « Postes à pourvoir » (besoins de recrutement) */
+  if(S.recTab==='jobs'){
+    if(S.jobSel){
+      var job=(S.jobs||[]).find(function(j){return j.id===S.jobSel;});
+      if(job)return tJobDetail(job);
+      S.jobSel=null;
+    }
+    return tJobList();
+  }
   if(S.recSel){
     var cand=S.cands.find(function(c){return c.id===S.recSel;});
     if(cand)return tCandDetail(cand);
     S.recSel=null;
   }
   return tRecList();
+}
+
+/* Bascule Vivier candidats ⇄ Postes à pourvoir (haut de l'onglet Recrutement). */
+function recTabsBar(){
+  function tab(id,label,count){
+    var on=(S.recTab||'cands')===id;
+    return '<button data-act="rectab" data-id="'+id+'" style="padding:8px 18px;border-radius:99px;font-size:13px;font-weight:800;border:1px solid '+(on?'#1B2B3A':'#e2e8f0')+';background:'+(on?'#1B2B3A':'#fff')+';color:'+(on?'#fff':'#475569')+';cursor:pointer;margin-right:8px">'+esc(label)+' <span style="opacity:.6;font-weight:700">'+count+'</span></button>';
+  }
+  return '<div style="display:flex;align-items:center;margin-bottom:14px">'
+    +tab('cands','👤 Vivier candidats',S.cands.length)
+    +tab('jobs','📋 Postes à pourvoir',(S.jobs||[]).length)
+    +'</div>';
 }
 
 function recListBody(){
@@ -137,7 +158,7 @@ function recListRefresh(){
 }
 
 function tRecList(){
-  return '<div><div class="ph"><div><div class="pt">Recrutement</div>'
+  return '<div>'+recTabsBar()+'<div class="ph"><div><div class="pt">Recrutement</div>'
     +'<div class="ps">'+S.cands.length+' candidat'+(S.cands.length!==1?'s':'')+' · pipeline partagé de toute l\'entreprise — chaque recruteur voit et filtre l\'ensemble des candidats</div></div>'
     +'<button class="bp" data-act="arec">+ Nouveau candidat</button></div>'
     +'<div style="margin-bottom:10px"><input class="ic" id="recq" placeholder="Rechercher un candidat, une expertise, un email..." value="'+esc(S.recF.q||'')+'" style="max-width:360px"></div>'
@@ -647,6 +668,48 @@ function tModal(){
       +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="screc">'+(it?'Enregistrer':'Cr\u00e9er le candidat')+'</button></div>';
   }
 
+  if(tp==='job'){
+    title=it?'Modifier la fiche de poste':'Nouvelle fiche de poste';wide=true;
+    /* jd = source des VALEURS (édition = item ; création depuis un deal = prefill).
+       `it` (truthy en édition réelle uniquement) pilote le titre et l'insert/update. */
+    var jd=it||m.prefill||{};
+    var jSenOpts='<option value="">— Séniorité —</option>'+JOB_SENIORITY.map(function(s){return '<option value="'+s.id+'"'+(jd.seniority===s.id?' selected':'')+'>'+esc(s.lb)+'</option>';}).join('');
+    var jStOpts=JOB_STATUS.map(function(s){return '<option value="'+s.id+'"'+((jd.status||'ouvert')===s.id?' selected':'')+'>'+esc(s.lb)+'</option>';}).join('');
+    var jSecOpts='<option value="">— Secteur —</option>'+SECTOR_LIST.map(function(s){return '<option value="'+esc(s)+'"'+(jd.reqSector===s?' selected':'')+'>'+esc(s)+'</option>';}).join('');
+    var jCkOpts='<option value="">— Contrat —</option>'+JOB_CONTRACTS.map(function(s){return '<option value="'+esc(s)+'"'+(jd.contractKind===s?' selected':'')+'>'+esc(s)+'</option>';}).join('');
+    /* Recruteur : recruteurs invités + moi + valeur enregistrée (comme le modal candidat). */
+    var _jme=((S.profileFirstName||'')+' '+(S.profileLastName||'')).trim()||S._userEmail||'';
+    var _jn=[];(S.recruteurInvites||[]).forEach(function(r){var nm=r.recruteur_name||r.email||'';if(nm&&_jn.indexOf(nm)<0)_jn.push(nm);});
+    if(_jme&&_jn.indexOf(_jme)<0)_jn.push(_jme);
+    if(jd.recruiter&&_jn.indexOf(jd.recruiter)<0)_jn.push(jd.recruiter);
+    var jRecOpts='<option value="">— Aucun —</option>'+_jn.map(function(nm){return '<option value="'+esc(nm)+'"'+(jd.recruiter===nm?' selected':'')+'>'+esc(nm)+(nm===_jme?' (moi)':'')+'</option>';}).join('');
+    body='<div class="g2">'
+      +(m.oppId?'<div class="fd cs2" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;font-size:12px;color:#1e40af">🔗 Fiche pré-remplie depuis le deal CRM — ajustez puis enregistrez.</div>':'')
+      +'<div class="fd cs2"><label class="fl">Intitulé du poste *</label><input class="ic" id="jbn" value="'+esc(jd.title||'')+'" placeholder="Développeur Fullstack React/Node"></div>'
+      +'<div class="fd"><label class="fl">Séniorité</label><select class="ic" id="jbsen">'+jSenOpts+'</select></div>'
+      +'<div class="fd"><label class="fl">Statut</label><select class="ic" id="jbst">'+jStOpts+'</select></div>'
+      +'<div class="fd"><label class="fl">Localisation</label><input class="ic" id="jbloc" value="'+esc(jd.location||'')+'" placeholder="Lyon"></div>'
+      +'<div class="fd"><label class="fl">Secteur</label><select class="ic" id="jbsec">'+jSecOpts+'</select></div>'
+      +'<div class="fd"><label class="fl">Type de contrat</label><select class="ic" id="jbck">'+jCkOpts+'</select></div>'
+      +'<div class="fd"><label class="fl">Démarrage souhaité</label><input class="ic" id="jbsd" type="date" value="'+esc(jd.startDate||'')+'"></div>'
+      +'<div class="fd"><label class="fl">Nombre de postes</label><input class="ic" id="jbnp" type="number" min="1" step="1" value="'+(jd.nbPositions||1)+'"></div>'
+      +'<div class="fd"><label class="fl">Expérience min. (années)</label><input class="ic" id="jbyrs" type="number" min="0" step="1" value="'+(jd.reqMinYears!=null?esc(String(jd.reqMinYears)):'')+'" placeholder="4"></div>'
+      +'<div class="fd cs2"><label class="fl">Expertises requises</label><div id="exp-wrap">'+expPickerHTML()+'</div></div>'
+      +'<div class="fd cs2"><label class="fl">Missions / attendus du poste</label><textarea class="ic" id="jbmis" rows="4" placeholder="Décrivez le contexte et les missions principales...">'+esc(jd.missionDesc||'')+'</textarea></div>'
+      +'<div class="fd cs2"><label class="fl">Compétences & qualités attendues</label><textarea class="ic" id="jbexp" rows="3" placeholder="Savoir-faire, savoir-être, certifications...">'+esc(jd.expectations||'')+'</textarea></div>'
+      /* ── Bloc confidentiel (interne) ── */
+      +'<div class="fd cs2" style="border-top:2px solid #e2e8f0;padding-top:14px;margin-top:4px"><label class="fl" style="margin-bottom:2px">🔒 Confidentiel — interne uniquement</label><p class="fh" style="margin-top:0">Masqué automatiquement dans l\'annonce externe.</p></div>'
+      +'<div class="fd"><label class="fl">Client final</label><input class="ic" id="jbcli" value="'+esc(jd.clientName||'')+'" placeholder="Nom du client"></div>'
+      +'<div class="fd"><label class="fl">Commercial référent</label><input class="ic" id="jbassign" value="'+esc(jd.assignedTo||'')+'" placeholder="Prénom Nom"></div>'
+      +'<div class="fd"><label class="fl">Rémunération min. (€/an)</label><input class="ic" id="jbsmin" type="number" min="0" step="500" value="'+(jd.salaryMin!=null?esc(String(jd.salaryMin)):'')+'" placeholder="45000"></div>'
+      +'<div class="fd"><label class="fl">Rémunération max. (€/an)</label><input class="ic" id="jbsmax" type="number" min="0" step="500" value="'+(jd.salaryMax!=null?esc(String(jd.salaryMax)):'')+'" placeholder="55000"></div>'
+      +'<div class="fd"><label class="fl">TJM cible de revente (€)</label><input class="ic" id="jbtjm" type="number" min="0" step="10" value="'+(jd.tjmTarget!=null?esc(String(jd.tjmTarget)):'')+'" placeholder="650"></div>'
+      +'<div class="fd"><label class="fl">Recruteur assigné</label><select class="ic" id="jbrec">'+jRecOpts+'</select></div>'
+      +(it?'<div class="fd cs2"><label class="fl">Annonce externe rédigée <span style="font-weight:400;color:#94a3b8">(vide = génération auto ; « ✨ IA » remplit ce champ)</span></label><textarea class="ic" id="jbext" rows="4" placeholder="Laissez vide pour une annonce générée automatiquement depuis les champs ci-dessus.">'+esc(it.extBody||'')+'</textarea></div>':'')
+      +'</div>'
+      +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="jsave">'+(it?'Enregistrer':'Créer la fiche de poste')+'</button></div>';
+  }
+
   if(tp==='utilisateur'){
     title=it?'Modifier le membre':'Ajouter un membre';wide=true;
     var _rl=[];((S._all&&S._all.cons)||S.cons).forEach(function(c){var r=c.dir||'';if(r&&_rl.indexOf(r)<0)_rl.push(r);});_rl.sort();
@@ -1064,3 +1127,243 @@ function tModal(){
     +'<div class="mbd">'+body+'</div></div></div>';
 }
 
+/* ════════════════════════════════════════════════════════════
+   FICHES DE POSTE — besoins de recrutement (pont Business → Recrutement)
+   ════════════════════════════════════════════════════════════ */
+
+/* Liste des postes à pourvoir + filtres (statut, recherche). */
+function tJobList(){
+  var jobs=(S.jobs||[]).slice();
+  var q=(S.jobF&&S.jobF.q||'').toLowerCase().trim();
+  var stF=(S.jobF&&S.jobF.status)||'all';
+  var list=jobs.filter(function(j){
+    if(stF!=='all'&&j.status!==stF)return false;
+    if(q){
+      var hay=(j.title+' '+(j.reqExpertise||[]).join(' ')+' '+(j.clientName||'')+' '+(j.location||'')).toLowerCase();
+      if(hay.indexOf(q)<0)return false;
+    }
+    return true;
+  });
+  var counts={};JOB_STATUS.forEach(function(s){counts[s.id]=0;});
+  jobs.forEach(function(j){if(counts[j.status]!=null)counts[j.status]++;});
+  function fLabel(t){return '<span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-right:8px">'+t+'</span>';}
+  function pill(id,label,count){
+    var active=stF===id;
+    return '<button data-act="jobf-st" data-id="'+id+'" style="padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;border:1px solid '+(active?'#1B2B3A':'#e2e8f0')+';background:'+(active?'#1B2B3A':'#fff')+';color:'+(active?'#fff':'#475569')+';cursor:pointer;margin:0 4px 4px 0">'+esc(label)+' <span style="opacity:.6">'+count+'</span></button>';
+  }
+  var pills='<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;margin-bottom:14px">'+fLabel('Statut')
+    +pill('all','Tous',jobs.length)+JOB_STATUS.map(function(s){return pill(s.id,s.lb,counts[s.id]);}).join('')+'</div>';
+  function tag(t){return '<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;background:#f1f5f9;color:#475569;margin:0 4px 2px 0">'+esc(t)+'</span>';}
+  var rows=list.map(function(j){
+    var col=jobStCol(j.status);
+    var exp=(j.reqExpertise||[]);
+    var expHtml=exp.slice(0,3).map(tag).join('')+(exp.length>3?'<span style="font-size:11px;color:#94a3b8">+'+(exp.length-3)+'</span>':'');
+    var nMatch=oppMatches(j.reqExpertise,j.location,j.reqMinYears,j.reqSector,j.tjmTarget,j.startDate).length;
+    return '<tr data-act="jopen" data-id="'+j.id+'" style="cursor:pointer">'
+      +'<td style="font-weight:700;color:#0f172a">'+esc(j.title||'(sans titre)')+(j.oppId?' <span title="Issue d\'un deal CRM" style="font-size:11px">🔗</span>':'')+'</td>'
+      +'<td>'+(expHtml||'<span style="color:#cbd5e1">—</span>')+'</td>'
+      +'<td>'+esc(j.location||'—')+'</td>'
+      +'<td>'+esc(j.clientName||'—')+'</td>'
+      +'<td>'+(j.startDate?fDt(j.startDate):'—')+'</td>'
+      +'<td class="tr">'+(j.nbPositions||1)+'</td>'
+      +'<td class="tr">'+(nMatch?'<span style="font-weight:700;color:#2563eb">'+nMatch+'</span>':'<span style="color:#cbd5e1">0</span>')+'</td>'
+      +'<td><span style="padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;background:'+col[0]+';color:'+col[1]+'">'+esc(jobStLb(j.status))+'</span></td>'
+      +'</tr>';
+  }).join('');
+  return '<div>'+recTabsBar()
+    +'<div class="ph"><div><div class="pt">Postes à pourvoir</div>'
+    +'<div class="ps">'+jobs.length+' fiche'+(jobs.length!==1?'s':'')+' de poste · vos besoins de recrutement, alimentés aussi par les deals CRM gagnés</div></div>'
+    +'<button class="bp" data-act="jadd">+ Nouveau poste</button></div>'
+    +'<div style="margin-bottom:10px"><input class="ic" id="jobq" placeholder="Rechercher un poste, une expertise, un client..." value="'+esc(S.jobF&&S.jobF.q||'')+'" style="max-width:360px" oninput="S.jobF.q=this.value;jobListRefresh()"></div>'
+    +'<div id="job-list-wrap">'+pills
+    +'<div class="card ov" style="margin-top:4px"><table><thead><tr><th>Intitulé</th><th>Expertises</th><th>Localisation</th><th>Client</th><th>Démarrage</th><th class="tr">Postes</th><th class="tr">Candidats</th><th>Statut</th></tr></thead>'
+    +'<tbody>'+rows+(rows?'':'<tr><td colspan="8">'+((q||stF!=='all')?tEmpty('🔍','Aucun poste pour ces filtres','Ajustez le statut ou la recherche.'):tEmpty('📋','Aucun poste à pourvoir','Créez une fiche de poste, ou générez-en une depuis un deal CRM gagné.','<button class="bp" data-act="jadd">+ Nouveau poste</button>'))+'</td></tr>')
+    +'</tbody></table></div></div></div>';
+}
+function jobListRefresh(){
+  var w=document.getElementById('job-list-wrap');
+  if(!w)return;
+  /* Reconstruit pills + tableau sans recréer le champ de recherche (garde le focus). */
+  var full=tJobList();
+  var m=full.match(/<div id="job-list-wrap">([\s\S]*)<\/div><\/div>$/);
+  /* Repli simple : re-render complet si l'extraction échoue. */
+  if(m){w.innerHTML=m[1];}else{render();}
+}
+
+/* Génère le corps texte de l'annonce EXTERNE (anonymisée) à partir des champs.
+   Si une version rédigée (IA) existe dans j.extBody, elle prime. */
+function jobExternalText(j){
+  if(j.extBody&&j.extBody.trim())return j.extBody;
+  var L=[];
+  var sen=jobSenLb(j.seniority);
+  L.push((j.title||'Poste à pourvoir')+(sen?' — '+sen:''));
+  L.push('');
+  L.push('Dans le cadre de notre développement, nous recherchons '+(j.nbPositions>1?j.nbPositions+' profils':'un profil')+(j.location?' basé(s) à '+j.location:'')+(j.contractKind?' en '+j.contractKind:'')+'.');
+  if(j.reqSector)L.push('Secteur d\'intervention : '+j.reqSector+'.');
+  if(j.startDate)L.push('Démarrage souhaité : '+fDt(j.startDate)+'.');
+  L.push('');
+  if(j.missionDesc){L.push('VOS MISSIONS');L.push(j.missionDesc);L.push('');}
+  if(j.reqExpertise&&j.reqExpertise.length){L.push('COMPÉTENCES RECHERCHÉES');L.push('• '+j.reqExpertise.join('  • '));}
+  if(j.reqMinYears)L.push('Expérience : '+j.reqMinYears+' an'+(j.reqMinYears>1?'s':'')+' minimum.');
+  if(j.expectations){L.push('');L.push('PROFIL ATTENDU');L.push(j.expectations);}
+  L.push('');
+  L.push('Rejoignez une équipe à taille humaine et des projets à forte valeur ajoutée. Candidature (CV) à adresser à notre équipe recrutement.');
+  return L.join('\n');
+}
+/* Génère la fiche INTERNE (client + tarifs visibles) — pour le recruteur / staffing. */
+function jobInternalText(j){
+  var L=[];
+  L.push('FICHE DE POSTE (INTERNE) — '+(j.title||'Poste à pourvoir'));
+  L.push('Statut : '+jobStLb(j.status)+'   ·   Postes : '+(j.nbPositions||1));
+  if(j.clientName)L.push('Client final : '+j.clientName);
+  if(j.assignedTo)L.push('Commercial référent : '+j.assignedTo);
+  if(j.recruiter)L.push('Recruteur : '+j.recruiter);
+  L.push('');
+  L.push('PROFIL RECHERCHÉ');
+  if(j.seniority)L.push('• Séniorité : '+jobSenLb(j.seniority));
+  if(j.reqMinYears)L.push('• Expérience min. : '+j.reqMinYears+' an'+(j.reqMinYears>1?'s':''));
+  if(j.location)L.push('• Localisation : '+j.location);
+  if(j.reqSector)L.push('• Secteur : '+j.reqSector);
+  if(j.contractKind)L.push('• Contrat : '+j.contractKind);
+  if(j.startDate)L.push('• Démarrage : '+fDt(j.startDate));
+  if(j.reqExpertise&&j.reqExpertise.length)L.push('• Expertises : '+j.reqExpertise.join(', '));
+  L.push('');
+  L.push('CONDITIONS (confidentiel)');
+  if(j.salaryMin||j.salaryMax)L.push('• Rémunération : '+[j.salaryMin,j.salaryMax].filter(Boolean).map(function(v){return (+v).toLocaleString('fr-FR')+' €';}).join(' – ')+' /an');
+  if(j.tjmTarget)L.push('• TJM cible de revente : '+(+j.tjmTarget).toLocaleString('fr-FR')+' €');
+  if(j.missionDesc){L.push('');L.push('MISSIONS');L.push(j.missionDesc);}
+  if(j.expectations){L.push('');L.push('COMPÉTENCES & QUALITÉS ATTENDUES');L.push(j.expectations);}
+  return L.join('\n');
+}
+
+function tJobDetail(j){
+  var col=jobStCol(j.status);
+  var opp=j.oppId?(S.bizOpps||[]).find(function(o){return o.id===j.oppId;}):null;
+  function info(label,val){return '<div><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">'+label+'</div><div style="font-size:13px;color:#0f172a;font-weight:600">'+val+'</div></div>';}
+  function tag(t){return '<span style="display:inline-block;padding:3px 10px;border-radius:7px;font-size:12px;font-weight:600;background:#f1f5f9;color:#475569;margin:0 5px 5px 0">'+esc(t)+'</span>';}
+  var infoGrid='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px 24px">'
+    +info('Séniorité',esc(jobSenLb(j.seniority)||'—'))
+    +info('Expérience min.',j.reqMinYears?j.reqMinYears+' an'+(j.reqMinYears>1?'s':''):'—')
+    +info('Localisation',esc(j.location||'—'))
+    +info('Secteur',esc(j.reqSector||'—'))
+    +info('Contrat',esc(j.contractKind||'—'))
+    +info('Démarrage',j.startDate?fDt(j.startDate):'—')
+    +info('Nombre de postes',String(j.nbPositions||1))
+    +info('Client final',esc(j.clientName||'—'))
+    +info('Commercial',esc(j.assignedTo||'—'))
+    +'</div>';
+  var expHtml=(j.reqExpertise&&j.reqExpertise.length)?j.reqExpertise.map(tag).join(''):'<span style="color:#94a3b8;font-size:12px">Aucune expertise renseignée</span>';
+  var compCard='<div style="display:flex;gap:32px;flex-wrap:wrap;margin-top:18px;padding-top:18px;border-top:1px solid #e2e8f0">'
+    +'<div><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase">Rémunération (interne)</div><div style="font-size:18px;font-weight:800;color:#0f172a">'+((j.salaryMin||j.salaryMax)?[j.salaryMin,j.salaryMax].filter(Boolean).map(function(v){return (+v).toLocaleString('fr-FR')+' €';}).join(' – '):'—')+'</div></div>'
+    +'<div><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase">TJM cible</div><div style="font-size:18px;font-weight:800;color:#2563eb">'+(j.tjmTarget?(+j.tjmTarget).toLocaleString('fr-FR')+' €':'—')+'</div></div>'
+    +'</div>';
+
+  /* Candidats suggérés depuis le vivier (matching réutilisé du CRM). */
+  var matches=oppMatches(j.reqExpertise,j.location,j.reqMinYears,j.reqSector,j.tjmTarget,j.startDate);
+  var matchHtml=matches.length
+    ? '<div class="ov"><table><thead><tr><th>Candidat</th><th>Statut</th><th>Expertises en commun</th><th>Loc.</th><th class="tr">TJM revente</th></tr></thead><tbody>'
+      +matches.slice(0,8).map(function(m){
+        var c=m.c;var lk=m.locKind==='target'?'✓ cible':m.locKind==='secondary'?'~ secondaire':m.locKind==='france'?'🇫🇷 France':'—';
+        return '<tr data-act="recopen" data-id="'+c.id+'" style="cursor:pointer">'
+          +'<td style="font-weight:700;color:#0f172a">'+esc(c.name)+'</td>'
+          +'<td style="font-size:11px">'+esc(recStLbD(c.status))+'</td>'
+          +'<td>'+(m.overlap.length?m.overlap.map(function(e){return '<span style="display:inline-block;padding:2px 7px;border-radius:6px;font-size:11px;background:#dbeafe;color:#1e40af;margin:0 3px 2px 0">'+esc(e)+'</span>';}).join(''):'<span style="color:#cbd5e1">—</span>')+'</td>'
+          +'<td style="font-size:11px;color:#64748b">'+esc(lk)+'</td>'
+          +'<td class="tr" style="font-weight:700;color:#2563eb">'+(m.tjmC?m.tjmC.toFixed(0)+' €/j':'—')+'</td>'
+          +'</tr>';
+      }).join('')+'</tbody></table></div>'
+    : '<div class="emp">Aucun candidat du vivier ne correspond encore à ce profil. Ajoutez des candidats ou élargissez les critères.</div>';
+
+  var extTxt=jobExternalText(j);
+  var intTxt=jobInternalText(j);
+
+  return '<div>'
+    +'<button class="lb" data-act="jback" style="margin-bottom:14px">← Retour aux postes</button>'
+    +'<div class="ph"><div><div class="pt">'+esc(j.title||'(sans titre)')+'</div>'
+    +'<div class="ps"><span style="padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;background:'+col[0]+';color:'+col[1]+'">'+esc(jobStLb(j.status))+'</span>'
+    +(opp?' · <span style="font-size:12px">🔗 Issue du deal <strong>'+esc(opp.name||'')+'</strong></span>':'')+'</div></div>'
+    +'<div style="display:flex;gap:8px"><button class="bg" data-act="jedit" data-id="'+j.id+'">Modifier</button>'
+    +'<button class="bg" style="color:#dc2626;border-color:#fca5a5" data-act="jdel" data-id="'+j.id+'">Supprimer</button></div></div>'
+
+    +'<div class="card" style="padding:24px;margin-bottom:18px">'+infoGrid
+    +'<div style="margin-top:18px"><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Expertises requises</div>'+expHtml+'</div>'
+    +(j.missionDesc?'<div style="margin-top:16px"><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:6px">Missions</div><div style="font-size:13px;color:#334155;white-space:pre-wrap;line-height:1.5">'+esc(j.missionDesc)+'</div></div>':'')
+    +(j.expectations?'<div style="margin-top:14px"><div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:6px">Compétences & qualités attendues</div><div style="font-size:13px;color:#334155;white-space:pre-wrap;line-height:1.5">'+esc(j.expectations)+'</div></div>':'')
+    +compCard+'</div>'
+
+    +'<div class="card" style="padding:24px;margin-bottom:18px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+    +'<div style="font-size:13px;font-weight:800;color:#0f172a">🎯 Candidats suggérés ('+matches.length+')</div></div>'
+    +matchHtml+'</div>'
+
+    +'<div class="g2" style="align-items:start">'
+    +'<div class="card" style="padding:20px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:13px;font-weight:800;color:#0f172a">🏢 Version interne</div>'
+    +'<div style="display:flex;gap:6px"><button class="lb" data-act="jcopy" data-id="'+j.id+'" data-fb="int">📋 Copier</button></div></div>'
+    +'<pre id="job-int-'+j.id+'" style="white-space:pre-wrap;font-family:inherit;font-size:12.5px;color:#334155;line-height:1.55;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin:0;max-height:420px;overflow:auto">'+esc(intTxt)+'</pre></div>'
+    +'<div class="card" style="padding:20px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:13px;font-weight:800;color:#0f172a">🌐 Annonce externe <span style="font-size:11px;font-weight:600;color:#16a34a">(anonymisée)</span></div>'
+    +'<div style="display:flex;gap:6px"><button class="lb" data-act="jai" data-id="'+j.id+'" title="Rédiger avec l\'IA">✨ IA</button><button class="lb" data-act="jcopy" data-id="'+j.id+'" data-fb="ext">📋 Copier</button><button class="lb" data-act="jprint" data-id="'+j.id+'">🖨 Imprimer</button></div></div>'
+    +(j.extBody&&j.extBody.trim()?'<div style="font-size:10px;color:#16a34a;font-weight:700;margin-bottom:6px">✨ Rédigée avec l\'IA — modifiable via « Modifier »</div>':'')
+    +'<pre id="job-ext-'+j.id+'" style="white-space:pre-wrap;font-family:inherit;font-size:12.5px;color:#334155;line-height:1.55;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;margin:0;max-height:420px;overflow:auto">'+esc(extTxt)+'</pre></div>'
+    +'</div>'
+    +'</div>';
+}
+
+
+/* Copie presse-papier avec repli execCommand (fonctionne en file:// et navigateurs anciens). */
+function copyText(txt,okMsg){
+  function done(){toast(okMsg||'Copié');}
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(done,function(){_copyFallback(txt,done);});
+    }else{_copyFallback(txt,done);}
+  }catch(e){_copyFallback(txt,done);}
+}
+function _copyFallback(txt,done){
+  try{
+    var ta=document.createElement('textarea');ta.value=txt;
+    ta.style.cssText='position:fixed;top:-1000px;left:-1000px';
+    document.body.appendChild(ta);ta.focus();ta.select();
+    document.execCommand('copy');document.body.removeChild(ta);
+    if(done)done();
+  }catch(e){toast('Copie impossible — sélectionnez le texte manuellement','error');}
+}
+/* Fenêtre d'impression de l'annonce externe (anonymisée) → PDF via le navigateur. */
+function printJobExternal(j){
+  var txt=jobExternalText(j);
+  var w=window.open('','_blank');
+  if(!w){toast('Autorisez les pop-ups pour imprimer, ou utilisez « Copier ».','error');return;}
+  var html='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(j.title||'Annonce')+'</title>'
+    +'<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:720px;margin:40px auto;padding:0 24px;color:#1e293b;line-height:1.6}pre{white-space:pre-wrap;font-family:inherit;font-size:14px}</style></head>'
+    +'<body><pre>'+esc(txt)+'</pre></body></html>';
+  w.document.write(html);w.document.close();
+  setTimeout(function(){try{w.print();}catch(e){}},250);
+}
+/* Rédaction IA de l'annonce EXTERNE via l'Edge Function generate-job-posting.
+   N'envoie AUCUNE donnée confidentielle (client, salaire, TJM) — annonce anonymisée. */
+async function generateJobExternalAI(j){
+  if(!sb){toast('Rédaction IA indisponible en mode démo','error');return;}
+  toast('Rédaction de l\'annonce en cours…');
+  try{
+    var ses=await sb.auth.getSession();
+    var tok=(ses&&ses.data&&ses.data.session)?ses.data.session.access_token:'';
+    var r=await fetch(SUPABASE_URL+'/functions/v1/generate-job-posting',{
+      method:'POST',headers:{'content-type':'application/json','Authorization':'Bearer '+tok},
+      body:JSON.stringify({
+        title:j.title,seniority:jobSenLb(j.seniority),location:j.location,
+        sector:j.reqSector,minYears:j.reqMinYears,contract:j.contractKind,
+        nbPositions:j.nbPositions,expertise:j.reqExpertise,startDate:j.startDate,
+        missions:j.missionDesc,expectations:j.expectations
+      })
+    });
+    var d=await r.json().catch(function(){return{};});
+    if(!r.ok||d.error){toast('Rédaction IA : '+(d.error||('erreur '+r.status)),'error');return;}
+    var body=(d.body||d.text||'').trim();
+    if(!body){toast('Réponse IA vide','error');return;}
+    j.extBody=body;
+    sbUpsertJob(j).catch(function(err){console.warn('sbUpsertJob(IA):',err);});
+    render();
+    toast('✨ Annonce rédigée par l\'IA — relisez et ajustez si besoin');
+  }catch(e){toast('Erreur réseau : '+(e&&e.message||e),'error');}
+}

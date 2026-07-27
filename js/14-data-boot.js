@@ -84,6 +84,24 @@ function mapCand(r){return{
   experiences:Array.isArray(r.experiences)?r.experiences:[],
   cvProfile:(r.cv_profile&&typeof r.cv_profile==='object')?r.cv_profile:{}
 };}
+/* Fiche de poste (besoin de recrutement) — pont Business → Recrutement.
+   Profil recherché + attendus, déclinable interne (client/tarifs) / externe (anonymisé). */
+function mapJob(r){return{
+  id:r.id,title:r.title||'',seniority:r.seniority||'',
+  reqExpertise:Array.isArray(r.req_expertise)?r.req_expertise:[],
+  reqSector:r.req_sector||'',reqMinYears:(r.req_min_years!=null?+r.req_min_years:null),
+  location:r.location||'',startDate:r.start_date||'',
+  nbPositions:(r.nb_positions!=null?+r.nb_positions:1),
+  contractKind:r.contract_kind||'',
+  missionDesc:r.mission_desc||'',expectations:r.expectations||'',
+  salaryMin:(r.salary_min!=null?+r.salary_min:null),salaryMax:(r.salary_max!=null?+r.salary_max:null),
+  tjmTarget:(r.tjm_target!=null?+r.tjm_target:null),
+  clientName:r.client_name||'',status:r.status||'ouvert',
+  recruiter:r.recruiter||'',assignedTo:r.assigned_to||'',
+  oppId:r.opp_id||null,extBody:r.ext_body||'',
+  buId:r.bu_id||null,createdBy:r.created_by||'',
+  createdAt:r.created_at||'',updatedAt:r.updated_at||''
+};}
 
 /* Écran plein affiché quand l'entreprise n'est pas encore payée (inactive).
    Propose de finaliser le paiement en rejouant le panier mémorisé (pending_cart)
@@ -351,12 +369,16 @@ async function loadSB(){
     /* Opportunités staffing (pilotage des intercontrats) : même périmètre que
        missions/leaves (filtrées par consultant si vue restreinte). */
     var _oppB=function(){var q=sb.from('staffing_opportunities').select('*').eq('company_id',SB_CID);if(idsG)q=q.in('consultant_id',idsG);return q.order('id');};
-    var res=await Promise.all([sbFetchAll(_missB),sbFetchAll(_lvB),sbFetchAll(_candB),sbFetchAll(_oppB)]);
+    /* Fiches de poste : partagées par toute l'entreprise (comme les candidats),
+       jamais filtrées par équipe — un besoin de recrutement concerne tout le monde. */
+    var _jobB=function(){return sb.from('job_postings').select('*').eq('company_id',SB_CID).order('created_at',{ascending:false});};
+    var res=await Promise.all([sbFetchAll(_missB),sbFetchAll(_lvB),sbFetchAll(_candB),sbFetchAll(_oppB),sbFetchAll(_jobB)]);
     S.cons=cons;
     if(res[0].data)S.miss=res[0].data.map(mapM);
     if(res[1].data)S.lvs=res[1].data.map(mapL);
     if(res[2].data)S.cands=res[2].data.map(mapCand);
     if(res[3]&&res[3].data)S.staffOpps=res[3].data.map(mapOpp);
+    if(res[4]&&res[4].data)S.jobs=res[4].data.map(mapJob);
     /* Charger les invites SVP directement dans loadSB pour senior_vp */
     if(S.role==='super_admin'){
       try{
@@ -446,6 +468,25 @@ async function sbUpsertCand(c){
     cv_profile:(c.cvProfile&&typeof c.cvProfile==='object')?c.cvProfile:{}
   });
   if(res.error){sbWriteErr('candidat « '+c.name+' »',res.error);throw new Error(c.name+': '+res.error.message);}
+}
+async function sbUpsertJob(o){
+  if(!sb)return;
+  if(!SB_CID)throw new Error('SB_CID null — reconnectez-vous');
+  function _n(v){return (v!=null&&v!=='')?v:null;}
+  var res=await sb.from('job_postings').upsert({
+    id:o.id,company_id:SB_CID,title:o.title||'',seniority:_n(o.seniority),
+    req_expertise:o.reqExpertise||[],req_sector:_n(o.reqSector),
+    req_min_years:_n(o.reqMinYears),location:_n(o.location),start_date:_n(o.startDate),
+    nb_positions:(o.nbPositions!=null?o.nbPositions:1),contract_kind:_n(o.contractKind),
+    mission_desc:_n(o.missionDesc),expectations:_n(o.expectations),
+    salary_min:_n(o.salaryMin),salary_max:_n(o.salaryMax),tjm_target:_n(o.tjmTarget),
+    client_name:_n(o.clientName),status:o.status||'ouvert',
+    recruiter:_n(o.recruiter),assigned_to:_n(o.assignedTo),
+    opp_id:_n(o.oppId),ext_body:_n(o.extBody),
+    bu_id:_n(o.buId),created_by:_n(o.createdBy),
+    updated_at:new Date().toISOString()
+  },{onConflict:'id'});
+  if(res.error){sbWriteErr('fiche de poste « '+(o.title||'')+' »',res.error);throw new Error((o.title||'Fiche de poste')+': '+res.error.message);}
 }
 
 function toggleRecruited(){
