@@ -256,6 +256,39 @@ async function newPage(browser) {
         });
         check('Time Sheet : écart planning détecté (2 jours)', devInfo.n === 2);
         check('Time Sheet : approbateur averti de l\'écart au planning', /modifié\(s\) par rapport au planning/.test(devInfo.txt) && /≠ prévu/.test(devInfo.txt));
+        // CA piloté par le réalisé validé : dé-facturer 1 jour (m5, TJM 680) → CA -680
+        const caDrop = await p.evaluate(() => {
+          var c = S.cons.find(x => x.id === 'd5'), H = fyHols(2026), r = curRange(2026);
+          var base = kpi(c, S.miss, S.lvs, 2026, H, r).rev;
+          var wk = tsWeekMonday('2026-06-08'), days = tsWeekDays(wk), dmap = {};
+          days.forEach(function (d, i) { dmap[d] = (i === 4) ? 'available' : 'm:m5'; });
+          S.timesheets.push({ id: 'tz', cid: 'd5', week: wk, status: 'approved', days: dmap });
+          var after = kpi(c, S.miss, S.lvs, 2026, H, r).rev;
+          S.timesheets = S.timesheets.filter(x => x.id !== 'tz');
+          return Math.round(base - after);
+        });
+        check('Time Sheet validé → CA : 1 jour dé-facturé retire le TJM (−680€)', caDrop === 680);
+        // Réallocation client (BNP→Orange) : le TS validé change le CA vs plan
+        const caReallocated = await p.evaluate(() => {
+          var c = S.cons.find(x => x.id === 'd1'), H = fyHols(2026), r = curRange(2026);
+          var t1 = S.timesheets.find(x => x.id === 't1'), old = t1.status;
+          t1.status = 'approved'; var withTs = kpi(c, S.miss, S.lvs, 2026, H, r).rev;
+          t1.status = 'draft'; var without = kpi(c, S.miss, S.lvs, 2026, H, r).rev;
+          t1.status = old;
+          return Math.round(withTs) !== Math.round(without);
+        });
+        check('Time Sheet validé → CA : réallocation client impacte le CA', caReallocated);
+        // Onglet Activité piloté par le réalisé : jour validé « dispo » s'affiche Disponible
+        const actReal = await p.evaluate(() => {
+          var wk = tsWeekMonday('2026-06-08'), days = tsWeekDays(wk), dmap = {};
+          days.forEach(function (d, i) { dmap[d] = (i === 4) ? 'available' : 'm:m5'; });
+          S.timesheets.push({ id: 'tz2', cid: 'd5', week: wk, status: 'approved', days: dmap });
+          S.tab = 'activite'; S.actCid = 'd5'; S.actMonth = '2026-06'; render();
+          var ea = effActivity('d5', days[4]);
+          S.timesheets = S.timesheets.filter(x => x.id !== 'tz2');
+          return ea.kind;
+        });
+        check('Activité : jour validé en « dispo » piloté par le réalisé', actReal === 'available');
         // Sélecteur de date de semaine (passé/futur) présent côté demandeur
         const hasDatePicker = await p.evaluate(() => {
           S.modal = null; S.consId = 'd1'; S.tsCid = 'd1'; S.tab = 'timesheet'; render();

@@ -59,9 +59,9 @@ function tActivite(){
   /* ── Stats sur la période sélectionnée (FY ou trimestre) ── */
   var kc=kpi(c,S.miss,S.lvs,S.year,Hy,_r);
 
-  /* Jours intercontrat sur la période = jours ouvrés sans mission ET sans congé
-     (même logique que le planning : "Disponible" = ni mission ni congé enregistré) */
-  var icDays=0;
+  /* Compteurs de la période via l'activité EFFECTIVE (réalisé des TS validés, sinon
+     plan) : intercontrat (disponible), congés/arrêts, mission interne. */
+  var icDays=0,cpDays=0,intDays=0;
   (function(){
     var d=rS;
     while(d<=rE){
@@ -69,19 +69,16 @@ function tActivite(){
         var pres=true;
         if(c.arrive&&d<c.arrive)pres=false;
         if(c.depart&&d>c.depart)pres=false;
-        if(pres&&!leaveOnDay(cid,d)&&!missOnDay(cid,d))icDays++;
+        if(pres){
+          var ea=effActivity(cid,d);
+          if(ea.kind==='leave')cpDays++;
+          else if(ea.kind==='internal')intDays++;
+          else if(ea.kind==='available')icDays++;
+        }
       }
       d=nxt(d);
     }
   }());
-
-  /* Jours congés/arrêts sur la période (hors Inter-contrat) */
-  var lvCp=S.lvs.filter(function(l){return l.cid===cid&&l.type!=='Inter-contrat'&&l.type!=='Mission interne'&&l.e>=rS&&l.s<=rE;});
-  var cpDays=lvCp.reduce(function(s,l){return s+wDays(l.s>rS?l.s:rS,l.e<rE?l.e:rE,Hy);},0);
-
-  /* Jours mission interne */
-  var lvInt=S.lvs.filter(function(l){return l.cid===cid&&l.type==='Mission interne'&&l.e>=rS&&l.s<=rE;});
-  var intDays=lvInt.reduce(function(s,l){return s+wDays(l.s>rS?l.s:rS,l.e<rE?l.e:rE,Hy);},0);
 
   /* Marge sur les missions de la période */
   var marg=kc.om!=null?kc.om.toFixed(1)+'%':'\u2014';
@@ -116,17 +113,11 @@ function tActivite(){
     var bg='#fff',bd='#e2e8f0',main='',sub='',txt='#0f172a',clk=false;
     if(we||hol){bg='#f8fafc';bd='#eef2f7';main=hol?'Férié':'';txt='#cbd5e1';}
     else{
-      var lv=leaveOnDay(cid,ds);
-      if(lv){
-        var intern=(lv.type==='Mission interne'||lv.type==='Inter-contrat');
-        bg=intern?'#f0fdfa':'#fffbeb';bd=intern?'#99f6e4':'#fde68a';
-        main=lv.type;sub=intern?'Non facturé':'Absence';clk=true;
-        if(intern)internD++;else leaveD++;
-      }else{
-        var mm=missOnDay(cid,ds);
-        if(mm){bg='#eff6ff';bd='#bfdbfe';main=mm.client||mm.cli;sub=mm.name;billed++;clk=true;}
-        else{main='Disponible';txt='#94a3b8';clk=true;}
-      }
+      var ea=effActivity(cid,ds);
+      if(ea.kind==='leave'){bg='#fffbeb';bd='#fde68a';main=ea.leave?ea.leave.type:'Congé / Absence';sub='Absence';clk=true;leaveD++;}
+      else if(ea.kind==='internal'){bg='#f0fdfa';bd='#99f6e4';main=ea.leave?ea.leave.type:'Mission interne';sub='Non facturé';clk=true;internD++;}
+      else if(ea.kind==='billed'){bg='#eff6ff';bd='#bfdbfe';main=ea.mission?(ea.mission.cli||ea.mission.client||'Client'):'Facturé';sub=ea.mission?ea.mission.name:'';billed++;clk=true;}
+      else{main='Disponible';txt='#94a3b8';clk=true;}
     }
     var wkLocked=(!we&&!hol)&&(typeof tsApprovedWeek==='function')&&tsApprovedWeek(cid,tsWeekMonday(ds));
     if(wkLocked)clk=false;

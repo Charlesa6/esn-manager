@@ -178,6 +178,35 @@ function av(name,sz){
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
    KPI - MARGE = (TJM \u2212 SCR) / TJM × 100
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+/* ═══ TIME SHEET VALIDÉS = RÉALISÉ ═══
+   Carte {date: valeur} des jours couverts par un Time Sheet APPROUVÉ du consultant
+   dans [ys,ye]. Sert à faire piloter le CA et l'Activité par le réalisé validé
+   (le plan/prévisionnel reste la source pour tout jour non couvert par un TS validé). */
+function _tsBilledVal(v){return typeof v==='string'&&v.indexOf('m:')===0;}
+function tsOverrideMap(cid,ys,ye){
+  var map={},ts=(typeof S!=='undefined'&&S.timesheets)?S.timesheets:[];
+  for(var i=0;i<ts.length;i++){var t=ts[i];
+    if(t.cid!==cid||t.status!=='approved'||!t.days)continue;
+    for(var d in t.days){if(t.days.hasOwnProperty(d)&&d>=ys&&d<=ye)map[d]=t.days[d];}
+  }
+  return map;
+}
+/* Activité effective d'un jour : réalisé (TS validé) sinon plan (missions/congés). */
+function effActivity(cid,day){
+  var t=(typeof tsFor==='function')?tsFor(cid,(typeof tsWeekMonday==='function'?tsWeekMonday(day):day)):null;
+  if(t&&t.status==='approved'&&t.days&&t.days[day]){
+    var v=t.days[day];
+    if(_tsBilledVal(v))return {kind:'billed',ts:true,mission:(S.miss||[]).find(function(m){return m.id===v.slice(2);})||null};
+    if(v==='internal')return {kind:'internal',ts:true};
+    if(v==='leave')return {kind:'leave',ts:true};
+    return {kind:'available',ts:true};
+  }
+  var lv=leaveOnDay(cid,day);
+  if(lv)return {kind:(lv.type==='Mission interne'||lv.type==='Inter-contrat')?'internal':'leave',leave:lv};
+  var mm=missOnDay(cid,day);
+  if(mm)return {kind:'billed',mission:mm};
+  return {kind:'available'};
+}
 function kpi(c,miss,lvs,y,H,rangeOverride){
   var ys,ye;
   if(rangeOverride){ys=rangeOverride[0];ye=rangeOverride[1];}
@@ -223,6 +252,63 @@ function kpi(c,miss,lvs,y,H,rangeOverride){
     bill+=d;rev+=r;
     return Object.assign({},m,{days:d,rev:r,mar:mar});
   });
+  /* ── Réalisé : les Time Sheet VALIDÉS priment sur le plan pour leurs jours ──
+     On applique un delta jour par jour uniquement pour les jours couverts par un
+     TS approuvé (sinon aucun changement → baseline plan strictement identique). */
+  var _ovr=tsOverrideMap(c.id,cs,ce);
+  if(Object.keys(_ovr).length){
+    var _pmById={};pm.forEach(function(x){_pmById[x.id]=x;});
+    var _dDays={};
+    var _consMiss=miss.filter(function(m){return m.cid===c.id;});
+    Object.keys(_ovr).forEach(function(D){
+      if(D<cs||D>ce||!isWD(D,H))return;
+      /* Classe PLAN du jour. Un congé prime ; sinon on collecte TOUTES les missions
+         du plan couvrant D (le moteur les compte indépendamment → on les retire
+         toutes pour que le jour ne soit facturé qu'une fois, par le réalisé). */
+      var _plMiss=[],_plSick=false,_plInLv=false;
+      var _lv=lvs.find(function(l){return l.cid===c.id&&l.s<=D&&D<=l.e;});
+      if(_lv){_plSick=(_lv.type!=='Inter-contrat');_plInLv=true;}
+      else{
+        _plMiss=_consMiss.filter(function(m){
+          if(m.sd>D||(m.ed&&D>m.ed))return false;
+          if(m.wmode==='man'&&m.manualDays&&m.manualDays.length)return m.manualDays.indexOf(D)>=0;
+          var wd=(m.wdays&&m.wdays.length)?m.wdays:[1,2,3,4,5];
+          return wd.indexOf(pD(D).getDay())>=0;
+        }).map(function(m){return m.id;});
+      }
+      /* Classe RÉALISÉ (TS validé) du jour */
+      var _v=_ovr[D],_ob;
+      if(_tsBilledVal(_v))_ob={P:_v.slice(2),sick:false,inLv:false};
+      else if(_v==='leave')_ob={sick:true,inLv:true};
+      else if(_v==='internal')_ob={sick:true,inLv:true};
+      else _ob={sick:false,inLv:true};                 /* available = inter-contrat */
+      /* Deltas */
+      _plMiss.forEach(function(mid){_dDays[mid]=(_dDays[mid]||0)-1;bill--;});
+      if(_ob.P){_dDays[_ob.P]=(_dDays[_ob.P]||0)+1;bill++;}
+      if(_plSick&&!_ob.sick)sickD--; if(_ob.sick&&!_plSick)sickD++;
+      if(_plInLv&&!_ob.inLv)lvD--; if(_ob.inLv&&!_plInLv)lvD++;
+    });
+    Object.keys(_dDays).forEach(function(mid){
+      var x=_pmById[mid];
+      if(!x){var mm=miss.find(function(m){return m.id===mid;});if(mm){x=Object.assign({},mm,{days:0,rev:0,mar:0});pm.push(x);_pmById[mid]=x;}}
+      if(x)x.days=Math.max(0,(x.days||0)+_dDays[mid]);
+    });
+    rev=0;
+    pm.forEach(function(x){
+      var r,mar;
+      if(x.btype==='forfait'){
+        var deal=+x.deal||0,totD=x.ed?missWD(x,x.sd,x.ed,lvs):0;
+        r=(x.ed&&totD>0)?deal*(x.days/totD):(x.ed?0:deal);
+        mar=r>0?(r-x.days*c.scr*(c.contract==='freelance'?1:EMPLOYER_FACTOR))/r*100:0;
+      }else{
+        r=x.days*x.tjm;
+        mar=x.tjm>0?(x.tjm-c.scr*(c.contract==='freelance'?1:EMPLOYER_FACTOR))/x.tjm*100:0;
+      }
+      x.rev=r;x.mar=mar;rev+=r;
+    });
+    if(bill<0)bill=0;if(lvD<0)lvD=0;if(sickD<0)sickD=0;
+    avD=tWD-lvD;
+  }
   var sr=tWD>0?(bill+sickD)/tWD*100:0,avgT=bill>0?rev/bill:0;
   var om=bill>0&&avgT>0?(avgT-c.scr*(c.contract==='freelance'?1:EMPLOYER_FACTOR))/avgT*100:null; /* freelance : pas de charges patronales */
   return{tWD:tWD,lvD:lvD,avD:avD,sickD:sickD,bill:bill,rev:rev,sr:sr,avgT:avgT,om:om,pm:pm,cs:cs,ce:ce};
@@ -448,7 +534,7 @@ function loadDemoData(){
     {id:'m4',cid:'d4',cli:'SNCF',              name:'Pilotage forfait', pcode:'300100004',tjm:840,sd:'2025-10-01',ed:'2026-03-31',btype:'forfait',deal:180000,wdays:[1,2,3,4,5]},
     {id:'m5',cid:'d5',cli:'TotalEnergies',     name:'Reporting BI',     pcode:'300100005',tjm:680,sd:'2025-10-01',ed:'2026-09-30',btype:'at',     wdays:[1,2,3,4,5]},
     {id:'m6',cid:'d1',cli:'BNP Paribas',       name:'Phase 2 Risques',  pcode:'300100006',tjm:800,sd:'2026-04-01',ed:'2026-09-30',btype:'at',     wdays:[1,2,3,4,5]},
-    {id:'m7',cid:'d1',cli:'Orange',            name:'Audit sécurité',   pcode:'300100007',tjm:850,sd:'2026-06-01',ed:'2026-08-31',btype:'at',     wdays:[1,2,3,4,5]}
+    {id:'m7',cid:'d1',cli:'Orange',            name:'Audit sécurité',   pcode:'300100007',tjm:850,sd:'2026-07-20',ed:'2026-07-24',btype:'at',     wdays:[1,2,3,4,5]}
   ];
   S.lvs=[
     {id:'v1',cid:'d1',type:'Congé payé',s:'2026-07-06',e:'2026-07-17'},
