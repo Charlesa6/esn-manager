@@ -518,6 +518,10 @@ function loadDemoData(){
   S.year=2026;
   S.quarter=null;
   S.tab=S.role==='utilisateur'?'activite':S.role==='recruteur'?'recrutement':S.role==='sales'?'business':'kpis';
+  /* Démo : on active les modules Business (Opportunités) et Recrutement pour montrer
+     le CRM, les fiches de poste, l'assignation de candidats et la mission auto. */
+  S.settings.hasBusinessModule=true;
+  S.settings.hasRecrutementModule=true;
   /* Dates d'arrivée futures relatives à aujourd'hui (démo « prochaines arrivées »
      toujours à venir quel que soit le jour de la présentation). */
   var _fut=function(n){var d=new Date();d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
@@ -560,12 +564,38 @@ function loadDemoData(){
     {id:'t4',cid:'d2',week:'2026-07-20',status:'approved', days:{'2026-07-20':'m:m2','2026-07-21':'m:m2','2026-07-22':'m:m2','2026-07-23':'m:m2','2026-07-24':'m:m2'},approverId:null,requesterId:null,submittedAt:'2026-07-27T08:00:00Z',resolvedAt:'2026-07-27T10:00:00Z',rejectionReason:''}
   ];
   S.cands=[
-    {id:'c1',name:'Maxime Guillot',expertise:['React','TypeScript'],sectors:['Banque & Finance'],locations:['Lyon'],nationality:'Française',reqSalary:48000,yearsExp:4,status:'entretien',marginPct:28,createdBy:'demo',feedbacks:[],cgiMeetings:[],cvFiles:[]}
+    {id:'c1',name:'Maxime Guillot',expertise:['React','TypeScript'],sectors:['Banque & Finance'],locations:['Lyon'],locTarget:'Lyon',nationality:'Française',reqSalary:48000,yearsExp:4,status:'op_ec',marginPct:28,createdBy:'demo',feedbacks:[],cgiMeetings:[],cvFiles:[]},
+    {id:'c2',name:'Amélie Roche', expertise:['Node.js','React','TypeScript'],sectors:['Banque & Finance'],locations:['Lyon'],locTarget:'Lyon',nationality:'Française',reqSalary:46000,yearsExp:5,status:'op_a',marginPct:30,createdBy:'demo',feedbacks:[],cgiMeetings:[],cvFiles:[]},
+    {id:'c3',name:'Julien Faure',  expertise:['Azure','Cloud','DevOps'],sectors:['Énergie & Utilities'],locations:['Paris'],locTarget:'Paris',nationality:'Française',reqSalary:62000,yearsExp:8,status:'entretien',marginPct:26,createdBy:'demo',feedbacks:[],cgiMeetings:[],cvFiles:[]}
   ];
-  /* Fiches de poste de démonstration — l'une issue d'un deal CRM (oppId), l'autre saisie à la main. */
+  /* CRM de démo : comptes + contacts + opportunités. Deux deals servent de source aux
+     fiches de poste — un en AT (o1) et un en FORFAIT (o2) — pour illustrer le lien
+     fiche → opportunité et la mission auto (AT vs forfait) au passage « pourvu ». */
+  S.bizAccounts=[
+    {id:'a1',name:'BNP Paribas',   status:'client_actif',sector:'Banque & Finance',   size:'Grand compte',website:'',siret:'',address:'Paris',notes:''},
+    {id:'a2',name:'TotalEnergies', status:'client_actif',sector:'Énergie & Utilities',size:'Grand compte',website:'',siret:'',address:'Paris',notes:''}
+  ];
+  S.bizContacts=[
+    {id:'ct1',account_id:'a1',first_name:'Hélène',last_name:'Dubois', email:'h.dubois@bnp.demo',   phone:'',role_type:'decideur',position:'Responsable SI Risques',notes:''},
+    {id:'ct2',account_id:'a2',first_name:'Marc',  last_name:'Lefevre',email:'m.lefevre@total.demo',phone:'',role_type:'decideur',position:'Directeur Cloud',       notes:''}
+  ];
+  S.bizOpps=[
+    {id:'o1',name:'TMA Plateforme Risques',account_id:'a1',contact_id:'ct1',status:'proposition',btype:'at',
+     tjm_cible:650,jours_estimes:220,deal_amount:null,date_start:_fut(30),date_end:_fut(240),date_closing:_fut(20),probability:70,
+     consultant_ids:[],opp_team:null,req_expertise:['React','Node.js','TypeScript'],location:'Lyon',req_seniority:'confirme',req_sector:'Banque & Finance',
+     assigned_to:'Thomas Bernard',owner_name:'Thomas Bernard',bu_id:null,notes:'Besoin de 2 dev fullstack sur la plateforme risques.',linked_mission_id:null},
+    {id:'o2',name:'Cadrage & migration Cloud',account_id:'a2',contact_id:'ct2',status:'negociation',btype:'forfait',
+     tjm_cible:null,jours_estimes:null,deal_amount:180000,date_start:_fut(60),date_end:_fut(300),date_closing:_fut(35),probability:50,
+     consultant_ids:[],opp_team:[{cid:'',taux:100,wdays:[1,2],tmar:28}],req_expertise:['Azure','Cloud','DevOps'],location:'Paris',req_seniority:'senior',req_sector:'Énergie & Utilities',
+     assigned_to:'Marie Lefebvre',owner_name:'Marie Lefebvre',bu_id:null,notes:'Forfait de cadrage puis migration cloud.',linked_mission_id:null}
+  ];
+  S.bizActivities=[];
+  /* Fiches de poste de démonstration — chacune issue d'un deal CRM (oppId) et avec des
+     candidats du vivier déjà assignés (candidateIds), pour montrer l'assignation, le
+     lien vers l'opportunité et la mission auto au passage « pourvu ». */
   S.jobs=[
-    {id:'j1',title:'Développeur Fullstack React/Node',seniority:'confirme',reqExpertise:['React','Node.js','TypeScript'],reqSector:'Banque & Finance',reqMinYears:4,location:'Lyon',startDate:_fut(30),nbPositions:2,contractKind:'CDI',missionDesc:'Renforcer l\'équipe de développement de la plateforme risques d\'un client grand compte bancaire : conception, développement et mise en production de nouvelles fonctionnalités.',expectations:'Maîtrise de React et Node.js, culture DevOps, autonomie, bon relationnel client.',salaryMin:45000,salaryMax:55000,tjmTarget:650,clientName:'BNP Paribas',status:'ouvert',recruiter:'',assignedTo:'Thomas Bernard',oppId:null,extBody:'',buId:null,createdBy:'demo'},
-    {id:'j2',title:'Architecte Cloud Azure',seniority:'senior',reqExpertise:['Azure','Cloud','DevOps'],reqSector:'Énergie & Utilities',reqMinYears:7,location:'Paris',startDate:_fut(60),nbPositions:1,contractKind:'CDI',missionDesc:'Piloter la migration cloud d\'un acteur majeur de l\'énergie : architecture cible, gouvernance, accompagnement des équipes.',expectations:'Expertise Azure confirmée, certifications appréciées, leadership technique.',salaryMin:65000,salaryMax:80000,tjmTarget:900,clientName:'TotalEnergies',status:'en_cours',recruiter:'',assignedTo:'Marie Lefebvre',oppId:null,extBody:'',buId:null,createdBy:'demo'}
+    {id:'j1',title:'Développeur Fullstack React/Node',seniority:'confirme',reqExpertise:['React','Node.js','TypeScript'],reqSector:'Banque & Finance',reqMinYears:4,location:'Lyon',startDate:_fut(30),nbPositions:2,contractKind:'CDI',missionDesc:'Renforcer l\'équipe de développement de la plateforme risques d\'un client grand compte bancaire : conception, développement et mise en production de nouvelles fonctionnalités.',expectations:'Maîtrise de React et Node.js, culture DevOps, autonomie, bon relationnel client.',salaryMin:45000,salaryMax:55000,tjmTarget:650,clientName:'BNP Paribas',status:'en_cours',recruiter:'',assignedTo:'Thomas Bernard',oppId:'o1',candidateIds:['c1','c2'],extBody:'',buId:null,createdBy:'demo'},
+    {id:'j2',title:'Architecte Cloud Azure',seniority:'senior',reqExpertise:['Azure','Cloud','DevOps'],reqSector:'Énergie & Utilities',reqMinYears:7,location:'Paris',startDate:_fut(60),nbPositions:1,contractKind:'CDI',missionDesc:'Piloter la migration cloud d\'un acteur majeur de l\'énergie : architecture cible, gouvernance, accompagnement des équipes.',expectations:'Expertise Azure confirmée, certifications appréciées, leadership technique.',salaryMin:65000,salaryMax:80000,tjmTarget:900,clientName:'TotalEnergies',status:'ouvert',recruiter:'',assignedTo:'Marie Lefebvre',oppId:'o2',candidateIds:['c3'],extBody:'',buId:null,createdBy:'demo'}
   ];
   H=fyHols(2026);
 }
