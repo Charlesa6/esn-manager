@@ -219,8 +219,8 @@ var TUTORIALS={
   color:'#1e40af',
   steps:[
     {
-      title:'Ouvrez le module Business',
-      desc:'Dans la navigation, cliquez sur <strong>💼 Business</strong>. Vous accédez au CRM avec 5 sous-onglets : Pipeline, Comptes, Contacts, Activités, KPIs.',
+      title:'Ouvrez le module Opportunités',
+      desc:'Dans la navigation, cliquez sur <strong>💼 Opportunités</strong>. Vous accédez au CRM avec 5 sous-onglets : Pipeline, Comptes, Contacts, Activités, KPIs.',
       svg:function(){return tut_svg_nav('business','#1e40af');}
     },
     {
@@ -358,7 +358,7 @@ function tut_svg_nav(activeTab,color){
     {id:'teams',ic:'👥',lb:'Équipe'},
     {id:'missions',ic:'📋',lb:'Missions'},
     {id:'recrutement',ic:'🎯',lb:'Recrutement'},
-    {id:'business',ic:'💼',lb:'Business'},
+    {id:'business',ic:'💼',lb:'Opportunités'},
     {id:'help',ic:'❓',lb:'Aide'},
   ];
   var rows=tabs.map(function(t){

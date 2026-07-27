@@ -33,8 +33,8 @@ function tSB(){
   }else if(S.role==='sales'){
     /* Licence Business Manager : Business + Activité + Absences */
     NAV=[
-      {id:'business',   ic:'\ud83d\uDCBC',lb:'Business'},
-      {id:'opportunites',ic:'\ud83d\uDEEC',lb:'Opportunit\u00e9s'},
+      {id:'business',   ic:'\ud83d\uDCBC',lb:'Opportunit\u00e9s'},
+      {id:'opportunites',ic:'\ud83d\uDEEC',lb:'Staffing'},
       {id:'recrutement',ic:'\uD83C\uDFAF',lb:'Recrutement'},
       {id:'activite',   ic:'\ud83d\uDDD3\uFE0F',lb:'Activit\u00e9'},
       {id:'timesheet',  ic:'\ud83d\uDD52',lb:'Time Sheet'},
@@ -59,8 +59,8 @@ function tSB(){
     NAV=[
       {id:'kpis',      ic:'\uD83D\uDCC8',lb:'KPIs'},
       {id:'dashboard', ic:'\uD83D\uDCCA',lb:'Dashboard'},
-      {id:'business',  ic:'\uD83D\uDCBC',lb:'Business'},
-      {id:'opportunites',ic:'\uD83D\uDEEC',lb:'Opportunit\u00E9s'},
+      {id:'business',  ic:'\uD83D\uDCBC',lb:'Opportunit\u00E9s'},
+      {id:'opportunites',ic:'\uD83D\uDEEC',lb:'Staffing'},
       {id:'recrutement',ic:'\uD83C\uDFAF',lb:'Recrutement'},
       {id:'teams',     ic:'\uD83D\uDC65',lb:'\u00c9quipe'},
       {id:'activite',  ic:'\uD83D\uDDD3\uFE0F',lb:'Activit\u00e9'},
