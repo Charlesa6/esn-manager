@@ -459,6 +459,8 @@ function tsSetDay(date,cat){
   if(cat==='leave')S.modal={type:'ts_leavecheck',cid:S.tsEdit.cid,day:date};
   render();
 }
+/* Saut vers la semaine contenant une date choisie (passé ou futur). */
+function tsPickWeek(val){if(!val)return;S.tsWeek=tsWeekMonday(val);S.tsEdit=null;render();}
 
 function tTimesheet(){
   var _pc=personalCons();
@@ -520,7 +522,8 @@ function tTimesheet(){
       +'</div>';
   }else if(st==='submitted'){
     actionBar='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+tsPill(st)
-      +(isSelf?'<button class="bg" data-act="ts-cancel" data-id="'+(savedTs?savedTs.id:'')+'" data-week="'+week+'">Annuler la demande</button>':'<span style="font-size:12px;color:#92400e;font-weight:700">En attente de validation N+1</span>')
+      +(canValidateTs(savedTs)?'<button class="bp" data-act="ts-review" data-id="'+savedTs.id+'">Examiner / Valider</button>':'')
+      +(isSelf?'<button class="bg" data-act="ts-cancel" data-id="'+(savedTs?savedTs.id:'')+'" data-week="'+week+'">Annuler la demande</button>':(canValidateTs(savedTs)?'':'<span style="font-size:12px;color:#92400e;font-weight:700">En attente de validation N+1</span>'))
       +'</div>';
   }else{
     actionBar='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+tsPill(st)
@@ -535,6 +538,7 @@ function tTimesheet(){
     +'<div style="font-weight:800;min-width:250px;text-align:center;color:#0f172a">'+esc(tsWeekLabel(week))+'</div>'
     +'<button class="bg" data-act="ts-week-next" style="padding:6px 12px">›</button>'
     +'<button class="bg" data-act="ts-week-cur" style="padding:6px 12px">Cette semaine</button>'
+    +'<input type="date" class="ic" value="'+week+'" onchange="tsPickWeek(this.value)" title="Aller à une semaine (passé ou futur)" style="max-width:158px;padding:5px 8px">'
     +'<div style="margin-left:auto;font-size:12px;color:#475569">'+(tsBilledSummary(daysMap)||(bd.billed+'j fact.'))+' · '+bd.internal+'j int. · '+bd.leave+'j congés · '+bd.avail+'j dispo</div>'
     +'</div>'
     +(editable?'<div style="font-size:12px;color:#64748b;margin-bottom:10px">Pré-rempli depuis votre planning — <strong>modifiable</strong> jour par jour : chaque jour facturé est imputé sur une <strong>mission précise</strong> (choisissez le client). Mettre un jour en « Congé / Absence » vérifie la demande de congé associée.</div>':'')

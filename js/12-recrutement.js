@@ -1021,24 +1021,38 @@ function tModal(){
     var _t=tsById(m.id);
     if(_t){
       var _who=((S._all&&S._all.cons)||S.cons).find(function(c){return c.id===_t.cid;});
-      title='Valider le Time Sheet';
+      var _submitted=(_t.status==='submitted');
+      title=(_submitted?'Valider le Time Sheet':'Détail du Time Sheet');
       var _days=_t.days||{};
       var _leaveDays=Object.keys(_days).filter(function(d){return _days[d]==='leave';}).sort();
       var _bd=tsBreakdown(_days);
-      var _lvList=_leaveDays.length?_leaveDays.map(function(d){
-        var r=tsLeaveCheck(_t.cid,d),xx=TS_LEAVE_BADGE[r.state];
-        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:12px"><span>'+fDt(d)+'</span><span style="font-weight:700;color:'+xx[1]+'">'+xx[2]+'</span></div>';
-      }).join(''):'<div style="font-size:12px;color:#94a3b8">Aucun jour de congé imputé sur cette semaine.</div>';
       var _nKo=_leaveDays.filter(function(d){return tsLeaveCheck(_t.cid,d).state!=='ok';}).length;
       var _billed=tsBilledSummary(_days);
-      body='<div style="font-size:13px;color:#0f172a;font-weight:700;margin-bottom:4px">'+esc(_who?_who.name:_t.cid)+' — '+esc(tsWeekLabel(_t.week))+'</div>'
+      var _dow=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+      /* Détail par jour : ce qui a été imputé chaque jour (mission/client ou catégorie),
+         avec le statut de cohérence congé pour les jours en « Congé ». */
+      var _allDays=Object.keys(_days).sort();
+      var _dayRows=_allDays.length?_allDays.map(function(d){
+        var v=_days[d];
+        var lc='';
+        if(v==='leave'){var st=tsLeaveCheck(_t.cid,d).state,xx=TS_LEAVE_BADGE[st];lc=' <span style="font-size:10px;font-weight:700;color:'+xx[1]+'">'+xx[2]+'</span>';}
+        return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:12px">'
+          +'<span style="color:#475569;min-width:92px">'+_dow[pD(d).getDay()]+' '+fDt(d)+'</span>'
+          +'<span style="text-align:right">'+tsCatBadge(v)+lc+'</span></div>';
+      }).join(''):'<div style="font-size:12px;color:#94a3b8">Aucun jour travaillé sur cette semaine.</div>';
+      var _actBtns=_submitted
+        ?'<button class="bg" style="color:#b91c1c;border-color:#fecdd3" data-act="ts-reject" data-id="'+_t.id+'">Refuser</button>'
+          +'<button class="bp" style="background:#16a34a;border-color:#16a34a" data-act="ts-approve-ok" data-id="'+_t.id+'">Approuver la semaine</button>'
+        :(_t.status==='approved'&&canValidateTs(_t)
+          ?'<button class="bg" data-act="mc">Fermer</button><button class="bp" data-act="ts-reopen" data-id="'+_t.id+'">Dé-valider la semaine</button>'
+          :'<button class="bp" data-act="mc">Fermer</button>');
+      body='<div style="font-size:13px;color:#0f172a;font-weight:700;margin-bottom:4px">'+esc(_who?_who.name:_t.cid)+' — '+esc(tsWeekLabel(_t.week))+' <span style="font-weight:600">'+tsPill(_t.status)+'</span></div>'
         +'<div style="font-size:12px;color:#64748b;margin-bottom:6px">'+_bd.billed+'j facturés · '+_bd.internal+'j interne · '+_bd.leave+'j congés · '+_bd.avail+'j dispo</div>'
-        +(_billed?'<div style="font-size:12px;color:#1e40af;font-weight:700;margin-bottom:12px">Facturation par client : '+_billed+'</div>':'<div style="height:6px"></div>')
-        +'<div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:4px">Cohérence des congés imputés</div>'
-        +'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:6px 12px;margin-bottom:8px">'+_lvList+'</div>'
-        +(_nKo>0?'<div style="font-size:12px;color:#b91c1c;font-weight:700;margin-bottom:12px">⚠ '+_nKo+' jour(s) de congé sans demande validée en amont. À vérifier avant de valider.</div>':(_leaveDays.length?'<div style="font-size:12px;color:#15803d;font-weight:700;margin-bottom:12px">✓ Tous les congés imputés sont validés en amont.</div>':'<div style="height:4px"></div>'))
-        +'<div class="br"><button class="bg" style="color:#b91c1c;border-color:#fecdd3" data-act="ts-reject" data-id="'+_t.id+'">Refuser</button>'
-        +'<button class="bp" style="background:#16a34a;border-color:#16a34a" data-act="ts-approve-ok" data-id="'+_t.id+'">Approuver la semaine</button></div>';
+        +(_billed?'<div style="font-size:12px;color:#1e40af;font-weight:700;margin-bottom:10px">Facturation par client : '+_billed+'</div>':'<div style="height:4px"></div>')
+        +'<div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:4px">Détail par jour</div>'
+        +'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:4px 12px;margin-bottom:8px">'+_dayRows+'</div>'
+        +(_leaveDays.length?(_nKo>0?'<div style="font-size:12px;color:#b91c1c;font-weight:700;margin-bottom:12px">⚠ '+_nKo+' jour(s) de congé sans demande validée en amont. À vérifier avant de valider.</div>':'<div style="font-size:12px;color:#15803d;font-weight:700;margin-bottom:12px">✓ Tous les congés imputés sont validés en amont.</div>'):'<div style="height:2px"></div>')
+        +'<div class="br">'+_actBtns+'</div>';
     }
   }
   return '<div class="mov" id="mov"><div class="mbox '+(wide?'mw':'mn')+'">'

@@ -245,6 +245,24 @@ async function newPage(browser) {
           return (S.timesheets.find(x => x.id === 't1') || {}).status;
         });
         check('Time Sheet : révision acceptée rouvre la semaine (draft)', revStatus === 'draft');
+        // Détail par jour dans le pop-up de validation (imputation de chaque jour)
+        const dayDetail = await p.evaluate(() => { S.modal = { type: 'ts_approve', id: 't4' }; render(); return document.getElementById('md').innerText; });
+        check('Time Sheet : détail par jour dans la validation N+1', /Détail par jour/.test(dayDetail) && /Facturé · Société Générale/.test(dayDetail));
+        // Sélecteur de date de semaine (passé/futur) présent côté demandeur
+        const hasDatePicker = await p.evaluate(() => {
+          S.modal = null; S.consId = 'd1'; S.tsCid = 'd1'; S.tab = 'timesheet'; render();
+          return !!document.querySelector('input[type="date"][onchange^="tsPickWeek"]');
+        });
+        check('Time Sheet : sélecteur de date de semaine présent', hasDatePicker);
+        // Saut vers une semaine FUTURE via le sélecteur de date
+        const futureWeek = await p.evaluate(() => { tsPickWeek('2027-01-15'); return S.tsWeek === tsWeekMonday('2027-01-15'); });
+        check('Time Sheet : saut vers une semaine future', futureWeek);
+        // Côté approbateur : bouton « Examiner / Valider » sur une semaine soumise
+        const canExamine = await p.evaluate(() => {
+          S.tsCid = 'd1'; S.tsWeek = '2026-07-13'; S.tsEdit = null; render(); // semaine soumise (t2)
+          return /Examiner \/ Valider/.test(document.body.innerText);
+        });
+        check('Time Sheet : approbateur peut examiner/valider une semaine choisie', canExamine);
         await p.evaluate(() => { S.consId = null; S.modal = null; S.tab = 'kpis'; render(); });
       }
     }
