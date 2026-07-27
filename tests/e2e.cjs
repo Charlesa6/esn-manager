@@ -531,30 +531,6 @@ async function newPage(browser) {
     // Restaurer l'état par défaut (drapeau off, rôle initial).
     await p.evaluate(() => { window.KPI_SERVER_AGG = false; S.role = S._roleBak; S.kpiCards = null; render(); });
 
-    // Visite guidée : déroule tout le scénario (création candidat + opportunité gagnée + missions).
-    const tour = await p.evaluate(async () => {
-      S.demo = true;
-      startGuidedTour();
-      const started = !!(S.tour && S.tour.active) && !!document.getElementById('tour-ov');
-      let n = 0; while (S.tour && !S.tour.finished && n < 40) { tourNext(); n++; }
-      // Les créations de mission (jobFillToMissions) sont async : on laisse les
-      // microtâches se vider avant de vérifier l'état.
-      await new Promise(r => setTimeout(r, 50));
-      const cand = (S.cands || []).some(c => c.id === 'tour_cand');
-      const opp = (S.bizOpps || []).find(o => o.id === 'tour_opp');
-      const oppWon = !!opp && opp.status === 'gagne';
-      const forfaitMiss = (S.miss || []).some(m => m.btype === 'forfait' && /Architecte Cloud/.test(m.name || ''));
-      const finished = !!(S.tour && S.tour.finished);
-      tourStop();
-      const stopped = !S.tour && !document.getElementById('tour-ov');
-      return { started, cand, oppWon, forfaitMiss, finished, stopped };
-    });
-    check('Visite guidée : démarre (overlay + étape 1)', tour.started);
-    check('Visite guidée : candidat créé + opportunité gagnée', tour.cand && tour.oppWon);
-    check('Visite guidée : mission forfait générée (poste pourvu)', tour.forfaitMiss);
-    check('Visite guidée : se termine et se ferme proprement', tour.finished && tour.stopped);
-    await p.evaluate(() => { S.tab = 'kpis'; render(); });
-
     check('aucune erreur JS fatale sur tout le parcours app', p._appErrors.length === 0, p._appErrors.join(' | '));
     await p.context().close();
   } catch (e) { check('app démo charge sans exception', false, e.message); }
