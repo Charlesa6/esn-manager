@@ -23,7 +23,7 @@ function tRecrut(){
   if(S.recTab==='jobs'){
     if(S.jobSel){
       var job=(S.jobs||[]).find(function(j){return j.id===S.jobSel;});
-      if(job)return tJobDetail(job);
+      if(job&&jobVisibleForRole(job))return tJobDetail(job);
       S.jobSel=null;
     }
     return tJobList();
@@ -43,8 +43,8 @@ function recTabsBar(){
     return '<button data-act="rectab" data-id="'+id+'" style="padding:8px 18px;border-radius:99px;font-size:13px;font-weight:800;border:1px solid '+(on?'#1B2B3A':'#e2e8f0')+';background:'+(on?'#1B2B3A':'#fff')+';color:'+(on?'#fff':'#475569')+';cursor:pointer;margin-right:8px">'+esc(label)+' <span style="opacity:.6;font-weight:700">'+count+'</span></button>';
   }
   return '<div style="display:flex;align-items:center;margin-bottom:14px">'
-    +tab('cands','👤 Vivier candidats',S.cands.length)
-    +tab('jobs','📋 Postes à pourvoir',(S.jobs||[]).length)
+    +tab('cands','👤 Vivier candidats',S.cands.filter(candVisibleForRole).length)
+    +tab('jobs','📋 Postes à pourvoir',(S.jobs||[]).filter(jobVisibleForRole).length)
     +'</div>';
 }
 
@@ -1132,7 +1132,9 @@ function tModal(){
 
 /* Liste des postes à pourvoir + filtres (statut, recherche). */
 function tJobList(){
-  var jobs=(S.jobs||[]).slice();
+  /* Cloisonnement BU identique au vivier candidats : un gestionnaire/admin ne voit
+     que les postes de son unité et de ses sous-unités (jobVisibleForRole). */
+  var jobs=(S.jobs||[]).filter(jobVisibleForRole);
   var q=(S.jobF&&S.jobF.q||'').toLowerCase().trim();
   var stF=(S.jobF&&S.jobF.status)||'all';
   var list=jobs.filter(function(j){

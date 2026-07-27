@@ -925,6 +925,25 @@ function candVisibleForRole(c){
   }
   return true;
 }
+/* Visibilité d'une fiche de poste selon le rôle — MÊME cloisonnement BU que les
+   candidats (candVisibleForRole) :
+   - recruteur & super_admin : toutes les fiches de l'entreprise ;
+   - business manager (sales) : toutes, uniquement si le module Recrutement est activé ;
+   - gestionnaire & admin : fiches de leur unité (BU) et de ses sous-unités.
+   Sans unité configurée pour l'utilisateur, ou fiche sans BU renseignée pour un
+   manager, on applique le même repli que les candidats. */
+function jobVisibleForRole(j){
+  if(S.role==='recruteur'||S.role==='super_admin')return true;
+  if(S.role==='sales')return !!(S.settings&&S.settings.hasRecrutementModule);
+  if(S.role==='admin'||S.role==='gestionnaire'){
+    var my=myBuId();
+    if(!my)return true;
+    var jb=j&&j.buId;
+    if(!jb)return false;
+    return buPath(jb).some(function(n){return n.id===my;});
+  }
+  return true;
+}
 /* memberId est-il un subordonné hiérarchique (N+1 transitif) de ancestorId ? */
 function isHierDescendant(memberId,ancestorId){
   if(!memberId||!ancestorId)return false;

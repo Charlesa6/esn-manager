@@ -609,7 +609,7 @@ function bind(){
           njob=Object.assign({},itJ,jfields);
           S.jobs=(S.jobs||[]).map(function(x){return x.id===itJ.id?njob:x;});
         }else{
-          njob=Object.assign({id:uid(),createdBy:S._userEmail||'',oppId:(S.modal.oppId||null),buId:myBuId(),extBody:''},jfields);
+          njob=Object.assign({id:uid(),createdBy:S._userEmail||'',oppId:(S.modal.oppId||null),buId:((S.modal.prefill&&S.modal.prefill.buId)||myBuId()),extBody:''},jfields);
           S.jobs=(S.jobs||[]).concat([njob]);
         }
         sbUpsertJob(njob).catch(function(err){console.warn('sbUpsertJob:',err);alert('⚠ Erreur de synchronisation : '+err.message);});

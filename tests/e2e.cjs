@@ -389,6 +389,34 @@ async function newPage(browser) {
     });
     check('Opportunité : champ Séniorité présent (remplace années d’expérience)', oppSen.hasSen && oppSen.noYears);
     check('Opportunité : refresh candidats partiel, modal conservé (pas de re-render)', oppSen.stillOpen && !oppSen.threw);
+
+    // Cloisonnement BU des fiches de poste, identique aux candidats : un gestionnaire
+    // ne voit que sa BU + ses sous-BU ; super_admin voit tout ; poste sans BU masqué.
+    const buScope = await p.evaluate(() => {
+      const save = { role: S.role, uid: S._userId, prof: S.orgProfiles, set: S.settings };
+      S.settings = Object.assign({}, S.settings, { buTree: [
+        { id: 'root',  name: 'Monde',  parentId: null },
+        { id: 'fr',    name: 'France', parentId: 'root' },
+        { id: 'lyon',  name: 'Lyon',   parentId: 'fr' },
+        { id: 'paris', name: 'Paris',  parentId: 'fr' }
+      ]});
+      S._userId = 'u1';
+      S.orgProfiles = [{ id: 'u1', bu_id: 'fr' }];
+      const jobs = [
+        { id: 'jLyon', buId: 'lyon' }, { id: 'jParis', buId: 'paris' },
+        { id: 'jMonde', buId: 'root' }, { id: 'jNone', buId: null }
+      ];
+      S.role = 'gestionnaire';
+      const gest = jobs.filter(jobVisibleForRole).map(j => j.id);
+      S.role = 'super_admin';
+      const sa = jobs.filter(jobVisibleForRole).map(j => j.id);
+      S.role = save.role; S._userId = save.uid; S.orgProfiles = save.prof; S.settings = save.set;
+      return { gest, sa };
+    });
+    check('Postes : gestionnaire ne voit que sa BU + sous-BU (Lyon, Paris)',
+      buScope.gest.length === 2 && buScope.gest.indexOf('jLyon') >= 0 && buScope.gest.indexOf('jParis') >= 0
+      && buScope.gest.indexOf('jMonde') < 0 && buScope.gest.indexOf('jNone') < 0);
+    check('Postes : super_admin voit toutes les fiches (aucun cloisonnement BU)', buScope.sa.length === 4);
     await p.evaluate(() => { S.modal = null; S.bizModal = null; S.recTab = 'cands'; S.jobSel = null; S.tab = 'kpis'; render(); });
 
     // Montée en charge : la hero-bande KPIs lit l'agrégat serveur derrière le
