@@ -396,7 +396,7 @@ var S={
   oppView:'week', /* granularité de la timeline intercontrats : 'week' | 'month' */
   oppFocus:null,  /* focus sur une période de la timeline : {day,end} ou null */
   approvals:[],   /* demandes d'approbation des consultants */
-  timesheets:[],  /* Time Sheet (CRA) hebdomadaires — {id,cid,week,status,days,approverId,requesterId,submittedAt,resolvedAt,rejectionReason} ; days = {'YYYY-MM-DD':'billed'|'internal'|'leave'|'available'} */
+  timesheets:[],  /* Time Sheet (CRA) hebdomadaires — {id,cid,week,status,days,approverId,requesterId,submittedAt,resolvedAt,rejectionReason} ; days = {'YYYY-MM-DD':'m:<missionId>'|'internal'|'leave'|'available'} */
   tsCid:'',       /* consultant sélectionné dans l'onglet Time Sheet */
   tsWeek:'',      /* semaine (lundi 'YYYY-MM-DD') affichée dans l'onglet Time Sheet */
   tsEdit:null,    /* tampon d'édition local de la semaine en cours {cid,week,days} */
@@ -447,7 +447,8 @@ function loadDemoData(){
     {id:'m3',cid:'d3',cli:'AXA',               name:'Data Platform',    pcode:'300100003',tjm:720,sd:'2025-10-01',ed:'2026-06-30',btype:'at',     wdays:[1,2,3,4,5]},
     {id:'m4',cid:'d4',cli:'SNCF',              name:'Pilotage forfait', pcode:'300100004',tjm:840,sd:'2025-10-01',ed:'2026-03-31',btype:'forfait',deal:180000,wdays:[1,2,3,4,5]},
     {id:'m5',cid:'d5',cli:'TotalEnergies',     name:'Reporting BI',     pcode:'300100005',tjm:680,sd:'2025-10-01',ed:'2026-09-30',btype:'at',     wdays:[1,2,3,4,5]},
-    {id:'m6',cid:'d1',cli:'BNP Paribas',       name:'Phase 2 Risques',  pcode:'300100006',tjm:800,sd:'2026-04-01',ed:'2026-09-30',btype:'at',     wdays:[1,2,3,4,5]}
+    {id:'m6',cid:'d1',cli:'BNP Paribas',       name:'Phase 2 Risques',  pcode:'300100006',tjm:800,sd:'2026-04-01',ed:'2026-09-30',btype:'at',     wdays:[1,2,3,4,5]},
+    {id:'m7',cid:'d1',cli:'Orange',            name:'Audit sécurité',   pcode:'300100007',tjm:850,sd:'2026-06-01',ed:'2026-08-31',btype:'at',     wdays:[1,2,3,4,5]}
   ];
   S.lvs=[
     {id:'v1',cid:'d1',type:'Congé payé',s:'2026-07-06',e:'2026-07-17'},
@@ -460,12 +461,13 @@ function loadDemoData(){
     {id:'v8',cid:'d5',type:'Congé payé',s:'2026-09-07',e:'2026-09-11'}
   ];
   /* Time Sheet (CRA) hebdomadaires — illustrent les 4 statuts + la cohérence congé.
-     days = catégorie saisie par jour ('billed'|'internal'|'leave'|'available'). */
+     days = valeur saisie par jour ('m:<missionId>' = facturé sur cette mission,
+     sinon 'internal'|'leave'|'available'). */
   S.timesheets=[
-    {id:'t1',cid:'d1',week:'2026-07-20',status:'approved', days:{'2026-07-20':'billed','2026-07-21':'billed','2026-07-22':'billed','2026-07-23':'billed','2026-07-24':'billed'},approverId:null,requesterId:null,submittedAt:'2026-07-27T08:00:00Z',resolvedAt:'2026-07-27T10:00:00Z',rejectionReason:''},
+    {id:'t1',cid:'d1',week:'2026-07-20',status:'approved', days:{'2026-07-20':'m:m6','2026-07-21':'m:m6','2026-07-22':'m:m6','2026-07-23':'m:m7','2026-07-24':'m:m7'},approverId:null,requesterId:null,submittedAt:'2026-07-27T08:00:00Z',resolvedAt:'2026-07-27T10:00:00Z',rejectionReason:''},
     {id:'t2',cid:'d1',week:'2026-07-13',status:'submitted',days:{'2026-07-13':'leave','2026-07-14':'leave','2026-07-15':'leave','2026-07-16':'leave','2026-07-17':'leave'},approverId:null,requesterId:null,submittedAt:'2026-07-20T08:00:00Z',resolvedAt:null,rejectionReason:''},
     {id:'t3',cid:'d3',week:'2026-07-13',status:'rejected', days:{'2026-07-13':'available','2026-07-14':'leave','2026-07-15':'available','2026-07-16':'available','2026-07-17':'available'},approverId:null,requesterId:null,submittedAt:'2026-07-20T08:00:00Z',resolvedAt:'2026-07-21T10:00:00Z',rejectionReason:'Jeudi marqué en congé sans demande d’absence posée.'},
-    {id:'t4',cid:'d2',week:'2026-07-20',status:'approved', days:{'2026-07-20':'billed','2026-07-21':'billed','2026-07-22':'billed','2026-07-23':'billed','2026-07-24':'billed'},approverId:null,requesterId:null,submittedAt:'2026-07-27T08:00:00Z',resolvedAt:'2026-07-27T10:00:00Z',rejectionReason:''}
+    {id:'t4',cid:'d2',week:'2026-07-20',status:'approved', days:{'2026-07-20':'m:m2','2026-07-21':'m:m2','2026-07-22':'m:m2','2026-07-23':'m:m2','2026-07-24':'m:m2'},approverId:null,requesterId:null,submittedAt:'2026-07-27T08:00:00Z',resolvedAt:'2026-07-27T10:00:00Z',rejectionReason:''}
   ];
   S.cands=[
     {id:'c1',name:'Maxime Guillot',expertise:['React','TypeScript'],sectors:['Banque & Finance'],locations:['Lyon'],nationality:'Française',reqSalary:48000,yearsExp:4,status:'entretien',marginPct:28,createdBy:'demo',feedbacks:[],cgiMeetings:[],cvFiles:[]}

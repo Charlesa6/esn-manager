@@ -320,21 +320,52 @@ var TS_STATUS={
 };
 function tsPill(status){var s=TS_STATUS[status]||TS_STATUS.none;return '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;background:'+s.bg+';color:'+s.fg+'">'+(status==='approved'?'🔒 ':'')+esc(s.lb)+'</span>';}
 
-/* Catégories saisissables d'un jour (miroir du calendrier Activité). */
+/* Catégories NON facturées d'un jour. La valeur d'un jour est soit l'une de ces
+   clés, soit « m:<missionId> » = facturé sur une mission précise du consultant
+   (lien avec ses missions → il facture le bon client, pas un « facturé » générique). */
 var TS_CAT={
-  billed:   {lb:'Facturé',        bg:'#eff6ff',fg:'#1e40af'},
   internal: {lb:'Interne',        bg:'#f0fdfa',fg:'#0f766e'},
   leave:    {lb:'Congé / Absence',bg:'#fffbeb',fg:'#92400e'},
   available:{lb:'Disponible',     bg:'#fef2f2',fg:'#b91c1c'}
 };
-var TS_CAT_ORDER=['billed','internal','leave','available'];
-function tsCatBadge(cat){var c=TS_CAT[cat]||TS_CAT.available;return '<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;background:'+c.bg+';color:'+c.fg+'">'+esc(c.lb)+'</span>';}
+var TS_BILLED_COL={bg:'#eff6ff',fg:'#1e40af'};
+/* Une valeur de jour est-elle une imputation « facturé sur mission » ? */
+function tsIsBilled(v){return typeof v==='string'&&v.indexOf('m:')===0;}
+function tsMissionOf(v){return tsIsBilled(v)?v.slice(2):null;}
+function tsMissionById(id){return ((S._all&&S._all.miss)||S.miss||[]).find(function(m){return m.id===id;})||null;}
+/* Missions imputables d'un consultant (celles de son onglet Missions). */
+function tsConsMissions(cid){return ((S._all&&S._all.miss)||S.miss||[]).filter(function(m){return m.cid===cid;});}
+function tsMissLabel(m){return (m.cli||m.client||'Client')+(m.name?' · '+m.name:'');}
+/* Libellé lisible d'une valeur de jour (client si facturé). */
+function tsDayLabel(v){if(tsIsBilled(v)){var m=tsMissionById(tsMissionOf(v));return m?('Facturé · '+(m.cli||m.client||'Client')):'Facturé';}return (TS_CAT[v]||{}).lb||'—';}
+/* Pastille d'une valeur de jour. */
+function tsCatBadge(v){
+  if(tsIsBilled(v))return '<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;background:'+TS_BILLED_COL.bg+';color:'+TS_BILLED_COL.fg+'">'+esc(tsDayLabel(v))+'</span>';
+  var c=TS_CAT[v]||TS_CAT.available;return '<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;background:'+c.bg+';color:'+c.fg+'">'+esc(c.lb)+'</span>';
+}
+/* Options du sélecteur d'un jour : une entrée « Facturé — <client> · <mission> »
+   par mission du consultant, puis Interne / Congé / Disponible. */
+function tsDayOptions(cid,cur){
+  var opts=tsConsMissions(cid).map(function(m){var val='m:'+m.id;return '<option value="'+val+'"'+(cur===val?' selected':'')+'>Facturé — '+esc(tsMissLabel(m))+'</option>';}).join('');
+  ['internal','leave','available'].forEach(function(k){opts+='<option value="'+k+'"'+(cur===k?' selected':'')+'>'+TS_CAT[k].lb+'</option>';});
+  return opts;
+}
+/* Répartition facturée par mission d'une carte de jours → {missionId: nbJours}. */
+function tsMissionTally(daysMap){var t={};Object.keys(daysMap||{}).forEach(function(d){var v=daysMap[d];if(tsIsBilled(v)){var id=tsMissionOf(v);t[id]=(t[id]||0)+1;}});return t;}
+/* Résumé facturé par client (« BNP Paribas 3j · SG 2j »). */
+function tsBilledSummary(daysMap){
+  var t=tsMissionTally(daysMap),ids=Object.keys(t);
+  if(!ids.length)return '';
+  return ids.map(function(id){var m=tsMissionById(id);return esc((m?(m.cli||m.client||'Client'):'Facturé')+' '+t[id]+'j');}).join(' · ');
+}
 
 /* Le TS d'un (consultant, semaine), ou null. */
 function tsFor(cid,week){return (S.timesheets||[]).find(function(t){return t.cid===cid&&t.week===week;})||null;}
 function tsById(id){return (S.timesheets||[]).find(function(t){return t.id===id;})||null;}
 function tsStatus(cid,week){var t=tsFor(cid,week);return t?t.status:'none';}
 function tsApprovedWeek(cid,week){return tsStatus(cid,week)==='approved';}
+/* Une demande de révision est-elle en attente pour ce TS ? (file d'approbation) */
+function tsHasPendingRevision(tsId){return (S.approvals||[]).some(function(r){return r.status==='pending'&&r.type==='ts_revision'&&r.payload&&r.payload.tsId===tsId;});}
 
 /* Catégorie auto-dérivée d'un jour (ou null si non travaillé : week-end/férié/hors présence). */
 function tsDayAuto(cid,dateStr){
@@ -345,7 +376,8 @@ function tsDayAuto(cid,dateStr){
   if(c.depart&&dateStr>c.depart)return null;
   var lv=leaveOnDay(cid,dateStr);
   if(lv)return (lv.type==='Mission interne'||lv.type==='Inter-contrat')?'internal':'leave';
-  if(missOnDay(cid,dateStr))return 'billed';
+  var mm=missOnDay(cid,dateStr);
+  if(mm)return 'm:'+mm.id;                 /* facturé sur la mission couvrant ce jour */
   return 'available';
 }
 /* Carte des jours travaillés d'une semaine, auto-dérivée. */
@@ -353,7 +385,7 @@ function tsAutoDays(cid,monday){var map={};tsWeekDays(monday).forEach(function(d
 /* Répartition (compteurs) depuis une carte de jours. */
 function tsBreakdown(daysMap){
   var b={billed:0,internal:0,leave:0,avail:0,workdays:0};
-  Object.keys(daysMap||{}).forEach(function(d){var c=daysMap[d];if(!c)return;b.workdays++;if(c==='billed')b.billed++;else if(c==='internal')b.internal++;else if(c==='leave')b.leave++;else b.avail++;});
+  Object.keys(daysMap||{}).forEach(function(d){var c=daysMap[d];if(!c)return;b.workdays++;if(tsIsBilled(c))b.billed++;else if(c==='internal')b.internal++;else if(c==='leave')b.leave++;else b.avail++;});
   return b;
 }
 
@@ -456,7 +488,6 @@ function tTimesheet(){
   var cards=wdays.map(function(d,i){
     var auto=tsDayAuto(cid,d);
     var cat=daysMap[d]||auto;
-    var lockedDay=tsApprovedWeek(cid,tsWeekMonday(d));
     var head='<div style="font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase">'+TS_DOW[i]+'</div>'
       +'<div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:6px">'+fDt(d)+'</div>';
     if(!auto&&!cat){
@@ -466,7 +497,7 @@ function tTimesheet(){
     var body;
     if(editable){
       body='<select onchange="tsSetDay(\''+d+'\',this.value)" style="width:100%;padding:5px 6px;border:1px solid #cbd5e1;border-radius:7px;font-size:12px;font-weight:600;color:#0f172a">'
-        +TS_CAT_ORDER.map(function(k){return '<option value="'+k+'"'+(k===cat?' selected':'')+'>'+TS_CAT[k].lb+'</option>';}).join('')+'</select>';
+        +tsDayOptions(cid,cat)+'</select>';
     }else{
       body=tsCatBadge(cat);
     }
@@ -480,7 +511,12 @@ function tTimesheet(){
   var actionBar='';
   if(st==='approved'){
     actionBar='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+tsPill(st)
-      +(canValidateTs(savedTs)?'<button class="bg" data-act="ts-reopen" data-id="'+savedTs.id+'">Dé-valider la semaine</button>':'<span style="font-size:12px;color:#15803d;font-weight:700">Semaine validée et verrouillée</span>')
+      +(canValidateTs(savedTs)
+        ?'<button class="bg" data-act="ts-reopen" data-id="'+savedTs.id+'">Dé-valider la semaine</button>'
+        :(isSelf
+          ?'<button class="bg" data-act="ts-revise" data-id="'+savedTs.id+'">Demander une révision</button>'
+          :'<span style="font-size:12px;color:#15803d;font-weight:700">Semaine validée et verrouillée</span>'))
+      +((savedTs&&tsHasPendingRevision(savedTs.id))?'<span style="font-size:12px;color:#b45309;font-weight:700">⏳ Révision demandée au N+1</span>':'')
       +'</div>';
   }else if(st==='submitted'){
     actionBar='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+tsPill(st)
@@ -499,15 +535,15 @@ function tTimesheet(){
     +'<div style="font-weight:800;min-width:250px;text-align:center;color:#0f172a">'+esc(tsWeekLabel(week))+'</div>'
     +'<button class="bg" data-act="ts-week-next" style="padding:6px 12px">›</button>'
     +'<button class="bg" data-act="ts-week-cur" style="padding:6px 12px">Cette semaine</button>'
-    +'<div style="margin-left:auto;font-size:12px;color:#475569">'+bd.billed+'j fact. · '+bd.internal+'j int. · '+bd.leave+'j congés · '+bd.avail+'j dispo</div>'
+    +'<div style="margin-left:auto;font-size:12px;color:#475569">'+(tsBilledSummary(daysMap)||(bd.billed+'j fact.'))+' · '+bd.internal+'j int. · '+bd.leave+'j congés · '+bd.avail+'j dispo</div>'
     +'</div>'
-    +(editable?'<div style="font-size:12px;color:#64748b;margin-bottom:10px">Pré-rempli depuis votre planning — <strong>modifiable</strong> jour par jour. Mettre un jour en « Congé / Absence » vérifie la demande de congé associée.</div>':'')
+    +(editable?'<div style="font-size:12px;color:#64748b;margin-bottom:10px">Pré-rempli depuis votre planning — <strong>modifiable</strong> jour par jour : chaque jour facturé est imputé sur une <strong>mission précise</strong> (choisissez le client). Mettre un jour en « Congé / Absence » vérifie la demande de congé associée.</div>':'')
     +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">'+cards+'</div>'
     +actionBar
     +'</div>';
 
   /* ── Historique des semaines récentes ── */
-  var histWeeks=[];for(var k=0;k<8;k++)histWeeks.push(tsShiftWeek(curWeek,-k));
+  var histWeeks=[];for(var k=0;k<12;k++)histWeeks.push(tsShiftWeek(curWeek,-k));
   var histRows=histWeeks.map(function(wk){
     var t=tsFor(cid,wk);
     var s=t?t.status:'none';

@@ -2,8 +2,9 @@
 -- Un TS = un (company_id, consultant_id, week) où `week` = date du lundi de la
 -- semaine ('YYYY-MM-DD'), avec un cycle de vie draft -> submitted -> approved/
 -- rejected. `days` (jsonb) fige la catégorie SAISIE par jour (éditable par le
--- consultant, pré-remplie depuis le calendrier) :
---   { 'YYYY-MM-DD': 'billed'|'internal'|'leave'|'available' }.
+-- consultant, pré-remplie depuis le calendrier). Un jour facturé est imputé sur
+-- une mission précise du consultant (lien avec ses missions) :
+--   { 'YYYY-MM-DD': 'm:<missionId>' | 'internal' | 'leave' | 'available' }.
 -- Appliqué en prod via MCP (apply_migration) — ce fichier est le record.
 -- NB : la colonne a d'abord été créée sous le nom `month` (version mensuelle)
 -- puis renommée en `week` (migration timesheets_weekly).

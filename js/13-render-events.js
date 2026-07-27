@@ -414,6 +414,7 @@ function bind(){
       else if(a==='ts-submit'){var _tsw=b.getAttribute('data-week');if(id&&_tsw)submitTimesheet(id,_tsw);}
       else if(a==='ts-cancel'){cancelTimesheet(id,S.tsCid,b.getAttribute('data-week'));}
       else if(a==='ts-reopen'){reopenTimesheet(id);}
+      else if(a==='ts-revise'){requestTimesheetRevision(id);}
       else if(a==='ts-week-prev'){S.tsWeek=tsShiftWeek(S.tsWeek||tsWeekMonday(TODAY),-1);S.tsEdit=null;render();}
       else if(a==='ts-week-next'){S.tsWeek=tsShiftWeek(S.tsWeek||tsWeekMonday(TODAY),1);S.tsEdit=null;render();}
       else if(a==='ts-week-cur'){S.tsWeek=tsWeekMonday(TODAY);S.tsEdit=null;render();}

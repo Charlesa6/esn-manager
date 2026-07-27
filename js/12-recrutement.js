@@ -1030,8 +1030,10 @@ function tModal(){
         return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:12px"><span>'+fDt(d)+'</span><span style="font-weight:700;color:'+xx[1]+'">'+xx[2]+'</span></div>';
       }).join(''):'<div style="font-size:12px;color:#94a3b8">Aucun jour de congé imputé sur cette semaine.</div>';
       var _nKo=_leaveDays.filter(function(d){return tsLeaveCheck(_t.cid,d).state!=='ok';}).length;
+      var _billed=tsBilledSummary(_days);
       body='<div style="font-size:13px;color:#0f172a;font-weight:700;margin-bottom:4px">'+esc(_who?_who.name:_t.cid)+' — '+esc(tsWeekLabel(_t.week))+'</div>'
-        +'<div style="font-size:12px;color:#64748b;margin-bottom:12px">'+_bd.billed+'j facturés · '+_bd.internal+'j interne · '+_bd.leave+'j congés · '+_bd.avail+'j dispo</div>'
+        +'<div style="font-size:12px;color:#64748b;margin-bottom:6px">'+_bd.billed+'j facturés · '+_bd.internal+'j interne · '+_bd.leave+'j congés · '+_bd.avail+'j dispo</div>'
+        +(_billed?'<div style="font-size:12px;color:#1e40af;font-weight:700;margin-bottom:12px">Facturation par client : '+_billed+'</div>':'<div style="height:6px"></div>')
         +'<div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:4px">Cohérence des congés imputés</div>'
         +'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:6px 12px;margin-bottom:8px">'+_lvList+'</div>'
         +(_nKo>0?'<div style="font-size:12px;color:#b91c1c;font-weight:700;margin-bottom:12px">⚠ '+_nKo+' jour(s) de congé sans demande validée en amont. À vérifier avant de valider.</div>':(_leaveDays.length?'<div style="font-size:12px;color:#15803d;font-weight:700;margin-bottom:12px">✓ Tous les congés imputés sont validés en amont.</div>':'<div style="height:4px"></div>'))

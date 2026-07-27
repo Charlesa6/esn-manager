@@ -230,6 +230,21 @@ async function newPage(browser) {
           return document.body.innerText;
         });
         check('Time Sheet : semaine approuvée verrouillée (🔒) dans le calendrier', /🔒/.test(lockTxt));
+        // Imputation par mission : le sélecteur d'un jour liste les missions du consultant
+        const hasMissionOpt = await p.evaluate(() => {
+          S.consId = 'd1'; S.tsCid = 'd1'; S.tsWeek = tsWeekMonday('2026-07-06'); S.tsEdit = null; S.tab = 'timesheet'; render();
+          return Array.from(document.querySelectorAll('select option')).some(o => /Facturé — /.test(o.textContent));
+        });
+        check('Time Sheet : sélecteur d\'imputation par mission (client)', hasMissionOpt);
+        // Validation N+1 : récap de la facturation par client (t1 = 3j BNP + 2j Orange)
+        const billTxt = await p.evaluate(() => { S.modal = { type: 'ts_approve', id: 't1' }; render(); return document.getElementById('md').innerText; });
+        check('Time Sheet : facturation par client dans la validation N+1', /BNP Paribas 3j/.test(billTxt) && /Orange 2j/.test(billTxt));
+        // Révision acceptée : la semaine validée repasse en brouillon (déverrouillée)
+        const revStatus = await p.evaluate(() => {
+          S.modal = null; applyApproval({ type: 'ts_revision', payload: { tsId: 't1' } });
+          return (S.timesheets.find(x => x.id === 't1') || {}).status;
+        });
+        check('Time Sheet : révision acceptée rouvre la semaine (draft)', revStatus === 'draft');
         await p.evaluate(() => { S.consId = null; S.modal = null; S.tab = 'kpis'; render(); });
       }
     }

@@ -657,6 +657,16 @@ function tsRequestLeaveForDay(cid,day,type){
       'Ajout d’absence — '+esc(type)+' le '+fDt(day));
   }
 }
+/* Le consultant demande une révision d'une semaine déjà validée : passe par le N+1
+   (file d'approbation, type ts_revision). Sans N+1, il rouvre directement. */
+function requestTimesheetRevision(id){
+  var t=tsById(id);if(!t)return;
+  if(tsHasPendingRevision(id)){alert('Une demande de révision est déjà en attente pour cette semaine.');return;}
+  var approverId=resolveApprover(S._userId);
+  if(!approverId){reopenTimesheet(id);return;}
+  if(!confirm('Demander à votre N+1 la révision du Time Sheet « '+tsWeekLabel(t.week)+' » ?\n\nS’il accepte, la semaine sera rouverte et vous pourrez la corriger.'))return;
+  submitApproval('ts_revision',{tsId:t.id,cid:t.cid,week:t.week,approver_id:approverId},'Révision de Time Sheet — '+tsWeekLabel(t.week));
+}
 /* Le N+1 dé-valide une semaine approuvée → redevient brouillon (semaine déverrouillée). */
 function reopenTimesheet(id){
   var t=tsById(id);if(!t)return;
@@ -1835,7 +1845,8 @@ var APPROVAL_LABELS={
   'leave_del':'Suppression d\u2019absence',
   'miss_add':'Ajout de mission',
   'miss_edit':'\u00c9dition de mission',
-  'miss_del':'Suppression de mission'
+  'miss_del':'Suppression de mission',
+  'ts_revision':'R\u00e9vision de Time Sheet'
 };
 
 /* Créer et stocker une demande d'approbation au lieu d'appliquer directement */
@@ -1949,6 +1960,11 @@ function applyApproval(req){
   }else if(req.type==='miss_del'){
     S.miss=S.miss.filter(function(m){return m.id!==req.payload.id;});
     sbDel('missions',req.payload.id).catch(function(e){console.warn(e);});
+  }else if(req.type==='ts_revision'){
+    /* Révision acceptée par le N+1 → la semaine repasse en brouillon (déverrouillée). */
+    var _tid=req.payload&&req.payload.tsId;
+    var _tt=(S.timesheets||[]).find(function(x){return x.id===_tid;});
+    if(_tt){var _nt=Object.assign({},_tt,{status:'draft',resolvedAt:null});upsertTimesheetState(_nt);sbUpsertTimesheet(_nt).catch(function(e){console.warn(e);});}
   }
 }
 
@@ -2033,7 +2049,8 @@ function tApprovals(){
       return '<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px">'
         +'<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#0f172a">Time Sheet — '+esc(tsWeekLabel(t.week))+'</div>'
         +'<div style="font-size:12px;color:#64748b;margin-top:3px">'+esc(who?who.name:t.cid)+' · '
-        +bd.billed+'j facturés · '+bd.internal+'j interne · '+bd.leave+'j congés · '+bd.avail+'j dispo</div>'+warn+'</div>'
+        +bd.billed+'j facturés · '+bd.internal+'j interne · '+bd.leave+'j congés · '+bd.avail+'j dispo</div>'
+        +(tsBilledSummary(t.days)?'<div style="font-size:11px;color:#1e40af;font-weight:700;margin-top:2px">'+tsBilledSummary(t.days)+'</div>':'')+warn+'</div>'
         +'<div style="display:flex;gap:8px">'
         +'<button class="bp" style="font-size:12px;padding:6px 12px" data-act="ts-review" data-id="'+t.id+'">Examiner</button>'
         +'</div></div>';
