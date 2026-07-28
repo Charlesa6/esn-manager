@@ -81,6 +81,7 @@ function mapCand(r){return{
   recruiter:r.recruiter||'',
   recruited:!!r.recruited,recruitStart:r.recruit_start||'',recruitPoste:r.recruit_poste||'',recruitDir:r.recruit_dir||'',consId:r.cons_id||null,
   buId:r.bu_id||null,
+  source:r.source||'',appliedJobId:r.applied_job_id||null,
   experiences:Array.isArray(r.experiences)?r.experiences:[],
   cvProfile:(r.cv_profile&&typeof r.cv_profile==='object')?r.cv_profile:{}
 };}
@@ -100,6 +101,7 @@ function mapJob(r){return{
   recruiter:r.recruiter||'',assignedTo:r.assigned_to||'',
   oppId:r.opp_id||null,extBody:r.ext_body||'',
   candidateIds:Array.isArray(r.candidate_ids)?r.candidate_ids:[],
+  isPublic:!!r.is_public,publicToken:r.public_token||null,publishedAt:r.published_at||null,
   buId:r.bu_id||null,createdBy:r.created_by||'',
   createdAt:r.created_at||'',updatedAt:r.updated_at||''
 };}
@@ -465,6 +467,7 @@ async function sbUpsertCand(c){
     recruiter:c.recruiter||null,
     recruited:!!c.recruited,recruit_start:c.recruitStart||null,recruit_poste:c.recruitPoste||null,recruit_dir:c.recruitDir||null,cons_id:c.consId||null,
     bu_id:c.buId||null,
+    source:c.source||null,applied_job_id:c.appliedJobId||null,
     experiences:Array.isArray(c.experiences)?c.experiences:[],
     cv_profile:(c.cvProfile&&typeof c.cvProfile==='object')?c.cvProfile:{}
   });
@@ -485,6 +488,7 @@ async function sbUpsertJob(o){
     recruiter:_n(o.recruiter),assigned_to:_n(o.assignedTo),
     opp_id:_n(o.oppId),ext_body:_n(o.extBody),
     candidate_ids:o.candidateIds||[],
+    is_public:!!o.isPublic,public_token:_n(o.publicToken),published_at:_n(o.publishedAt),
     bu_id:_n(o.buId),created_by:_n(o.createdBy),
     updated_at:new Date().toISOString()
   },{onConflict:'id'});

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Postuler — Konsilys</title>
+<style>
+  :root{--brand:#14202B;--ink:#111823;--mut:#6b7480;--line:#e4e7ec;--paper:#f6f7f9;--ok:#16a34a;--err:#dc2626}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--paper);font-size:15px;line-height:1.55}
+  .wrap{max-width:680px;margin:0 auto;padding:24px 18px 60px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;color:var(--brand);margin-bottom:22px;font-size:18px}
+  .brand .dot{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,#84CC16,#5f9e0c)}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px;box-shadow:0 8px 26px rgba(27,43,58,.06)}
+  .hd{border-radius:14px;background:var(--brand);color:#fff;padding:22px 24px;margin-bottom:18px}
+  .hd .k{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.8)}
+  .hd h1{margin:6px 0 10px;font-size:24px;letter-spacing:-.01em}
+  .meta{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{background:rgba(255,255,255,.15);color:#fff;padding:3px 11px;border-radius:99px;font-size:12px;font-weight:700}
+  .tag{background:#f1f5f9;color:#475569;padding:3px 11px;border-radius:99px;font-size:12px;font-weight:600}
+  .body{white-space:pre-wrap;font-size:14px;color:#374151;margin:8px 0 4px}
+  h2{font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:22px 0 12px}
+  label{display:block;font-size:12px;font-weight:700;color:#334155;margin:0 0 5px}
+  .req{color:var(--err)}
+  input,textarea{width:100%;font:inherit;font-size:14px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:#fff}
+  input:focus,textarea:focus{outline:2px solid #cbd5e1;border-color:#94a3b8}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .fd{margin-bottom:13px}
+  .file{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .file label.btn{display:inline-block;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;padding:9px 16px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;margin:0}
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+  .submit{width:100%;margin-top:8px;background:var(--brand);color:#fff;border:none;border-radius:11px;padding:14px;font-weight:800;font-size:15px;cursor:pointer}
+  .submit:disabled{opacity:.6;cursor:not-allowed}
+  .note{font-size:11.5px;color:var(--mut);margin-top:14px;line-height:1.6}
+  .msg{margin-top:14px;padding:12px 14px;border-radius:10px;font-size:14px;font-weight:600;display:none}
+  .msg.err{display:block;background:#fef2f2;color:var(--err);border:1px solid #fecaca}
+  .state{text-align:center;padding:40px 20px;color:var(--mut)}
+  .done{text-align:center;padding:30px 10px}
+  .done .big{font-size:52px}
+  .foot{text-align:center;font-size:11px;color:#9aa4af;margin-top:26px}
+  @media(max-width:520px){.g2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><span class="dot"></span>Konsilys</div>
+  <div id="root"><div class="state">Chargement de l'offre…</div></div>
+  <div class="foot">Candidature transmise de manière sécurisée via Konsilys · konsilys.fr</div>
+</div>
+<script>
+  var SUPABASE_URL='https://rwmstlesxnglpblrurqj.supabase.co';
+  var ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3bXN0bGVzeG5nbHBibHJ1cnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MjcyNTMsImV4cCI6MjA5NzEwMzI1M30.9SrsA1sYjdsqdPCnZ_sc2iTl01NKXsl7gAu2Y_VYgSQ';
+  var FN=SUPABASE_URL+'/functions/v1/job-apply';
+  var TOKEN=new URLSearchParams(location.search).get('j')||'';
+  var root=document.getElementById('root');
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  var JOB=null;
+
+  function boot(){
+    if(!TOKEN){root.innerHTML='<div class="card"><div class="state">Lien de candidature invalide.</div></div>';return;}
+    fetch(FN+'?token='+encodeURIComponent(TOKEN),{headers:{apikey:ANON}})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(!d||!d.ok){root.innerHTML='<div class="card"><div class="state">'+esc((d&&d.error)||'Cette offre n\'est plus disponible.')+'</div></div>';return;}
+        JOB=d.job;renderForm(d);
+      })
+      .catch(function(){root.innerHTML='<div class="card"><div class="state">Impossible de charger l\'offre. Réessayez plus tard.</div></div>';});
+  }
+
+  function renderForm(d){
+    var j=d.job;
+    var meta=[j.seniority,j.contractKind,j.location].filter(Boolean).map(function(x){return '<span class="chip">'+esc(x)+'</span>';}).join('');
+    var exp=(j.reqExpertise||[]).slice(0,12).map(function(x){return '<span class="tag">'+esc(x)+'</span>';}).join('');
+    var closed=d.closed;
+    root.innerHTML=''
+      +'<div class="hd"><div class="k">'+(j.orgName?esc(j.orgName)+' · ':'')+'Offre de poste</div>'
+      +'<h1>'+esc(j.title||'Poste à pourvoir')+'</h1>'
+      +'<div class="meta">'+meta+'</div></div>'
+      +'<div class="card">'
+      +(j.body?'<div class="body">'+esc(j.body)+'</div>':'')
+      +(exp?'<h2>Compétences recherchées</h2><div class="meta" style="margin-bottom:4px">'+exp+'</div>':'')
+      +(closed
+        ? '<div class="msg err" style="display:block;margin-top:18px">Cette offre est actuellement clôturée et ne reçoit plus de candidatures.</div>'
+        : '<h2>Votre candidature</h2>'
+          +'<form id="f" autocomplete="on">'
+          +'<div class="g2">'
+          +'<div class="fd"><label>Nom complet <span class="req">*</span></label><input id="f-name" required maxlength="120" placeholder="Prénom Nom"></div>'
+          +'<div class="fd"><label>E-mail <span class="req">*</span></label><input id="f-email" type="email" required maxlength="160" placeholder="vous@email.com"></div>'
+          +'<div class="fd"><label>Téléphone</label><input id="f-phone" maxlength="40" placeholder="06 12 34 56 78"></div>'
+          +'<div class="fd"><label>Localisation</label><input id="f-loc" maxlength="120" placeholder="Lyon"></div>'
+          +'<div class="fd"><label>Années d\'expérience</label><input id="f-yrs" type="number" min="0" max="60" step="0.5" placeholder="5"></div>'
+          +'</div>'
+          +'<div class="fd"><label>Message (optionnel)</label><textarea id="f-msg" rows="4" maxlength="4000" placeholder="Quelques mots sur votre motivation…"></textarea></div>'
+          +'<div class="fd"><label>CV (PDF, DOC, DOCX — max 5 Mo)</label>'
+          +'<div class="file"><label class="btn" for="f-cv">📎 Choisir un fichier</label><span id="cv-name" style="font-size:13px;color:var(--mut)">Aucun fichier</span>'
+          +'<input id="f-cv" type="file" accept=".pdf,.doc,.docx,.odt" style="display:none"></div></div>'
+          +'<input class="hp" id="f-hp" tabindex="-1" autocomplete="off" placeholder="Ne pas remplir">'
+          +'<button class="submit" id="f-submit" type="submit">Envoyer ma candidature</button>'
+          +'<div class="msg" id="f-msgbox"></div>'
+          +'<div class="note">En envoyant ce formulaire, vous acceptez que vos informations et votre CV soient traités par le recruteur pour l\'étude de votre candidature.</div>'
+          +'</form>')
+      +'</div>';
+    if(!closed)bindForm();
+  }
+
+  function bindForm(){
+    var cvInput=document.getElementById('f-cv');
+    cvInput.onchange=function(){document.getElementById('cv-name').textContent=(cvInput.files&&cvInput.files[0])?cvInput.files[0].name:'Aucun fichier';};
+    document.getElementById('f').onsubmit=function(e){
+      e.preventDefault();
+      var box=document.getElementById('f-msgbox');box.className='msg';box.style.display='none';
+      var name=(document.getElementById('f-name').value||'').trim();
+      var email=(document.getElementById('f-email').value||'').trim();
+      if(!name){return fail('Merci d\'indiquer votre nom.');}
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){return fail('Merci d\'indiquer un e-mail valide.');}
+      var f=cvInput.files&&cvInput.files[0];
+      if(f&&f.size>5*1024*1024){return fail('Le CV dépasse 5 Mo. Merci de fournir un fichier plus léger.');}
+      var btn=document.getElementById('f-submit');btn.disabled=true;btn.textContent='Envoi en cours…';
+      var payload={token:TOKEN,name:name,email:email,
+        phone:(document.getElementById('f-phone').value||'').trim(),
+        location:(document.getElementById('f-loc').value||'').trim(),
+        yearsExp:document.getElementById('f-yrs').value||0,
+        message:(document.getElementById('f-msg').value||'').trim(),
+        hp:(document.getElementById('f-hp').value||'').trim()};
+      var send=function(){
+        fetch(FN,{method:'POST',headers:{'content-type':'application/json',apikey:ANON},body:JSON.stringify(payload)})
+          .then(function(r){return r.json();})
+          .then(function(d){
+            if(d&&d.ok){success();}
+            else{btn.disabled=false;btn.textContent='Envoyer ma candidature';fail((d&&d.error)||'Envoi impossible. Réessayez.');}
+          })
+          .catch(function(){btn.disabled=false;btn.textContent='Envoyer ma candidature';fail('Problème réseau. Réessayez.');});
+      };
+      if(f){
+        var rd=new FileReader();
+        rd.onload=function(){var b64=String(rd.result||'').split(',')[1]||'';payload.cv={name:f.name,type:f.type||'application/octet-stream',dataB64:b64};send();};
+        rd.onerror=function(){btn.disabled=false;btn.textContent='Envoyer ma candidature';fail('Lecture du CV impossible.');};
+        rd.readAsDataURL(f);
+      }else{send();}
+    };
+    function fail(m){var box=document.getElementById('f-msgbox');box.className='msg err';box.textContent=m;box.style.display='block';}
+  }
+
+  function success(){
+    root.innerHTML='<div class="card"><div class="done"><div class="big">✅</div>'
+      +'<h1 style="font-size:22px;margin:10px 0 6px">Candidature envoyée</h1>'
+      +'<p style="color:var(--mut);max-width:420px;margin:0 auto">Merci '+esc((JOB&&JOB.title)?'':'')+'! Votre candidature'+((JOB&&JOB.title)?' au poste « '+esc(JOB.title)+' »':'')+' a bien été transmise au recruteur. Vous serez recontacté(e) si votre profil correspond.</p>'
+      +'</div></div>';
+    window.scrollTo(0,0);
+  }
+
+  boot();
+</script>
+</body>
+</html>

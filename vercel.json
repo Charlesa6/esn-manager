@@ -3,6 +3,7 @@
     { "source": "/",      "destination": "/index.html" },
     { "source": "/login", "destination": "/esn_login.html" },
     { "source": "/app",   "destination": "/esn_manager_cgi.html" },
+    { "source": "/postuler", "destination": "/postuler.html" },
     { "source": "/cgu",   "destination": "/cgu.html" }
   ],
   "headers": [

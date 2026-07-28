@@ -586,6 +586,9 @@ function bind(){
       else if(a==='cand-assign-job'){jobToggleCand(id,S.recSel,true);}
       else if(a==='cand-unassign-job'){jobToggleCand(id,S.recSel,false);}
       else if(a==='job-goto-opp'){openOppById(id);}
+      else if(a==='job-publish'){jobPublish(id);}
+      else if(a==='job-unpublish'){jobUnpublish(id);}
+      else if(a==='job-copy-url'){var _jp=(S.jobs||[]).find(function(x){return x.id===id;});if(_jp)copyText(jobPublicUrl(_jp),'✓ Lien copié');}
       /* Ouvrir un candidat depuis le détail d'une fiche (hors #rec-list-wrap, donc
          recopen n'y est pas délégué) : bascule sur le vivier + ouvre le candidat. */
       else if(a==='job-open-cand'){S.recTab='cands';S.jobSel=null;S.recSel=id;render();}

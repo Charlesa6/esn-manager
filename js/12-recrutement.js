@@ -1452,12 +1452,17 @@ function tJobDetail(j){
     +'<div class="card" style="padding:24px;margin-bottom:18px">'
     +'<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:12px">👥 Candidats assignés ('+assignedCands.length+')</div>'
     +'<div style="margin-bottom:12px">'+(assignedCands.length?assignedCands.map(function(c){
-        return '<span style="display:inline-flex;align-items:center;gap:7px;padding:5px 6px 5px 12px;border-radius:99px;font-size:12px;font-weight:600;background:#eef2ff;color:#3730a3;margin:0 6px 6px 0">'
+        var pub=c.source==='offre_publique';
+        return '<span style="display:inline-flex;align-items:center;gap:7px;padding:5px 6px 5px 12px;border-radius:99px;font-size:12px;font-weight:600;background:'+(pub?'#ecfdf5':'#eef2ff')+';color:'+(pub?'#065f46':'#3730a3')+';margin:0 6px 6px 0">'
+          +(pub?'<span title="Candidature reçue via l\'offre publique" style="font-size:11px">🌐</span>':'')
           +'<span data-act="job-open-cand" data-id="'+c.id+'" style="cursor:pointer">'+esc(c.name)+'</span>'
-          +'<button data-act="job-unassign-cand" data-id="'+c.id+'" title="Retirer l\'assignation" style="border:none;background:none;color:#6366f1;cursor:pointer;font-weight:800;font-size:13px;padding:0 4px;line-height:1">✕</button></span>';
+          +'<button data-act="job-unassign-cand" data-id="'+c.id+'" title="Retirer l\'assignation" style="border:none;background:none;color:'+(pub?'#059669':'#6366f1')+';cursor:pointer;font-weight:800;font-size:13px;padding:0 4px;line-height:1">✕</button></span>';
       }).join(''):'<span style="color:#94a3b8;font-size:12px">Aucun candidat assigné — utilisez « + Assigner » ci-dessous ou sur un candidat suggéré.</span>')+'</div>'
     +'<select class="ic" style="max-width:320px" onchange="jobAssignFromSel(this)"><option value="">+ Assigner un candidat du vivier…</option>'
     +unassignedCands.map(function(c){return '<option value="'+c.id+'">'+esc(c.name)+(c.status?' — '+esc(recStLbD(c.status)):'')+'</option>';}).join('')+'</select></div>'
+
+    /* Diffusion : page publique « Postuler » (LinkedIn/Indeed/WTTJ → coller le lien). */
+    +jobPublishCard(j,assignedCands)
 
     +'<div class="card" style="padding:24px;margin-bottom:18px">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
@@ -1478,6 +1483,56 @@ function tJobDetail(j){
     +'</div>';
 }
 
+
+/* URL publique de candidature d'une fiche (base prod si hors https). */
+function jobPublicUrl(j){
+  if(!j||!j.publicToken)return '';
+  var base=(location.protocol==='https:'&&location.origin.indexOf('supabase')<0)?location.origin:'https://konsilys.fr';
+  return base+'/postuler?j='+j.publicToken;
+}
+/* Carte « Diffuser l'offre » : publie une page publique (formulaire + CV) dont les
+   candidatures atterrissent directement dans les candidats de la fiche. À coller
+   dans les annonces LinkedIn / Indeed / Welcome to the Jungle. */
+function jobPublishCard(j,assignedCands){
+  var nApp=(assignedCands||[]).filter(function(c){return c.source==='offre_publique';}).length;
+  if(!j.isPublic){
+    return '<div class="card" style="padding:24px;margin-bottom:18px;border:1px dashed #cbd5e1">'
+      +'<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:6px">🌐 Diffuser l\'offre</div>'
+      +'<div style="font-size:12px;color:#64748b;line-height:1.55;margin-bottom:12px">Publiez une <strong>page de candidature publique</strong> (annonce anonymisée + formulaire + CV). Collez le lien dans vos annonces <strong>LinkedIn, Indeed, Welcome to the Jungle</strong> ou sur votre site : chaque candidature arrive <strong>directement dans les candidats de cette fiche</strong>.</div>'
+      +'<button class="bp" data-act="job-publish" data-id="'+j.id+'">🌐 Publier l\'offre</button></div>';
+  }
+  var url=jobPublicUrl(j);
+  return '<div class="card" style="padding:24px;margin-bottom:18px;border:1px solid #bbf7d0;background:#f0fdf4">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">'
+    +'<div style="font-size:13px;font-weight:800;color:#065f46">🌐 Offre publiée '+(nApp?'· <span style="color:#047857">'+nApp+' candidature'+(nApp>1?'s':'')+' reçue'+(nApp>1?'s':'')+'</span>':'')+'</div>'
+    +'<button class="lb" data-act="job-unpublish" data-id="'+j.id+'" style="color:#b45309;border-color:#fed7aa">Dépublier</button></div>'
+    +'<div style="font-size:12px;color:#334155;margin-bottom:8px">Lien public à diffuser (LinkedIn · Indeed · Welcome to the Jungle) :</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+    +'<input class="ic" readonly value="'+esc(url)+'" onclick="this.select()" style="flex:1;min-width:220px;background:#fff;font-size:12px">'
+    +'<button class="bp" data-act="job-copy-url" data-id="'+j.id+'">📋 Copier</button>'
+    +'<a class="lb" href="'+esc(url)+'" target="_blank" rel="noopener" style="text-decoration:none">↗ Ouvrir</a>'
+    +'</div>'
+    +'<div style="font-size:11px;color:#94a3b8;margin-top:8px">L\'annonce publique est <strong>anonymisée</strong> (ni client, ni salaire, ni TJM). Dépubliez pour couper la réception de candidatures.</div></div>';
+}
+
+/* Publie une fiche : génère un jeton public (si absent) + is_public=true, persiste. */
+function jobPublish(jobId){
+  var j=(S.jobs||[]).find(function(x){return x.id===jobId;});if(!j)return;
+  var nj=Object.assign({},j,{isPublic:true,publicToken:j.publicToken||uid2(),publishedAt:j.publishedAt||new Date().toISOString()});
+  S.jobs=S.jobs.map(function(x){return x.id===jobId?nj:x;});
+  if(typeof sbUpsertJob==='function'&&sb&&SB_CID)sbUpsertJob(nj).catch(function(err){toast('⚠ Publication : '+(err&&err.message||err),'error');});
+  render();
+  var u=jobPublicUrl(nj);if(u)copyText(u,'✓ Offre publiée — lien copié');
+}
+/* Dépublie une fiche : coupe la réception de candidatures (jeton conservé). */
+function jobUnpublish(jobId){
+  var j=(S.jobs||[]).find(function(x){return x.id===jobId;});if(!j)return;
+  if(!confirm('Dépublier cette offre ?\nLe lien public ne recevra plus de candidatures.'))return;
+  var nj=Object.assign({},j,{isPublic:false});
+  S.jobs=S.jobs.map(function(x){return x.id===jobId?nj:x;});
+  if(typeof sbUpsertJob==='function'&&sb&&SB_CID)sbUpsertJob(nj).catch(function(err){toast('⚠ '+(err&&err.message||err),'error');});
+  toast('Offre dépubliée');render();
+}
 
 /* Copie presse-papier avec repli execCommand (fonctionne en file:// et navigateurs anciens). */
 function copyText(txt,okMsg){

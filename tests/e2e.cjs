@@ -678,6 +678,28 @@ async function newPage(browser) {
     check('Import opportunités : compte client absent créé automatiquement', impO.accCreated && impO.accAdded === 1);
     check('Import opportunités : opportunité rattachée au compte créé', impO.oppLinked && impO.oppAdded === 1);
 
+    // Diffusion offre publique : publication d'une fiche de poste (jeton + URL), dépublication.
+    const pub = await p.evaluate(() => {
+      S.jobs = S.jobs || [];
+      var j = { id: 'jpub1', title: 'Dev Fullstack', status: 'ouvert', candidateIds: [], reqExpertise: ['React'], isPublic: false, publicToken: null };
+      S.jobs = S.jobs.concat([j]);
+      jobPublish('jpub1');
+      var jp = S.jobs.find(x => x.id === 'jpub1');
+      var tokenOk = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(jp.publicToken || '');
+      var url = jobPublicUrl(jp);
+      var urlOk = url.indexOf('/postuler?j=' + jp.publicToken) >= 0;
+      var cardPub = jobPublishCard(jp, []).indexOf('Offre publiée') >= 0 && jobPublishCard(jp, []).indexOf(jp.publicToken) >= 0;
+      jp.isPublic = false;
+      var cardUnpub = jobPublishCard(jp, []).indexOf('Publier l’offre') >= 0 || jobPublishCard(jp, []).indexOf("Publier l'offre") >= 0;
+      // badge candidature publique
+      var badge = jobPublishCard(Object.assign({}, jp, { isPublic: true }), [{ id: 'x', name: 'Ada', source: 'offre_publique' }]).indexOf('1 candidature') >= 0;
+      return { tokenOk, urlOk, cardPub, cardUnpub, badge };
+    });
+    check('Offre publique : publication génère un jeton UUID + URL /postuler', pub.tokenOk && pub.urlOk);
+    check('Offre publique : carte affiche le lien public quand publiée', pub.cardPub);
+    check('Offre publique : bouton « Publier » affiché quand non publiée', pub.cardUnpub);
+    check('Offre publique : compteur de candidatures reçues (badge)', pub.badge);
+
     // Montée en charge : pagination serveur des cartes KPI (rôle à périmètre org).
     const paged = await p.evaluate(() => {
       S.calMode = 'cal'; // montée en charge serveur = calendaire
