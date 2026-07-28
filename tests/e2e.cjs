@@ -527,6 +527,28 @@ async function newPage(browser) {
       fis.labels[0].startsWith('Oct') && fis.labels[3].startsWith('Janv') && fis.labels[11].startsWith('Sept'));
     check('4-4-5 : exercice suivant décalé de 52 semaines (E2027 = 20 sept. 2026)', fis.n27 === '2026-09-20');
 
+    // Export reporting KPIs (contrôle de gestion) : génération + réconciliation + périmètre restauré.
+    const rep = await p.evaluate(() => {
+      const consRef = S.cons, missRef = S.miss;
+      const d = _kpiReportData();
+      const restored = S.cons === consRef && S.miss === missRef;
+      S._ks = null; S._ksSig = null;
+      const expR = buildKS().reduce((s, x) => s + x.k.rev, 0);
+      const html = buildKpiReportHTML(Object.assign({}, d, { csv: buildKpiReportCSV(d) }));
+      const csv = buildKpiReportCSV(d);
+      return {
+        totR: d.agg.totR, nCons: d.agg.nCons, nMiss: d.missRows.length,
+        reconcile: Math.abs(expR - d.agg.totR) < 1,
+        htmlOk: /Taux de staffing/.test(html) && /Détail des missions/.test(html) && /dlCSV/.test(html),
+        csvOk: /SYNTHÈSE/.test(csv) && /DÉTAIL DES MISSIONS/.test(csv),
+        restored
+      };
+    });
+    check('Export reporting : données produites (CA, missions, effectif)', rep.totR > 0 && rep.nMiss > 0 && rep.nCons > 0);
+    check('Export reporting : CA de l’export = moteur KPI (réconciliation)', rep.reconcile);
+    check('Export reporting : HTML (synthèse + détail + CSV) et CSV bien formés', rep.htmlOk && rep.csvOk);
+    check('Export reporting : périmètre de calcul restauré après génération', rep.restored);
+
     // Montée en charge : pagination serveur des cartes KPI (rôle à périmètre org).
     const paged = await p.evaluate(() => {
       var wk = (S.year || CFY) + '|' + (S.quarter || '');

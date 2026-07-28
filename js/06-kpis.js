@@ -49,6 +49,173 @@ function srvRowToKS(r){
 function _prevKpiSig(){
   return (S.year||0)+'|'+((S.settings&&S.settings.fyStartMonth)||10)+'|'+_kpiDataSig();
 }
+/* ═══════════════════════════════════════════════════════════════════════════
+   EXPORT REPORTING KPIs (contrôle de gestion / vérification)
+   Vision au périmètre du demandeur, sur la période sélectionnée (exercice 4-4-5 ou
+   trimestre) : CA sécurisé, marge, taux de staffing, contribution nette, coût
+   salarial, consolidation par unité et détail de TOUTES les missions de la période.
+   Réconcilié avec le bandeau KPIs : on rejoue exactement le périmètre (visibleData)
+   et le moteur (buildKS/kpi), avec les mêmes formules d'agrégation. → onglet
+   imprimable (PDF) + export CSV.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function _kpiReportData(){
+  var bak={cons:S.cons,miss:S.miss,lvs:S.lvs,opps:S.bizOpps,all:S._all,sig:S._ksSig,ks:S._ks};
+  var out={};
+  try{
+    var vis=(typeof visibleData==='function')?visibleData():{cons:S.cons,miss:S.miss,lvs:S.lvs,bizOpps:S.bizOpps};
+    S._all={cons:S.cons,miss:S.miss,lvs:S.lvs,bizOpps:S.bizOpps};
+    S.cons=vis.cons;S.miss=vis.miss;S.lvs=vis.lvs;S.bizOpps=vis.bizOpps;
+    S._ksSig=null;S._ks=null;
+    var ks=buildKS();
+    var rng=S.quarter?curRange(S.year):[fyStart(S.year),fyEnd(S.year)];
+    var fyTotalWD=wDays(fyStart(S.year),fyEnd(S.year),H);
+    var totR=0,totBill=0,aktWD=0,srw=0,totSalary=0,omArr=[],buAgg={},missRows=[];
+    ks.forEach(function(x){
+      var k=x.k,c=x.c,f=(c.contract==='freelance');
+      totR+=k.rev;totBill+=k.bill;aktWD+=(k.tWD||0);srw+=k.sr*(k.tWD||0);
+      totSalary+=f?c.scr*k.bill:c.scr*SCR_FACTOR*EMPLOYER_FACTOR*(fyTotalWD>0?k.tWD/fyTotalWD:0);
+      if(k.om!=null)omArr.push(k.om);
+      var bid=(typeof consBU==='function')?consBU(c):(c.buId||null);
+      var bname=(bid&&typeof buPath==='function')?(function(){var p=buPath(bid);return p.length?p[p.length-1].name:'(Sans unité)';})():(((c.dir||'').trim())||'(Sans unité)');
+      k.pm.filter(function(m){return m.days>0;}).forEach(function(m){
+        var cost=m.days*(c.scr||0)*(f?1:EMPLOYER_FACTOR);
+        missRows.push({cons:c.name,unit:bname,cli:m.cli,name:m.name,btype:m.btype,tjm:m.tjm||0,deal:+m.deal||0,sd:m.sd,ed:m.ed,days:m.days,ca:m.rev,cost:cost,mar:m.mar});
+        if(!buAgg[bname])buAgg[bname]={ca:0,cost:0};
+        buAgg[bname].ca+=m.rev;buAgg[bname].cost+=cost;
+      });
+    });
+    missRows.sort(function(a,b){return b.ca-a.ca;});
+    var buRows=Object.keys(buAgg).map(function(u){var r=buAgg[u];return{unit:u,ca:r.ca,cost:r.cost,marge:r.ca>0?(r.ca-r.cost)/r.ca*100:null};}).sort(function(a,b){return b.ca-a.ca;});
+    /* Pipeline pondéré (indicatif) : opportunités ouvertes × probabilité, proratisées
+       sur le recouvrement de la période. Repère prévisionnel, hors chiffres sécurisés. */
+    var pipe=0;
+    (S.bizOpps||[]).forEach(function(o){
+      if(o.status==='gagne'||o.status==='perdu')return;
+      var val=(typeof caPot==='function'?caPot(o):0)*(+o.probability||0)/100;if(val<=0)return;
+      var a=o.date_start||o.date_closing;if(!a)return;var b=o.date_end||a;
+      var os=a<rng[0]?rng[0]:a,oe=(b>rng[1])?rng[1]:b;if(os>oe)return;
+      var totD=Math.max(1,(pD(b)-pD(a))/86400000+1),ovD=(pD(oe)-pD(os))/86400000+1;
+      pipe+=val*Math.min(1,ovD/totD);
+    });
+    var avgSr=aktWD>0?srw/aktWD:0;
+    var myBu=(typeof myBuId==='function')?myBuId():null;
+    out={
+      scope:(myBu&&typeof buLabel==='function'&&buLabel(myBu))?buLabel(myBu):'Toute l’entreprise',
+      who:(((S.profileFirstName||'')+' '+(S.profileLastName||'')).trim())||S._userEmail||'—',
+      perLbl:fyLbl(S.year)+(S.quarter?' · '+curRangeLbl():' (exercice complet)'),
+      perDates:fDt(rng[0])+' → '+fDt(rng[1]),
+      genAt:(new Date()).toLocaleString('fr-FR'),
+      fileStamp:fD(new Date()),
+      agg:{avgSr:avgSr,totR:totR,totBill:totBill,avgM:omArr.length?omArr.reduce(function(s,v){return s+v;},0)/omArr.length:null,
+        avgTJM:totBill>0?totR/totBill:0,totSalary:totSalary,netC:totR-totSalary,nCons:ks.length,pipe:pipe},
+      buRows:buRows,missRows:missRows
+    };
+  } finally {
+    S.cons=bak.cons;S.miss=bak.miss;S.lvs=bak.lvs;S.bizOpps=bak.opps;S._all=bak.all;S._ksSig=bak.sig;S._ks=bak.ks;
+  }
+  return out;
+}
+function _csvCell(v){v=String(v==null?'':v);return /[";\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+function buildKpiReportCSV(d){
+  var a=d.agg,L=[];
+  L.push('Reporting KPIs - Konsilys');
+  L.push('Périmètre;'+_csvCell(d.scope));
+  L.push('Période;'+_csvCell(d.perLbl+' ('+d.perDates+')'));
+  L.push('Généré le;'+_csvCell(d.genAt)+';par;'+_csvCell(d.who));
+  L.push('');L.push('SYNTHÈSE (chiffres sécurisés)');
+  L.push('Taux de staffing (%);'+a.avgSr.toFixed(1));
+  L.push('CA sécurisé (€);'+Math.round(a.totR));
+  L.push('Marge moyenne (%);'+(a.avgM!=null?a.avgM.toFixed(1):''));
+  L.push('Contribution nette (€);'+Math.round(a.netC));
+  L.push('Coût salarial période (€);'+Math.round(a.totSalary));
+  L.push('TJM moyen (€);'+Math.round(a.avgTJM));
+  L.push('Effectif (consultants);'+a.nCons);
+  L.push('Jours facturés;'+Math.round(a.totBill));
+  L.push('Pipeline pondéré indicatif (€);'+Math.round(a.pipe));
+  L.push('');L.push('CONSOLIDATION PAR UNITÉ');
+  L.push('Unité;CA sécurisé;Coût;Marge nette (%)');
+  d.buRows.forEach(function(r){L.push([_csvCell(r.unit),Math.round(r.ca),Math.round(r.cost),(r.marge!=null?r.marge.toFixed(1):'')].join(';'));});
+  L.push('');L.push('DÉTAIL DES MISSIONS');
+  L.push('Consultant;Unité;Client;Mission;Type;TJM ou Deal (€);Début;Fin;Jours période;CA (€);Coût (€);Marge (%)');
+  d.missRows.forEach(function(r){
+    L.push([_csvCell(r.cons),_csvCell(r.unit),_csvCell(r.cli),_csvCell(r.name),(r.btype==='forfait'?'Forfait':'AT'),
+      Math.round(r.btype==='forfait'?r.deal:r.tjm),(r.sd||''),(r.ed||''),r.days,Math.round(r.ca),Math.round(r.cost),r.mar.toFixed(1)].join(';'));
+  });
+  return '﻿'+L.join('\r\n');
+}
+function buildKpiReportHTML(d){
+  var a=d.agg;
+  function money(n){return fEur(Math.round(n||0));}
+  var sCol=a.avgSr>=80?'#16a34a':a.avgSr>=50?'#d97706':'#dc2626';
+  var sLbl=a.avgSr>=80?'Excellent':a.avgSr>=60?'Correct':'À surveiller';
+  function card(lb,val,sub,col){return '<div class="c"><div class="cl">'+esc(lb)+'</div><div class="cv"'+(col?' style="color:'+col+'"':'')+'>'+val+'</div>'+(sub?'<div class="cs">'+esc(sub)+'</div>':'')+'</div>';}
+  var syn=card('Taux de staffing',a.avgSr.toFixed(1)+'%',sLbl,sCol)
+    +card('CA sécurisé',money(a.totR),Math.round(a.totBill)+' jours facturés')
+    +card('Marge moyenne',a.avgM!=null?a.avgM.toFixed(1)+'%':'—','sur missions')
+    +card('Contribution nette',money(a.netC),'CA − salaires période',a.netC>=0?'#16a34a':'#dc2626')
+    +card('Coût salarial',money(a.totSalary),'proraté présence période')
+    +card('TJM moyen',a.avgTJM>0?money(a.avgTJM):'—',a.nCons+' consultant'+(a.nCons>1?'s':''));
+  var buT=d.buRows.length?d.buRows.map(function(r){var m=r.marge,mc=m>=30?'#16a34a':m>=15?'#d97706':'#dc2626';
+    return '<tr><td>'+esc(r.unit)+'</td><td class="r">'+money(r.ca)+'</td><td class="r">'+money(r.cost)+'</td><td class="r" style="color:'+mc+';font-weight:700">'+(m!=null?m.toFixed(1)+'%':'—')+'</td></tr>';}).join('')
+    :'<tr><td colspan="4" class="mut">Aucune donnée sur la période.</td></tr>';
+  var tDays=0,tCa=0,tCost=0;
+  var mT=d.missRows.map(function(r){tDays+=r.days;tCa+=r.ca;tCost+=r.cost;var mc=r.mar>=30?'#16a34a':r.mar>=0?'#d97706':'#dc2626';
+    return '<tr><td>'+esc(r.cons)+'</td><td>'+esc(r.unit)+'</td><td>'+esc(r.cli)+' <span class="mut">— '+esc(r.name)+'</span></td><td>'+(r.btype==='forfait'?'Forfait':'AT')+'</td><td class="r">'+money(r.btype==='forfait'?r.deal:r.tjm)+'</td><td class="r nb">'+(r.sd?fDt(r.sd):'—')+'</td><td class="r nb">'+(r.ed?fDt(r.ed):'—')+'</td><td class="r">'+r.days+'</td><td class="r">'+money(r.ca)+'</td><td class="r">'+money(r.cost)+'</td><td class="r" style="color:'+mc+';font-weight:700">'+r.mar.toFixed(1)+'%</td></tr>';}).join('')
+    ||'<tr><td colspan="11" class="mut">Aucune mission sur la période.</td></tr>';
+  var margeGlob=tCa>0?((tCa-tCost)/tCa*100):0;
+  var tot=d.missRows.length?'<tr class="tot"><td colspan="7">TOTAL — '+d.missRows.length+' mission'+(d.missRows.length>1?'s':'')+'</td><td class="r">'+tDays+'</td><td class="r">'+money(tCa)+'</td><td class="r">'+money(tCost)+'</td><td class="r">'+margeGlob.toFixed(1)+'%</td></tr>':'';
+  return '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+    +'<title>Reporting KPIs — Konsilys — '+esc(d.perLbl)+'</title><style>'
+    +':root{--ink:#111823;--mut:#6b7480;--line:#e4e7ec;--navy:#14202B;--lime:#4d7c0f;--paper:#f6f7f9}'
+    +'*{box-sizing:border-box}body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--paper);font-size:14px;line-height:1.5}'
+    +'.wrap{max-width:1080px;margin:0 auto;padding:28px}'
+    +'.bar{display:flex;gap:8px;justify-content:flex-end;margin-bottom:18px}'
+    +'.bar button{font:inherit;font-size:13px;font-weight:700;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}'
+    +'.bar button.p{background:var(--navy);color:#fff;border-color:var(--navy)}'
+    +'.hd{background:var(--navy);color:#fff;border-radius:14px;padding:22px 26px;margin-bottom:22px}'
+    +'.hd .k{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#a3e635}'
+    +'.hd h1{margin:6px 0 12px;font-size:26px;letter-spacing:-.01em}'
+    +'.hd .meta{display:flex;flex-wrap:wrap;gap:8px 22px;font-size:13px;color:#c9d4df}'
+    +'.hd .meta b{color:#fff}'
+    +'h2{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:26px 0 12px}'
+    +'.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}'
+    +'.c{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px}'
+    +'.cl{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--mut)}'
+    +'.cv{font-size:26px;font-weight:800;letter-spacing:-.02em;margin-top:6px}'
+    +'.cs{font-size:12px;color:var(--mut);margin-top:4px}'
+    +'table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:13px}'
+    +'th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line)}'
+    +'th{background:#f0f2f5;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mut)}'
+    +'td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}td.nb{white-space:nowrap}'
+    +'tr:last-child td{border-bottom:0}.tot td{font-weight:800;background:#f0f2f5}'
+    +'.mut{color:var(--mut)}.prev{background:#fff;border:1px dashed var(--line);border-radius:12px;padding:14px 18px;font-size:13px;color:var(--mut)}'
+    +'.prev b{color:var(--ink);font-size:17px}'
+    +'.note{margin-top:26px;font-size:11.5px;color:var(--mut);line-height:1.6;border-top:1px solid var(--line);padding-top:14px}'
+    +'.scroll{overflow-x:auto}'
+    +'@media print{.bar{display:none}body{background:#fff}.wrap{max-width:100%;padding:0}.c,table,.hd{break-inside:avoid}}'
+    +'</style></head><body><div class="wrap">'
+    +'<div class="bar"><button class="p" onclick="window.print()">🖨 Imprimer / PDF</button><button onclick="dlCSV()">⬇ Télécharger le CSV</button><button onclick="window.close()">Fermer</button></div>'
+    +'<div class="hd"><div class="k">Konsilys · Reporting KPIs — contrôle de gestion</div>'
+    +'<h1>'+esc(d.scope)+' — '+esc(d.perLbl)+'</h1>'
+    +'<div class="meta"><span>Période : <b>'+esc(d.perDates)+'</b></span><span>Généré le <b>'+esc(d.genAt)+'</b></span><span>Par <b>'+esc(d.who)+'</b></span></div></div>'
+    +'<h2>Synthèse — chiffres sécurisés</h2><div class="grid">'+syn+'</div>'
+    +'<h2>Consolidation par unité</h2><div class="scroll"><table><thead><tr><th>Unité</th><th class="r">CA sécurisé</th><th class="r">Coût</th><th class="r">Marge nette</th></tr></thead><tbody>'+buT+'</tbody></table></div>'
+    +'<h2>Prévisionnel (indicatif)</h2><div class="prev">Pipeline pondéré sur la période : <b>'+money(a.pipe)+'</b> — opportunités ouvertes × probabilité, proratisées sur le recouvrement. Repère prévisionnel, hors chiffres sécurisés ci-dessus.</div>'
+    +'<h2>Détail des missions sur la période</h2><div class="scroll"><table><thead><tr><th>Consultant</th><th>Unité</th><th>Client — Mission</th><th>Type</th><th class="r">TJM / Deal</th><th class="r">Début</th><th class="r">Fin</th><th class="r">Jours</th><th class="r">CA</th><th class="r">Coût</th><th class="r">Marge</th></tr></thead><tbody>'+mT+tot+'</tbody></table></div>'
+    +'<div class="note"><b>Note méthodologique (vérification).</b> Périmètre : données visibles par le demandeur (cloisonnement BU + rôle). Jours = jours ouvrés facturés sur la période (hors fériés/congés), réalisé validé (CRA approuvé) prioritaire sur le plan. CA = jours × TJM (AT) ou deal proraté aux jours (forfait). Coût = jours × SCR × 1,25 (charges patronales ; ×1 pour freelance). Marge mission = (CA − coût) ⁄ CA. Coût salarial (synthèse) = SCR × '+SCR_FACTOR+' × 1,25 proraté à la présence sur l’exercice. Contribution nette = CA − coût salarial. Taux de staffing = (jours facturés + absences hors inter-contrat) ⁄ jours ouvrés, pondéré. Périodes selon le calendrier fiscal 4-4-5.</div>'
+    +'</div><script>var CSV='+JSON.stringify(d.csv)+';function dlCSV(){try{var b=new Blob([CSV],{type:"text/csv;charset=utf-8"});var u=URL.createObjectURL(b);var a=document.createElement("a");a.href=u;a.download="reporting-konsilys-'+d.fileStamp+'.csv";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(u);}catch(e){alert("Export CSV indisponible.");}}<\/script></body></html>';
+}
+function exportKpiReport(){
+  var d=_kpiReportData();
+  d.csv=buildKpiReportCSV(d);
+  var html=buildKpiReportHTML(d);
+  var w=null;try{w=window.open('','_blank');}catch(e){}
+  if(w&&w.document){w.document.open();w.document.write(html);w.document.close();return;}
+  /* Pop-ups bloquées → repli : téléchargement du rapport HTML. */
+  try{var b=new Blob([html],{type:'text/html;charset=utf-8'});var u=URL.createObjectURL(b);var a=document.createElement('a');a.href=u;a.download='reporting-konsilys-'+d.fileStamp+'.html';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(u);}
+  catch(e){alert('Autorisez les pop-ups pour ouvrir le reporting.');}
+}
+
 function tKPIs(){
   /* Montée en charge : quand le drapeau est on ET que l'agrégat entreprise ET la
      page de cartes serveur concordent avec la vue, on ne recalcule plus tout le
@@ -299,7 +466,10 @@ function tKPIs(){
     +'</tbody></table></div>'+pager+'</details>';
 
   return '<div class="vw">'
-    +'<div style="margin-bottom:24px"><div class="pt">KPIs &mdash; '+fyLbl(S.year)+(S.quarter?' \u00b7 '+curRangeLbl():'')+'</div></div>'
+    +'<div style="margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">'
+    +'<div class="pt">KPIs &mdash; '+fyLbl(S.year)+(S.quarter?' \u00b7 '+curRangeLbl():'')+'</div>'
+    +'<button class="bg" data-act="kpi-export" title="Reporting imprimable (PDF) + CSV, au p\u00e9rim\u00e8tre et \u00e0 la p\u00e9riode s\u00e9lectionn\u00e9s">\ud83d\udcc4 Exporter le reporting</button>'
+    +'</div>'
     +hero
     +tForecastSection()
     /* Graphe « Staffing par consultant » retiré : illisible dès qu'il y a beaucoup

@@ -1095,6 +1095,7 @@ function bind(){
         alert('La création de compte se fait désormais en payant les licences.\nAllez dans « Gestion des accès → Ajouter des membres » pour créer les accès (une licence par personne).');
       }
       else if(a==='open-salary-detail'){S.modal={type:'salary_detail'};render();}
+      else if(a==='kpi-export'){exportKpiReport();}
       /* ── Invites unifiés ── */
       else if(a==='seat-add-row'){
         var sfn=(gv('seat-fn')||'').trim(),sln=(gv('seat-ln')||'').trim();
