@@ -301,7 +301,7 @@ function tCandDetail(c){
   }).join('');
   var addCvForm=S.recAddCv
     ? '<div style="padding:16px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:14px">'
-      +'<div class="fd"><label class="fl">Ajouter un ou plusieurs CV</label><input class="ic" type="file" id="cvfile" accept=".pdf,.doc,.docx,.odt" multiple></div>'
+      +'<div class="fd"><label class="fl">Ajouter un ou plusieurs CV</label><input class="ic" type="file" id="cvfile" accept=".pdf,.doc,.docx,.odt,.ppt,.pptx,.rtf" multiple></div>'
       +'<div class="br"><button class="bg" data-act="reccvcancel">Annuler</button><button class="bp" data-act="reccvadd" data-id="'+c.id+'">Importer</button></div>'
       +'</div>'
     : '';
@@ -634,7 +634,7 @@ function tModal(){
       +'<div class="fd cs2"><label class="fl">Unité cible <span style="font-weight:400;color:#94a3b8">(optionnel)</span></label><select class="ic" id="rc-bu"><option value="">— Non définie —</option>'+buNodes().slice().sort(function(a,b){return buPathLabel(a.id).localeCompare(buPathLabel(b.id),'fr');}).map(function(n){var cur=it?(it.buId||''):(myBuId()||'');return '<option value="'+n.id+'"'+(cur===n.id?' selected':'')+'>'+esc(buPathLabel(n.id))+'</option>';}).join('')+'</select><p class="fh">Par défaut votre unité ; à l\'affectation d\'un directeur, elle devient la sienne.</p></div>'
       +'<div class="fd cs2"><label class="fl">Expertises</label><div id="exp-wrap">'+expPickerHTML()+'</div></div>'
       +'<div class="fd cs2"><label class="fl">Connaissance secteur</label><div id="sec-wrap">'+secPickerHTML()+'</div></div>'
-      +'<div class="fd cs2"><label class="fl">CV — un ou plusieurs fichiers</label><input class="ic" type="file" id="rccv" accept=".pdf,.doc,.docx,.odt" multiple>'
+      +'<div class="fd cs2"><label class="fl">CV — un ou plusieurs fichiers</label><input class="ic" type="file" id="rccv" accept=".pdf,.doc,.docx,.odt,.ppt,.pptx,.rtf" multiple>'
       +(it&&it.cvFiles&&it.cvFiles.length?'<p class="fh">'+it.cvFiles.length+' CV déjà joint(s) — les nouveaux fichiers s\u2019ajouteront aux existants (gérable depuis la fiche).</p>':'<p class="fh">Plusieurs fichiers peuvent être sélectionnés en même temps.</p>')+'</div>'
       +(it
         ? '<div class="fd cs2"><label class="fl">Comptes rendus</label><p class="fh" style="margin-top:0">Gérez les comptes rendus (ajout / suppression) directement depuis la fiche du candidat.</p></div>'

@@ -962,7 +962,10 @@ async function uploadCandFile(file,candId,kind){
 }
 function downloadCandFile(path,name){
   if(!sb){alert('Supabase non connect\u00e9');return;}
-  sb.storage.from('candidate-files').createSignedUrl(path,3600).then(function(r){
+  // { download } fait servir le fichier en pi\u00e8ce jointe (Content-Disposition:
+  // attachment) : l'attribut HTML download est ignor\u00e9 en cross-origin, donc sans
+  // \u00e7a le navigateur ouvre l'URL en inline et bloque le rendu (PPT, Word\u2026).
+  sb.storage.from('candidate-files').createSignedUrl(path,3600,{download:name||true}).then(function(r){
     if(r.error||!r.data||!r.data.signedUrl){alert('T\u00e9l\u00e9chargement impossible : '+(r.error?r.error.message:'lien indisponible'));return;}
     var a=document.createElement('a');
     a.href=r.data.signedUrl;a.download=name||'fichier';a.target='_blank';a.rel='noopener';
@@ -981,17 +984,21 @@ function openCvPreview(path,name){
   sb.storage.from('candidate-files').createSignedUrl(path,3600).then(function(r){
     if(r.error||!r.data||!r.data.signedUrl){alert('Aperçu impossible : '+(r.error?r.error.message:'lien indisponible'));return;}
     var url=r.data.signedUrl, lc=(name||path||'').toLowerCase();
+    // URL en pièce jointe pour le bouton Télécharger (le param download est
+    // appliqué côté serveur, hors signature) : ouvre proprement les formats non
+    // prévisualisables (PowerPoint, Word…) au lieu d'un rendu inline bloqué.
+    var dlUrl=url+(url.indexOf('?')>=0?'&':'?')+'download='+encodeURIComponent(name||'cv');
     var isPdf=/\.pdf(\?|#|$)/.test(lc), isImg=/\.(png|jpe?g|gif|webp)(\?|#|$)/.test(lc);
     var inner=isPdf?'<iframe src="'+url+'" title="CV" style="flex:1;width:100%;border:none;background:#fff"></iframe>'
       :isImg?'<div style="flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:16px"><img src="'+url+'" alt="CV" style="max-width:100%;max-height:100%;border-radius:8px"></div>'
-      :'<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#94a3b8;padding:24px;text-align:center"><div style="font-size:40px">📄</div><div>Aperçu non disponible pour ce format (Word, etc.).<br>Utilisez « Télécharger » pour l\'ouvrir.</div></div>';
+      :'<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#94a3b8;padding:24px;text-align:center"><div style="font-size:40px">📄</div><div>Aperçu non disponible pour ce format (PowerPoint, Word…).<br>Utilisez « Télécharger » pour l\'ouvrir dans l\'application dédiée.</div></div>';
     var box=document.getElementById('cvprev');
     if(!box){box=document.createElement('div');box.id='cvprev';document.body.appendChild(box);}
     box.innerHTML='<div style="position:fixed;inset:0;background:rgba(2,6,23,.6);z-index:1600;display:flex;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeCvPreview()">'
       +'<div style="background:#0f1720;border-radius:14px;width:min(920px,100%);height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.5)">'
       +'<div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.08)">'
       +'<span style="flex:1;color:#e8eef6;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(name||'CV')+'</span>'
-      +'<a href="'+url+'" target="_blank" rel="noopener" download="'+esc(name||'cv')+'" style="background:#84CC16;color:#16240a;font-size:12px;font-weight:800;padding:7px 14px;border-radius:8px;text-decoration:none">⬇ Télécharger</a>'
+      +'<a href="'+dlUrl+'" target="_blank" rel="noopener" download="'+esc(name||'cv')+'" style="background:#84CC16;color:#16240a;font-size:12px;font-weight:800;padding:7px 14px;border-radius:8px;text-decoration:none">⬇ Télécharger</a>'
       +'<button onclick="closeCvPreview()" aria-label="Fermer" style="background:rgba(255,255,255,.08);color:#e8eef6;border:none;border-radius:8px;width:32px;height:32px;font-size:15px;cursor:pointer">✕</button>'
       +'</div>'+inner+'</div></div>';
   });
