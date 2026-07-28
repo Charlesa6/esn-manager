@@ -584,6 +584,32 @@ async function newPage(browser) {
     });
     check('En-tête reporting : nom d’organisation + logo repris dans le rapport', hdr.org === 'CGI Test' && hdr.hasName && hdr.hasLogo);
 
+    // Charte de marque configurable (ex. rouge CGI) : couleur reprise dans le HTML et le .xlsx.
+    const brand = await p.evaluate(() => {
+      S.settings = S.settings || {};
+      const bC = S.settings.reportBrandColor;
+      // défaut (marine Konsilys) quand rien n'est réglé
+      S.settings.reportBrandColor = '';
+      const dDef = _kpiReportData();
+      const defOk = dDef.brand === '14202B' && /--brand:#14202B/.test(buildKpiReportHTML(dDef));
+      // charte CGI (rouge) : pilote HTML (en-tête/boutons/tableaux) et remplissage xlsx
+      S.settings.reportBrandColor = 'E4002B';
+      const dCgi = _kpiReportData();
+      const htmlCgi = buildKpiReportHTML(dCgi);
+      const xlsxStyles = _xStyles(dCgi.brand);
+      S.settings.reportBrandColor = bC;
+      return {
+        defOk,
+        brandCgi: dCgi.brand === 'E4002B',
+        htmlBrand: /--brand:#E4002B/.test(htmlCgi),
+        xlsxFill: /FFE4002B/.test(xlsxStyles),
+        stylesInBook: /FFE4002B/.test(new TextDecoder().decode(buildKpiReportXLSX(dCgi)).replace(/[^\x20-\x7e]/g, ''))
+      };
+    });
+    check('Charte reporting : couleur par défaut (marine Konsilys) appliquée', brand.defOk);
+    check('Charte reporting : couleur CGI reprise dans le HTML (en-tête/boutons/tableaux)', brand.brandCgi && brand.htmlBrand);
+    check('Charte reporting : couleur CGI reprise dans le remplissage d’en-tête .xlsx', brand.xlsxFill);
+
     // Montée en charge : pagination serveur des cartes KPI (rôle à périmètre org).
     const paged = await p.evaluate(() => {
       S.calMode = 'cal'; // montée en charge serveur = calendaire

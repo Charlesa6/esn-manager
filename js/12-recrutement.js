@@ -1138,8 +1138,17 @@ function tModal(){
     title='En-tête du reporting';
     var _rhOrg=(m.orgName!=null?m.orgName:((S.settings&&S.settings.reportOrgName)||''));
     var _rhLogo=(m.logo!=null?m.logo:((S.settings&&S.settings.reportLogo)||''));
-    body='<p style="font-size:13px;color:#64748b;margin:0 0 14px">Personnalise l’en-tête des exports (rapport imprimable / PDF / Excel). Appliqué à toutes les prochaines exportations.</p>'
+    var _rhCol=(m.brand!=null?m.brand:((S.settings&&S.settings.reportBrandColor)||''));
+    var _rhHex=/^#?[0-9a-fA-F]{6}$/.test(_rhCol)?('#'+_rhCol.replace('#','')):'#14202B';
+    body='<p style="font-size:13px;color:#64748b;margin:0 0 14px">Personnalise l’en-tête et la charte des exports (rapport imprimable / PDF / Excel). Appliqué à toutes les prochaines exportations.</p>'
       +'<div class="fd"><label class="fl">Nom de l’organisation</label><input class="ic" id="rh-org" value="'+esc(_rhOrg)+'" placeholder="Ex : CGI — SBU Europe de l’Ouest et du Sud"></div>'
+      +'<div class="fd"><label class="fl">Couleur de marque</label>'
+      +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+      +'<input type="color" id="rh-color" value="'+esc(_rhHex)+'" style="width:48px;height:34px;padding:2px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;cursor:pointer">'
+      +'<button class="lb" data-act="report-preset-cgi" style="border-color:#E4002B;color:#E4002B">Charte CGI</button>'
+      +'<button class="lb" data-act="report-preset-konsilys">Charte Konsilys</button>'
+      +'</div>'
+      +'<p class="fh">Pilote l’en-tête, les en-têtes de tableaux, les totaux et le bouton principal du rapport (HTML/PDF & Excel).</p></div>'
       +'<div class="fd"><label class="fl">Logo</label>'
       +(_rhLogo?'<div style="margin:6px 0"><img src="'+esc(_rhLogo)+'" alt="" style="max-height:60px;max-width:220px;border:1px solid #e2e8f0;border-radius:8px;padding:6px;background:#fff"></div>':'<div style="font-size:12px;color:#94a3b8;margin:4px 0">Aucun logo.</div>')
       +'<input type="file" accept="image/png,image/jpeg,image/svg+xml" id="rh-logo-file" onchange="reportLogoPick(this)" style="font-size:12px">'

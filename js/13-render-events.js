@@ -1102,11 +1102,20 @@ function bind(){
         if(typeof refreshServerKpis==='function')refreshServerKpis();
       }
       else if(a==='kpi-export'){exportKpiReport();}
-      else if(a==='report-header-cfg'){S.modal={type:'report_header',orgName:(S.settings&&S.settings.reportOrgName)||'',logo:(S.settings&&S.settings.reportLogo)||''};render();}
-      else if(a==='report-logo-clear'){if(S.modal&&S.modal.type==='report_header')S.modal.logo='';render();}
+      else if(a==='report-header-cfg'){S.modal={type:'report_header',orgName:(S.settings&&S.settings.reportOrgName)||'',logo:(S.settings&&S.settings.reportLogo)||'',brand:(S.settings&&S.settings.reportBrandColor)||''};render();}
+      else if(a==='report-logo-clear'){if(S.modal&&S.modal.type==='report_header'){S.modal.orgName=gv('rh-org');S.modal.brand=gv('rh-color');S.modal.logo='';}render();}
+      else if(a==='report-preset-cgi'||a==='report-preset-konsilys'){
+        if(S.modal&&S.modal.type==='report_header'){
+          S.modal.orgName=gv('rh-org');
+          S.modal.brand=(a==='report-preset-cgi')?'#E4002B':'#14202B';
+          if(a==='report-preset-cgi'&&!(''+(S.modal.orgName||'')).trim())S.modal.orgName='CGI';
+        }
+        render();
+      }
       else if(a==='report-header-save'){
         S.settings=S.settings||{};
         S.settings.reportOrgName=gv('rh-org');
+        S.settings.reportBrandColor=(gv('rh-color')||'').replace('#','');
         S.settings.reportLogo=(S.modal&&S.modal.logo!=null)?S.modal.logo:(S.settings.reportLogo||'');
         if(typeof persistImportPresets==='function')persistImportPresets();
         S.modal=null;render();

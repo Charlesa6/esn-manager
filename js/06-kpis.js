@@ -109,6 +109,7 @@ function _kpiReportData(){
       fileStamp:fD(new Date()),
       orgName:(S.settings&&S.settings.reportOrgName)||'',
       logo:(S.settings&&S.settings.reportLogo)||'',
+      brand:(function(){var h=((S.settings&&S.settings.reportBrandColor)||'').replace(/[^0-9a-fA-F]/g,'');return /^[0-9a-fA-F]{6}$/.test(h)?h.toUpperCase():'14202B';})(),
       agg:{avgSr:avgSr,totR:totR,totBill:totBill,avgM:omArr.length?omArr.reduce(function(s,v){return s+v;},0)/omArr.length:null,
         avgTJM:totBill>0?totR/totBill:0,totSalary:totSalary,netC:totR-totSalary,nCons:ks.length,pipe:pipe},
       buRows:buRows,missRows:missRows
@@ -188,7 +189,12 @@ var _XCT='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="h
 var _XRELS='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
 var _XWB='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Synthèse" sheetId="1" r:id="rId1"/><sheet name="Par unité" sheetId="2" r:id="rId2"/><sheet name="Missions" sheetId="3" r:id="rId3"/></sheets></workbook>';
 var _XWBRELS='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>';
-var _XSTYLES='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0&quot; €&quot;"/><numFmt numFmtId="165" formatCode="0.0&quot;%&quot;"/></numFmts><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF14202B"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="2" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+/* Styles xlsx paramétrés par la couleur de marque (charte CGI configurable) :
+   le remplissage de l'en-tête (fillId 2) reprend la couleur hexadécimale choisie. */
+function _xStyles(brandHex){
+  var hx=/^[0-9a-fA-F]{6}$/.test(brandHex||'')?brandHex.toUpperCase():'14202B';
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0&quot; €&quot;"/><numFmt numFmtId="165" formatCode="0.0&quot;%&quot;"/></numFmts><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF'+hx+'"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="2" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+}
 function buildKpiReportXLSX(d){
   var a=d.agg;
   var S1=[
@@ -221,7 +227,7 @@ function buildKpiReportXLSX(d){
     {name:'_rels/.rels',data:_u8(_XRELS)},
     {name:'xl/workbook.xml',data:_u8(_XWB)},
     {name:'xl/_rels/workbook.xml.rels',data:_u8(_XWBRELS)},
-    {name:'xl/styles.xml',data:_u8(_XSTYLES)},
+    {name:'xl/styles.xml',data:_u8(_xStyles(d.brand))},
     {name:'xl/worksheets/sheet1.xml',data:_u8(_xSheet(S1))},
     {name:'xl/worksheets/sheet2.xml',data:_u8(_xSheet(S2))},
     {name:'xl/worksheets/sheet3.xml',data:_u8(_xSheet(S3))}
@@ -229,6 +235,11 @@ function buildKpiReportXLSX(d){
 }
 function buildKpiReportHTML(d){
   var a=d.agg;
+  /* Couleur de marque (charte configurable, ex. rouge CGI) : pilote l'en-tête, les
+     en-têtes de tableaux, les totaux et le bouton principal. */
+  var brand='#'+d.brand;
+  var _rb=[parseInt(d.brand.slice(0,2),16),parseInt(d.brand.slice(2,4),16),parseInt(d.brand.slice(4,6),16)];
+  var brandTint='rgba('+_rb[0]+','+_rb[1]+','+_rb[2]+',.07)';
   function money(n){return fEur(Math.round(n||0));}
   var sCol=a.avgSr>=80?'#16a34a':a.avgSr>=50?'#d97706':'#dc2626';
   var sLbl=a.avgSr>=80?'Excellent':a.avgSr>=60?'Correct':'À surveiller';
@@ -250,16 +261,16 @@ function buildKpiReportHTML(d){
   var tot=d.missRows.length?'<tr class="tot"><td colspan="7">TOTAL — '+d.missRows.length+' mission'+(d.missRows.length>1?'s':'')+'</td><td class="r">'+tDays+'</td><td class="r">'+money(tCa)+'</td><td class="r">'+money(tCost)+'</td><td class="r">'+margeGlob.toFixed(1)+'%</td></tr>':'';
   return '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
     +'<title>Reporting KPIs — Konsilys — '+esc(d.perLbl)+'</title><style>'
-    +':root{--ink:#111823;--mut:#6b7480;--line:#e4e7ec;--navy:#14202B;--lime:#4d7c0f;--paper:#f6f7f9}'
+    +':root{--ink:#111823;--mut:#6b7480;--line:#e4e7ec;--brand:'+brand+';--brandTint:'+brandTint+';--paper:#f6f7f9}'
     +'*{box-sizing:border-box}body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--paper);font-size:14px;line-height:1.5}'
     +'.wrap{max-width:1080px;margin:0 auto;padding:28px}'
     +'.bar{display:flex;gap:8px;justify-content:flex-end;margin-bottom:18px}'
     +'.bar button{font:inherit;font-size:13px;font-weight:700;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}'
-    +'.bar button.p{background:var(--navy);color:#fff;border-color:var(--navy)}'
-    +'.hd{background:var(--navy);color:#fff;border-radius:14px;padding:22px 26px;margin-bottom:22px}'
-    +'.hd .k{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#a3e635}'
+    +'.bar button.p{background:var(--brand);color:#fff;border-color:var(--brand)}'
+    +'.hd{background:var(--brand);color:#fff;border-radius:14px;padding:22px 26px;margin-bottom:22px}'
+    +'.hd .k{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.82)}'
     +'.hd h1{margin:6px 0 12px;font-size:26px;letter-spacing:-.01em}'
-    +'.hd .meta{display:flex;flex-wrap:wrap;gap:8px 22px;font-size:13px;color:#c9d4df}'
+    +'.hd .meta{display:flex;flex-wrap:wrap;gap:8px 22px;font-size:13px;color:rgba(255,255,255,.78)}'
     +'.hd .meta b{color:#fff}'
     +'h2{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:26px 0 12px}'
     +'.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}'
@@ -269,9 +280,10 @@ function buildKpiReportHTML(d){
     +'.cs{font-size:12px;color:var(--mut);margin-top:4px}'
     +'table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:13px}'
     +'th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line)}'
-    +'th{background:#f0f2f5;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mut)}'
+    +'th{background:var(--brandTint);font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--brand);font-weight:700}'
     +'td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}td.nb{white-space:nowrap}'
-    +'tr:last-child td{border-bottom:0}.tot td{font-weight:800;background:#f0f2f5}'
+    +'tr:last-child td{border-bottom:0}.tot td{font-weight:800;background:var(--brandTint)}'
+    +'.c{border-top:3px solid var(--brand)}'
     +'.mut{color:var(--mut)}.prev{background:#fff;border:1px dashed var(--line);border-radius:12px;padding:14px 18px;font-size:13px;color:var(--mut)}'
     +'.prev b{color:var(--ink);font-size:17px}'
     +'.note{margin-top:26px;font-size:11.5px;color:var(--mut);line-height:1.6;border-top:1px solid var(--line);padding-top:14px}'
