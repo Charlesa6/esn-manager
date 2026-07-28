@@ -233,6 +233,108 @@ function buildKpiReportXLSX(d){
     {name:'xl/worksheets/sheet3.xml',data:_u8(_xSheet(S3))}
   ]);
 }
+/* ── Générateur PDF (paysage A4) sans dépendance : Helvetica base-14 (WinAnsi),
+   pagination automatique, en-tête de marque + tableaux synthèse/unités/missions.
+   Produit un vrai fichier .pdf (distinct de l'impression navigateur). ── */
+function buildKpiReportPDF(d){
+  var a=d.agg, W=841.89, H=595.28, M=36;
+  var bh=/^[0-9a-fA-F]{6}$/.test(d.brand||'')?d.brand:'14202B';
+  var br=[parseInt(bh.slice(0,2),16)/255,parseInt(bh.slice(2,4),16)/255,parseInt(bh.slice(4,6),16)/255];
+  var GRID=[0.9,0.91,0.93], INK=[0.09,0.12,0.16], MUT=[0.42,0.45,0.5], TINT=[0.955,0.965,0.975];
+  function money(n){return fEur(Math.round(n||0));}
+  /* Unicode → WinAnsi (Windows-1252) pour la ponctuation typographique et l'€. */
+  var WMAP={0x20AC:0x80,0x2018:0x91,0x2019:0x92,0x201C:0x93,0x201D:0x94,0x2013:0x96,0x2014:0x97,0x2026:0x85,0x2022:0x95,0x00A0:0x20,0x202F:0x20,0x2009:0x20};
+  function wb(s){var o=[];s=String(s==null?'':s).replace(/[←-⇿➔➡➙]/g,'–');for(var i=0;i<s.length;i++){var cp=s.charCodeAt(i),b;if(WMAP[cp]!=null)b=WMAP[cp];else if(cp>=0x20&&cp<=0xFF)b=cp;else b=0x3F;o.push(b);}return o;}
+  var HW={' ':278,'!':278,'"':355,'#':556,'$':556,'%':889,'&':667,"'":191,'(':333,')':333,'*':389,'+':584,',':278,'-':333,'.':278,'/':278,':':278,';':278,'<':584,'=':584,'>':584,'?':556,'@':1015};
+  '0123456789'.split('').forEach(function(c){HW[c]=556;});
+  function cw(ch,sz){var w=HW[ch];if(w==null){var c=ch.charCodeAt(0);w=(c>=0x41&&c<=0x5A)?667:(c>=0x61&&c<=0x7A)?540:556;}return w*sz/1000;}
+  function tw(s,sz){s=String(s==null?'':s);var w=0;for(var i=0;i<s.length;i++)w+=cw(s[i],sz);return w;}
+  function fit(s,maxW,sz){s=String(s==null?'':s);if(tw(s,sz)<=maxW)return s;var e=cw('…',sz);while(s.length&&tw(s,sz)+e>maxW)s=s.slice(0,-1);return s+'…';}
+  var pages=[], cur=[], y=H-M;
+  function pA(s){for(var i=0;i<s.length;i++)cur.push(s.charCodeAt(i)&0xFF);}
+  function pStr(s){cur.push(0x28);var b=wb(s);for(var i=0;i<b.length;i++){var c=b[i];if(c===0x28||c===0x29||c===0x5C)cur.push(0x5C);cur.push(c);}cur.push(0x29);}
+  function fill(rgb){pA(rgb[0].toFixed(3)+' '+rgb[1].toFixed(3)+' '+rgb[2].toFixed(3)+' rg\n');}
+  function stroke(rgb){pA(rgb[0].toFixed(3)+' '+rgb[1].toFixed(3)+' '+rgb[2].toFixed(3)+' RG\n');}
+  function rect(x,yy,w,h,rgb){fill(rgb);pA(x.toFixed(2)+' '+yy.toFixed(2)+' '+w.toFixed(2)+' '+h.toFixed(2)+' re f\n');}
+  function line(x1,y1,x2,y2,rgb,lw){stroke(rgb);pA((lw||0.5)+' w '+x1.toFixed(2)+' '+y1.toFixed(2)+' m '+x2.toFixed(2)+' '+y2.toFixed(2)+' l S\n');}
+  function text(x,yy,s,sz,bold,rgb){fill(rgb||INK);pA('BT /'+(bold?'F2':'F1')+' '+sz+' Tf '+x.toFixed(2)+' '+yy.toFixed(2)+' Td ');pStr(s);pA(' Tj ET\n');}
+  function textR(xr,yy,s,sz,bold,rgb){text(xr-tw(s,sz),yy,s,sz,bold,rgb);}
+  function newPage(){if(cur.length)pages.push(cur);cur=[];y=H-M;}
+  function band(){
+    rect(M,y-64,W-2*M,64,br);
+    text(M+16,y-22,(d.orgName?d.orgName+' · ':'')+'Reporting KPIs — contrôle de gestion',9,false,[1,1,1]);
+    text(M+16,y-43,fit(d.scope+' — '+d.perLbl,W-2*M-32,16),16,true,[1,1,1]);
+    text(M+16,y-58,'Période : '+d.perDates+'    Calendrier : '+d.mode+'    Généré le '+d.genAt+' par '+d.who,8,false,[0.86,0.89,0.93]);
+    y-=64+18;
+  }
+  function heading(t){if(y-40<M)newPage();y-=16;text(M,y,t,11,true,br);y-=6;line(M,y,W-M,y,br,0.8);y-=12;}
+  /* Tableau générique : cols=[{t,x,w,align}], rows=[{cells:[…],bold,fill}]. */
+  function table(cols,rows,rh,sz){
+    rh=rh||16;sz=sz||8;var L=cols[0].x,R=cols[cols.length-1].x+cols[cols.length-1].w;
+    function head(){rect(L,y-rh+3,R-L,rh,br);cols.forEach(function(c){var s=fit(c.t,c.w-8,sz);if(c.align==='r')textR(c.x+c.w-4,y-rh+8,s,sz,true,[1,1,1]);else text(c.x+4,y-rh+8,s,sz,true,[1,1,1]);});y-=rh;}
+    if(y-rh*2<M)newPage();head();
+    rows.forEach(function(row){
+      if(y-rh<M){newPage();head();}
+      if(row.fill)rect(L,y-rh+2,R-L,rh,row.fill);
+      cols.forEach(function(c,ci){var cell=row.cells[ci];if(cell==null)return;var o=(typeof cell==='object')?cell:{v:cell};var s=fit(o.v,c.w-8,sz),rgb=o.rgb||INK;
+        if(c.align==='r')textR(c.x+c.w-4,y-rh+6,s,sz,o.bold||row.bold,rgb);else text(c.x+4,y-rh+6,s,sz,o.bold||row.bold,rgb);});
+      line(L,y-rh+2,R,y-rh+2,GRID,0.4);y-=rh;
+    });
+    y-=8;
+  }
+  function margeCell(m){var c=m>=30?[0.09,0.64,0.29]:m>=15?[0.85,0.47,0.02]:[0.86,0.15,0.15];return {v:(m!=null?m.toFixed(1)+' %':'—'),rgb:c,bold:true};}
+  band();
+  /* Synthèse (chiffres sécurisés) */
+  heading('Synthèse — chiffres sécurisés');
+  var synCols=[{t:'Indicateur',x:M,w:340,align:'l'},{t:'Valeur',x:M+340,w:200,align:'r'}];
+  table(synCols,[
+    {cells:['Taux de staffing',a.avgSr.toFixed(1)+' %']},
+    {cells:['CA sécurisé',money(a.totR)]},
+    {cells:['Marge moyenne',a.avgM!=null?a.avgM.toFixed(1)+' %':'—']},
+    {cells:['Contribution nette',{v:money(a.netC),rgb:a.netC>=0?[0.09,0.64,0.29]:[0.86,0.15,0.15]}]},
+    {cells:['Coût salarial (période)',money(a.totSalary)]},
+    {cells:['TJM moyen',a.avgTJM>0?money(a.avgTJM):'—']},
+    {cells:['Effectif (consultants)',String(a.nCons)]},
+    {cells:['Jours facturés',String(Math.round(a.totBill))]},
+    {cells:['Pipeline pondéré (indicatif)',money(a.pipe)]}
+  ],16,9);
+  /* Consolidation par unité */
+  heading('Consolidation par unité');
+  var buCols=[{t:'Unité',x:M,w:300,align:'l'},{t:'CA sécurisé',x:M+300,w:150,align:'r'},{t:'Coût',x:M+450,w:150,align:'r'},{t:'Marge nette',x:M+600,w:120,align:'r'}];
+  table(buCols,(d.buRows.length?d.buRows:[{unit:'—',ca:0,cost:0,marge:null}]).map(function(r){
+    return {cells:[r.unit,money(r.ca),money(r.cost),margeCell(r.marge)]};
+  }),16,9);
+  /* Détail des missions */
+  heading('Détail des missions sur la période');
+  var mc=[{t:'Consultant',x:M,w:118,align:'l'},{t:'Unité',x:M+118,w:70,align:'l'},{t:'Client — Mission',x:M+188,w:210,align:'l'},{t:'Type',x:M+398,w:44,align:'l'},{t:'TJM / Deal',x:M+442,w:70,align:'r'},{t:'Jours',x:M+512,w:44,align:'r'},{t:'CA',x:M+556,w:70,align:'r'},{t:'Coût',x:M+626,w:70,align:'r'},{t:'Marge',x:M+696,w:60,align:'r'}];
+  var tDays=0,tCa=0,tCost=0;
+  var mrows=d.missRows.map(function(r){tDays+=r.days;tCa+=r.ca;tCost+=r.cost;
+    return {cells:[r.cons,r.unit,(r.cli||'')+' — '+(r.name||''),(r.btype==='forfait'?'Forfait':'AT'),money(r.btype==='forfait'?r.deal:r.tjm),String(r.days),money(r.ca),money(r.cost),margeCell(r.mar)]};});
+  if(d.missRows.length){var mg=tCa>0?((tCa-tCost)/tCa*100):0;
+    mrows.push({bold:true,fill:TINT,cells:[{v:'TOTAL — '+d.missRows.length+' mission'+(d.missRows.length>1?'s':''),bold:true},'','','','',String(tDays),money(tCa),money(tCost),margeCell(mg)]});
+  } else mrows=[{cells:[{v:'Aucune mission sur la période.',rgb:MUT},'','','','','','','','']}];
+  table(mc,mrows,14,7.5);
+  if(y-24<M)newPage();
+  text(M,y-6,'Généré via Konsilys · konsilys.fr — Périmètre : données visibles par le demandeur (cloisonnement BU + rôle). Chiffres sécurisés hors pipeline prévisionnel.',7,false,MUT);
+  if(cur.length)pages.push(cur);
+  /* Assemblage du fichier PDF (objets + table xref). */
+  var P=pages.length,out=[],xref=[],k,id;
+  function A(s){for(var i=0;i<s.length;i++)out.push(s.charCodeAt(i)&0xFF);}
+  function obj(oid,dict,stream){xref[oid]=out.length;A(oid+' 0 obj\n'+dict);if(stream){A('\nstream\n');for(var i=0;i<stream.length;i++)out.push(stream[i]);A('\nendstream');}A('\nendobj\n');}
+  A('%PDF-1.4\n%âãÏÓ\n');
+  var kids='';for(k=0;k<P;k++)kids+=(5+P+k)+' 0 R ';
+  obj(1,'<</Type/Catalog/Pages 2 0 R>>');
+  obj(2,'<</Type/Pages/Count '+P+'/Kids['+kids.trim()+']>>');
+  obj(3,'<</Type/Font/Subtype/Type1/BaseFont/Helvetica/Encoding/WinAnsiEncoding>>');
+  obj(4,'<</Type/Font/Subtype/Type1/BaseFont/Helvetica-Bold/Encoding/WinAnsiEncoding>>');
+  for(k=0;k<P;k++)obj(5+k,'<</Length '+pages[k].length+'>>',pages[k]);
+  for(k=0;k<P;k++)obj(5+P+k,'<</Type/Page/Parent 2 0 R/MediaBox[0 0 '+W.toFixed(2)+' '+H.toFixed(2)+']/Resources<</Font<</F1 3 0 R/F2 4 0 R>>>>/Contents '+(5+k)+' 0 R>>');
+  var startx=out.length,N=5+2*P;
+  A('xref\n0 '+N+'\n0000000000 65535 f \n');
+  for(id=1;id<N;id++)A(('0000000000'+(xref[id]||0)).slice(-10)+' 00000 n \n');
+  A('trailer\n<</Size '+N+'/Root 1 0 R>>\nstartxref\n'+startx+'\n%%EOF');
+  return new Uint8Array(out);
+}
 function buildKpiReportHTML(d){
   var a=d.agg;
   /* Couleur de marque (charte configurable, ex. rouge CGI) : pilote l'en-tête, les
@@ -290,7 +392,7 @@ function buildKpiReportHTML(d){
     +'.scroll{overflow-x:auto}'
     +'@media print{.bar{display:none}body{background:#fff}.wrap{max-width:100%;padding:0}.c,table,.hd{break-inside:avoid}}'
     +'</style></head><body><div class="wrap">'
-    +'<div class="bar"><button class="p" onclick="window.print()">🖨 Imprimer / PDF</button><button onclick="dlXLSX()">⬇ Excel (.xlsx)</button><button onclick="dlCSV()">⬇ CSV</button><button onclick="window.close()">Fermer</button></div>'
+    +'<div class="bar"><button class="p" onclick="window.print()">🖨 Imprimer</button><button onclick="dlPDF()">📄 Exporter en PDF</button><button onclick="dlXLSX()">⬇ Excel (.xlsx)</button><button onclick="dlCSV()">⬇ CSV</button><button onclick="window.close()">Fermer</button></div>'
     +'<div class="hd">'
     +(d.logo?'<img src="'+esc(d.logo)+'" alt="" style="max-height:46px;max-width:210px;float:right;background:#fff;border-radius:6px;padding:5px 8px">':'')
     +'<div class="k">'+(d.orgName?esc(d.orgName)+' · ':'')+'Reporting KPIs — contrôle de gestion</div>'
@@ -302,10 +404,12 @@ function buildKpiReportHTML(d){
     +'<h2>Détail des missions sur la période</h2><div class="scroll"><table><thead><tr><th>Consultant</th><th>Unité</th><th>Client — Mission</th><th>Type</th><th class="r">TJM / Deal</th><th class="r">Début</th><th class="r">Fin</th><th class="r">Jours</th><th class="r">CA</th><th class="r">Coût</th><th class="r">Marge</th></tr></thead><tbody>'+mT+tot+'</tbody></table></div>'
     +'<div style="text-align:right;font-size:11px;color:var(--mut);margin-top:18px">Généré via Konsilys · konsilys.fr</div>'
     +'<div class="note"><b>Note méthodologique (vérification).</b> Périmètre : données visibles par le demandeur (cloisonnement BU + rôle). Jours = jours ouvrés facturés sur la période (hors fériés/congés), réalisé validé (CRA approuvé) prioritaire sur le plan. CA = jours × TJM (AT) ou deal proraté aux jours (forfait). Coût = jours × SCR × 1,25 (charges patronales ; ×1 pour freelance). Marge mission = (CA − coût) ⁄ CA. Coût salarial (synthèse) = SCR × '+SCR_FACTOR+' × 1,25 proraté à la présence sur l’exercice. Contribution nette = CA − coût salarial. Taux de staffing = (jours facturés + absences hors inter-contrat) ⁄ jours ouvrés, pondéré. Périodes selon le calendrier fiscal 4-4-5.</div>'
-    +'</div><script>var CSV='+JSON.stringify(d.csv)+',XLSXB64='+JSON.stringify(d.xlsxB64||'')+';'
+    +'</div><script>var CSV='+JSON.stringify(d.csv)+',XLSXB64='+JSON.stringify(d.xlsxB64||'')+',PDFB64='+JSON.stringify(d.pdfB64||'')+';'
     +'function _dl(blob,name){var u=URL.createObjectURL(blob);var a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(u);}'
+    +'function _b64u8(b64){var bin=atob(b64),u=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u;}'
     +'function dlCSV(){try{_dl(new Blob([CSV],{type:"text/csv;charset=utf-8"}),"reporting-konsilys-'+d.fileStamp+'.csv");}catch(e){alert("Export CSV indisponible.");}}'
-    +'function dlXLSX(){try{var bin=atob(XLSXB64),u=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);_dl(new Blob([u],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),"reporting-konsilys-'+d.fileStamp+'.xlsx");}catch(e){alert("Export Excel indisponible.");}}'
+    +'function dlXLSX(){try{_dl(new Blob([_b64u8(XLSXB64)],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),"reporting-konsilys-'+d.fileStamp+'.xlsx");}catch(e){alert("Export Excel indisponible.");}}'
+    +'function dlPDF(){if(!PDFB64){window.print();return;}try{_dl(new Blob([_b64u8(PDFB64)],{type:"application/pdf"}),"reporting-konsilys-'+d.fileStamp+'.pdf");}catch(e){window.print();}}'
     +'<\/script></body></html>';
 }
 /* Sélection du logo pour l'en-tête du reporting → lu en data URI, stocké sur le modal. */
@@ -320,6 +424,7 @@ function exportKpiReport(){
   var d=_kpiReportData();
   d.csv=buildKpiReportCSV(d);
   try{d.xlsxB64=_b64(buildKpiReportXLSX(d));}catch(e){d.xlsxB64='';console.warn('xlsx:',e);}
+  try{d.pdfB64=_b64(buildKpiReportPDF(d));}catch(e){d.pdfB64='';console.warn('pdf:',e);}
   var html=buildKpiReportHTML(d);
   var w=null;try{w=window.open('','_blank');}catch(e){}
   if(w&&w.document){w.document.open();w.document.write(html);w.document.close();return;}
