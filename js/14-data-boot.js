@@ -976,11 +976,15 @@ function deleteCandFile(path){
   if(!sb||!path)return Promise.resolve();
   return sb.storage.from('candidate-files').remove([path]);
 }
-/* Aperçu d'un CV sans téléchargement : lien signé affiché dans une visionneuse
-   (iframe pour PDF, image pour les images, message + téléchargement sinon). */
-function closeCvPreview(){var b=document.getElementById('cvprev');if(b)b.innerHTML='';}
+/* Aperçu d'un CV sans téléchargement : le PDF est récupéré en blob et affiché
+   via une URL blob: (same-origin, type MIME forcé) → rendu inline fiable quel que
+   soit le Content-Type/disposition renvoyé par le stockage ; image en rendu
+   direct ; message + téléchargement pour les autres formats. */
+var _cvBlobUrl=null;
+function closeCvPreview(){var b=document.getElementById('cvprev');if(b)b.innerHTML='';if(_cvBlobUrl){try{URL.revokeObjectURL(_cvBlobUrl);}catch(e){}_cvBlobUrl=null;}}
 function openCvPreview(path,name){
   if(!sb){alert('Supabase non connecté');return;}
+  if(_cvBlobUrl){try{URL.revokeObjectURL(_cvBlobUrl);}catch(e){}_cvBlobUrl=null;}
   sb.storage.from('candidate-files').createSignedUrl(path,3600).then(function(r){
     if(r.error||!r.data||!r.data.signedUrl){alert('Aperçu impossible : '+(r.error?r.error.message:'lien indisponible'));return;}
     var url=r.data.signedUrl, lc=(name||path||'').toLowerCase();
@@ -988,10 +992,10 @@ function openCvPreview(path,name){
     // appliqué côté serveur, hors signature) : ouvre proprement les formats non
     // prévisualisables (PowerPoint, Word…) au lieu d'un rendu inline bloqué.
     var dlUrl=url+(url.indexOf('?')>=0?'&':'?')+'download='+encodeURIComponent(name||'cv');
-    var isPdf=/\.pdf(\?|#|$)/.test(lc), isImg=/\.(png|jpe?g|gif|webp)(\?|#|$)/.test(lc);
-    var inner=isPdf?'<iframe src="'+url+'" title="CV" style="flex:1;width:100%;border:none;background:#fff"></iframe>'
-      :isImg?'<div style="flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:16px"><img src="'+url+'" alt="CV" style="max-width:100%;max-height:100%;border-radius:8px"></div>'
-      :'<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#94a3b8;padding:24px;text-align:center"><div style="font-size:40px">📄</div><div>Aperçu non disponible pour ce format (PowerPoint, Word…).<br>Utilisez « Télécharger » pour l\'ouvrir dans l\'application dédiée.</div></div>';
+    var isPdf=/\.pdf(\?|#|$)/.test(lc), isImg=/\.(png|jpe?g|gif|webp|svg)(\?|#|$)/.test(lc);
+    var loading='<div id="cvprevbody" style="flex:1;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:13px">Chargement de l\'aperçu…</div>';
+    var imgHtml='<div id="cvprevbody" style="flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:16px"><img src="'+url+'" alt="CV" style="max-width:100%;max-height:100%;border-radius:8px"></div>';
+    var fallback='<div id="cvprevbody" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#94a3b8;padding:24px;text-align:center"><div style="font-size:40px">📄</div><div>Aperçu non disponible pour ce format (PowerPoint, Word…).<br>Utilisez « Télécharger » pour l\'ouvrir dans l\'application dédiée.</div></div>';
     var box=document.getElementById('cvprev');
     if(!box){box=document.createElement('div');box.id='cvprev';document.body.appendChild(box);}
     box.innerHTML='<div style="position:fixed;inset:0;background:rgba(2,6,23,.6);z-index:1600;display:flex;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeCvPreview()">'
@@ -1000,7 +1004,18 @@ function openCvPreview(path,name){
       +'<span style="flex:1;color:#e8eef6;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(name||'CV')+'</span>'
       +'<a href="'+dlUrl+'" target="_blank" rel="noopener" download="'+esc(name||'cv')+'" style="background:#84CC16;color:#16240a;font-size:12px;font-weight:800;padding:7px 14px;border-radius:8px;text-decoration:none">⬇ Télécharger</a>'
       +'<button onclick="closeCvPreview()" aria-label="Fermer" style="background:rgba(255,255,255,.08);color:#e8eef6;border:none;border-radius:8px;width:32px;height:32px;font-size:15px;cursor:pointer">✕</button>'
-      +'</div>'+inner+'</div></div>';
+      +'</div>'+(isPdf?loading:isImg?imgHtml:fallback)+'</div></div>';
+    if(!isPdf)return;
+    // Le PDF servi en cross-origin est souvent bloqué en iframe (disposition ou
+    // Content-Type) ; on le récupère et on le rejoue via blob: pour un rendu sûr.
+    fetch(url).then(function(resp){if(!resp.ok)throw new Error('HTTP '+resp.status);return resp.arrayBuffer();}).then(function(buf){
+      _cvBlobUrl=URL.createObjectURL(new Blob([buf],{type:'application/pdf'}));
+      var body=document.getElementById('cvprevbody');if(!body)return;
+      body.outerHTML='<iframe id="cvprevbody" src="'+_cvBlobUrl+'" title="CV" style="flex:1;width:100%;border:none;background:#fff"></iframe>';
+    }).catch(function(e){
+      var body=document.getElementById('cvprevbody');
+      if(body)body.innerHTML='<div style="text-align:center;color:#94a3b8;padding:24px;font-size:13px">Aperçu indisponible ('+esc(e.message||'erreur')+').<br>Utilisez « Télécharger » pour ouvrir le PDF.</div>';
+    });
   });
 }
 
