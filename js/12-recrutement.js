@@ -1134,6 +1134,19 @@ function tModal(){
         +'<div class="br">'+_actBtns+'</div>';
     }
   }
+  if(tp==='report_header'){
+    title='En-tête du reporting';
+    var _rhOrg=(m.orgName!=null?m.orgName:((S.settings&&S.settings.reportOrgName)||''));
+    var _rhLogo=(m.logo!=null?m.logo:((S.settings&&S.settings.reportLogo)||''));
+    body='<p style="font-size:13px;color:#64748b;margin:0 0 14px">Personnalise l’en-tête des exports (rapport imprimable / PDF / Excel). Appliqué à toutes les prochaines exportations.</p>'
+      +'<div class="fd"><label class="fl">Nom de l’organisation</label><input class="ic" id="rh-org" value="'+esc(_rhOrg)+'" placeholder="Ex : CGI — SBU Europe de l’Ouest et du Sud"></div>'
+      +'<div class="fd"><label class="fl">Logo</label>'
+      +(_rhLogo?'<div style="margin:6px 0"><img src="'+esc(_rhLogo)+'" alt="" style="max-height:60px;max-width:220px;border:1px solid #e2e8f0;border-radius:8px;padding:6px;background:#fff"></div>':'<div style="font-size:12px;color:#94a3b8;margin:4px 0">Aucun logo.</div>')
+      +'<input type="file" accept="image/png,image/jpeg,image/svg+xml" id="rh-logo-file" onchange="reportLogoPick(this)" style="font-size:12px">'
+      +(_rhLogo?' <button class="lb" data-act="report-logo-clear" style="margin-left:8px">Retirer</button>':'')
+      +'<p class="fh">PNG / JPG / SVG, ~400 Ko max. Stocké dans les paramètres de l’entreprise.</p></div>'
+      +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="report-header-save">Enregistrer</button></div>';
+  }
   return '<div class="mov" id="mov"><div class="mbox '+(wide?'mw':'mn')+'">'
     +'<div class="mhd"><h3>'+esc(title)+'</h3><button class="mcl" data-act="mc">&times;</button></div>'
     +'<div class="mbd">'+body+'</div></div></div>';

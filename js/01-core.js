@@ -82,11 +82,33 @@ function fy445StartMs(fy){return FY445_ANCHOR_MS+(fy-FY445_ANCHOR_FY)*52*7*_DAYM
 function p445StartMs(fy,idx){var cum=0;for(var i=0;i<idx-1;i++)cum+=FY445_WEEKS[i];return fy445StartMs(fy)+cum*7*_DAYMS;}
 /* Fin (samedi, case rouge) de la période idx (1..12). */
 function p445EndMs(fy,idx){var cum=0;for(var i=0;i<idx;i++)cum+=FY445_WEEKS[i];return fy445StartMs(fy)+(cum*7-1)*_DAYMS;}
-function fyStart(fy){return _ymdUTC(fy445StartMs(fy));}
-function fyEnd(fy){return _ymdUTC(p445EndMs(fy,12));}
-/* Les 12 périodes comptables d'un exercice : {idx, ms, me, lb}. Le libellé prend le
-   nom du mois calendaire de la FIN de période (comme les feuilles du calendrier CGI :
-   la période P1 vit sur la feuille « OCTOBRE », etc.). */
+
+/* ═══ MODE DE CALENDRIER : « 445 » (comptable CGI, défaut) ou « cal » (calendaire) ═══
+   Basculable depuis l'onglet KPIs. TOUTES les bornes (exercice, trimestre, mois) et
+   donc TOUS les calculs (KPIs, Dashboard, Absences, export) suivent le mode choisi. */
+function _calMode(){return (typeof S!=='undefined'&&S&&S.calMode==='cal')?'cal':'445';}
+
+/* — Variante CALENDAIRE (1 oct → 30 sept, trimestres = mois calendaires) — */
+function _fyStartCal(fy){var m=((S&&S.settings&&S.settings.fyStartMonth)||10);var ms=String(m).padStart(2,'0');var sy=(m===1)?fy:(fy-1);return sy+'-'+ms+'-01';}
+function _fyEndCal(fy){var m=((S&&S.settings&&S.settings.fyStartMonth)||10);var em=m===1?12:m-1;var ems=String(em).padStart(2,'0');var lastDay=new Date(fy,em,0).getDate();return fy+'-'+ems+'-'+String(lastDay).padStart(2,'0');}
+function _qRangeCal(fy,q){
+  var qd=QUARTERS.find(function(x){return x.id===q;});
+  if(!qd)return [_fyStartCal(fy),_fyEndCal(fy)];
+  var firstM=qd.months[0],lastM=qd.months[2];
+  var firstY=firstM>=10?fy-1:fy,lastY=lastM>=10?fy-1:fy;
+  var lastDay=new Date(lastY,lastM,0).getDate();
+  return [firstY+'-'+String(firstM).padStart(2,'0')+'-01', lastY+'-'+String(lastM).padStart(2,'0')+'-'+String(lastDay).padStart(2,'0')];
+}
+function _fMonthsCal(fy){
+  var fsD=pD(_fyStartCal(fy)),out=[];
+  for(var i=0;i<12;i++){
+    var d=new Date(fsD.getFullYear(),fsD.getMonth()+i,1);
+    out.push({idx:i+1,ms:fD(d),me:fD(new Date(d.getFullYear(),d.getMonth()+1,0)),lb:MOIS_ABR[d.getMonth()+1]+' '+String(d.getFullYear()).slice(2)});
+  }
+  return out;
+}
+/* Les 12 périodes comptables 4-4-5 : {idx, ms, me, lb}. Libellé = mois calendaire de la
+   FIN de période (comme les feuilles du calendrier CGI : P1 = feuille « OCTOBRE », etc.). */
 function fMonths445(fy){
   var out=[];
   for(var i=1;i<=12;i++){
@@ -95,6 +117,10 @@ function fMonths445(fy){
   }
   return out;
 }
+/* — Primitives mode-aware (dispatchent selon _calMode) — */
+function fyStart(fy){return _calMode()==='cal'?_fyStartCal(fy):_ymdUTC(fy445StartMs(fy));}
+function fyEnd(fy){return _calMode()==='cal'?_fyEndCal(fy):_ymdUTC(p445EndMs(fy,12));}
+function fMonths(fy){return _calMode()==='cal'?_fMonthsCal(fy):fMonths445(fy);}
 /* Période comptable (1..12) contenant une date ISO, dans l'exercice fy — ou 0 hors bornes. */
 function p445Of(fy,iso){var arr=fMonths445(fy);for(var i=0;i<12;i++)if(iso>=arr[i].ms&&iso<=arr[i].me)return i+1;return 0;}
 function fyHols(fy){
@@ -144,10 +170,11 @@ function rebuildQuarters(){
 rebuildQuarters(); /* initialisation par défaut */
 
 
-/* Bornes ISO d'un trimestre (4-4-5) : 3 p\u00e9riodes comptables cons\u00e9cutives.
-   Q1 = P1-3 (fin ~d\u00e9c.), Q2 = P4-6, Q3 = P7-9, Q4 = P10-12 (fin d'exercice). */
+/* Bornes ISO d'un trimestre selon le mode. 445 : 3 p\u00e9riodes comptables cons\u00e9cutives
+   (Q1=P1-3 \u2026 Q4=P10-12). Calendaire : groupe de 3 mois calendaires. */
 function qRange(fy,q){
   if(!(q>=1&&q<=4))return [fyStart(fy),fyEnd(fy)];
+  if(_calMode()==='cal')return _qRangeCal(fy,q);
   return [_ymdUTC(p445StartMs(fy,3*q-2)), _ymdUTC(p445EndMs(fy,3*q))];
 }
 /* P\u00e9riode actuellement s\u00e9lectionn\u00e9e dans la barre lat\u00e9rale : ann\u00e9e enti\u00e8re si S.quarter est null,
@@ -788,7 +815,7 @@ function _kpiDataSig(){
 }
 /* Signature complète du jeu de cartes KPI courant (année + trimestre + mois fiscal + données). */
 function _ksSignature(){
-  return (S.year||0)+'|'+(S.quarter||'')+'|'+((S.settings&&S.settings.fyStartMonth)||10)+'|'+_kpiDataSig();
+  return (S.year||0)+'|'+(S.quarter||'')+'|'+_calMode()+'|'+((S.settings&&S.settings.fyStartMonth)||10)+'|'+_kpiDataSig();
 }
 function buildKS(){
   /* Cache par signature de contenu — réutilisé d'un render à l'autre tant que les

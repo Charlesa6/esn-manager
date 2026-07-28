@@ -1095,7 +1095,22 @@ function bind(){
         alert('La création de compte se fait désormais en payant les licences.\nAllez dans « Gestion des accès → Ajouter des membres » pour créer les accès (une licence par personne).');
       }
       else if(a==='open-salary-detail'){S.modal={type:'salary_detail'};render();}
+      else if(a==='cal-mode'){
+        S.calMode=(id==='cal')?'cal':'445';
+        S._ks=null;S._ksSig=null;S._prevKPI=null;S.kpiCards=null;S.companyKpis=null; /* bornes de période changées → invalider les caches */
+        render();
+        if(typeof refreshServerKpis==='function')refreshServerKpis();
+      }
       else if(a==='kpi-export'){exportKpiReport();}
+      else if(a==='report-header-cfg'){S.modal={type:'report_header',orgName:(S.settings&&S.settings.reportOrgName)||'',logo:(S.settings&&S.settings.reportLogo)||''};render();}
+      else if(a==='report-logo-clear'){if(S.modal&&S.modal.type==='report_header')S.modal.logo='';render();}
+      else if(a==='report-header-save'){
+        S.settings=S.settings||{};
+        S.settings.reportOrgName=gv('rh-org');
+        S.settings.reportLogo=(S.modal&&S.modal.logo!=null)?S.modal.logo:(S.settings.reportLogo||'');
+        if(typeof persistImportPresets==='function')persistImportPresets();
+        S.modal=null;render();
+      }
       /* ── Invites unifiés ── */
       else if(a==='seat-add-row'){
         var sfn=(gv('seat-fn')||'').trim(),sln=(gv('seat-ln')||'').trim();

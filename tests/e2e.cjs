@@ -492,6 +492,7 @@ async function newPage(browser) {
     // pour la fenêtre courante et on vérifie que la hero l'affiche, puis on remet
     // le drapeau à off (état par défaut).
     const beforeFlag = await p.evaluate(() => {
+      S.calMode = 'cal'; // l'agrégat serveur (montée en charge) est calendaire → mode calendaire pour ce bloc
       S.modal = null; S.tab = 'kpis'; render();       // ferme un éventuel modal ouvert et va sur KPIs
       return document.body.innerText;
     });
@@ -509,6 +510,7 @@ async function newPage(browser) {
 
     // Calendrier fiscal 4-4-5 (CGI) : bornes d'exercice, 12 périodes et trimestres.
     const fis = await p.evaluate(() => {
+      S.calMode = '445';
       const ends = fMonths445(2026).map(m => m.me);
       const labels = fMonths445(2026).map(m => m.lb);
       return {
@@ -526,6 +528,19 @@ async function newPage(browser) {
     check('4-4-5 : périodes libellées par mois de fin (Oct, Nov… Sept)',
       fis.labels[0].startsWith('Oct') && fis.labels[3].startsWith('Janv') && fis.labels[11].startsWith('Sept'));
     check('4-4-5 : exercice suivant décalé de 52 semaines (E2027 = 20 sept. 2026)', fis.n27 === '2026-09-20');
+
+    // Bascule 4-4-5 ⇄ calendaire : les bornes et périodes s'adaptent au mode.
+    const modes = await p.evaluate(() => {
+      S.calMode = 'cal';
+      const cal = { start: fyStart(2026), end: fyEnd(2026), q1: qRange(2026, 1)[1], m: fMonths(2026).map(x => x.me) };
+      S.calMode = '445';
+      const f445 = { start: fyStart(2026), end: fyEnd(2026), q1: qRange(2026, 1)[1], m0end: fMonths(2026)[0].me };
+      return { cal, f445 };
+    });
+    check('Calendaire : exercice = 1 oct. 2025 → 30 sept. 2026, T1 fin 31/12',
+      modes.cal.start === '2025-10-01' && modes.cal.end === '2026-09-30' && modes.cal.q1 === '2025-12-31' && modes.cal.m[0] === '2025-10-31');
+    check('Bascule : retour en 4-4-5 rebascule les bornes (fin exercice 19/09, P1 18/10)',
+      modes.f445.start === '2025-09-21' && modes.f445.end === '2026-09-19' && modes.f445.q1 === '2025-12-13' && modes.f445.m0end === '2025-10-18');
 
     // Export reporting KPIs (contrôle de gestion) : génération + réconciliation + périmètre restauré.
     const rep = await p.evaluate(() => {
@@ -549,8 +564,29 @@ async function newPage(browser) {
     check('Export reporting : HTML (synthèse + détail + CSV) et CSV bien formés', rep.htmlOk && rep.csvOk);
     check('Export reporting : périmètre de calcul restauré après génération', rep.restored);
 
+    // Export .xlsx (OOXML) : classeur zip valide ; en-tête (nom + logo) configurable.
+    const xl = await p.evaluate(() => {
+      const d = _kpiReportData();
+      const bytes = buildKpiReportXLSX(d);
+      const okSig = bytes[0] === 0x50 && bytes[1] === 0x4B && bytes[2] === 0x03 && bytes[3] === 0x04; // "PK\x03\x04"
+      const b64 = _b64(bytes);
+      return { len: bytes.length, okSig, b64ok: b64.length > 100 };
+    });
+    check('Export Excel : classeur .xlsx généré (signature zip OOXML valide)', xl.okSig && xl.len > 800 && xl.b64ok);
+    const hdr = await p.evaluate(() => {
+      S.settings = S.settings || {};
+      const bN = S.settings.reportOrgName, bL = S.settings.reportLogo;
+      S.settings.reportOrgName = 'CGI Test'; S.settings.reportLogo = 'data:image/png;base64,iVBORw0KGgo=';
+      const d = _kpiReportData(); d.csv = buildKpiReportCSV(d); d.xlsxB64 = '';
+      const html = buildKpiReportHTML(d);
+      S.settings.reportOrgName = bN; S.settings.reportLogo = bL;
+      return { org: d.orgName, hasName: /CGI Test/.test(html), hasLogo: /data:image\/png;base64,iVBORw0KGgo=/.test(html) };
+    });
+    check('En-tête reporting : nom d’organisation + logo repris dans le rapport', hdr.org === 'CGI Test' && hdr.hasName && hdr.hasLogo);
+
     // Montée en charge : pagination serveur des cartes KPI (rôle à périmètre org).
     const paged = await p.evaluate(() => {
+      S.calMode = 'cal'; // montée en charge serveur = calendaire
       var wk = (S.year || CFY) + '|' + (S.quarter || '');
       window.KPI_SERVER_AGG = true;
       S._roleBak = S.role; S.role = 'super_admin';
@@ -571,7 +607,7 @@ async function newPage(browser) {
     check('KPIs paginé : barre de pagination présente (Page 1 / 5)', /Page\s*1\s*\/\s*5/.test(paged));
     check('KPIs paginé : top clients serveur affiché', /ClientAlphaXYZ/.test(paged));
     // Restaurer l'état par défaut (drapeau off, rôle initial).
-    await p.evaluate(() => { window.KPI_SERVER_AGG = false; S.role = S._roleBak; S.kpiCards = null; render(); });
+    await p.evaluate(() => { window.KPI_SERVER_AGG = false; S.role = S._roleBak; S.kpiCards = null; S.calMode = '445'; render(); });
 
     check('aucune erreur JS fatale sur tout le parcours app', p._appErrors.length === 0, p._appErrors.join(' | '));
     await p.context().close();

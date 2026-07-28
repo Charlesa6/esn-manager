@@ -47,7 +47,7 @@ function srvRowToKS(r){
    Change dès qu'une donnée pertinente change => invalide le cache sans risque de
    valeur périmée. O(missions+congés+consultants), bien moins cher que le recalcul. */
 function _prevKpiSig(){
-  return (S.year||0)+'|'+((S.settings&&S.settings.fyStartMonth)||10)+'|'+_kpiDataSig();
+  return (S.year||0)+'|'+_calMode()+'|'+((S.settings&&S.settings.fyStartMonth)||10)+'|'+_kpiDataSig();
 }
 /* ═══════════════════════════════════════════════════════════════════════════
    EXPORT REPORTING KPIs (contrôle de gestion / vérification)
@@ -104,8 +104,11 @@ function _kpiReportData(){
       who:(((S.profileFirstName||'')+' '+(S.profileLastName||'')).trim())||S._userEmail||'—',
       perLbl:fyLbl(S.year)+(S.quarter?' · '+curRangeLbl():' (exercice complet)'),
       perDates:fDt(rng[0])+' → '+fDt(rng[1]),
+      mode:_calMode()==='cal'?'Calendaire':'Comptable 4-4-5',
       genAt:(new Date()).toLocaleString('fr-FR'),
       fileStamp:fD(new Date()),
+      orgName:(S.settings&&S.settings.reportOrgName)||'',
+      logo:(S.settings&&S.settings.reportLogo)||'',
       agg:{avgSr:avgSr,totR:totR,totBill:totBill,avgM:omArr.length?omArr.reduce(function(s,v){return s+v;},0)/omArr.length:null,
         avgTJM:totBill>0?totR/totBill:0,totSalary:totSalary,netC:totR-totSalary,nCons:ks.length,pipe:pipe},
       buRows:buRows,missRows:missRows
@@ -121,6 +124,7 @@ function buildKpiReportCSV(d){
   L.push('Reporting KPIs - Konsilys');
   L.push('Périmètre;'+_csvCell(d.scope));
   L.push('Période;'+_csvCell(d.perLbl+' ('+d.perDates+')'));
+  L.push('Calendrier;'+_csvCell(d.mode));
   L.push('Généré le;'+_csvCell(d.genAt)+';par;'+_csvCell(d.who));
   L.push('');L.push('SYNTHÈSE (chiffres sécurisés)');
   L.push('Taux de staffing (%);'+a.avgSr.toFixed(1));
@@ -142,6 +146,86 @@ function buildKpiReportCSV(d){
       Math.round(r.btype==='forfait'?r.deal:r.tjm),(r.sd||''),(r.ed||''),r.days,Math.round(r.ca),Math.round(r.cost),r.mar.toFixed(1)].join(';'));
   });
   return '﻿'+L.join('\r\n');
+}
+
+/* ── Générateur .xlsx (OOXML) sans dépendance : zip « store » + CRC32 ── */
+var _CRC32T=(function(){var t=new Array(256);for(var n=0;n<256;n++){var c=n;for(var k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);t[n]=c>>>0;}return t;})();
+function _crc32(u8){var c=0xFFFFFFFF;for(var i=0;i<u8.length;i++)c=_CRC32T[(c^u8[i])&0xFF]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
+function _u8(s){return new TextEncoder().encode(s);}
+function _zipStore(files){
+  function u16(n){return [n&255,(n>>>8)&255];}function u32(n){return [n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255];}
+  var parts=[],cd=[],off=0;
+  files.forEach(function(f){
+    var nm=_u8(f.name),dt=f.data,crc=_crc32(dt);
+    var lh=[].concat(u32(0x04034b50),u16(20),u16(0),u16(0),u16(0),u16(0),u32(crc),u32(dt.length),u32(dt.length),u16(nm.length),u16(0));
+    parts.push(new Uint8Array(lh),nm,dt);
+    cd.push({h:new Uint8Array([].concat(u32(0x02014b50),u16(20),u16(20),u16(0),u16(0),u16(0),u16(0),u32(crc),u32(dt.length),u32(dt.length),u16(nm.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(off))),n:nm});
+    off+=lh.length+nm.length+dt.length;
+  });
+  var cdBytes=[],cdSize=0;cd.forEach(function(c){cdBytes.push(c.h,c.n);cdSize+=c.h.length+c.n.length;});
+  var eocd=new Uint8Array([].concat(u32(0x06054b50),u16(0),u16(0),u16(cd.length),u16(cd.length),u32(cdSize),u32(off),u16(0)));
+  var all=parts.concat(cdBytes).concat([eocd]);
+  var total=all.reduce(function(s,a){return s+a.length;},0),out=new Uint8Array(total),p=0;
+  all.forEach(function(a){out.set(a,p);p+=a.length;});
+  return out;
+}
+function _b64(u8){var s='',CH=0x8000;for(var i=0;i<u8.length;i+=CH)s+=String.fromCharCode.apply(null,u8.subarray(i,i+CH));return btoa(s);}
+function _xesc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function _xcol(i){var s='';i++;while(i>0){var m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26);}return s;}
+function _xSheet(rows){
+  var body='';
+  for(var r=0;r<rows.length;r++){var cells=rows[r]||[],rc='';
+    for(var c=0;c<cells.length;c++){var cell=cells[c];if(cell==null)continue;
+      var ref=_xcol(c)+(r+1),st=cell.s?' s="'+cell.s+'"':'';
+      if(cell.t==='s')rc+='<c r="'+ref+'" t="inlineStr"'+st+'><is><t xml:space="preserve">'+_xesc(cell.v)+'</t></is></c>';
+      else rc+='<c r="'+ref+'"'+st+'><v>'+(isFinite(cell.v)?cell.v:0)+'</v></c>';
+    }
+    body+='<row r="'+(r+1)+'">'+rc+'</row>';
+  }
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>'+body+'</sheetData></worksheet>';
+}
+var _XCT='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>';
+var _XRELS='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
+var _XWB='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Synthèse" sheetId="1" r:id="rId1"/><sheet name="Par unité" sheetId="2" r:id="rId2"/><sheet name="Missions" sheetId="3" r:id="rId3"/></sheets></workbook>';
+var _XWBRELS='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>';
+var _XSTYLES='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0&quot; €&quot;"/><numFmt numFmtId="165" formatCode="0.0&quot;%&quot;"/></numFmts><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF14202B"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="2" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+function buildKpiReportXLSX(d){
+  var a=d.agg;
+  var S1=[
+    [{v:(d.orgName?d.orgName+' — ':'')+'Reporting KPIs — '+d.scope,t:'s',s:1}],
+    [{v:'Période',t:'s'},{v:d.perLbl+' ('+d.perDates+')',t:'s'}],
+    [{v:'Calendrier',t:'s'},{v:d.mode,t:'s'}],
+    [{v:'Généré le',t:'s'},{v:d.genAt+' par '+d.who,t:'s'}],
+    [],
+    [{v:'SYNTHÈSE (chiffres sécurisés)',t:'s',s:4},{v:'',t:'s',s:4}],
+    [{v:'Taux de staffing',t:'s'},{v:+a.avgSr.toFixed(1),t:'n',s:3}],
+    [{v:'CA sécurisé',t:'s'},{v:Math.round(a.totR),t:'n',s:2}],
+    [{v:'Marge moyenne',t:'s'},{v:a.avgM!=null?+a.avgM.toFixed(1):0,t:'n',s:3}],
+    [{v:'Contribution nette',t:'s'},{v:Math.round(a.netC),t:'n',s:2}],
+    [{v:'Coût salarial (période)',t:'s'},{v:Math.round(a.totSalary),t:'n',s:2}],
+    [{v:'TJM moyen',t:'s'},{v:Math.round(a.avgTJM),t:'n',s:2}],
+    [{v:'Effectif (consultants)',t:'s'},{v:a.nCons,t:'n'}],
+    [{v:'Jours facturés',t:'s'},{v:Math.round(a.totBill),t:'n'}],
+    [{v:'Pipeline pondéré (indicatif)',t:'s'},{v:Math.round(a.pipe),t:'n',s:2}]
+  ];
+  var S2=[[{v:'Unité',t:'s',s:4},{v:'CA sécurisé',t:'s',s:4},{v:'Coût',t:'s',s:4},{v:'Marge nette',t:'s',s:4}]];
+  d.buRows.forEach(function(r){S2.push([{v:r.unit,t:'s'},{v:Math.round(r.ca),t:'n',s:2},{v:Math.round(r.cost),t:'n',s:2},{v:r.marge!=null?+r.marge.toFixed(1):0,t:'n',s:3}]);});
+  var hd=['Consultant','Unité','Client','Mission','Type','TJM/Deal','Début','Fin','Jours','CA','Coût','Marge'];
+  var S3=[hd.map(function(h){return {v:h,t:'s',s:4};})];
+  var tD=0,tC=0,tCo=0;
+  d.missRows.forEach(function(r){tD+=r.days;tC+=r.ca;tCo+=r.cost;
+    S3.push([{v:r.cons,t:'s'},{v:r.unit,t:'s'},{v:r.cli,t:'s'},{v:r.name,t:'s'},{v:r.btype==='forfait'?'Forfait':'AT',t:'s'},{v:Math.round(r.btype==='forfait'?r.deal:r.tjm),t:'n',s:2},{v:r.sd||'',t:'s'},{v:r.ed||'',t:'s'},{v:r.days,t:'n'},{v:Math.round(r.ca),t:'n',s:2},{v:Math.round(r.cost),t:'n',s:2},{v:+r.mar.toFixed(1),t:'n',s:3}]);});
+  S3.push([{v:'TOTAL',t:'s',s:1},null,null,null,null,null,null,null,{v:tD,t:'n',s:1},{v:Math.round(tC),t:'n',s:2},{v:Math.round(tCo),t:'n',s:2},{v:tC>0?+((tC-tCo)/tC*100).toFixed(1):0,t:'n',s:3}]);
+  return _zipStore([
+    {name:'[Content_Types].xml',data:_u8(_XCT)},
+    {name:'_rels/.rels',data:_u8(_XRELS)},
+    {name:'xl/workbook.xml',data:_u8(_XWB)},
+    {name:'xl/_rels/workbook.xml.rels',data:_u8(_XWBRELS)},
+    {name:'xl/styles.xml',data:_u8(_XSTYLES)},
+    {name:'xl/worksheets/sheet1.xml',data:_u8(_xSheet(S1))},
+    {name:'xl/worksheets/sheet2.xml',data:_u8(_xSheet(S2))},
+    {name:'xl/worksheets/sheet3.xml',data:_u8(_xSheet(S3))}
+  ]);
 }
 function buildKpiReportHTML(d){
   var a=d.agg;
@@ -194,20 +278,36 @@ function buildKpiReportHTML(d){
     +'.scroll{overflow-x:auto}'
     +'@media print{.bar{display:none}body{background:#fff}.wrap{max-width:100%;padding:0}.c,table,.hd{break-inside:avoid}}'
     +'</style></head><body><div class="wrap">'
-    +'<div class="bar"><button class="p" onclick="window.print()">🖨 Imprimer / PDF</button><button onclick="dlCSV()">⬇ Télécharger le CSV</button><button onclick="window.close()">Fermer</button></div>'
-    +'<div class="hd"><div class="k">Konsilys · Reporting KPIs — contrôle de gestion</div>'
+    +'<div class="bar"><button class="p" onclick="window.print()">🖨 Imprimer / PDF</button><button onclick="dlXLSX()">⬇ Excel (.xlsx)</button><button onclick="dlCSV()">⬇ CSV</button><button onclick="window.close()">Fermer</button></div>'
+    +'<div class="hd">'
+    +(d.logo?'<img src="'+esc(d.logo)+'" alt="" style="max-height:46px;max-width:210px;float:right;background:#fff;border-radius:6px;padding:5px 8px">':'')
+    +'<div class="k">'+(d.orgName?esc(d.orgName)+' · ':'')+'Reporting KPIs — contrôle de gestion</div>'
     +'<h1>'+esc(d.scope)+' — '+esc(d.perLbl)+'</h1>'
-    +'<div class="meta"><span>Période : <b>'+esc(d.perDates)+'</b></span><span>Généré le <b>'+esc(d.genAt)+'</b></span><span>Par <b>'+esc(d.who)+'</b></span></div></div>'
+    +'<div class="meta"><span>Période : <b>'+esc(d.perDates)+'</b></span><span>Calendrier : <b>'+esc(d.mode)+'</b></span><span>Généré le <b>'+esc(d.genAt)+'</b></span><span>Par <b>'+esc(d.who)+'</b></span></div></div>'
     +'<h2>Synthèse — chiffres sécurisés</h2><div class="grid">'+syn+'</div>'
     +'<h2>Consolidation par unité</h2><div class="scroll"><table><thead><tr><th>Unité</th><th class="r">CA sécurisé</th><th class="r">Coût</th><th class="r">Marge nette</th></tr></thead><tbody>'+buT+'</tbody></table></div>'
     +'<h2>Prévisionnel (indicatif)</h2><div class="prev">Pipeline pondéré sur la période : <b>'+money(a.pipe)+'</b> — opportunités ouvertes × probabilité, proratisées sur le recouvrement. Repère prévisionnel, hors chiffres sécurisés ci-dessus.</div>'
     +'<h2>Détail des missions sur la période</h2><div class="scroll"><table><thead><tr><th>Consultant</th><th>Unité</th><th>Client — Mission</th><th>Type</th><th class="r">TJM / Deal</th><th class="r">Début</th><th class="r">Fin</th><th class="r">Jours</th><th class="r">CA</th><th class="r">Coût</th><th class="r">Marge</th></tr></thead><tbody>'+mT+tot+'</tbody></table></div>'
+    +'<div style="text-align:right;font-size:11px;color:var(--mut);margin-top:18px">Généré via Konsilys · konsilys.fr</div>'
     +'<div class="note"><b>Note méthodologique (vérification).</b> Périmètre : données visibles par le demandeur (cloisonnement BU + rôle). Jours = jours ouvrés facturés sur la période (hors fériés/congés), réalisé validé (CRA approuvé) prioritaire sur le plan. CA = jours × TJM (AT) ou deal proraté aux jours (forfait). Coût = jours × SCR × 1,25 (charges patronales ; ×1 pour freelance). Marge mission = (CA − coût) ⁄ CA. Coût salarial (synthèse) = SCR × '+SCR_FACTOR+' × 1,25 proraté à la présence sur l’exercice. Contribution nette = CA − coût salarial. Taux de staffing = (jours facturés + absences hors inter-contrat) ⁄ jours ouvrés, pondéré. Périodes selon le calendrier fiscal 4-4-5.</div>'
-    +'</div><script>var CSV='+JSON.stringify(d.csv)+';function dlCSV(){try{var b=new Blob([CSV],{type:"text/csv;charset=utf-8"});var u=URL.createObjectURL(b);var a=document.createElement("a");a.href=u;a.download="reporting-konsilys-'+d.fileStamp+'.csv";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(u);}catch(e){alert("Export CSV indisponible.");}}<\/script></body></html>';
+    +'</div><script>var CSV='+JSON.stringify(d.csv)+',XLSXB64='+JSON.stringify(d.xlsxB64||'')+';'
+    +'function _dl(blob,name){var u=URL.createObjectURL(blob);var a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(u);}'
+    +'function dlCSV(){try{_dl(new Blob([CSV],{type:"text/csv;charset=utf-8"}),"reporting-konsilys-'+d.fileStamp+'.csv");}catch(e){alert("Export CSV indisponible.");}}'
+    +'function dlXLSX(){try{var bin=atob(XLSXB64),u=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);_dl(new Blob([u],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),"reporting-konsilys-'+d.fileStamp+'.xlsx");}catch(e){alert("Export Excel indisponible.");}}'
+    +'<\/script></body></html>';
+}
+/* Sélection du logo pour l'en-tête du reporting → lu en data URI, stocké sur le modal. */
+function reportLogoPick(input){
+  var f=input&&input.files&&input.files[0];if(!f)return;
+  if(f.size>400000){alert('Logo trop lourd (max ~400 Ko). Choisissez une image plus légère.');input.value='';return;}
+  var rd=new FileReader();
+  rd.onload=function(){if(S.modal&&S.modal.type==='report_header'){S.modal.logo=rd.result;render();}};
+  rd.readAsDataURL(f);
 }
 function exportKpiReport(){
   var d=_kpiReportData();
   d.csv=buildKpiReportCSV(d);
+  try{d.xlsxB64=_b64(buildKpiReportXLSX(d));}catch(e){d.xlsxB64='';console.warn('xlsx:',e);}
   var html=buildKpiReportHTML(d);
   var w=null;try{w=window.open('','_blank');}catch(e){}
   if(w&&w.document){w.document.open();w.document.write(html);w.document.close();return;}
@@ -226,8 +326,11 @@ function tKPIs(){
      le périmètre == l'org entier (admin / super_admin). Les rôles à périmètre
      restreint (gestionnaire…) gardent le calcul local filtré — le périmètre serveur
      par rôle est une brique ultérieure (chargement au périmètre utilisateur). */
-  var _srvCards=serverKpiCards();
-  var _srvAgg=serverCompanyKpis();
+  /* L'agrégat serveur (montée en charge) est calculé en calendaire ; en mode 4-4-5
+     on force le calcul local pour rester cohérent avec les bornes de période. */
+  var _calM=_calMode();
+  var _srvCards=_calM==='cal'?serverKpiCards():null;
+  var _srvAgg=_calM==='cal'?serverCompanyKpis():null;
   var _fullScope=(S.role==='admin'||S.role==='super_admin');
   var _useCards=!!(_srvCards&&_srvAgg&&_fullScope);
   var ks=_useCards?_srvCards.rows.map(srvRowToKS):buildKS();
@@ -468,8 +571,12 @@ function tKPIs(){
   return '<div class="vw">'
     +'<div style="margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">'
     +'<div class="pt">KPIs &mdash; '+fyLbl(S.year)+(S.quarter?' \u00b7 '+curRangeLbl():'')+'</div>'
-    +'<button class="bg" data-act="kpi-export" title="Reporting imprimable (PDF) + CSV, au p\u00e9rim\u00e8tre et \u00e0 la p\u00e9riode s\u00e9lectionn\u00e9s">\ud83d\udcc4 Exporter le reporting</button>'
-    +'</div>'
+    +'<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'
+    +(function(){var m=_calMode();function seg(id,lb,tip){var on=m===id;return '<button data-act="cal-mode" data-id="'+id+'" title="'+tip+'" style="font-size:12px;font-weight:700;padding:6px 12px;border:1px solid '+(on?'#1B2B3A':'#e2e8f0')+';background:'+(on?'#1B2B3A':'#fff')+';color:'+(on?'#fff':'#475569')+';cursor:pointer">'+lb+'</button>';}
+      return '<div style="display:inline-flex;border-radius:8px;overflow:hidden" role="group" aria-label="Mode de calendrier">'+seg('445','4-4-5','P\u00e9riodes comptables CGI (fins de p\u00e9riode)')+seg('cal','Calendaire','Mois et trimestres calendaires')+'</div>';})()
+    +'<button class="bg" data-act="kpi-export" title="Reporting imprimable (PDF) + Excel/CSV, au p\u00e9rim\u00e8tre et \u00e0 la p\u00e9riode s\u00e9lectionn\u00e9s">\ud83d\udcc4 Exporter le reporting</button>'
+    +'<button class="bg" data-act="report-header-cfg" title="Personnaliser l\u2019en-t\u00eate du reporting (nom, logo)" style="padding:6px 10px">\u2699\ufe0f</button>'
+    +'</div></div>'
     +hero
     +tForecastSection()
     /* Graphe « Staffing par consultant » retiré : illisible dès qu'il y a beaucoup
@@ -508,7 +615,7 @@ function tForecastSection(){
      choisi, les périodes hors trimestre restent affichées mais grisées (inPeriod=false). */
   var qDef=S.quarter?QUARTERS.find(function(q){return q.id===S.quarter;}):null;
   var qPer=qDef?qDef.periods:null;
-  var months=fMonths445(S.year).map(function(mo){
+  var months=fMonths(S.year).map(function(mo){
     return {ms:mo.ms,me:mo.me,sec:0,secCost:0,weighted:0,
       inPeriod:!qPer||qPer.indexOf(mo.idx)>=0,
       isPast:mo.me<TODAY, isCurrent:mo.ms<=TODAY&&TODAY<=mo.me,
