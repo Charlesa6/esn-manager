@@ -160,7 +160,7 @@ function recListRefresh(){
 function tRecList(){
   return '<div>'+recTabsBar()+'<div class="ph"><div><div class="pt">Recrutement</div>'
     +'<div class="ps">'+S.cands.length+' candidat'+(S.cands.length!==1?'s':'')+' · pipeline partagé de toute l\'entreprise — chaque recruteur voit et filtre l\'ensemble des candidats</div></div>'
-    +'<button class="bp" data-act="arec">+ Nouveau candidat</button></div>'
+    +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="bg" data-act="import2-open" data-id="candidate" title="Importer des candidats depuis un fichier Excel ou CSV">📥 Importer</button><button class="bp" data-act="arec">+ Nouveau candidat</button></div></div>'
     +'<div style="margin-bottom:10px"><input class="ic" id="recq" placeholder="Rechercher un candidat, une expertise, un email..." value="'+esc(S.recF.q||'')+'" style="max-width:360px"></div>'
     +'<div id="rec-list-wrap">'+recListBody()+'</div></div>';
 }
@@ -1068,6 +1068,12 @@ function tModal(){
     wide=true;
     title='📥 Importer des consultants';
     body=tImportConsBody();
+  }
+  /* ── Modal import générique (candidats / opportunités) ── */
+  if(tp==='import2'){
+    wide=true;
+    title=(typeof _impSpec==='function'?_impSpec().title:'📥 Importer');
+    body=tImport2Body();
   }
   /* ── Time Sheet : pop-up cohérence congé (à la saisie d'un jour « Congé ») ── */
   if(tp==='ts_leavecheck'){

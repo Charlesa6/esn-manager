@@ -543,9 +543,12 @@ function tBusiness(){
 
   function addBtn(){
     var labels={pipeline:'+ Opportunité',comptes:'+ Compte',contacts:'+ Contact',activites:'+ Activité',kpis_biz:''};
-    var lb=labels[S.bizTab||'pipeline']||'';
-    if(!lb)return '';
-    return '<button class="bp" data-act="biz-new" style="white-space:nowrap">'+lb+'</button>';
+    var tab=S.bizTab||'pipeline';
+    var lb=labels[tab]||'';
+    /* Import d'opportunités disponible sur le Pipeline (hors rôle utilisateur, qui passe par approbation). */
+    var imp=(tab==='pipeline'&&S.role!=='utilisateur')?'<button class="bg" data-act="import2-open" data-id="opportunity" style="white-space:nowrap" title="Importer des opportunités depuis un fichier Excel ou CSV">📥 Importer</button>':'';
+    if(!lb&&!imp)return '';
+    return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+imp+(lb?'<button class="bp" data-act="biz-new" style="white-space:nowrap">'+lb+'</button>':'')+'</div>';
   }
 }
 

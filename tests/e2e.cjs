@@ -610,6 +610,74 @@ async function newPage(browser) {
     check('Charte reporting : couleur CGI reprise dans le HTML (en-tête/boutons/tableaux)', brand.brandCgi && brand.htmlBrand);
     check('Charte reporting : couleur CGI reprise dans le remplissage d’en-tête .xlsx', brand.xlsxFill);
 
+    // Import générique — Candidats : modèle .xlsx, auto-mapping, dédoublonnage, commit.
+    const impC = await p.evaluate(() => {
+      // Modèle .xlsx (zip OOXML valide, en-tête + exemple)
+      var tpl = _impXlsxTemplate('Candidats', IMPORT_SPECS.candidate.fields.map(f => f.lb), IMPORT_SPECS.candidate.example);
+      var tplOk = tpl[0] === 0x50 && tpl[1] === 0x4B && tpl.length > 500;
+      // Auto-mapping sur en-têtes libres
+      var headers = ['Nom', 'E-mail', 'Compétences', 'Statut', 'Ville'];
+      var am = _impAutoMap(headers, IMPORT_SPECS.candidate.fields);
+      var mapOk = am.name === 0 && am.email === 1 && am.expertise === 2 && am.status === 3 && am.location === 4;
+      // Simule un fichier chargé : 3 lignes dont 1 doublon (même email qu'un candidat existant) et 1 sans nom
+      var before = S.cands.length;
+      var dupEmail = (S.cands[0] && S.cands[0].email) || 'dup@exists.test';
+      if (!S.cands[0] || !S.cands[0].email) { S.cands = S.cands.concat([{ id: 'x', name: 'Exist', email: dupEmail }]); }
+      S.imp2 = { kind: 'candidate', file: 't.xlsx', headers: headers,
+        raw: [['Alice Nouvelle', 'alice@new.test', 'Java;Python', 'A rencontrer RH', 'Lyon'],
+              ['Bob Doublon', dupEmail, 'Go', 'Pipe', 'Paris'],
+              ['', 'noname@x.test', '', '', '']],
+        map: am, rows: [], step: 'map', results: null };
+      applyImport2Map();
+      var rows = S.imp2.rows;
+      var nNew = rows.filter(o => !o._invalid && !o._dup).length;
+      var nDup = rows.filter(o => o._dup).length;
+      var nInv = rows.filter(o => o._invalid).length;
+      var alice = rows.find(o => o.name === 'Alice Nouvelle');
+      var parseOk = alice && alice.status === 'rh_a' && alice.expertise.length === 2 && alice.locTarget === 'Lyon';
+      return { tplOk, mapOk, nNew, nDup, nInv, parseOk, before };
+    });
+    check('Import candidats : modèle .xlsx généré (signature zip OOXML)', impC.tplOk);
+    check('Import candidats : colonnes libres auto-mappées (Nom/E-mail/Compétences/Statut/Ville)', impC.mapOk);
+    check('Import candidats : aperçu = 1 nouveau, 1 doublon, 1 invalide', impC.nNew === 1 && impC.nDup === 1 && impC.nInv === 1);
+    check('Import candidats : parsing (statut résolu, expertises listées, localisation)', impC.parseOk);
+
+    // Import Candidats — commit (offline : mutation de S.cands, sbUpsertCand no-op sans sb).
+    const impCc = await p.evaluate(() => {
+      var before = S.cands.length;
+      return Promise.resolve(commitImport2()).then(() => new Promise(r => setTimeout(r, 30))).then(() => {
+        return { added: S.cands.length - before, step: S.imp2 && S.imp2.step, ok: S.imp2 && S.imp2.results && S.imp2.results.ok };
+      });
+    });
+    check('Import candidats : commit ajoute le candidat valide à S.cands', impCc.added === 1 && impCc.ok === 1);
+
+    // Import générique — Opportunités : mapping, résolution/création de compte client, commit.
+    const impO = await p.evaluate(() => {
+      var headers = ['Affaire', 'Client', 'Statut', 'TJM', 'Probabilité'];
+      var am = _impAutoMap(headers, IMPORT_SPECS.opportunity.fields);
+      var mapOk = am.name === 0 && am.client === 1 && am.status === 2 && am.tjm_cible === 3 && am.probability === 4;
+      var accBefore = S.bizAccounts.length, oppBefore = S.bizOpps.length;
+      var newClient = 'ClientImportTest ' + accBefore; // sûrement absent
+      S.imp2 = { kind: 'opportunity', file: 'o.xlsx', headers: headers,
+        raw: [['Grande affaire', newClient, 'Qualification', '650', '40']],
+        map: am, rows: [], step: 'map', results: null };
+      applyImport2Map();
+      var o0 = S.imp2.rows[0];
+      var parseOk = o0 && o0.status === 'qualification' && o0.tjm_cible === 650 && o0.probability === 40 && o0._client === newClient;
+      return Promise.resolve(commitImport2()).then(() => new Promise(r => setTimeout(r, 40))).then(() => {
+        var acc = S.bizAccounts.find(a => a.name === newClient);
+        var opp = S.bizOpps.find(o => o.name === 'Grande affaire');
+        return { mapOk, parseOk,
+          accCreated: !!acc,
+          oppLinked: !!(opp && acc && opp.account_id === acc.id),
+          accAdded: S.bizAccounts.length - accBefore, oppAdded: S.bizOpps.length - oppBefore };
+      });
+    });
+    check('Import opportunités : colonnes libres auto-mappées (Affaire/Client/Statut/TJM/Proba)', impO.mapOk);
+    check('Import opportunités : parsing (statut, TJM, probabilité, client)', impO.parseOk);
+    check('Import opportunités : compte client absent créé automatiquement', impO.accCreated && impO.accAdded === 1);
+    check('Import opportunités : opportunité rattachée au compte créé', impO.oppLinked && impO.oppAdded === 1);
+
     // Montée en charge : pagination serveur des cartes KPI (rôle à périmètre org).
     const paged = await p.evaluate(() => {
       S.calMode = 'cal'; // montée en charge serveur = calendaire

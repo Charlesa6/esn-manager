@@ -1094,6 +1094,13 @@ function bind(){
       else if(a==='bulk-invite-open'||a==='bulk-invite-send'||a==='import-cons-invite'){
         alert('La création de compte se fait désormais en payant les licences.\nAllez dans « Gestion des accès → Ajouter des membres » pour créer les accès (une licence par personne).');
       }
+      /* ── Import générique (candidats / opportunités) ── */
+      else if(a==='import2-open'){openImport2(id||'candidate');}
+      else if(a==='import2-tpl'){downloadImport2Template();}
+      else if(a==='import2-map'){applyImport2Map();}
+      else if(a==='import2-back'){import2Back();}
+      else if(a==='import2-commit'){commitImport2();}
+      else if(a==='import2-cancel'){import2Cancel();}
       else if(a==='open-salary-detail'){S.modal={type:'salary_detail'};render();}
       else if(a==='cal-mode'){
         S.calMode=(id==='cal')?'cal':'445';
