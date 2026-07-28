@@ -63,18 +63,40 @@ var HOLS_N=['Jour de l\u2019An','Lundi de P\u00e2ques','F\u00eate du Travail','V
    FISCAL YEAR  (1 oct \u2192 30 sept)
    FY26 = 1 oct 2025 \u2192 30 sept 2026
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
-function fyStart(fy){
-  var m=((S&&S.settings&&S.settings.fyStartMonth)||10);
-  var ms=String(m).padStart(2,'0');
-  var sy=(m===1)?fy:(fy-1); /* FY janvier = même année; sinon année précédente */
-  return sy+'-'+ms+'-01';
+/* ═══ CALENDRIER FISCAL 4-4-5 (CGI) ═══
+   L'exercice est découpé en 12 PÉRIODES comptables (« mois ») bornées par les
+   « fins de période » du calendrier CGI — toujours un samedi (cases rouges). La
+   durée des périodes suit le motif FIXE 4-4-4-5-4-5-4-4-5-4-5-4 semaines (52 sem.).
+   Ancrage : E2026 démarre le dimanche 21 sept. 2025 (Wk01) et finit le samedi
+   19 sept. 2026. Les autres exercices sont décalés d'un pas de 52 semaines depuis
+   cet ancrage (⚠ les rares exercices à 53 semaines nécessiteraient leur propre
+   calendrier). Un TRIMESTRE = 3 périodes consécutives (Q1=P1-3 … Q4=P10-12).
+   Réf. : calendrier « E2026 SBU Europe de l'Ouest et du Sud ». */
+var FY445_ANCHOR_FY=2026;
+var FY445_ANCHOR_MS=Date.UTC(2025,8,21);         /* dim. 21 sept. 2025 (mois 8 = sept.) */
+var FY445_WEEKS=[4,4,4,5,4,5,4,4,5,4,5,4];       /* semaines par période (total 52) */
+var _DAYMS=86400000;
+function _ymdUTC(ms){var d=new Date(ms);return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');}
+function fy445StartMs(fy){return FY445_ANCHOR_MS+(fy-FY445_ANCHOR_FY)*52*7*_DAYMS;}
+/* Début (dimanche) de la période idx (1..12). */
+function p445StartMs(fy,idx){var cum=0;for(var i=0;i<idx-1;i++)cum+=FY445_WEEKS[i];return fy445StartMs(fy)+cum*7*_DAYMS;}
+/* Fin (samedi, case rouge) de la période idx (1..12). */
+function p445EndMs(fy,idx){var cum=0;for(var i=0;i<idx;i++)cum+=FY445_WEEKS[i];return fy445StartMs(fy)+(cum*7-1)*_DAYMS;}
+function fyStart(fy){return _ymdUTC(fy445StartMs(fy));}
+function fyEnd(fy){return _ymdUTC(p445EndMs(fy,12));}
+/* Les 12 périodes comptables d'un exercice : {idx, ms, me, lb}. Le libellé prend le
+   nom du mois calendaire de la FIN de période (comme les feuilles du calendrier CGI :
+   la période P1 vit sur la feuille « OCTOBRE », etc.). */
+function fMonths445(fy){
+  var out=[];
+  for(var i=1;i<=12;i++){
+    var s=_ymdUTC(p445StartMs(fy,i)),e=_ymdUTC(p445EndMs(fy,i));
+    out.push({idx:i,ms:s,me:e,lb:MOIS_ABR[(+e.slice(5,7))]+' '+e.slice(2,4)});
+  }
+  return out;
 }
-function fyEnd(fy){
-  var m=((S&&S.settings&&S.settings.fyStartMonth)||10);
-  var em=m===1?12:m-1;var ems=String(em).padStart(2,'0');
-  var lastDay=new Date(fy,em,0).getDate(); /* dernier jour du mois em de l'année fy */
-  return fy+'-'+ems+'-'+String(lastDay).padStart(2,'0');
-}
+/* Période comptable (1..12) contenant une date ISO, dans l'exercice fy — ou 0 hors bornes. */
+function p445Of(fy,iso){var arr=fMonths445(fy);for(var i=0;i<12;i++)if(iso>=arr[i].ms&&iso<=arr[i].me)return i+1;return 0;}
 function fyHols(fy){
   var h1=frHols(fy-1),h2=frHols(fy),c=new Set();
   h1.forEach(function(d){c.add(d);});
@@ -83,15 +105,15 @@ function fyHols(fy){
 }
 function currentFY(){
   var d=new Date();
-  var cm=d.getMonth()+1;
-  var fm=((S&&S.settings&&S.settings.fyStartMonth)||10);
-  if(fm===1)return d.getFullYear();
-  return cm>=fm?d.getFullYear()+1:d.getFullYear();
+  var t=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  var y=d.getFullYear();
+  for(var fy=y-1;fy<=y+2;fy++){if(t>=fyStart(fy)&&t<=fyEnd(fy))return fy;}
+  return (t<fyStart(y))?y:y+1; /* repli : avant le début de l'exercice y → y, sinon y+1 */
 }
 var CFY=currentFY(); /* recalculé après chargement des settings dans loadSB */
 var TODAY=(function(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}());
 function fyLbl(fy){return 'FY'+String(fy).slice(2);}
-function fyRange(fy){return 'oct. '+(fy-1)+' \u2192 sept. '+fy;}
+function fyRange(fy){return fDt(fyStart(fy))+' \u2192 '+fDt(fyEnd(fy));}  /* bornes r\u00e9elles 4-4-5 */
 
 /* \u2550\u2550\u2550 TRIMESTRES FISCAUX : Q1=Oct-D\u00e9c, Q2=Janv-Mars, Q3=Avr-Juin, Q4=Juil-Sept \u2550\u2550\u2550 */
 /* QUARTERS : recalculé dynamiquement selon fyStartMonth (via rebuildQuarters()) */
@@ -115,23 +137,18 @@ function rebuildQuarters(){
     {id:4,lb:'T4',months:[ms[9],ms[10],ms[11]]}
   ];
   QUARTERS.forEach(function(q){
+    q.periods=[3*q.id-2,3*q.id-1,3*q.id]; /* 4-4-5 : indices des 3 p\u00e9riodes comptables du trimestre */
     q.lbFull=q.lb+' ('+MOIS_ABR[q.months[0]]+'\u2013'+MOIS_ABR[q.months[2]]+')';
   });
 }
 rebuildQuarters(); /* initialisation par défaut */
 
 
-/* Bornes ISO d'un trimestre donn\u00e9 \u00e0 l'int\u00e9rieur d'un exercice fiscal fy */
+/* Bornes ISO d'un trimestre (4-4-5) : 3 p\u00e9riodes comptables cons\u00e9cutives.
+   Q1 = P1-3 (fin ~d\u00e9c.), Q2 = P4-6, Q3 = P7-9, Q4 = P10-12 (fin d'exercice). */
 function qRange(fy,q){
-  var qd=QUARTERS.find(function(x){return x.id===q;});
-  if(!qd)return [fyStart(fy),fyEnd(fy)];
-  var firstM=qd.months[0],lastM=qd.months[2];
-  var firstY=firstM>=10?fy-1:fy;
-  var lastY=lastM>=10?fy-1:fy;
-  var lastDay=new Date(lastY,lastM,0).getDate();
-  var s=firstY+'-'+String(firstM).padStart(2,'0')+'-01';
-  var e=lastY+'-'+String(lastM).padStart(2,'0')+'-'+String(lastDay).padStart(2,'0');
-  return [s,e];
+  if(!(q>=1&&q<=4))return [fyStart(fy),fyEnd(fy)];
+  return [_ymdUTC(p445StartMs(fy,3*q-2)), _ymdUTC(p445EndMs(fy,3*q))];
 }
 /* P\u00e9riode actuellement s\u00e9lectionn\u00e9e dans la barre lat\u00e9rale : ann\u00e9e enti\u00e8re si S.quarter est null,
    sinon born\u00e9e au trimestre choisi. Utilis\u00e9e par Dashboard / KPIs / Absences. */

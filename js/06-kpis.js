@@ -334,17 +334,16 @@ function tForecastSection(){
   /* Fenêtre = exercice fiscal sélectionné (S.year). Si un trimestre est choisi, les
      mois hors trimestre restent affichés mais grisés (inPeriod=false). Un mois
      entièrement écoulé (isPast) compte comme CA réalisé, sans pipeline pondéré. */
-  var fsD=pD(fyStart(S.year));
+  /* Périodes comptables 4-4-5 (12) au lieu des mois calendaires. Si un trimestre est
+     choisi, les périodes hors trimestre restent affichées mais grisées (inPeriod=false). */
   var qDef=S.quarter?QUARTERS.find(function(q){return q.id===S.quarter;}):null;
-  var months=[];
-  for(var i=0;i<HN;i++){
-    var d=new Date(fsD.getFullYear(),fsD.getMonth()+i,1);
-    var meS=fD(new Date(d.getFullYear(),d.getMonth()+1,0)), msS=fD(d);
-    months.push({ms:msS,me:meS,sec:0,secCost:0,weighted:0,
-      inPeriod:!qDef||qDef.months.indexOf(d.getMonth()+1)>=0,
-      isPast:meS<TODAY, isCurrent:msS<=TODAY&&TODAY<=meS,
-      lb:MLB[d.getMonth()]+' '+String(d.getFullYear()).slice(2)});
-  }
+  var qPer=qDef?qDef.periods:null;
+  var months=fMonths445(S.year).map(function(mo){
+    return {ms:mo.ms,me:mo.me,sec:0,secCost:0,weighted:0,
+      inPeriod:!qPer||qPer.indexOf(mo.idx)>=0,
+      isPast:mo.me<TODAY, isCurrent:mo.ms<=TODAY&&TODAY<=mo.me,
+      lb:mo.lb};
+  });
   function buOf(dir){
     var vp='(Sans BU)';
     Object.keys(S.vpDirMap||{}).forEach(function(v){if((S.vpDirMap[v]||[]).indexOf(dir)>=0)vp=v;});
@@ -414,10 +413,11 @@ function tForecastSection(){
     var obu=o.bu_id||null;
     if(!inScope(obu))return;        /* opportunité hors du sous-arbre du VP : ignorée */
     for(var k=0;k<dur;k++){
-      var dd=new Date(sd.getFullYear(),sd.getMonth()+k,1);
+      /* Chaque mois d'étalement est rattaché à la PÉRIODE comptable 4-4-5 qui contient
+         son milieu (les bornes de période tombent en milieu de mois calendaire). */
+      var dd=fD(new Date(sd.getFullYear(),sd.getMonth()+k,15));
       for(var mi=0;mi<months.length;mi++){
-        var mm=pD(months[mi].ms);
-        if(mm.getFullYear()===dd.getFullYear()&&mm.getMonth()===dd.getMonth()){
+        if(dd>=months[mi].ms&&dd<=months[mi].me){
           if(!months[mi].isPast){ /* pas de pipeline pondéré sur le passé */
             months[mi].weighted+=per;
             if(months[mi].inPeriod){ /* ventilation par unité, sur la période */

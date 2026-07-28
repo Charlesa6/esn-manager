@@ -507,6 +507,26 @@ async function newPage(browser) {
     const restored = await p.evaluate(() => { window.KPI_SERVER_AGG = false; render(); return document.body.innerText; });
     check('KPIs : retour au calcul local quand le drapeau repasse off', !/87[.,]6\s*%/.test(restored));
 
+    // Calendrier fiscal 4-4-5 (CGI) : bornes d'exercice, 12 périodes et trimestres.
+    const fis = await p.evaluate(() => {
+      const ends = fMonths445(2026).map(m => m.me);
+      const labels = fMonths445(2026).map(m => m.lb);
+      return {
+        start: fyStart(2026), end: fyEnd(2026),
+        ends, labels,
+        q1: qRange(2026, 1)[1], q2: qRange(2026, 2)[1], q3: qRange(2026, 3)[1], q4: qRange(2026, 4)[1],
+        n27: fyStart(2027)
+      };
+    });
+    const EXP = ['2025-10-18','2025-11-15','2025-12-13','2026-01-17','2026-02-14','2026-03-21','2026-04-18','2026-05-16','2026-06-20','2026-07-18','2026-08-22','2026-09-19'];
+    check('4-4-5 : exercice E2026 = 21 sept. 2025 → 19 sept. 2026', fis.start === '2025-09-21' && fis.end === '2026-09-19');
+    check('4-4-5 : les 12 fins de période collent aux cases rouges', JSON.stringify(fis.ends) === JSON.stringify(EXP));
+    check('4-4-5 : trimestres = 3 périodes (Q1 13/12, Q2 21/03, Q3 20/06, Q4 19/09)',
+      fis.q1 === '2025-12-13' && fis.q2 === '2026-03-21' && fis.q3 === '2026-06-20' && fis.q4 === '2026-09-19');
+    check('4-4-5 : périodes libellées par mois de fin (Oct, Nov… Sept)',
+      fis.labels[0].startsWith('Oct') && fis.labels[3].startsWith('Janv') && fis.labels[11].startsWith('Sept'));
+    check('4-4-5 : exercice suivant décalé de 52 semaines (E2027 = 20 sept. 2026)', fis.n27 === '2026-09-20');
+
     // Montée en charge : pagination serveur des cartes KPI (rôle à périmètre org).
     const paged = await p.evaluate(() => {
       var wk = (S.year || CFY) + '|' + (S.quarter || '');
