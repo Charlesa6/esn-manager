@@ -1109,7 +1109,8 @@ function tBizModal(){
       +'<div class="fd"><label class="fl">Responsable de compte</label><input class="ic" id="plan-owner" value="'+esc(it.owner_name||'')+'" placeholder="Nom du responsable"></div>'
       +'<div class="fd"><label class="fl">Statut du compte</label><select class="ic" id="plan-statut">'
         +PLAN_STATUS.map(function(s){return '<option value="'+s.id+'"'+(it.statut===s.id?' selected':'')+'>'+s.lb+'</option>';}).join('')+'</select></div>'
-      +'<div class="fd"><label class="fl">Objectif de CA (€)</label><input class="ic" type="number" id="plan-obj" value="'+(it.ca_objectif||'')+'" placeholder="1500000"></div>'
+      +'<div class="fd"><label class="fl">Objectif ER — External Revenue (€)</label><input class="ic" type="number" id="plan-obj" value="'+(it.ca_objectif||'')+'" placeholder="1500000"></div>'
+      +'<div class="fd"><label class="fl">Objectif DR — Delivery Revenue (€)</label><input class="ic" type="number" id="plan-obj-dr" value="'+(it.ca_objectif_dr||'')+'" placeholder="900000"></div>'
       +'<div class="fd"><label class="fl">Prochaine revue</label><input class="ic" type="date" id="plan-revue" value="'+(it.prochaine_revue||'')+'"></div>'
       +'<div class="fd cs2"><label class="fl">🎯 Enjeux</label><textarea class="ic" id="plan-enjeux" rows="3" placeholder="Ambition sur le compte, périmètres à conquérir…">'+esc(it.enjeux||'')+'</textarea></div>'
       +'<div class="fd cs2"><label class="fl">🧭 Stratégie de développement</label><textarea class="ic" id="plan-strat" rows="3" placeholder="Leviers, relations à renforcer, plan d\'attaque…">'+esc(it.strategie||'')+'</textarea></div>'
@@ -1410,7 +1411,7 @@ function planStObj(id){return PLAN_STATUS.find(function(x){return x.id===id;})||
 function relObj(id){return RELATION.find(function(x){return x.id===id;});}
 function cEur(n){n=Math.round(+n||0);if(Math.abs(n)>=1e6)return (n/1e6).toFixed(n%1e6===0?0:1).replace('.',',')+' M€';if(Math.abs(n)>=1000)return Math.round(n/1000)+' k€';return fEur(n);}
 function planForAccount(accId){return (S.accountPlans||[]).find(function(p){return p.account_id===accId;})||null;}
-function planOrDefault(accId){return planForAccount(accId)||{id:null,account_id:accId,owner_name:'',owner_email:'',statut:'developper',ca_objectif:null,enjeux:'',strategie:'',prochaine_revue:null};}
+function planOrDefault(accId){return planForAccount(accId)||{id:null,account_id:accId,owner_name:'',owner_email:'',statut:'developper',ca_objectif:null,ca_objectif_dr:null,enjeux:'',strategie:'',prochaine_revue:null};}
 function accWonOpps(accId){return (S.bizOpps||[]).filter(function(o){return o.account_id===accId&&o.status==='gagne';});}
 function accOpenOpps(accId){return (S.bizOpps||[]).filter(function(o){return o.account_id===accId&&o.status!=='gagne'&&o.status!=='perdu';});}
 function oppIsOwnDelivery(o){return o.delivery_own!==false;}
@@ -1469,6 +1470,7 @@ function planSave(){
     owner_email:(ex&&ex.owner_email)||'',
     statut:gv('plan-statut')||'developper',
     ca_objectif:+gv('plan-obj')||null,
+    ca_objectif_dr:+gv('plan-obj-dr')||null,
     enjeux:gv('plan-enjeux'),
     strategie:gv('plan-strat'),
     prochaine_revue:gv('plan-revue')||null,
@@ -1490,7 +1492,7 @@ function tBizPlans(){
     +'<button class="bp" data-act="comite-start" title="Dérouler les comptes un par un en séance de comité">▶ Lancer un comité de revue</button></div>';
   var rows=accs.map(function(a){
     var pl=planOrDefault(a.id), st=accSante(a.id);
-    var obj=+pl.ca_objectif||0, er=accER(a.id), dr=accDR(a.id), pip=accPipelineCA(a.id);
+    var obj=+pl.ca_objectif||0, objDr=+pl.ca_objectif_dr||0, er=accER(a.id), dr=accDR(a.id), pip=accPipelineCA(a.id);
     var pct=obj>0?Math.min(100,Math.round(er/obj*100)):0;
     var late=accActions(a.id).filter(actIsLate).length;
     var bar='<div style="background:#eef2f6;border-radius:6px;height:8px;overflow:hidden;margin-top:4px"><div style="height:100%;width:'+pct+'%;background:'+(pct>=70?'#16a34a':pct>=40?'#d97706':'#dc2626')+'"></div></div>';
@@ -1500,7 +1502,7 @@ function tBizPlans(){
       +'<td>'+planStChip(pl.statut)+'</td>'
       +'<td title="'+st.lb+'">'+santeDot(st.code)+' <span style="font-size:12px;color:'+st.color+';font-weight:700">'+st.lb+'</span></td>'
       +'<td style="min-width:150px"><div style="font-size:12px"><b>'+cEur(er)+'</b> <span style="color:#94a3b8">/ '+(obj?cEur(obj):'—')+'</span></div>'+bar+'</td>'
-      +'<td class="tr" title="Delivery Revenue — délivré par mes consultants">'+cEur(dr)+'</td>'
+      +'<td class="tr" title="Delivery Revenue — délivré par mes consultants"><b>'+cEur(dr)+'</b>'+(objDr?'<span style="color:#94a3b8"> / '+cEur(objDr)+'</span>':'')+'</td>'
       +'<td class="tr">'+cEur(pip)+'</td>'
       +'<td class="tr">'+(late?'<span style="color:#dc2626;font-weight:800">'+late+'</span>':'<span style="color:#94a3b8">0</span>')+'</td>'
       +'<td class="tr" style="white-space:nowrap;font-size:12px;color:'+(pl.prochaine_revue&&pD(pl.prochaine_revue)<=_today()?'#b45309':'#64748b')+'">'+(pl.prochaine_revue?fDt(pl.prochaine_revue):'—')+'</td>'
@@ -1516,8 +1518,9 @@ function tPlanDetail(accId){
   var a=S.bizAccounts.find(function(x){return x.id===accId;});
   if(!a)return tBizPlans();
   var pl=planOrDefault(accId), st=accSante(accId);
-  var obj=+pl.ca_objectif||0, er=accER(accId), dr=accDR(accId), pip=accPipelineCA(accId);
+  var obj=+pl.ca_objectif||0, objDr=+pl.ca_objectif_dr||0, er=accER(accId), dr=accDR(accId), pip=accPipelineCA(accId);
   var pct=obj>0?Math.min(100,Math.round(er/obj*100)):0;
+  var pctDr=objDr>0?Math.min(100,Math.round(dr/objDr*100)):0;
   var back='<button class="bg" data-act="plan-close" style="margin-bottom:12px">← Portefeuille</button>';
   var header='<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px">'
     +'<div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="pt">'+esc(a.name)+'</div>'+planStChip(pl.statut)+'<span title="'+st.lb+'">'+santeDot(st.code)+' <span style="font-size:12px;font-weight:700;color:'+st.color+'">'+st.lb+'</span></span></div>'
@@ -1525,13 +1528,17 @@ function tPlanDetail(accId){
     +'<div style="display:flex;gap:8px"><button class="bg" data-act="plan-edit" data-id="'+accId+'">✏️ Éditer le plan</button><button class="bp" data-act="comite-start-one" data-id="'+accId+'">▶ Revue de compte</button></div></div>';
   /* Métriques */
   function metric(lb,val,sub,col){return '<div style="flex:1;min-width:150px;background:#fff;border:1px solid #e5e9ee;border-top:3px solid '+(col||'#1B2B3A')+';border-radius:12px;padding:14px 16px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#94a3b8">'+lb+'</div><div style="font-size:22px;font-weight:800;color:#0f172a;margin-top:4px">'+val+'</div>'+(sub?'<div style="font-size:12px;color:#94a3b8;margin-top:2px">'+sub+'</div>':'')+'</div>';}
-  var barBig='<div style="background:#eef2f6;border-radius:7px;height:10px;overflow:hidden;margin-top:8px"><div style="height:100%;width:'+pct+'%;background:'+(pct>=70?'#16a34a':pct>=40?'#d97706':'#dc2626')+'"></div></div>';
+  /* Deux barres : ER vs objectif ER (vert), DR vs objectif DR (violet). */
+  function progBar(p,col){return '<div style="background:#eef2f6;border-radius:7px;height:9px;overflow:hidden;margin-top:6px"><div style="height:100%;width:'+p+'%;background:'+col+'"></div></div>';}
+  var bars='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">'
+    +'<div style="flex:1;min-width:220px"><div style="font-size:11px;color:#94a3b8;display:flex;justify-content:space-between"><span>ER / objectif</span><span>'+(obj?pct+'%':'—')+'</span></div>'+progBar(pct,pct>=70?'#16a34a':pct>=40?'#d97706':'#dc2626')+'</div>'
+    +'<div style="flex:1;min-width:220px"><div style="font-size:11px;color:#94a3b8;display:flex;justify-content:space-between"><span>DR / objectif</span><span>'+(objDr?pctDr+'%':'—')+'</span></div>'+progBar(pctDr,'#7c3aed')+'</div></div>';
   var metrics='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px">'
-    +metric('Objectif CA',obj?cEur(obj):'—','année en cours','#1B2B3A')
-    +metric('ER — External Revenue',cEur(er),(obj?pct+'% de l\'objectif':'tout le CA gagné'),'#16a34a')
-    +metric('DR — Delivery Revenue',cEur(dr),(er>0?Math.round(dr/er*100)+'% délivré par mes consultants':'délivré par mes consultants'),'#7c3aed')
+    +metric('Objectifs',(obj?cEur(obj):'—'),'ER · DR '+(objDr?cEur(objDr):'—'),'#1B2B3A')
+    +metric('ER — External Revenue',cEur(er),(obj?pct+'% de l\'objectif ER':'tout le CA gagné'),'#16a34a')
+    +metric('DR — Delivery Revenue',cEur(dr),(objDr?pctDr+'% de l\'objectif DR':(er>0?Math.round(dr/er*100)+'% délivré en interne':'délivré par mes consultants')),'#7c3aed')
     +metric('Pipeline pondéré',cEur(pip),accOpenOpps(accId).length+' opportunité(s)','#0891b2')
-    +'</div>'+barBig;
+    +'</div>'+bars;
   /* Enjeux & stratégie */
   function block(t,txt){return '<div style="background:#fff;border:1px solid #e5e9ee;border-radius:12px;padding:14px 16px;flex:1;min-width:260px"><div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:6px">'+t+'</div><div style="font-size:13px;color:#475569;line-height:1.55;white-space:pre-wrap">'+(txt?esc(txt):'<span style="color:#94a3b8">Non renseigné.</span>')+'</div></div>';}
   var strat='<div style="display:flex;gap:12px;flex-wrap:wrap;margin:18px 0">'+block('🎯 Enjeux',pl.enjeux)+block('🧭 Stratégie de développement',pl.strategie)+'</div>';

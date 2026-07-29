@@ -658,8 +658,8 @@ function loadDemoData(){
   /* Plans de compte (Key Account Management) : responsable, objectif de CA,
      enjeux/stratégie, prochaine revue. Un historique de comité sur BNP. */
   S.accountPlans=[
-    {id:'ap1',account_id:'a1',owner_name:'Thomas Bernard',owner_email:'',statut:'strategique',ca_objectif:1500000,enjeux:'Devenir le partenaire de référence sur la plateforme risques et étendre au périmètre conformité.',strategie:'Renforcer la relation avec le DSI Risques, se positionner sur le programme conformité 2026, monter une équipe dédiée.',prochaine_revue:_fut(21)},
-    {id:'ap2',account_id:'a2',owner_name:'Marie Lefebvre',owner_email:'',statut:'developper',  ca_objectif:900000, enjeux:'Prendre pied sur la migration cloud puis élargir aux projets data.',strategie:'Livrer le cadrage, capitaliser sur la relation Directeur Cloud, viser le run.',prochaine_revue:_fut(35)}
+    {id:'ap1',account_id:'a1',owner_name:'Thomas Bernard',owner_email:'',statut:'strategique',ca_objectif:1500000,ca_objectif_dr:900000,enjeux:'Devenir le partenaire de référence sur la plateforme risques et étendre au périmètre conformité.',strategie:'Renforcer la relation avec le DSI Risques, se positionner sur le programme conformité 2026, monter une équipe dédiée.',prochaine_revue:_fut(21)},
+    {id:'ap2',account_id:'a2',owner_name:'Marie Lefebvre',owner_email:'',statut:'developper',  ca_objectif:900000, ca_objectif_dr:700000,enjeux:'Prendre pied sur la migration cloud puis élargir aux projets data.',strategie:'Livrer le cadrage, capitaliser sur la relation Directeur Cloud, viser le run.',prochaine_revue:_fut(35)}
   ];
   S.accountReviews=[
     {id:'ar1',account_id:'a1',review_date:_fut(-30),participants:'T. Bernard, Direction commerciale',sante:'green',ca_objectif:1500000,ca_realise:715000,decisions:'Investir sur le programme conformité. Staffer un architecte senior.',next_steps:'RDV DSI Risques avant fin de mois ; proposition conformité sous 3 semaines.',created_by:'demo',created_at:''}

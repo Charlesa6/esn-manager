@@ -192,10 +192,10 @@ async function newPage(browser) {
         const txt = document.body.innerText;
         return { enjeux: /Enjeux/.test(txt), power: /Cartographie des interlocuteurs/.test(txt),
                  champion: /Champion/.test(txt), erDr: /external revenue/i.test(txt) && /delivery revenue/i.test(txt),
-                 er: accER('a1'), dr: accDR('a1') };
+                 objDr: /objectif dr/i.test(txt), er: accER('a1'), dr: accDR('a1') };
       });
       check('Plan de compte : détail (enjeux + power map + relation Champion)', detail.enjeux && detail.power && detail.champion);
-      check('Plan de compte : métriques ER + DR affichées', detail.erDr);
+      check('Plan de compte : métriques ER + DR + objectif DR affichés', detail.erDr && detail.objDr);
       check('Plan de compte : ER (' + detail.er + ') > DR (' + detail.dr + ') — un deal délivré en externe', detail.er > detail.dr && detail.dr > 0);
 
       const com = await p.evaluate(() => {
