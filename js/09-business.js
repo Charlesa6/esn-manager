@@ -328,6 +328,8 @@ function bizSaveOpp(){
     owner_vp:it?(it.owner_vp||S.vpName||''):S.vpName||'',   /* Admin du créateur */
     /* Unité : BU (niveau le plus fin) du créateur. Conservée telle quelle en édition. */
     bu_id:it?(it.bu_id||myBuId()):myBuId(),
+    /* Délivrée par mes consultants ? true → compte en DR (=ER) ; false → ER seul. */
+    delivery_own:(document.getElementById('biz-opp-own')?!!document.getElementById('biz-opp-own').checked:(it?it.delivery_own!==false:true)),
   };
   if(!o.name){alert('Nom requis');return;}
   if(S.role==='utilisateur'){
@@ -1073,6 +1075,7 @@ function tBizModal(){
       +'<div class="fd"><label class="fl">Secteur recherché</label><select class="ic" id="biz-opp-sector" onchange="S.bizModal.sector=this.value;bizOppRefresh()">'+_secOpts+'</select></div>'
       +'<div class="fd cs2"><label class="fl">Expertise / compétences recherchées</label><div id="opp-exp-chips" style="margin-top:4px">'+oppExpChipsHTML()+'</div><p class="fh">Sert à suggérer des candidats du pipeline recrutement.</p></div>'
       +'<div class="fd cs2"><label class="fl">🎯 Candidats suggérés</label><div id="opp-sugg" style="margin-top:4px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px">'+oppSuggHTML()+'</div><p class="fh">Classés par nombre de critères satisfaits (expertise, localisation, séniorité, secteur) ; 💶 prix et 📅 disponibilité servent de départage.</p></div>'
+      +'<div class="fd cs2"><label class="cx" style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="biz-opp-own"'+((it.delivery_own!==false)?' checked':'')+'> Délivrée par <b>mes consultants</b> (compte en Delivery Revenue). Décochez si l\'affaire est délivrée par d\'autres (External Revenue seul).</label></div>'
       +'<div class="fd cs2"><label class="fl">Notes</label><textarea class="ic" id="biz-opp-notes" rows="2">'+esc(it.notes||'')+'</textarea></div>'
       +'</div>';
   }
@@ -1410,7 +1413,13 @@ function planForAccount(accId){return (S.accountPlans||[]).find(function(p){retu
 function planOrDefault(accId){return planForAccount(accId)||{id:null,account_id:accId,owner_name:'',owner_email:'',statut:'developper',ca_objectif:null,enjeux:'',strategie:'',prochaine_revue:null};}
 function accWonOpps(accId){return (S.bizOpps||[]).filter(function(o){return o.account_id===accId&&o.status==='gagne';});}
 function accOpenOpps(accId){return (S.bizOpps||[]).filter(function(o){return o.account_id===accId&&o.status!=='gagne'&&o.status!=='perdu';});}
-function accWonCA(accId){return accWonOpps(accId).reduce(function(s,o){return s+caPot(o);},0);}
+function oppIsOwnDelivery(o){return o.delivery_own!==false;}
+/* ER (External Revenue) : tout le CA gagné sur le compte (avec ou sans mes consultants). */
+function accER(accId){return accWonOpps(accId).reduce(function(s,o){return s+caPot(o);},0);}
+/* DR (Delivery Revenue) : CA gagné délivré par MES consultants (ER=DR si interne, 0 sinon). */
+function accDR(accId){return accWonOpps(accId).reduce(function(s,o){return s+(oppIsOwnDelivery(o)?caPot(o):0);},0);}
+/* Rétro-compat : le « CA réalisé » historique correspond à l'ER. */
+function accWonCA(accId){return accER(accId);}
 function accPipelineCA(accId){return accOpenOpps(accId).reduce(function(s,o){return s+caPot(o)*((+o.probability||0)/100);},0);}
 function accActions(accId){return (S.bizActivities||[]).filter(function(k){return k.account_id===accId;});}
 function actIsDone(k){return k.status==='realise'||(!!k.date_realised&&k.status!=='planifie');}
@@ -1481,8 +1490,8 @@ function tBizPlans(){
     +'<button class="bp" data-act="comite-start" title="Dérouler les comptes un par un en séance de comité">▶ Lancer un comité de revue</button></div>';
   var rows=accs.map(function(a){
     var pl=planOrDefault(a.id), st=accSante(a.id);
-    var obj=+pl.ca_objectif||0, real=accWonCA(a.id), pip=accPipelineCA(a.id);
-    var pct=obj>0?Math.min(100,Math.round(real/obj*100)):0;
+    var obj=+pl.ca_objectif||0, er=accER(a.id), dr=accDR(a.id), pip=accPipelineCA(a.id);
+    var pct=obj>0?Math.min(100,Math.round(er/obj*100)):0;
     var late=accActions(a.id).filter(actIsLate).length;
     var bar='<div style="background:#eef2f6;border-radius:6px;height:8px;overflow:hidden;margin-top:4px"><div style="height:100%;width:'+pct+'%;background:'+(pct>=70?'#16a34a':pct>=40?'#d97706':'#dc2626')+'"></div></div>';
     return '<tr data-act="plan-open" data-id="'+a.id+'" style="cursor:pointer">'
@@ -1490,15 +1499,16 @@ function tBizPlans(){
       +'<td>'+esc(pl.owner_name||'—')+'</td>'
       +'<td>'+planStChip(pl.statut)+'</td>'
       +'<td title="'+st.lb+'">'+santeDot(st.code)+' <span style="font-size:12px;color:'+st.color+';font-weight:700">'+st.lb+'</span></td>'
-      +'<td style="min-width:150px"><div style="font-size:12px"><b>'+cEur(real)+'</b> <span style="color:#94a3b8">/ '+(obj?cEur(obj):'—')+'</span></div>'+bar+'</td>'
+      +'<td style="min-width:150px"><div style="font-size:12px"><b>'+cEur(er)+'</b> <span style="color:#94a3b8">/ '+(obj?cEur(obj):'—')+'</span></div>'+bar+'</td>'
+      +'<td class="tr" title="Delivery Revenue — délivré par mes consultants">'+cEur(dr)+'</td>'
       +'<td class="tr">'+cEur(pip)+'</td>'
       +'<td class="tr">'+(late?'<span style="color:#dc2626;font-weight:800">'+late+'</span>':'<span style="color:#94a3b8">0</span>')+'</td>'
       +'<td class="tr" style="white-space:nowrap;font-size:12px;color:'+(pl.prochaine_revue&&pD(pl.prochaine_revue)<=_today()?'#b45309':'#64748b')+'">'+(pl.prochaine_revue?fDt(pl.prochaine_revue):'—')+'</td>'
       +'</tr>';
   }).join('');
   return '<div class="vw">'+head
-    +'<div class="ov"><table><thead><tr><th>Compte</th><th>Responsable</th><th>Statut</th><th>Santé</th><th>CA réalisé / objectif</th><th class="tr">Pipeline</th><th class="tr">Actions ⚠</th><th class="tr">Prochaine revue</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
-    +'<p class="fh" style="margin-top:10px">CA réalisé = opportunités gagnées du compte · Pipeline = opportunités ouvertes pondérées par leur probabilité. Cliquez une ligne pour ouvrir le plan de compte.</p></div>';
+    +'<div class="ov"><table><thead><tr><th>Compte</th><th>Responsable</th><th>Statut</th><th>Santé</th><th title="External Revenue : tout le CA gagné">ER / objectif</th><th class="tr" title="Delivery Revenue : délivré par mes consultants">DR</th><th class="tr">Pipeline</th><th class="tr">Actions ⚠</th><th class="tr">Prochaine revue</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +'<p class="fh" style="margin-top:10px"><b>ER</b> (External Revenue) = tout le CA gagné sur le compte · <b>DR</b> (Delivery Revenue) = délivré par vos consultants · Pipeline = opportunités ouvertes pondérées. Cliquez une ligne pour ouvrir le plan de compte.</p></div>';
 }
 
 /* ── Détail d'un plan de compte ── */
@@ -1506,8 +1516,8 @@ function tPlanDetail(accId){
   var a=S.bizAccounts.find(function(x){return x.id===accId;});
   if(!a)return tBizPlans();
   var pl=planOrDefault(accId), st=accSante(accId);
-  var obj=+pl.ca_objectif||0, real=accWonCA(accId), pip=accPipelineCA(accId);
-  var pct=obj>0?Math.min(100,Math.round(real/obj*100)):0;
+  var obj=+pl.ca_objectif||0, er=accER(accId), dr=accDR(accId), pip=accPipelineCA(accId);
+  var pct=obj>0?Math.min(100,Math.round(er/obj*100)):0;
   var back='<button class="bg" data-act="plan-close" style="margin-bottom:12px">← Portefeuille</button>';
   var header='<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px">'
     +'<div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="pt">'+esc(a.name)+'</div>'+planStChip(pl.statut)+'<span title="'+st.lb+'">'+santeDot(st.code)+' <span style="font-size:12px;font-weight:700;color:'+st.color+'">'+st.lb+'</span></span></div>'
@@ -1518,7 +1528,8 @@ function tPlanDetail(accId){
   var barBig='<div style="background:#eef2f6;border-radius:7px;height:10px;overflow:hidden;margin-top:8px"><div style="height:100%;width:'+pct+'%;background:'+(pct>=70?'#16a34a':pct>=40?'#d97706':'#dc2626')+'"></div></div>';
   var metrics='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px">'
     +metric('Objectif CA',obj?cEur(obj):'—','année en cours','#1B2B3A')
-    +metric('CA réalisé',cEur(real),(obj?pct+'% de l\'objectif':'opportunités gagnées'),'#16a34a')
+    +metric('ER — External Revenue',cEur(er),(obj?pct+'% de l\'objectif':'tout le CA gagné'),'#16a34a')
+    +metric('DR — Delivery Revenue',cEur(dr),(er>0?Math.round(dr/er*100)+'% délivré par mes consultants':'délivré par mes consultants'),'#7c3aed')
     +metric('Pipeline pondéré',cEur(pip),accOpenOpps(accId).length+' opportunité(s)','#0891b2')
     +'</div>'+barBig;
   /* Enjeux & stratégie */
@@ -1587,7 +1598,8 @@ function comiteSaveNext(){
   var q=S.comiteQueue||[],idx=S.comiteIdx||0,accId=q[idx];if(!accId)return;
   var st=accSante(accId),pl=planForAccount(accId);
   var rv={id:uid2(),account_id:accId,review_date:new Date().toISOString().slice(0,10),
-    participants:gv('com-part'),sante:st.code,ca_objectif:(pl?+pl.ca_objectif||null:null),ca_realise:accWonCA(accId),
+    participants:gv('com-part'),sante:st.code,ca_objectif:(pl?+pl.ca_objectif||null:null),
+    er:accER(accId),dr:accDR(accId),ca_realise:accER(accId),
     decisions:gv('com-dec'),next_steps:gv('com-next'),created_by:S._userEmail||S.profileFirstName||''};
   S.accountReviews=(S.accountReviews||[]).concat([rv]);sbUpsertReview(rv);
   S.comiteDone=(S.comiteDone||[]).concat([rv.id]);
@@ -1607,7 +1619,7 @@ function tComite(){
   }
   var accId=q[idx],a=S.bizAccounts.find(function(x){return x.id===accId;});
   if(!a){return '<div class="vw"><button class="bg" data-act="comite-close">Fermer</button></div>';}
-  var pl=planOrDefault(accId),st=accSante(accId),obj=+pl.ca_objectif||0,real=accWonCA(accId),pip=accPipelineCA(accId);
+  var pl=planOrDefault(accId),st=accSante(accId),obj=+pl.ca_objectif||0,er=accER(accId),dr=accDR(accId),pip=accPipelineCA(accId);
   var acts=accActions(accId),lateActs=acts.filter(actIsLate),openActs=acts.filter(actIsPlanned),doneActs=acts.filter(actIsDone);
   var lastRev=accReviews(accId)[0];
   var prog='<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px">'
@@ -1616,7 +1628,7 @@ function tComite(){
     +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="font-size:20px;font-weight:800">'+esc(a.name)+'</div>'+planStChip(pl.statut)
     +'<span style="margin-left:auto;font-size:13px;font-weight:800;color:'+st.color+';background:#fff;padding:3px 10px;border-radius:99px">'+st.lb+'</span></div>'
     +'<div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:#cbd5e1">'
-    +'<span>Objectif : <b style="color:#fff">'+(obj?cEur(obj):'—')+'</b></span><span>Réalisé : <b style="color:#a3e635">'+cEur(real)+'</b></span><span>Pipeline : <b style="color:#fff">'+cEur(pip)+'</b></span>'
+    +'<span>Objectif : <b style="color:#fff">'+(obj?cEur(obj):'—')+'</b></span><span>ER : <b style="color:#a3e635">'+cEur(er)+'</b></span><span>DR : <b style="color:#fff">'+cEur(dr)+'</b></span><span>Pipeline : <b style="color:#fff">'+cEur(pip)+'</b></span>'
     +(lastRev?'<span>Dernière revue : <b style="color:#fff">'+fDt(lastRev.review_date)+'</b></span>':'<span style="color:#94a3b8">Première revue</span>')+'</div></div>';
   var lateList=lateActs.length?('<ul style="margin:4px 0 0;padding-left:18px;color:#b91c1c;font-size:12px">'+lateActs.map(function(k){return '<li>'+esc(k.title)+' — échéance '+(k.next_action_date?fDt(k.next_action_date):'—')+'</li>';}).join('')+'</ul>'):'<div style="font-size:12px;color:#16a34a">Aucune action en retard.</div>';
   var situ='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">'
@@ -1640,7 +1652,7 @@ function comiteExport(){
   var today=new Date().toLocaleDateString('fr-FR');
   var rows=revs.map(function(r){var a=S.bizAccounts.find(function(x){return x.id===r.account_id;});var sc=SANTE[r.sante]||SANTE.green;
     return '<div class="card"><div class="ch"><div class="cn">'+esc(a?a.name:'')+'</div><div class="sd" style="background:'+sc.color+'">'+esc(sc.lb)+'</div></div>'
-      +'<div class="mt">Objectif : <b>'+(r.ca_objectif?cEur(r.ca_objectif):'—')+'</b> · Réalisé : <b>'+cEur(r.ca_realise||0)+'</b>'+(r.participants?' · Participants : '+esc(r.participants):'')+'</div>'
+      +'<div class="mt">Objectif : <b>'+(r.ca_objectif?cEur(r.ca_objectif):'—')+'</b> · ER : <b>'+cEur((r.er!=null?r.er:r.ca_realise)||0)+'</b> · DR : <b>'+cEur(r.dr||0)+'</b>'+(r.participants?' · Participants : '+esc(r.participants):'')+'</div>'
       +(r.decisions?'<div class="sec"><span>Décisions</span>'+esc(r.decisions)+'</div>':'')
       +(r.next_steps?'<div class="sec"><span>Prochaines étapes</span>'+esc(r.next_steps)+'</div>':'')+'</div>';}).join('');
   var html='<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Compte rendu de comité — '+esc(org||'Konsilys')+'</title><style>'
