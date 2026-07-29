@@ -190,13 +190,26 @@ async function newPage(browser) {
       const detail = await p.evaluate(() => {
         S.planView = 'a1'; render();
         const txt = document.body.innerText;
-        return { enjeux: /Enjeux/.test(txt), power: /Cartographie des interlocuteurs/.test(txt),
+        return { enjeux: /Enjeux/.test(txt), power: /grille de pouvoir/i.test(txt),
                  champion: /Champion/.test(txt), erDr: /external revenue/i.test(txt) && /delivery revenue/i.test(txt),
                  objDr: /objectif dr/i.test(txt), er: accER('a1'), dr: accDR('a1') };
       });
       check('Plan de compte : détail (enjeux + power map + relation Champion)', detail.enjeux && detail.power && detail.champion);
       check('Plan de compte : métriques ER + DR + objectif DR affichés', detail.erDr && detail.objDr);
       check('Plan de compte : ER (' + detail.er + ') > DR (' + detail.dr + ') — un deal délivré en externe', detail.er > detail.dr && detail.dr > 0);
+
+      const feats = await p.evaluate(() => {
+        S.tab = 'business'; S.bizTab = 'plans'; S.planView = null; S.comiteQueue = null; S.planFilter = { mine: false, statut: '', sante: '' }; render();
+        const txt = document.body.innerText;
+        const hasEch = /Mes échéances/i.test(txt), hasAlert = /point.*attention/i.test(txt);
+        const lateAct = (S.bizActivities || []).find(function (k) { return k.account_id === 'a2' && actIsLate(k); });
+        var doneWorked = false;
+        if (lateAct) { actMarkDone(lateAct.id); doneWorked = !actIsLate((S.bizActivities || []).find(function (k) { return k.id === lateAct.id; })); }
+        return { hasEch: hasEch, hasAlert: hasAlert, doneWorked: doneWorked, land: accLandingER('a1'), er: accER('a1') };
+      });
+      check('Plans de compte : bloc « Mes échéances » + bandeau d\'alertes', feats.hasEch && feats.hasAlert);
+      check('Actions : ✓ marque une action faite (act-done)', feats.doneWorked);
+      check('Atterrissage ER = réalisé + pipeline (' + feats.land + ' ≥ ER ' + feats.er + ')', feats.land >= feats.er && feats.land > 0);
 
       const com = await p.evaluate(() => {
         S.planView = null; comiteStart();

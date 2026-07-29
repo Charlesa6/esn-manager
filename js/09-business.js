@@ -1412,13 +1412,54 @@ function relObj(id){return RELATION.find(function(x){return x.id===id;});}
 function cEur(n){n=Math.round(+n||0);if(Math.abs(n)>=1e6)return (n/1e6).toFixed(n%1e6===0?0:1).replace('.',',')+' M€';if(Math.abs(n)>=1000)return Math.round(n/1000)+' k€';return fEur(n);}
 function planForAccount(accId){return (S.accountPlans||[]).find(function(p){return p.account_id===accId;})||null;}
 function planOrDefault(accId){return planForAccount(accId)||{id:null,account_id:accId,owner_name:'',owner_email:'',statut:'developper',ca_objectif:null,ca_objectif_dr:null,enjeux:'',strategie:'',prochaine_revue:null};}
-function accWonOpps(accId){return (S.bizOpps||[]).filter(function(o){return o.account_id===accId&&o.status==='gagne';});}
+/* Exercice fiscal d'une date (aligné sur le sélecteur S.year du reste de l'app). */
+function _fyOfDate(dstr){if(!dstr)return null;var t=String(dstr).slice(0,10);for(var fy=(S.year||currentFY())-2;fy<=(S.year||currentFY())+2;fy++){if(t>=fyStart(fy)&&t<=fyEnd(fy))return fy;}return null;}
+/* Une opportunité est rattachée à l'exercice courant si sa date (closing → début →
+   création) tombe dedans ; sans aucune date, on la garde (repli) pour ne rien masquer. */
+function oppInYear(o){var d=o.date_closing||o.date_start||(o.created_at&&String(o.created_at).slice(0,10));if(!d)return true;return _fyOfDate(d)===(S.year||currentFY());}
+function accWonOpps(accId){return (S.bizOpps||[]).filter(function(o){return o.account_id===accId&&o.status==='gagne'&&oppInYear(o);});}
 function accOpenOpps(accId){return (S.bizOpps||[]).filter(function(o){return o.account_id===accId&&o.status!=='gagne'&&o.status!=='perdu';});}
 function oppIsOwnDelivery(o){return o.delivery_own!==false;}
-/* ER (External Revenue) : tout le CA gagné sur le compte (avec ou sans mes consultants). */
+/* ER (External Revenue) : tout le CA gagné sur le compte (avec ou sans mes consultants), exercice courant. */
 function accER(accId){return accWonOpps(accId).reduce(function(s,o){return s+caPot(o);},0);}
 /* DR (Delivery Revenue) : CA gagné délivré par MES consultants (ER=DR si interne, 0 sinon). */
 function accDR(accId){return accWonOpps(accId).reduce(function(s,o){return s+(oppIsOwnDelivery(o)?caPot(o):0);},0);}
+/* Pipeline pondéré total et part délivrable en interne (DR potentiel). */
+function accPipelineDR(accId){return accOpenOpps(accId).reduce(function(s,o){return s+(oppIsOwnDelivery(o)?caPot(o)*((+o.probability||0)/100):0);},0);}
+/* Atterrissage = réalisé + pipeline pondéré ; écart = objectif − atterrissage. */
+function accLandingER(accId){return accER(accId)+accPipelineCA(accId);}
+function accLandingDR(accId){return accDR(accId)+accPipelineDR(accId);}
+/* « Mon portefeuille » : responsable du plan = utilisateur courant (nom). */
+function meName(){return ((S.profileFirstName||'')+' '+(S.profileLastName||'')).trim();}
+function accIsMine(accId){var o=(planOrDefault(accId).owner_name||'').toLowerCase(),me=meName().toLowerCase();return !!me&&!!o&&o.indexOf(me)>=0;}
+/* Toutes les actions planifiées (non faites), toutes fiches confondues, triées par échéance. */
+function allPlannedActions(accIds){
+  var set=accIds?null:null,out=[];
+  (S.bizAccounts||[]).forEach(function(a){
+    if(accIds&&accIds.indexOf(a.id)<0)return;
+    accActions(a.id).filter(actIsPlanned).forEach(function(k){out.push({k:k,acc:a});});
+  });
+  return out.sort(function(x,y){return (x.k.next_action_date||'9999-99-99').localeCompare(y.k.next_action_date||'9999-99-99');});
+}
+/* Alertes de pilotage sur un compte (compte stratégique sans action, revue en retard, atterrissage < objectif). */
+function accAlertList(accId){
+  var pl=planOrDefault(accId),acts=accActions(accId),msgs=[];
+  var strat=pl.statut==='strategique'||pl.statut==='defendre';
+  if(strat&&!acts.filter(actIsPlanned).length)msgs.push('Compte '+planStObj(pl.statut).lb.toLowerCase()+' sans action planifiée');
+  if(pl.prochaine_revue&&pD(pl.prochaine_revue)<_today())msgs.push('Revue en retard ('+fDt(pl.prochaine_revue)+')');
+  if(acts.filter(actIsLate).length)msgs.push(acts.filter(actIsLate).length+' action(s) en retard');
+  if((+pl.ca_objectif||0)>0&&accLandingER(accId)<(+pl.ca_objectif))msgs.push('Atterrissage ER sous l\'objectif ('+cEur((+pl.ca_objectif)-accLandingER(accId))+' à combler)');
+  if((+pl.ca_objectif_dr||0)>0&&accLandingDR(accId)<(+pl.ca_objectif_dr))msgs.push('Atterrissage DR sous l\'objectif ('+cEur((+pl.ca_objectif_dr)-accLandingDR(accId))+' à combler)');
+  return msgs;
+}
+/* Marque une action comme faite (1 clic). */
+function actMarkDone(id){
+  var k=(S.bizActivities||[]).find(function(x){return x.id===id;});if(!k)return;
+  k.status='realise';if(!k.date_realised)k.date_realised=new Date().toISOString().slice(0,10);
+  S.bizActivities=S.bizActivities.map(function(x){return x.id===id?k:x;});
+  if(typeof sbUpsertAct==='function')sbUpsertAct(k);
+  render();
+}
 /* Rétro-compat : le « CA réalisé » historique correspond à l'ER. */
 function accWonCA(accId){return accER(accId);}
 function accPipelineCA(accId){return accOpenOpps(accId).reduce(function(s,o){return s+caPot(o)*((+o.probability||0)/100);},0);}
@@ -1483,13 +1524,46 @@ function planSave(){
 
 /* ── Portefeuille de comptes ── */
 function tBizPlans(){
-  var accs=portfolioAccounts();
-  if(!accs.length)return tEmpty('📁','Aucun compte','Créez d\'abord des comptes clients dans l\'onglet « Comptes » pour bâtir leurs plans de compte.','');
+  var allAccs=portfolioAccounts();
+  if(!allAccs.length)return tEmpty('📁','Aucun compte','Créez d\'abord des comptes clients dans l\'onglet « Comptes » pour bâtir leurs plans de compte.','');
+  var pf=S.planFilter||(S.planFilter={mine:false,statut:'',sante:''});
+  var accs=allAccs.filter(function(a){
+    if(pf.mine&&!accIsMine(a.id))return false;
+    if(pf.statut&&planOrDefault(a.id).statut!==pf.statut)return false;
+    if(pf.sante&&accSante(a.id).code!==pf.sante)return false;
+    return true;
+  });
   var nRevue=accs.filter(function(a){var pl=planForAccount(a.id);return pl&&pl.prochaine_revue&&pD(pl.prochaine_revue)<=_today();}).length;
-  var head='<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">'
+  var head='<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">'
     +'<div style="font-size:13px;color:#64748b">Animez le développement de vos comptes stratégiques : responsable, objectif, actions et rituel de comité.'
       +(nRevue?' <b style="color:#b45309">'+nRevue+' compte'+(nRevue>1?'s':'')+' à revoir.</b>':'')+'</div>'
     +'<button class="bp" data-act="comite-start" title="Dérouler les comptes un par un en séance de comité">▶ Lancer un comité de revue</button></div>';
+  /* Bandeau d'alertes de pilotage. */
+  var alerts=[];accs.forEach(function(a){accAlertList(a.id).forEach(function(m){alerts.push({a:a,m:m});});});
+  var alertBox=alerts.length?('<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:12px 14px;margin-bottom:14px">'
+    +'<div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:6px">⚠️ '+alerts.length+' point(s) d\'attention</div>'
+    +alerts.slice(0,6).map(function(x){return '<div data-act="plan-open" data-id="'+x.a.id+'" style="cursor:pointer;font-size:12.5px;color:#78350f;padding:2px 0"><b>'+esc(x.a.name)+'</b> — '+esc(x.m)+'</div>';}).join('')
+    +(alerts.length>6?'<div style="font-size:11px;color:#b45309;margin-top:4px">+ '+(alerts.length-6)+' autre(s)…</div>':'')+'</div>'):'';
+  /* Filtres. */
+  function fbtn(lb,on,act,val){return '<button data-act="'+act+'" data-id="'+esc(val)+'" style="padding:5px 12px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid '+(on?'#1B2B3A':'#e2e8f0')+';background:'+(on?'#1B2B3A':'#fff')+';color:'+(on?'#fff':'#475569')+';cursor:pointer;margin:0 4px 4px 0">'+lb+'</button>';}
+  var filterBar='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px">'
+    +fbtn((pf.mine?'✓ ':'')+'Mon portefeuille',pf.mine,'planf-mine','')
+    +'<span style="width:1px;height:20px;background:#e2e8f0;margin:0 4px"></span>'
+    +fbtn('Tous statuts',!pf.statut,'planf-statut','')+PLAN_STATUS.map(function(s){return fbtn(s.lb,pf.statut===s.id,'planf-statut',s.id);}).join('')
+    +'<span style="width:1px;height:20px;background:#e2e8f0;margin:0 4px"></span>'
+    +fbtn('Toute santé',!pf.sante,'planf-sante','')+[['red','🔴 En risque'],['amber','🟠 À surveiller'],['green','🟢 Sain']].map(function(x){return fbtn(x[1],pf.sante===x[0],'planf-sante',x[0]);}).join('')
+    +'</div>';
+  /* Mes échéances : actions planifiées (retards en tête) sur les comptes filtrés. */
+  var acts=allPlannedActions(accs.map(function(a){return a.id;}));
+  var echeances=acts.length?('<div style="background:#fff;border:1px solid #e5e9ee;border-radius:12px;padding:12px 14px;margin-bottom:16px">'
+    +'<div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:8px">🗓️ Mes échéances <span style="color:#94a3b8;font-weight:600">— '+acts.length+' action(s) à mener</span></div>'
+    +acts.slice(0,8).map(function(it){var k=it.k,late=actIsLate(k);
+      return '<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-top:1px solid #f1f5f9">'
+        +'<button class="lb" data-act="act-done" data-id="'+k.id+'" title="Marquer comme fait" style="padding:2px 8px;font-size:12px">✓</button>'
+        +'<div data-act="plan-open" data-id="'+it.acc.id+'" style="flex:1;cursor:pointer;min-width:0"><span style="font-weight:700;color:#0f172a">'+esc(k.title||'')+'</span> <span style="color:#94a3b8;font-size:12px">· '+esc(it.acc.name)+'</span></div>'
+        +'<span style="font-size:12px;white-space:nowrap;color:'+(late?'#dc2626':'#64748b')+';font-weight:'+(late?'800':'600')+'">'+(k.next_action_date?fDt(k.next_action_date):'—')+(late?' ⚠':'')+'</span></div>';
+    }).join('')
+    +(acts.length>8?'<div style="font-size:11px;color:#94a3b8;margin-top:6px">+ '+(acts.length-8)+' autre(s) échéance(s)…</div>':'')+'</div>'):'';
   var rows=accs.map(function(a){
     var pl=planOrDefault(a.id), st=accSante(a.id);
     var obj=+pl.ca_objectif||0, objDr=+pl.ca_objectif_dr||0, er=accER(a.id), dr=accDR(a.id), pip=accPipelineCA(a.id);
@@ -1508,9 +1582,10 @@ function tBizPlans(){
       +'<td class="tr" style="white-space:nowrap;font-size:12px;color:'+(pl.prochaine_revue&&pD(pl.prochaine_revue)<=_today()?'#b45309':'#64748b')+'">'+(pl.prochaine_revue?fDt(pl.prochaine_revue):'—')+'</td>'
       +'</tr>';
   }).join('');
-  return '<div class="vw">'+head
-    +'<div class="ov"><table><thead><tr><th>Compte</th><th>Responsable</th><th>Statut</th><th>Santé</th><th title="External Revenue : tout le CA gagné">ER / objectif</th><th class="tr" title="Delivery Revenue : délivré par mes consultants">DR</th><th class="tr">Pipeline</th><th class="tr">Actions ⚠</th><th class="tr">Prochaine revue</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
-    +'<p class="fh" style="margin-top:10px"><b>ER</b> (External Revenue) = tout le CA gagné sur le compte · <b>DR</b> (Delivery Revenue) = délivré par vos consultants · Pipeline = opportunités ouvertes pondérées. Cliquez une ligne pour ouvrir le plan de compte.</p></div>';
+  var table=accs.length?('<div class="ov"><table><thead><tr><th>Compte</th><th>Responsable</th><th>Statut</th><th>Santé</th><th title="External Revenue : tout le CA gagné">ER / objectif</th><th class="tr" title="Delivery Revenue : délivré par mes consultants">DR</th><th class="tr">Pipeline</th><th class="tr">Actions ⚠</th><th class="tr">Prochaine revue</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +'<p class="fh" style="margin-top:10px"><b>ER</b> (External Revenue) = tout le CA gagné sur le compte (exercice courant) · <b>DR</b> (Delivery Revenue) = délivré par vos consultants · Pipeline = opportunités ouvertes pondérées. Cliquez une ligne pour ouvrir le plan de compte.</p>')
+    :'<div class="emp">Aucun compte ne correspond à ces filtres.</div>';
+  return '<div class="vw">'+head+alertBox+filterBar+echeances+table+'</div>';
 }
 
 /* ── Détail d'un plan de compte ── */
@@ -1539,27 +1614,44 @@ function tPlanDetail(accId){
     +metric('DR — Delivery Revenue',cEur(dr),(objDr?pctDr+'% de l\'objectif DR':(er>0?Math.round(dr/er*100)+'% délivré en interne':'délivré par mes consultants')),'#7c3aed')
     +metric('Pipeline pondéré',cEur(pip),accOpenOpps(accId).length+' opportunité(s)','#0891b2')
     +'</div>'+bars;
+  /* Atterrissage = réalisé + pipeline pondéré, vs objectif (écart à combler). */
+  function landCell(lb,obj2,land,col){
+    var gap=obj2-land, atteint=obj2>0&&gap<=0;
+    return '<div style="flex:1;min-width:240px;background:#fff;border:1px solid #e5e9ee;border-radius:12px;padding:12px 16px">'
+      +'<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#94a3b8">Atterrissage '+lb+'</div>'
+      +'<div style="display:flex;align-items:baseline;gap:8px;margin-top:2px"><span style="font-size:20px;font-weight:800;color:'+col+'">'+cEur(land)+'</span><span style="font-size:12px;color:#94a3b8">réalisé + pipeline pondéré</span></div>'
+      +(obj2>0?'<div style="font-size:12px;margin-top:4px;color:'+(atteint?'#16a34a':'#b45309')+';font-weight:700">'+(atteint?'✓ Objectif couvert ('+cEur(-gap)+' au-delà)':'Écart à combler : '+cEur(gap))+'</div>':'<div style="font-size:12px;margin-top:4px;color:#94a3b8">Objectif non défini</div>')+'</div>';
+  }
+  var landing='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px">'
+    +landCell('ER',obj,accLandingER(accId),'#16a34a')
+    +landCell('DR',objDr,accLandingDR(accId),'#7c3aed')+'</div>';
+  metrics+=landing;
   /* Enjeux & stratégie */
   function block(t,txt){return '<div style="background:#fff;border:1px solid #e5e9ee;border-radius:12px;padding:14px 16px;flex:1;min-width:260px"><div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:6px">'+t+'</div><div style="font-size:13px;color:#475569;line-height:1.55;white-space:pre-wrap">'+(txt?esc(txt):'<span style="color:#94a3b8">Non renseigné.</span>')+'</div></div>';}
   var strat='<div style="display:flex;gap:12px;flex-wrap:wrap;margin:18px 0">'+block('🎯 Enjeux',pl.enjeux)+block('🧭 Stratégie de développement',pl.strategie)+'</div>';
   /* Power map interlocuteurs */
   var cts=accContacts(accId);
-  var ctCards=cts.length?cts.map(function(c){
-    var rel=relObj(c.relation), roleLb=(CONTACT_ROLES.find(function(r){return r.id===c.role_type;})||{}).lb||'';
-    return '<div style="background:#fff;border:1px solid #e5e9ee;border-radius:10px;padding:10px 12px;min-width:210px;flex:1">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div style="font-weight:800;color:#0f172a;font-size:13px">'+esc((c.first_name||'')+' '+(c.last_name||''))+'</div>'
-      +'<button class="lr" data-act="biz-edit-ct" data-id="'+c.id+'" style="padding:2px 7px">✏️</button></div>'
-      +'<div style="font-size:11px;color:#94a3b8;margin-bottom:6px">'+esc(c.position||roleLb||'—')+'</div>'
-      +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'
-      +(roleLb?'<span style="background:#f1f5f9;color:#475569;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px">'+esc(roleLb)+'</span>':'')
-      +(c.influence?'<span style="background:#eef2ff;color:#3730a3;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px">Influence '+esc((INFLUENCE.find(function(x){return x.id===c.influence;})||{}).lb||c.influence)+'</span>':'')
-      +(rel?'<span style="background:'+rel.bg+';color:'+rel.fg+';font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px">'+rel.lb+'</span>':'')
-      +(c.a_rencontrer?'<span style="background:#fff7ed;color:#c2410c;font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px">🎯 À rencontrer</span>':'')
-      +'</div></div>';
-  }).join(''):'<div class="emp" style="flex:1">Aucun interlocuteur. Cartographiez les décideurs et prescripteurs du compte.</div>';
-  var powerMap='<div style="margin-bottom:18px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:13px;font-weight:800;color:#0f172a">🗺️ Cartographie des interlocuteurs</div>'
+  /* Grille de pouvoir : influence (lignes) × relation (colonnes). */
+  var INF_ROWS=[{id:'fort',lb:'Influence forte'},{id:'moyen',lb:'Influence moyenne'},{id:'faible',lb:'Influence faible'}];
+  var REL_COLS=[{id:'opposant',lb:'Opposant',c:'#b91c1c'},{id:'neutre',lb:'Neutre',c:'#475569'},{id:'champion',lb:'Champion',c:'#065f46'}];
+  function ctChip(c){return '<span data-act="biz-edit-ct" data-id="'+c.id+'" title="Modifier l\'interlocuteur" style="display:inline-block;cursor:pointer;background:#fff;border:1px solid #cbd5e1;border-radius:99px;padding:2px 9px;font-size:11px;font-weight:700;color:#0f172a;margin:0 4px 4px 0">'+esc(((c.first_name||' ')[0]||'').toUpperCase()+'. '+(c.last_name||c.first_name||''))+(c.a_rencontrer?' 🎯':'')+'</span>';}
+  var qual=cts.filter(function(c){return c.influence&&c.relation;});
+  var unq=cts.filter(function(c){return !(c.influence&&c.relation);});
+  var matrix='<div style="overflow-x:auto"><div style="min-width:540px;display:grid;grid-template-columns:130px repeat(3,1fr);gap:6px">'
+    +'<div></div>'+REL_COLS.map(function(r){return '<div style="text-align:center;font-size:11px;font-weight:800;color:'+r.c+'">'+r.lb+'</div>';}).join('')
+    +INF_ROWS.map(function(inf){
+      return '<div style="display:flex;align-items:center;font-size:11px;font-weight:800;color:#475569">'+inf.lb+'</div>'
+        +REL_COLS.map(function(r){
+          var inCell=qual.filter(function(c){return c.influence===inf.id&&c.relation===r.id;});
+          var hot=inf.id==='fort'&&r.id==='champion',risk=inf.id==='fort'&&r.id==='opposant';
+          return '<div style="min-height:52px;border:1px solid '+(hot?'#a7f3d0':risk?'#fecaca':'#e5e9ee')+';border-radius:8px;padding:6px;background:'+(hot?'#ecfdf5':risk?'#fef2f2':'#fff')+'">'+(inCell.map(ctChip).join('')||'<span style="color:#cbd5e1;font-size:11px">—</span>')+'</div>';
+        }).join('');
+    }).join('')
+    +'</div></div>';
+  var unqNote=unq.length?('<div style="margin-top:8px;font-size:12px;color:#94a3b8">'+unq.length+' interlocuteur(s) à qualifier : '+unq.map(function(c){return '<span data-act="biz-edit-ct" data-id="'+c.id+'" style="cursor:pointer;text-decoration:underline dotted">'+esc((c.first_name||'')+' '+(c.last_name||''))+'</span>';}).join(', ')+'</div>'):'';
+  var powerMap='<div style="margin-bottom:18px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:13px;font-weight:800;color:#0f172a">🗺️ Grille de pouvoir <span style="color:#94a3b8;font-weight:600">— influence × relation</span></div>'
     +'<button class="bp" data-act="plan-ct-new" data-id="'+accId+'" style="font-size:12px;padding:6px 12px">+ Interlocuteur</button></div>'
-    +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+ctCards+'</div></div>';
+    +(cts.length?matrix+unqNote:'<div class="emp">Aucun interlocuteur. Cartographiez les décideurs et prescripteurs du compte.</div>')+'</div>';
   /* Plan d'actions */
   var acts=accActions(accId).slice().sort(function(x,y){return (x.next_action_date||x.date_realised||'').localeCompare(y.next_action_date||y.date_realised||'');});
   var actRows=acts.length?acts.map(function(k){
@@ -1570,7 +1662,7 @@ function tPlanDetail(accId){
       :'<span style="background:#dbeafe;color:#1e40af;font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px">À venir</span>';
     return '<tr><td>'+esc(tp)+'</td><td><b>'+esc(k.title||'')+'</b>'+(k.next_action&&!done?'<div style="font-size:11px;color:#94a3b8">→ '+esc(k.next_action)+'</div>':'')+'</td>'
       +'<td>'+badge+'</td><td style="white-space:nowrap;color:'+(late?'#dc2626':'#475569')+'">'+when+'</td><td>'+esc(k.assigned_to||'—')+'</td>'
-      +'<td class="tr"><button class="lr" data-act="biz-edit-act" data-id="'+k.id+'">✏️</button></td></tr>';
+      +'<td class="tr" style="white-space:nowrap">'+(done?'':'<button class="lb" data-act="act-done" data-id="'+k.id+'" title="Marquer comme fait" style="padding:2px 8px;margin-right:4px">✓</button>')+'<button class="lr" data-act="biz-edit-act" data-id="'+k.id+'">✏️</button></td></tr>';
   }).join(''):'<tr><td colspan="6" class="emp">Aucune action. Planifiez prospection, rencontres et relances.</td></tr>';
   var actions='<div style="margin-bottom:18px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:13px;font-weight:800;color:#0f172a">✅ Plan d\'actions</div>'
     +'<button class="bp" data-act="plan-act-new" data-id="'+accId+'" style="font-size:12px;padding:6px 12px">+ Action</button></div>'
@@ -1610,6 +1702,12 @@ function comiteSaveNext(){
     decisions:gv('com-dec'),next_steps:gv('com-next'),created_by:S._userEmail||S.profileFirstName||''};
   S.accountReviews=(S.accountReviews||[]).concat([rv]);sbUpsertReview(rv);
   S.comiteDone=(S.comiteDone||[]).concat([rv.id]);
+  /* Transformer les prochaines étapes en action de suivi planifiée. */
+  var ns=gv('com-next'),mk=document.getElementById('com-mkact');
+  if(ns&&mk&&mk.checked){
+    var ka={id:uid2(),type:'relance',title:ns.slice(0,90),account_id:accId,contact_id:null,opportunity_id:null,status:'planifie',next_action:'',next_action_date:_dPlus(14),date_realised:null,assigned_to:(pl&&pl.owner_name)||'',notes:'Créée en comité du '+new Date().toISOString().slice(0,10)};
+    S.bizActivities=(S.bizActivities||[]).concat([ka]);if(typeof sbUpsertAct==='function')sbUpsertAct(ka);
+  }
   if(pl){pl.prochaine_revue=_dPlus(90);S.accountPlans=S.accountPlans.map(function(x){return x.account_id===accId?pl:x;});sbUpsertPlan(pl);}
   S.comiteIdx=idx+1;render();
 }
@@ -1629,6 +1727,9 @@ function tComite(){
   var pl=planOrDefault(accId),st=accSante(accId),obj=+pl.ca_objectif||0,er=accER(accId),dr=accDR(accId),pip=accPipelineCA(accId);
   var acts=accActions(accId),lateActs=acts.filter(actIsLate),openActs=acts.filter(actIsPlanned),doneActs=acts.filter(actIsDone);
   var lastRev=accReviews(accId)[0];
+  var delta='';
+  if(lastRev&&lastRev.er!=null){var dEr=er-(+lastRev.er||0),dDr=dr-(lastRev.dr!=null?+lastRev.dr:0);
+    delta='<div style="margin-top:8px;font-size:12px;color:#a3e635;font-weight:700">Depuis la dernière revue : ER '+(dEr>=0?'+':'')+cEur(dEr)+' · DR '+(dDr>=0?'+':'')+cEur(dDr)+'</div>';}
   var prog='<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px">'
     +'<div class="pt">Comité de revue</div><div style="font-size:13px;color:#64748b;font-weight:700">Compte '+(idx+1)+' / '+q.length+'</div></div>';
   var hd='<div style="background:#1B2B3A;color:#fff;border-radius:12px;padding:16px 18px;margin-bottom:14px">'
@@ -1636,16 +1737,25 @@ function tComite(){
     +'<span style="margin-left:auto;font-size:13px;font-weight:800;color:'+st.color+';background:#fff;padding:3px 10px;border-radius:99px">'+st.lb+'</span></div>'
     +'<div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:#cbd5e1">'
     +'<span>Objectif : <b style="color:#fff">'+(obj?cEur(obj):'—')+'</b></span><span>ER : <b style="color:#a3e635">'+cEur(er)+'</b></span><span>DR : <b style="color:#fff">'+cEur(dr)+'</b></span><span>Pipeline : <b style="color:#fff">'+cEur(pip)+'</b></span>'
-    +(lastRev?'<span>Dernière revue : <b style="color:#fff">'+fDt(lastRev.review_date)+'</b></span>':'<span style="color:#94a3b8">Première revue</span>')+'</div></div>';
-  var lateList=lateActs.length?('<ul style="margin:4px 0 0;padding-left:18px;color:#b91c1c;font-size:12px">'+lateActs.map(function(k){return '<li>'+esc(k.title)+' — échéance '+(k.next_action_date?fDt(k.next_action_date):'—')+'</li>';}).join('')+'</ul>'):'<div style="font-size:12px;color:#16a34a">Aucune action en retard.</div>';
+    +(lastRev?'<span>Dernière revue : <b style="color:#fff">'+fDt(lastRev.review_date)+'</b></span>':'<span style="color:#94a3b8">Première revue</span>')+'</div>'+delta+'</div>';
+  /* Actions cochables en séance + création rapide. */
+  var actLines=openActs.length?openActs.slice().sort(function(x,y){return (x.next_action_date||'9999').localeCompare(y.next_action_date||'9999');}).map(function(k){var late=actIsLate(k);
+    return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px solid #f1f5f9">'
+      +'<button class="lb" data-act="act-done" data-id="'+k.id+'" title="Marquer comme fait" style="padding:1px 8px;font-size:11px">✓</button>'
+      +'<span style="flex:1;min-width:0;font-size:12px;color:#0f172a">'+esc(k.title||'')+'</span>'
+      +'<span style="font-size:11px;white-space:nowrap;color:'+(late?'#dc2626':'#94a3b8')+';font-weight:'+(late?'800':'600')+'">'+(k.next_action_date?fDt(k.next_action_date):'—')+(late?' ⚠':'')+'</span></div>';
+  }).join(''):'<div style="font-size:12px;color:#16a34a;margin-top:4px">Aucune action ouverte.</div>';
   var situ='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">'
-    +'<div style="flex:1;min-width:160px;background:#fff;border:1px solid #e5e9ee;border-radius:10px;padding:12px"><div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:4px">Actions</div><div style="font-size:12px;color:#475569">'+doneActs.length+' faites · '+openActs.length+' à venir · <b style="color:#dc2626">'+lateActs.length+' en retard</b></div>'+lateList+'</div>'
-    +'<div style="flex:1;min-width:160px;background:#fff;border:1px solid #e5e9ee;border-radius:10px;padding:12px"><div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:4px">Interlocuteurs à rencontrer</div><div style="font-size:12px;color:#475569">'+(accContacts(accId).filter(function(c){return c.a_rencontrer;}).map(function(c){return esc((c.first_name||'')+' '+(c.last_name||''));}).join(', ')||'—')+'</div></div>'
+    +'<div style="flex:2;min-width:280px;background:#fff;border:1px solid #e5e9ee;border-radius:10px;padding:12px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px"><div style="font-size:12px;font-weight:800;color:#0f172a">Actions <span style="color:#94a3b8;font-weight:600">— '+doneActs.length+' faites · '+openActs.length+' à venir · '+lateActs.length+' en retard</span></div>'
+      +'<button class="lb" data-act="plan-act-new" data-id="'+accId+'" style="font-size:11px;padding:3px 9px">+ Action</button></div>'+actLines+'</div>'
+    +'<div style="flex:1;min-width:160px;background:#fff;border:1px solid #e5e9ee;border-radius:10px;padding:12px"><div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:4px">À rencontrer</div><div style="font-size:12px;color:#475569">'+(accContacts(accId).filter(function(c){return c.a_rencontrer;}).map(function(c){return esc((c.first_name||'')+' '+(c.last_name||''));}).join(', ')||'—')+'</div></div>'
     +'</div>';
   var form='<div style="background:#fff;border:1px solid #e5e9ee;border-radius:12px;padding:14px 16px">'
     +'<div class="fd"><label class="fl">Participants</label><input class="ic" id="com-part" value="'+esc((lastRev&&lastRev.participants)||pl.owner_name||'')+'" placeholder="Responsable de compte, direction commerciale…"></div>'
     +'<div class="fd"><label class="fl">Décisions prises en séance</label><textarea class="ic" id="com-dec" rows="3" placeholder="Ex : investir sur le programme conformité, staffer un architecte senior…"></textarea></div>'
     +'<div class="fd"><label class="fl">Prochaines étapes</label><textarea class="ic" id="com-next" rows="2" placeholder="Ex : RDV DSI avant fin de mois, proposition sous 3 semaines…"></textarea></div>'
+    +'<div class="fd"><label class="cx" style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="com-mkact" checked> Créer une <b>action de suivi</b> depuis « Prochaines étapes » (échéance +2 semaines)</label></div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><button class="bp" data-act="comite-save-next">✓ Enregistrer la revue &amp; suivant</button>'
     +'<button class="bg" data-act="comite-next">Passer</button><button class="bg" data-act="comite-close" style="margin-left:auto">Terminer le comité</button></div></div>';
   return '<div class="vw">'+prog+hd+situ+form+'</div>';
