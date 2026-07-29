@@ -211,7 +211,7 @@ function bind(){
   if(rclr)rclr.onclick=function(){S.fdir=[];render();};
   /* Biz sub-tabs */
   var biztabs=document.querySelectorAll('[data-biz-tab]');
-  for(var bi=0;bi<biztabs.length;bi++){(function(b){b.onclick=function(){S.bizTab=b.getAttribute('data-biz-tab');render();};})(biztabs[bi]);}
+  for(var bi=0;bi<biztabs.length;bi++){(function(b){b.onclick=function(){S.bizTab=b.getAttribute('data-biz-tab');S.planView=null;S.comiteQueue=null;render();};})(biztabs[bi]);}
   bindOppConsPicker(); /* picker consultants opportunité */
   /* Biz pipeline filters */
   var bfst=document.getElementById('biz-fst');
@@ -1085,6 +1085,19 @@ function bind(){
       else if(a==='biz-edit-act'){var _k=S.bizActivities.find(function(x){return x.id===id;});S.bizModal={type:'act',item:_k};render();}
       else if(a==='biz-del'){var _tbl=b.getAttribute('data-table')||'';bizDelItem(_tbl,id);}
       else if(a==='biz-opp-mission'){bizOppToMission(id);}
+      /* ── Plans de compte (KAM) ── */
+      else if(a==='plan-open'){S.planView=id;S.comiteQueue=null;render();}
+      else if(a==='plan-close'){S.planView=null;render();}
+      else if(a==='plan-edit'){S.bizModal={type:'plan',item:planOrDefault(id),accId:id};render();}
+      else if(a==='plan-ct-new'){S.bizModal={type:'ct',item:{account_id:id}};render();}
+      else if(a==='plan-act-new'){S.bizModal={type:'act',item:{account_id:id,status:'planifie'}};render();}
+      else if(a==='biz-open-opp'){openOppById(id);}
+      else if(a==='comite-start'){comiteStart();}
+      else if(a==='comite-start-one'){comiteStartOne(id);}
+      else if(a==='comite-next'){comiteNext();}
+      else if(a==='comite-save-next'){comiteSaveNext();}
+      else if(a==='comite-close'){comiteClose();}
+      else if(a==='comite-export'){comiteExport();}
       else if(a==='restart-onboarding'){restartOnboarding();}
       else if(a==='import-cons-open'){openImportCons();}
       else if(a==='import-cons-tpl'){downloadConsTemplate();}

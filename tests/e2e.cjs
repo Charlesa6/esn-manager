@@ -174,6 +174,42 @@ async function newPage(browser) {
       check('Opportunités : modal du consultant s\'ouvre', /Nouvelle opportunité pressentie/.test(modalTxt));
       await p.evaluate(() => { S.modal = null; render(); }); await p.waitForTimeout(300);
     }
+    // Plans de compte (KAM) : portefeuille, détail, comité de revue
+    {
+      const before = p._appErrors.length;
+      const porto = await p.evaluate(() => {
+        S.tab = 'business'; S.bizTab = 'plans'; S.planView = null; S.comiteQueue = null; render();
+        const txt = document.body.innerText;
+        return { hasBtn: !!document.querySelector('[data-act="comite-start"]'),
+                 hasAcc: /BNP Paribas/.test(txt) && /Plans de compte/.test(txt),
+                 nPlans: (S.accountPlans || []).length };
+      });
+      check('Plans de compte : portefeuille + bouton comité', porto.hasBtn && porto.hasAcc);
+      check('Plans de compte : plans de démo chargés (' + porto.nPlans + ')', porto.nPlans >= 2);
+
+      const detail = await p.evaluate(() => {
+        S.planView = 'a1'; render();
+        const txt = document.body.innerText;
+        return { enjeux: /Enjeux/.test(txt), power: /Cartographie des interlocuteurs/.test(txt),
+                 champion: /Champion/.test(txt),
+                 won: (typeof accWonCA === 'function') ? accWonCA('a1') : 0 };
+      });
+      check('Plan de compte : détail (enjeux + power map + relation Champion)', detail.enjeux && detail.power && detail.champion);
+      check('Plan de compte : CA réalisé calculé depuis les opps gagnées (' + detail.won + ' €)', detail.won > 0);
+
+      const com = await p.evaluate(() => {
+        S.planView = null; comiteStart();
+        const n0 = (S.accountReviews || []).length;
+        const dec = document.getElementById('com-dec'); if (dec) dec.value = 'Décision de test';
+        comiteSaveNext();
+        return { started: (S.comiteQueue || []).length > 0, grew: (S.accountReviews || []).length > n0,
+                 ui: /Comité de revue/.test(document.body.innerText) };
+      });
+      check('Comité de revue : séance + revue historisée', com.ui && com.started && com.grew);
+      await p.evaluate(() => { comiteClose(); S.bizTab = 'pipeline'; S.planView = null; render(); });
+      check('Plans de compte : aucun crash sur le parcours KAM', p._appErrors.length === before);
+    }
+
     // Gestion des accès & Paramètres : temporairement masqués sur toutes les licences
     const hiddenTabs = await p.evaluate(() =>
       !!document.querySelector('[data-nav="svp_acces"]') || !!document.querySelector('[data-nav="svp_settings"]'));
