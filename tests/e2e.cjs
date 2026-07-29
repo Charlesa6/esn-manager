@@ -211,6 +211,16 @@ async function newPage(browser) {
       check('Actions : ✓ marque une action faite (act-done)', feats.doneWorked);
       check('Atterrissage ER = réalisé + pipeline (' + feats.land + ' ≥ ER ' + feats.er + ')', feats.land >= feats.er && feats.land > 0);
 
+      const teamF = await p.evaluate(() => {
+        S.planView = 'a1'; render();
+        const txt = document.body.innerText;
+        return { team: /Équipe du compte/i.test(txt), kam: /KAM/.test(txt),
+                 cadence: /Comité/i.test(txt) && /mensuel/i.test(txt),
+                 n: (typeof accTeam === 'function') ? accTeam('a1').length : 0 };
+      });
+      check('Équipe du compte : section + membres (' + teamF.n + ') + rôle KAM', teamF.team && teamF.kam && teamF.n >= 2);
+      check('Comité récurrent : cadence affichée dans le plan', teamF.cadence);
+
       const com = await p.evaluate(() => {
         S.planView = null; comiteStart();
         const n0 = (S.accountReviews || []).length;

@@ -1091,6 +1091,9 @@ function bind(){
       else if(a==='plan-edit'){S.bizModal={type:'plan',item:planOrDefault(id),accId:id};render();}
       else if(a==='plan-ct-new'){S.bizModal={type:'ct',item:{account_id:id}};render();}
       else if(a==='plan-act-new'){S.bizModal={type:'act',item:{account_id:id,status:'planifie'}};render();}
+      else if(a==='plan-team-new'){S.bizModal={type:'team',item:null,accId:id};render();}
+      else if(a==='plan-team-edit'){var _tm=(S.accountTeam||[]).find(function(x){return x.id===id;});S.bizModal={type:'team',item:_tm,accId:_tm&&_tm.account_id};render();}
+      else if(a==='plan-team-del'){teamDel(id);}
       else if(a==='biz-open-opp'){openOppById(id);}
       else if(a==='comite-start'){comiteStart();}
       else if(a==='comite-start-one'){comiteStartOne(id);}

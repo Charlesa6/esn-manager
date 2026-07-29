@@ -540,7 +540,7 @@ var S={
   role:'admin',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,kpiDirOpen:{},invites:[],svpInvites:[],recruteurInvites:[],vpDirMap:{},vpName:'',profileFirstName:'',profileLastName:'',profileTitle:'',fvp:[],settings:{currency:'EUR',currencySymbol:'€',fyStartMonth:10,fyStartDay:1,roleLabels:{},hasBusinessModule:false,hasRecrutementModule:false,cpQuota:27,rttQuota:12},kpiVPOpen:{},kpiDirDirOpen:{},navOpen:{},apprOpen:{},actCid:'',actMonth:'',_all:null,leaveApprovalRole:'super_admin',allInvites:[],managerId:null,approvalDelegateTo:null,approvalDelegateUntil:null,orgProfiles:[],
   /* CRM Business */
   bizTab:'pipeline',bizAccounts:[],bizContacts:[],bizOpps:[],bizActivities:[],bizApprovals:[],bizModal:null,bizFilter:{status:'all',account:'',exp:''},
-  accountPlans:[],accountReviews:[],planView:null,planModal:null,comiteQueue:null,comiteIdx:0,planFilter:{mine:false,statut:'',sante:''},
+  accountPlans:[],accountReviews:[],accountTeam:[],planView:null,planModal:null,comiteQueue:null,comiteIdx:0,planFilter:{mine:false,statut:'',sante:''},
   sbSt:'\uD83D\uDFE2 Sauvegarde locale active',
   sbSync:false,
   imp:null,
@@ -567,6 +567,14 @@ function loadDemoData(){
      le CRM, les fiches de poste, l'assignation de candidats et la mission auto. */
   S.settings.hasBusinessModule=true;
   S.settings.hasRecrutementModule=true;
+  /* Arbre de BU de démo : sert aux rattachements (équipe de compte multi-BU, etc.). */
+  S.settings.buTree=[
+    {id:'bu_dg',name:'Direction',parentId:null},
+    {id:'bu_banque',name:'Banque & Finance',parentId:null},
+    {id:'bu_energie',name:'Énergie',parentId:null},
+    {id:'bu_data',name:'Data & IA',parentId:null},
+    {id:'bu_public',name:'Secteur public',parentId:null}
+  ];
   /* Dates d'arrivée futures relatives à aujourd'hui (démo « prochaines arrivées »
      toujours à venir quel que soit le jour de la présentation). */
   var _fut=function(n){var d=new Date();d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
@@ -658,8 +666,15 @@ function loadDemoData(){
   /* Plans de compte (Key Account Management) : responsable, objectif de CA,
      enjeux/stratégie, prochaine revue. Un historique de comité sur BNP. */
   S.accountPlans=[
-    {id:'ap1',account_id:'a1',owner_name:'Thomas Bernard',owner_email:'',statut:'strategique',ca_objectif:1500000,ca_objectif_dr:900000,enjeux:'Devenir le partenaire de référence sur la plateforme risques et étendre au périmètre conformité.',strategie:'Renforcer la relation avec le DSI Risques, se positionner sur le programme conformité 2026, monter une équipe dédiée.',prochaine_revue:_fut(21)},
-    {id:'ap2',account_id:'a2',owner_name:'Marie Lefebvre',owner_email:'',statut:'developper',  ca_objectif:900000, ca_objectif_dr:700000,enjeux:'Prendre pied sur la migration cloud puis élargir aux projets data.',strategie:'Livrer le cadrage, capitaliser sur la relation Directeur Cloud, viser le run.',prochaine_revue:_fut(35)}
+    {id:'ap1',account_id:'a1',owner_name:'Thomas Bernard',owner_email:'',statut:'strategique',ca_objectif:1500000,ca_objectif_dr:900000,revue_cadence:'mensuel',enjeux:'Devenir le partenaire de référence sur la plateforme risques et étendre au périmètre conformité.',strategie:'Renforcer la relation avec le DSI Risques, se positionner sur le programme conformité 2026, monter une équipe dédiée.',prochaine_revue:_fut(21)},
+    {id:'ap2',account_id:'a2',owner_name:'Marie Lefebvre',owner_email:'',statut:'developper',  ca_objectif:900000, ca_objectif_dr:700000,revue_cadence:'trimestriel',enjeux:'Prendre pied sur la migration cloud puis élargir aux projets data.',strategie:'Livrer le cadrage, capitaliser sur la relation Directeur Cloud, viser le run.',prochaine_revue:_fut(35)}
+  ];
+  /* Équipe de gouvernance de compte : KAM, ingénieur d'affaires, directeur — multi-BU. */
+  S.accountTeam=[
+    {id:'at1',account_id:'a1',member_name:'Thomas Bernard',member_email:'',role:'kam',bu_id:'bu_banque',consultant_id:null},
+    {id:'at2',account_id:'a1',member_name:'Sophie Nguyen', member_email:'',role:'ingenieur_affaires',bu_id:'bu_data',consultant_id:null},
+    {id:'at3',account_id:'a1',member_name:'Antoine Mercier',member_email:'',role:'directeur',bu_id:'bu_dg',consultant_id:null},
+    {id:'at4',account_id:'a2',member_name:'Marie Lefebvre', member_email:'',role:'kam',bu_id:'bu_energie',consultant_id:null}
   ];
   S.accountReviews=[
     {id:'ar1',account_id:'a1',review_date:_fut(-30),participants:'T. Bernard, Direction commerciale',sante:'green',ca_objectif:1500000,ca_realise:715000,decisions:'Investir sur le programme conformité. Staffer un architecte senior.',next_steps:'RDV DSI Risques avant fin de mois ; proposition conformité sous 3 semaines.',created_by:'demo',created_at:''}

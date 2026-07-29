@@ -58,13 +58,14 @@ function uid2(){return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,fu
 async function loadBiz(){
   if(!sb||!SB_CID)return;
   try{
-    var [ra,rc,ro,rk,rp,rv]=await Promise.all([
+    var [ra,rc,ro,rk,rp,rv,rt]=await Promise.all([
       sb.from('crm_accounts').select('*').eq('company_id',SB_CID).order('name'),
       sb.from('crm_contacts').select('*').eq('company_id',SB_CID).order('last_name'),
       sb.from('crm_opportunities').select('*').eq('company_id',SB_CID).order('created_at',{ascending:false}),
       sb.from('crm_activities').select('*').eq('company_id',SB_CID).order('created_at',{ascending:false}),
       sb.from('account_plans').select('*').eq('company_id',SB_CID),
       sb.from('account_reviews').select('*').eq('company_id',SB_CID).order('review_date',{ascending:false}),
+      sb.from('account_team').select('*').eq('company_id',SB_CID),
     ]);
     if(ra.data)S.bizAccounts=ra.data;
     if(rc.data)S.bizContacts=rc.data;
@@ -72,6 +73,7 @@ async function loadBiz(){
     if(rk.data)S.bizActivities=rk.data;
     if(rp.data)S.accountPlans=rp.data;
     if(rv.data)S.accountReviews=rv.data;
+    if(rt.data)S.accountTeam=rt.data;
   }catch(e){console.warn('CRM load:',e);}
 }
 function visibleOpps(){
@@ -1111,9 +1113,25 @@ function tBizModal(){
         +PLAN_STATUS.map(function(s){return '<option value="'+s.id+'"'+(it.statut===s.id?' selected':'')+'>'+s.lb+'</option>';}).join('')+'</select></div>'
       +'<div class="fd"><label class="fl">Objectif ER — External Revenue (€)</label><input class="ic" type="number" id="plan-obj" value="'+(it.ca_objectif||'')+'" placeholder="1500000"></div>'
       +'<div class="fd"><label class="fl">Objectif DR — Delivery Revenue (€)</label><input class="ic" type="number" id="plan-obj-dr" value="'+(it.ca_objectif_dr||'')+'" placeholder="900000"></div>'
+      +'<div class="fd"><label class="fl">Cadence du comité</label><select class="ic" id="plan-cadence"><option value="">— Ponctuel —</option>'
+        +CADENCES.map(function(cd){return '<option value="'+cd.id+'"'+(it.revue_cadence===cd.id?' selected':'')+'>'+cd.lb+'</option>';}).join('')+'</select></div>'
       +'<div class="fd"><label class="fl">Prochaine revue</label><input class="ic" type="date" id="plan-revue" value="'+(it.prochaine_revue||'')+'"></div>'
       +'<div class="fd cs2"><label class="fl">🎯 Enjeux</label><textarea class="ic" id="plan-enjeux" rows="3" placeholder="Ambition sur le compte, périmètres à conquérir…">'+esc(it.enjeux||'')+'</textarea></div>'
       +'<div class="fd cs2"><label class="fl">🧭 Stratégie de développement</label><textarea class="ic" id="plan-strat" rows="3" placeholder="Leviers, relations à renforcer, plan d\'attaque…">'+esc(it.strategie||'')+'</textarea></div>'
+      +'</div>';
+  }
+  else if(m.type==='team'){
+    var it=m.item||{};
+    title=it.id?'Modifier le membre':'Membre de l\'équipe du compte';
+    saveAction='teamSave()';
+    var consOpts='<option value="">— Saisie libre (hors Konsilys) —</option>'+(S.cons||[]).slice().sort(function(x,y){return (x.name||'').localeCompare(y.name||'');}).map(function(c){return '<option value="'+c.id+'"'+(it.consultant_id===c.id?' selected':'')+'>'+esc(c.name)+(c.bu_id?' — '+esc(buName(c.bu_id)):'')+'</option>';}).join('');
+    var buOpts='<option value="">— BU —</option>'+((typeof buNodes==='function'?buNodes():[])||[]).map(function(b){return '<option value="'+b.id+'"'+(it.bu_id===b.id?' selected':'')+'>'+esc(b.name)+'</option>';}).join('');
+    body='<div class="g2">'
+      +'<div class="fd cs2"><label class="fl">Membre Konsilys</label><select class="ic" id="team-cons" onchange="var c=(S.cons||[]).find(function(x){return x.id===this.value;});if(c){var n=document.getElementById(\'team-name\');if(n)n.value=c.name;var e=document.getElementById(\'team-email\');if(e&&c.email)e.value=c.email;}">'+consOpts+'</select><p class="fh">Choisissez un membre existant (nom & BU pré-remplis) ou laissez « saisie libre » pour un intervenant hors Konsilys.</p></div>'
+      +'<div class="fd"><label class="fl">Nom *</label><input class="ic" id="team-name" value="'+esc(it.member_name||'')+'" placeholder="Prénom Nom"></div>'
+      +'<div class="fd"><label class="fl">Rôle</label><select class="ic" id="team-role">'+TEAM_ROLES.map(function(r){return '<option value="'+r.id+'"'+(it.role===r.id?' selected':'')+'>'+r.lb+'</option>';}).join('')+'</select></div>'
+      +'<div class="fd"><label class="fl">BU de rattachement</label><select class="ic" id="team-bu">'+buOpts+'</select></div>'
+      +'<div class="fd"><label class="fl">Email</label><input class="ic" type="email" id="team-email" value="'+esc(it.member_email||'')+'"></div>'
       +'</div>';
   }
 
@@ -1411,7 +1429,33 @@ function planStObj(id){return PLAN_STATUS.find(function(x){return x.id===id;})||
 function relObj(id){return RELATION.find(function(x){return x.id===id;});}
 function cEur(n){n=Math.round(+n||0);if(Math.abs(n)>=1e6)return (n/1e6).toFixed(n%1e6===0?0:1).replace('.',',')+' M€';if(Math.abs(n)>=1000)return Math.round(n/1000)+' k€';return fEur(n);}
 function planForAccount(accId){return (S.accountPlans||[]).find(function(p){return p.account_id===accId;})||null;}
-function planOrDefault(accId){return planForAccount(accId)||{id:null,account_id:accId,owner_name:'',owner_email:'',statut:'developper',ca_objectif:null,ca_objectif_dr:null,enjeux:'',strategie:'',prochaine_revue:null};}
+function planOrDefault(accId){return planForAccount(accId)||{id:null,account_id:accId,owner_name:'',owner_email:'',statut:'developper',ca_objectif:null,ca_objectif_dr:null,enjeux:'',strategie:'',prochaine_revue:null,revue_cadence:null};}
+/* Équipe de gouvernance du compte + cadence des comités. */
+var TEAM_ROLES=[{id:'kam',lb:'KAM',bg:'#dcfce7',fg:'#166534'},{id:'ingenieur_affaires',lb:'Ingénieur d\'affaires',bg:'#dbeafe',fg:'#1e40af'},{id:'directeur',lb:'Directeur',bg:'#ede9fe',fg:'#5b21b6'},{id:'sponsor',lb:'Sponsor',bg:'#fef3c7',fg:'#92400e'},{id:'membre',lb:'Membre',bg:'#f1f5f9',fg:'#475569'}];
+var CADENCES=[{id:'mensuel',lb:'Mensuel',months:1},{id:'trimestriel',lb:'Trimestriel',months:3},{id:'semestriel',lb:'Semestriel',months:6},{id:'annuel',lb:'Annuel',months:12}];
+function teamRoleObj(id){return TEAM_ROLES.find(function(x){return x.id===id;})||TEAM_ROLES[4];}
+function cadenceObj(id){return CADENCES.find(function(x){return x.id===id;})||null;}
+function accTeam(accId){var order={kam:0,ingenieur_affaires:1,directeur:2,sponsor:3,membre:4};return (S.accountTeam||[]).filter(function(m){return m.account_id===accId;}).sort(function(a,b){return (order[a.role]||9)-(order[b.role]||9);});}
+function buName(id){return (id&&typeof buLabel==='function'&&buLabel(id))||(id||'');}
+/* Prochaine échéance de comité selon la cadence (à partir d'aujourd'hui). */
+function _dPlusMonths(m){var d=new Date();d.setMonth(d.getMonth()+m);return d.toISOString().slice(0,10);}
+async function sbUpsertTeam(m){if(!sb||!SB_CID)return;return sb.from('account_team').upsert(Object.assign({},m,{company_id:SB_CID}),{onConflict:'id'});}
+function teamSave(){
+  var mm=S.bizModal;if(!mm||mm.type!=='team')return;var accId=mm.accId;
+  var consId=gv('team-cons');
+  var m={id:(mm.item&&mm.item.id)||uid2(),account_id:accId,role:gv('team-role')||'membre',member_name:gv('team-name'),member_email:gv('team-email'),bu_id:gv('team-bu')||null,consultant_id:consId||null};
+  if(consId){var c=(S.cons||[]).find(function(x){return x.id===consId;});if(c){m.member_name=c.name;m.member_email=c.email||m.member_email;if(!m.bu_id)m.bu_id=c.bu_id||null;}}
+  if(!m.member_name){alert('Nom requis');return;}
+  if(mm.item&&mm.item.id){S.accountTeam=S.accountTeam.map(function(x){return x.id===m.id?m:x;});}
+  else{S.accountTeam=(S.accountTeam||[]).concat([m]);}
+  sbUpsertTeam(m);S.bizModal=null;render();
+}
+function teamDel(id){
+  if(!confirm('Retirer ce membre de l\'équipe du compte ?'))return;
+  S.accountTeam=(S.accountTeam||[]).filter(function(x){return x.id!==id;});
+  if(sb&&SB_CID)sb.from('account_team').delete().eq('id',id).then(function(){});
+  render();
+}
 /* Exercice fiscal d'une date (aligné sur le sélecteur S.year du reste de l'app). */
 function _fyOfDate(dstr){if(!dstr)return null;var t=String(dstr).slice(0,10);for(var fy=(S.year||currentFY())-2;fy<=(S.year||currentFY())+2;fy++){if(t>=fyStart(fy)&&t<=fyEnd(fy))return fy;}return null;}
 /* Une opportunité est rattachée à l'exercice courant si sa date (closing → début →
@@ -1512,6 +1556,7 @@ function planSave(){
     statut:gv('plan-statut')||'developper',
     ca_objectif:+gv('plan-obj')||null,
     ca_objectif_dr:+gv('plan-obj-dr')||null,
+    revue_cadence:gv('plan-cadence')||null,
     enjeux:gv('plan-enjeux'),
     strategie:gv('plan-strat'),
     prochaine_revue:gv('plan-revue')||null,
@@ -1599,7 +1644,7 @@ function tPlanDetail(accId){
   var back='<button class="bg" data-act="plan-close" style="margin-bottom:12px">← Portefeuille</button>';
   var header='<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px">'
     +'<div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="pt">'+esc(a.name)+'</div>'+planStChip(pl.statut)+'<span title="'+st.lb+'">'+santeDot(st.code)+' <span style="font-size:12px;font-weight:700;color:'+st.color+'">'+st.lb+'</span></span></div>'
-      +'<div class="ps">'+esc(a.sector||'—')+' · Responsable : <b>'+esc(pl.owner_name||'—')+'</b>'+(pl.prochaine_revue?' · Prochaine revue : <b>'+fDt(pl.prochaine_revue)+'</b>':'')+'</div></div>'
+      +'<div class="ps">'+esc(a.sector||'—')+' · Responsable : <b>'+esc(pl.owner_name||'—')+'</b>'+(pl.revue_cadence?' · Comité <b>'+esc((cadenceObj(pl.revue_cadence)||{}).lb||pl.revue_cadence).toLowerCase()+'</b>':'')+(pl.prochaine_revue?' · Prochaine revue : <b>'+fDt(pl.prochaine_revue)+'</b>':'')+'</div></div>'
     +'<div style="display:flex;gap:8px"><button class="bg" data-act="plan-edit" data-id="'+accId+'">✏️ Éditer le plan</button><button class="bp" data-act="comite-start-one" data-id="'+accId+'">▶ Revue de compte</button></div></div>';
   /* Métriques */
   function metric(lb,val,sub,col){return '<div style="flex:1;min-width:150px;background:#fff;border:1px solid #e5e9ee;border-top:3px solid '+(col||'#1B2B3A')+';border-radius:12px;padding:14px 16px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#94a3b8">'+lb+'</div><div style="font-size:22px;font-weight:800;color:#0f172a;margin-top:4px">'+val+'</div>'+(sub?'<div style="font-size:12px;color:#94a3b8;margin-top:2px">'+sub+'</div>':'')+'</div>';}
@@ -1684,7 +1729,22 @@ function tPlanDetail(accId){
       +(r.decisions?'<div style="font-size:12px;color:#475569;margin-top:4px"><b>Décisions :</b> '+esc(r.decisions)+'</div>':'')
       +(r.next_steps?'<div style="font-size:12px;color:#475569;margin-top:2px"><b>Prochaines étapes :</b> '+esc(r.next_steps)+'</div>':'')
       +'</div>';}).join('')+'</div>'):'';
-  return '<div class="vw">'+back+header+metrics+strat+powerMap+actions+oppsBlock+revBlock+'</div>';
+  /* Équipe de gouvernance du compte (KAM, IA, directeurs… éventuellement multi-BU). */
+  var team=accTeam(accId);
+  var teamCards=team.length?team.map(function(m){var ro=teamRoleObj(m.role);
+    return '<div style="background:#fff;border:1px solid #e5e9ee;border-radius:10px;padding:10px 12px;min-width:200px;flex:1">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="font-weight:800;color:#0f172a;font-size:13px">'+esc(m.member_name||'—')+'</div>'
+      +'<div style="white-space:nowrap"><button class="lr" data-act="plan-team-edit" data-id="'+m.id+'" style="padding:2px 6px">✏️</button><button class="lr" data-act="plan-team-del" data-id="'+m.id+'" style="padding:2px 6px">✕</button></div></div>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center">'
+      +'<span style="background:'+ro.bg+';color:'+ro.fg+';font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px">'+ro.lb+'</span>'
+      +(m.bu_id?'<span style="background:#f1f5f9;color:#475569;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px">'+esc(buName(m.bu_id))+'</span>':'')
+      +(m.consultant_id?'<span title="Membre Konsilys" style="font-size:10px;color:#16a34a;font-weight:700">● Konsilys</span>':'')+'</div>'
+      +(m.member_email?'<div style="font-size:11px;color:#94a3b8;margin-top:4px">'+esc(m.member_email)+'</div>':'')+'</div>';
+  }).join(''):'<div class="emp" style="flex:1">Aucun membre. Constituez l\'équipe qui anime ce compte (KAM, ingénieur d\'affaires, directeur…).</div>';
+  var teamBlock='<div style="margin-bottom:18px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:13px;font-weight:800;color:#0f172a">🧑‍💼 Équipe du compte <span style="color:#94a3b8;font-weight:600">— gouvernance & comité</span></div>'
+    +'<button class="bp" data-act="plan-team-new" data-id="'+accId+'" style="font-size:12px;padding:6px 12px">+ Membre</button></div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+teamCards+'</div></div>';
+  return '<div class="vw">'+back+header+metrics+strat+teamBlock+powerMap+actions+oppsBlock+revBlock+'</div>';
 }
 
 /* ── Comité de revue de compte (le rituel) ── */
@@ -1708,7 +1768,7 @@ function comiteSaveNext(){
     var ka={id:uid2(),type:'relance',title:ns.slice(0,90),account_id:accId,contact_id:null,opportunity_id:null,status:'planifie',next_action:'',next_action_date:_dPlus(14),date_realised:null,assigned_to:(pl&&pl.owner_name)||'',notes:'Créée en comité du '+new Date().toISOString().slice(0,10)};
     S.bizActivities=(S.bizActivities||[]).concat([ka]);if(typeof sbUpsertAct==='function')sbUpsertAct(ka);
   }
-  if(pl){pl.prochaine_revue=_dPlus(90);S.accountPlans=S.accountPlans.map(function(x){return x.account_id===accId?pl:x;});sbUpsertPlan(pl);}
+  if(pl){var cad=cadenceObj(pl.revue_cadence);pl.prochaine_revue=cad?_dPlusMonths(cad.months):_dPlus(90);S.accountPlans=S.accountPlans.map(function(x){return x.account_id===accId?pl:x;});sbUpsertPlan(pl);}
   S.comiteIdx=idx+1;render();
 }
 function tComite(){
@@ -1752,7 +1812,7 @@ function tComite(){
     +'<div style="flex:1;min-width:160px;background:#fff;border:1px solid #e5e9ee;border-radius:10px;padding:12px"><div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:4px">À rencontrer</div><div style="font-size:12px;color:#475569">'+(accContacts(accId).filter(function(c){return c.a_rencontrer;}).map(function(c){return esc((c.first_name||'')+' '+(c.last_name||''));}).join(', ')||'—')+'</div></div>'
     +'</div>';
   var form='<div style="background:#fff;border:1px solid #e5e9ee;border-radius:12px;padding:14px 16px">'
-    +'<div class="fd"><label class="fl">Participants</label><input class="ic" id="com-part" value="'+esc((lastRev&&lastRev.participants)||pl.owner_name||'')+'" placeholder="Responsable de compte, direction commerciale…"></div>'
+    +'<div class="fd"><label class="fl">Participants</label><input class="ic" id="com-part" value="'+esc((lastRev&&lastRev.participants)||accTeam(accId).map(function(m){return m.member_name;}).join(', ')||pl.owner_name||'')+'" placeholder="Responsable de compte, direction commerciale…"></div>'
     +'<div class="fd"><label class="fl">Décisions prises en séance</label><textarea class="ic" id="com-dec" rows="3" placeholder="Ex : investir sur le programme conformité, staffer un architecte senior…"></textarea></div>'
     +'<div class="fd"><label class="fl">Prochaines étapes</label><textarea class="ic" id="com-next" rows="2" placeholder="Ex : RDV DSI avant fin de mois, proposition sous 3 semaines…"></textarea></div>'
     +'<div class="fd"><label class="cx" style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="com-mkact" checked> Créer une <b>action de suivi</b> depuis « Prochaines étapes » (échéance +2 semaines)</label></div>'
