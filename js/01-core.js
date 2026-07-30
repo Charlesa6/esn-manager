@@ -682,7 +682,8 @@ function loadDemoData(){
     {id:'at4',account_id:'a2',member_name:'Marie Lefebvre', member_email:'',role:'kam',bu_id:'bu_energie',consultant_id:null}
   ];
   S.accountReviews=[
-    {id:'ar1',account_id:'a1',review_date:_fut(-30),participants:'T. Bernard, Direction commerciale',sante:'green',ca_objectif:1500000,ca_realise:715000,decisions:'Investir sur le programme conformité. Staffer un architecte senior.',next_steps:'RDV DSI Risques avant fin de mois ; proposition conformité sous 3 semaines.',created_by:'demo',created_at:''}
+    {id:'ar0',account_id:'a1',review_date:_fut(-60),participants:'T. Bernard, Direction commerciale',sante:'amber',ca_objectif:1500000,ca_realise:520000,reliability:48,engagements:[],decisions:'Prioriser la plateforme risques.',next_steps:'Cadrer le programme conformité.',created_by:'demo',created_at:''},
+    {id:'ar1',account_id:'a1',review_date:_fut(-30),participants:'T. Bernard, Direction commerciale',sante:'green',ca_objectif:1500000,ca_realise:715000,reliability:58,engagements:[],decisions:'Investir sur le programme conformité. Staffer un architecte senior.',next_steps:'RDV DSI Risques avant fin de mois ; proposition conformité sous 3 semaines.',created_by:'demo',created_at:''}
   ];
   /* Fiches de poste de démonstration — chacune issue d'un deal CRM (oppId) et avec des
      candidats du vivier déjà assignés (candidateIds), pour montrer l'assignation, le

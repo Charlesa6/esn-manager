@@ -1502,7 +1502,9 @@ function accAlertList(accId){
   var strat=pl.statut==='strategique'||pl.statut==='defendre';
   if(strat&&!acts.filter(actIsPlanned).length)msgs.push('Compte '+planStObj(pl.statut).lb.toLowerCase()+' sans action planifiée');
   if(pl.prochaine_revue&&pD(pl.prochaine_revue)<_today())msgs.push('Revue en retard ('+fDt(pl.prochaine_revue)+')');
-  if(acts.filter(actIsLate).length)msgs.push(acts.filter(actIsLate).length+' action(s) en retard');
+  var lateA=acts.filter(actIsLate),immA=acts.filter(actIsImminent);
+  if(lateA.length)msgs.push(lateA.length+' engagement(s) en retard'+(lateA[0].assigned_to?' (resp. '+lateA[0].assigned_to+')':''));
+  if(immA.length)msgs.push('⏰ '+immA.length+' engagement(s) à échéance sous 3 j'+(immA[0].assigned_to?' (resp. '+immA[0].assigned_to+')':''));
   if((+pl.ca_objectif||0)>0&&accLandingER(accId)<(+pl.ca_objectif))msgs.push('Atterrissage ER sous l\'objectif ('+cEur((+pl.ca_objectif)-accLandingER(accId))+' à combler)');
   if((+pl.ca_objectif_dr||0)>0&&accLandingDR(accId)<(+pl.ca_objectif_dr))msgs.push('Atterrissage DR sous l\'objectif ('+cEur((+pl.ca_objectif_dr)-accLandingDR(accId))+' à combler)');
   return msgs;
@@ -1541,6 +1543,20 @@ function _reliab(acts){var kept=0,total=0;acts.forEach(function(k){var v=actVerd
 function accReliability(accId){return _reliab(accActions(accId));}
 function personReliability(name){var n=(name||'').toLowerCase();return _reliab((S.bizActivities||[]).filter(function(k){return (k.assigned_to||'').toLowerCase()===n;}));}
 function reliabColor(pct){return pct==null?'#94a3b8':pct>=80?'#16a34a':pct>=50?'#d97706':'#dc2626';}
+/* Rappels d'échéance : jours restants (négatif = dépassé), imminence ≤ 3 jours. */
+function _daysUntil(dstr){if(!dstr)return null;return Math.round((pD(dstr)-_today())/86400000);}
+function actIsImminent(k){var d=_daysUntil(k.next_action_date);return actIsPlanned(k)&&d!=null&&d>=0&&d<=3;}
+/* Sparkline SVG du taux de tenue au fil des revues (historique + valeur courante). */
+function reliabSparkline(accId){
+  var revs=accReviews(accId).slice().filter(function(r){return r.reliability!=null;}).reverse();
+  var pts=revs.map(function(r){return +r.reliability;});
+  var cur=accReliability(accId).pct;if(cur!=null)pts.push(cur);
+  if(pts.length<2)return '';
+  var W=150,Hh=34,n=pts.length,x=function(i){return 3+(n<=1?0:i/(n-1)*(W-6));},y=function(v){return Hh-3-(v/100)*(Hh-6);};
+  var d='';pts.forEach(function(v,i){d+=(i?' L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1);});
+  var dots=pts.map(function(v,i){return '<circle cx="'+x(i).toFixed(1)+'" cy="'+y(v).toFixed(1)+'" r="2.4" fill="'+reliabColor(v)+'"/>';}).join('');
+  return '<svg width="'+W+'" height="'+Hh+'" style="vertical-align:middle" aria-label="Historique de tenue"><path d="'+d+'" fill="none" stroke="#cbd5e1" stroke-width="1.5"/>'+dots+'</svg>';
+}
 /* Verdicts posés en comité : Tenu (actMarkDone), Reporté (+1 semaine, glissement compté), Abandonné. */
 function actReport(id){
   var k=(S.bizActivities||[]).find(function(x){return x.id===id;});if(!k)return;
@@ -1648,11 +1664,13 @@ function tBizPlans(){
   var acts=allPlannedActions(accs.map(function(a){return a.id;}));
   var echeances=acts.length?('<div style="background:#fff;border:1px solid #e5e9ee;border-radius:12px;padding:12px 14px;margin-bottom:16px">'
     +'<div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:8px">🗓️ Mes échéances <span style="color:#94a3b8;font-weight:600">— '+acts.length+' action(s) à mener</span></div>'
-    +acts.slice(0,8).map(function(it){var k=it.k,late=actIsLate(k);
+    +acts.slice(0,8).map(function(it){var k=it.k,late=actIsLate(k),imm=actIsImminent(k),dn=_daysUntil(k.next_action_date);
+      var col=late?'#dc2626':imm?'#c2410c':'#64748b';
+      var when=k.next_action_date?(fDt(k.next_action_date)+(late?' · en retard de '+Math.abs(dn)+' j ⚠':dn===0?' · aujourd\'hui':dn!=null&&dn>0?' · dans '+dn+' j'+(imm?' ⏰':''):'')):'—';
       return '<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-top:1px solid #f1f5f9">'
         +'<button class="lb" data-act="act-done" data-id="'+k.id+'" title="Marquer comme fait" style="padding:2px 8px;font-size:12px">✓</button>'
-        +'<div data-act="plan-open" data-id="'+it.acc.id+'" style="flex:1;cursor:pointer;min-width:0"><span style="font-weight:700;color:#0f172a">'+esc(k.title||'')+'</span> <span style="color:#94a3b8;font-size:12px">· '+esc(it.acc.name)+'</span></div>'
-        +'<span style="font-size:12px;white-space:nowrap;color:'+(late?'#dc2626':'#64748b')+';font-weight:'+(late?'800':'600')+'">'+(k.next_action_date?fDt(k.next_action_date):'—')+(late?' ⚠':'')+'</span></div>';
+        +'<div data-act="plan-open" data-id="'+it.acc.id+'" style="flex:1;cursor:pointer;min-width:0"><span style="font-weight:700;color:#0f172a">'+esc(k.title||'')+'</span> <span style="color:#94a3b8;font-size:12px">· '+esc(it.acc.name)+(k.assigned_to?' · '+esc(k.assigned_to):'')+'</span></div>'
+        +'<span style="font-size:12px;white-space:nowrap;color:'+col+';font-weight:'+(late||imm?'800':'600')+'">'+when+'</span></div>';
     }).join('')
     +(acts.length>8?'<div style="font-size:11px;color:#94a3b8;margin-top:6px">+ '+(acts.length-8)+' autre(s) échéance(s)…</div>':'')+'</div>'):'';
   var rows=accs.map(function(a){
@@ -1758,10 +1776,12 @@ function tPlanDetail(accId){
   /* Taux de tenue des engagements du compte + par personne. */
   var rel=accReliability(accId);
   var teamRel=(function(){var names={};accActions(accId).forEach(function(k){if(k.assigned_to)names[k.assigned_to]=1;});return Object.keys(names).map(function(n){var r=personReliability(n);return {n:n,r:r};}).filter(function(x){return x.r.total>0;}).sort(function(a,b){return (b.r.pct||0)-(a.r.pct||0);});})();
+  var spark=reliabSparkline(accId);
   var reliabCard='<div style="background:#fff;border:1px solid #e5e9ee;border-radius:12px;padding:14px 16px;margin-bottom:18px">'
     +'<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><div style="font-size:13px;font-weight:800;color:#0f172a">🎯 Tenue des engagements</div>'
     +'<div style="font-size:26px;font-weight:800;color:'+reliabColor(rel.pct)+'">'+(rel.pct!=null?rel.pct+'%':'—')+'</div>'
-    +'<div style="font-size:12px;color:#94a3b8">'+rel.kept+' tenu(s) / '+rel.total+' engagement(s) arrivé(s) à échéance</div></div>'
+    +'<div style="font-size:12px;color:#94a3b8">'+rel.kept+' tenu(s) / '+rel.total+' engagement(s) arrivé(s) à échéance</div>'
+    +(spark?'<div style="margin-left:auto;text-align:right"><div style="font-size:10px;color:#94a3b8;font-weight:700">HISTORIQUE</div>'+spark+'</div>':'')+'</div>'
     +(teamRel.length?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'+teamRel.map(function(x){return '<span style="font-size:11px;background:#f8fafc;border:1px solid #e5e9ee;border-radius:99px;padding:3px 10px"><b>'+esc(x.n)+'</b> · <b style="color:'+reliabColor(x.r.pct)+'">'+(x.r.pct!=null?x.r.pct+'%':'—')+'</b> <span style="color:#94a3b8">('+x.r.kept+'/'+x.r.total+')</span></span>';}).join('')+'</div>':'')
     +'<p class="fh" style="margin-top:8px">Chaque engagement pris en comité est confronté à un verdict au comité suivant (Tenu / Reporté / Abandonné). Le taux mesure la fiabilité d\'exécution.</p></div>';
   var actions='<div style="margin-bottom:18px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:13px;font-weight:800;color:#0f172a">✅ Plan d\'actions</div>'
@@ -1780,7 +1800,7 @@ function tPlanDetail(accId){
   var revs=accReviews(accId);
   var revBlock=revs.length?('<div style="margin-bottom:8px"><div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:8px">🗓️ Historique des comités</div>'
     +revs.map(function(r){return '<div style="background:#fff;border:1px solid #e5e9ee;border-radius:10px;padding:10px 12px;margin-bottom:8px">'
-      +'<div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:12px">Revue du '+fDt(r.review_date)+'</b><span style="font-size:11px;color:#94a3b8">'+esc(r.participants||'')+'</span></div>'
+      +'<div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:12px">Revue du '+fDt(r.review_date)+(r.reliability!=null?' · <span style="color:'+reliabColor(r.reliability)+'">tenue '+r.reliability+'%</span>':'')+'</b><span style="font-size:11px;color:#94a3b8">'+esc(r.participants||'')+'</span></div>'
       +(r.decisions?'<div style="font-size:12px;color:#475569;margin-top:4px"><b>Décisions :</b> '+esc(r.decisions)+'</div>':'')
       +(r.next_steps?'<div style="font-size:12px;color:#475569;margin-top:2px"><b>Prochaines étapes :</b> '+esc(r.next_steps)+'</div>':'')
       +'</div>';}).join('')+'</div>'):'';
@@ -1811,9 +1831,12 @@ function comiteClose(){S.comiteQueue=null;S.comiteIdx=0;render();}
 function comiteSaveNext(){
   var q=S.comiteQueue||[],idx=S.comiteIdx||0,accId=q[idx];if(!accId)return;
   var st=accSante(accId),pl=planForAccount(accId);
+  /* Snapshot des engagements + taux de tenue figés à cette revue (courbe de fiabilité). */
+  var engSnap=accActions(accId).map(function(k){return {id:k.id,title:k.title||'',assigned_to:k.assigned_to||'',verdict:actVerdict(k),due:k.next_action_date||null,done:actIsDone(k)};});
   var rv={id:uid2(),account_id:accId,review_date:new Date().toISOString().slice(0,10),
     participants:gv('com-part'),sante:st.code,ca_objectif:(pl?+pl.ca_objectif||null:null),
     er:accER(accId),dr:accDR(accId),ca_realise:accER(accId),
+    engagements:engSnap,reliability:accReliability(accId).pct,
     decisions:gv('com-dec'),next_steps:gv('com-next'),created_by:S._userEmail||S.profileFirstName||''};
   S.accountReviews=(S.accountReviews||[]).concat([rv]);sbUpsertReview(rv);
   S.comiteDone=(S.comiteDone||[]).concat([rv.id]);
@@ -1853,7 +1876,7 @@ function tComite(){
     +'<span style="margin-left:auto;font-size:13px;font-weight:800;color:'+st.color+';background:#fff;padding:3px 10px;border-radius:99px">'+st.lb+'</span></div>'
     +'<div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:#cbd5e1">'
     +'<span>Objectif : <b style="color:#fff">'+(obj?cEur(obj):'—')+'</b></span><span>ER : <b style="color:#a3e635">'+cEur(er)+'</b></span><span>DR : <b style="color:#fff">'+cEur(dr)+'</b></span><span>Pipeline : <b style="color:#fff">'+cEur(pip)+'</b></span>'
-    +'<span>Tenue : <b style="color:'+(rel.pct!=null&&rel.pct>=80?'#a3e635':rel.pct!=null&&rel.pct>=50?'#fcd34d':'#fca5a5')+'">'+(rel.pct!=null?rel.pct+'%':'—')+'</b></span>'
+    +'<span>Tenue : <b style="color:'+(rel.pct!=null&&rel.pct>=80?'#a3e635':rel.pct!=null&&rel.pct>=50?'#fcd34d':'#fca5a5')+'">'+(rel.pct!=null?rel.pct+'%':'—')+'</b>'+((lastRev&&lastRev.reliability!=null&&rel.pct!=null)?' <span style="color:'+(rel.pct-lastRev.reliability>=0?'#a3e635':'#fca5a5')+'">('+(rel.pct-lastRev.reliability>=0?'+':'')+(rel.pct-lastRev.reliability)+' pts)</span>':'')+'</span>'
     +(lastRev?'<span>Dernière revue : <b style="color:#fff">'+fDt(lastRev.review_date)+'</b></span>':'<span style="color:#94a3b8">Première revue</span>')+'</div>'+delta+'</div>';
   /* Boucle d'engagement : chaque action ouverte reçoit un verdict en séance. */
   var actLines=openActs.length?openActs.slice().sort(function(x,y){return (x.next_action_date||'9999').localeCompare(y.next_action_date||'9999');}).map(function(k){var late=actIsLate(k),rep=+k.reported_count||0;

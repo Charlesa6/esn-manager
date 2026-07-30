@@ -229,11 +229,16 @@ async function newPage(browser) {
         const rk = (S.bizActivities || []).find(function (k) { return k.account_id === 'a1' && actIsPlanned(k); });
         var beforeRep = rk ? (+rk.reported_count || 0) : -1, afterRep = beforeRep;
         if (rk) { actReport(rk.id); afterRep = (+((S.bizActivities || []).find(function (x) { return x.id === rk.id; }).reported_count) || 0); }
-        return { relCard: /Tenue des engagements/i.test(txt), pct: rel.pct, total: rel.total, hebdo: hebdo, reported: afterRep > beforeRep };
+        const spark = (typeof reliabSparkline === 'function') ? reliabSparkline('a1') : '';
+        const alerts = (typeof accAlertList === 'function') ? accAlertList('a1').join(' | ') : '';
+        return { relCard: /Tenue des engagements/i.test(txt), pct: rel.pct, total: rel.total, hebdo: hebdo, reported: afterRep > beforeRep,
+                 spark: /<svg/.test(spark), histReliab: /tenue \d+%/i.test(txt), reminder: /échéance sous 3 j|en retard/i.test(alerts) };
       });
       check('Engagements : taux de tenue calculé (' + eng.pct + '% sur ' + eng.total + ') + carte', eng.relCard && eng.pct != null && eng.total >= 2);
       check('Engagements : « Reporter » incrémente le glissement', eng.reported);
       check('Comité : cadence hebdomadaire disponible', eng.hebdo);
+      check('Historique de tenue : sparkline + % par revue', eng.spark && eng.histReliab);
+      check('Rappels d\'échéance : alerte engagement imminent/en retard', eng.reminder);
 
       const com = await p.evaluate(() => {
         S.planView = null; comiteStart();
