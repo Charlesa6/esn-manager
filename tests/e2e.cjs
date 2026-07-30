@@ -240,6 +240,21 @@ async function newPage(browser) {
       check('Historique de tenue : sparkline + % par revue', eng.spark && eng.histReliab);
       check('Rappels d\'échéance : alerte engagement imminent/en retard', eng.reminder);
 
+      const notif = await p.evaluate(() => {
+        S.tab = 'business'; S.bizTab = 'plans'; S.planView = null; S.comiteQueue = null; render();
+        const hasBtn = !!document.querySelector('[data-act="notif-open"]');
+        S.bizModal = { type: 'notif' }; render();
+        const txt = document.body.innerText;
+        const modal = /Notifications de rappel/i.test(txt) && /Microsoft Teams/i.test(txt);
+        const dg = document.getElementById('notif-digest'); if (dg) dg.value = 'business@ma-esn.fr';
+        const tu = document.getElementById('notif-teams-url'); if (tu) tu.value = 'https://outlook.office.com/webhook/xyz';
+        notifSave();
+        return { hasBtn: hasBtn, modal: modal,
+                 saved: !!(S.notifSettings && S.notifSettings.digest_email === 'business@ma-esn.fr' && S.notifSettings.teams_webhook_url) };
+      });
+      check('Notifications : bouton config visible (admin) + modale email/Teams', notif.hasBtn && notif.modal);
+      check('Notifications : enregistrement des réglages (digest + webhook Teams)', notif.saved);
+
       const com = await p.evaluate(() => {
         S.planView = null; comiteStart();
         const n0 = (S.accountReviews || []).length;

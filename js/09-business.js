@@ -58,7 +58,7 @@ function uid2(){return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,fu
 async function loadBiz(){
   if(!sb||!SB_CID)return;
   try{
-    var [ra,rc,ro,rk,rp,rv,rt]=await Promise.all([
+    var [ra,rc,ro,rk,rp,rv,rt,rn]=await Promise.all([
       sb.from('crm_accounts').select('*').eq('company_id',SB_CID).order('name'),
       sb.from('crm_contacts').select('*').eq('company_id',SB_CID).order('last_name'),
       sb.from('crm_opportunities').select('*').eq('company_id',SB_CID).order('created_at',{ascending:false}),
@@ -66,6 +66,7 @@ async function loadBiz(){
       sb.from('account_plans').select('*').eq('company_id',SB_CID),
       sb.from('account_reviews').select('*').eq('company_id',SB_CID).order('review_date',{ascending:false}),
       sb.from('account_team').select('*').eq('company_id',SB_CID),
+      sb.from('notification_settings').select('*').eq('company_id',SB_CID).maybeSingle(),
     ]);
     if(ra.data)S.bizAccounts=ra.data;
     if(rc.data)S.bizContacts=rc.data;
@@ -74,6 +75,7 @@ async function loadBiz(){
     if(rp.data)S.accountPlans=rp.data;
     if(rv.data)S.accountReviews=rv.data;
     if(rt.data)S.accountTeam=rt.data;
+    if(rn&&rn.data)S.notifSettings=rn.data;
   }catch(e){console.warn('CRM load:',e);}
 }
 function visibleOpps(){
@@ -1137,6 +1139,18 @@ function tBizModal(){
       +'<div class="fd"><label class="fl">Email</label><input class="ic" type="email" id="team-email" value="'+esc(it.member_email||'')+'"></div>'
       +'</div>';
   }
+  else if(m.type==='notif'){
+    var ns=S.notifSettings||{};
+    title='🔔 Notifications de rappel d\'échéance';
+    saveAction='notifSave()';
+    body='<p class="fh" style="margin:0 0 14px">Chaque matin, Konsilys relance automatiquement les responsables dont un engagement de comité arrive à échéance (≤ 3 jours) ou est en retard — par email et/ou Microsoft Teams. L\'email part au responsable de l\'action (résolu via l\'équipe du compte, puis le responsable du plan, puis l\'adresse de repli ci-dessous).</p>'
+      +'<div class="g2">'
+      +'<div class="fd cs2"><label class="cx" style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="notif-email"'+(ns.email_enabled!==false?' checked':'')+'> <b>Rappels par email</b> (via Resend)</label></div>'
+      +'<div class="fd cs2"><label class="fl">Adresse de repli (digest)</label><input class="ic" type="email" id="notif-digest" value="'+esc(ns.digest_email||'')+'" placeholder="business@ma-esn.fr"><p class="fh">Utilisée quand le responsable d\'une action n\'a pas d\'email connu.</p></div>'
+      +'<div class="fd cs2" style="border-top:1px solid #eef2f6;padding-top:10px"><label class="cx" style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="notif-teams"'+(ns.teams_enabled!==false?' checked':'')+'> <b>Rappels Microsoft Teams</b></label></div>'
+      +'<div class="fd cs2"><label class="fl">URL du webhook entrant Teams</label><input class="ic" id="notif-teams-url" value="'+esc(ns.teams_webhook_url||'')+'" placeholder="https://outlook.office.com/webhook/..."><p class="fh">Teams → canal cible → Connecteurs → « Incoming Webhook » → copiez l\'URL générée.</p></div>'
+      +'</div>';
+  }
 
   /* Pont Business → Recrutement : depuis une opportunité enregistrée, générer une
      fiche de poste pré-remplie (profil, client, TJM, dates). Disponible dès qu'un
@@ -1444,6 +1458,20 @@ function buName(id){return (id&&typeof buLabel==='function'&&buLabel(id))||(id||
 function _dPlusMonths(m){var d=new Date();d.setMonth(d.getMonth()+m);return d.toISOString().slice(0,10);}
 function _dPlusCadence(cad){if(!cad)return _dPlus(90);return cad.days?_dPlus(cad.days):_dPlusMonths(cad.months||3);}
 async function sbUpsertTeam(m){if(!sb||!SB_CID)return;return sb.from('account_team').upsert(Object.assign({},m,{company_id:SB_CID}),{onConflict:'id'});}
+/* Réglages de notification (rappels d'échéance email + Teams) par entreprise. */
+function notifSave(){
+  var mm=S.bizModal;if(!mm||mm.type!=='notif')return;
+  var ns={
+    company_id:SB_CID,
+    email_enabled:!!(document.getElementById('notif-email')&&document.getElementById('notif-email').checked),
+    teams_enabled:!!(document.getElementById('notif-teams')&&document.getElementById('notif-teams').checked),
+    digest_email:(gv('notif-digest')||'').trim()||null,
+    teams_webhook_url:(gv('notif-teams-url')||'').trim()||null
+  };
+  S.notifSettings=ns;
+  if(sb&&SB_CID)sb.from('notification_settings').upsert(ns,{onConflict:'company_id'}).then(function(r){if(r&&r.error)console.warn('notif save:',r.error);});
+  S.bizModal=null;render();
+}
 function teamSave(){
   var mm=S.bizModal;if(!mm||mm.type!=='team')return;var accId=mm.accId;
   var consId=gv('team-cons');
@@ -1644,7 +1672,9 @@ function tBizPlans(){
   var head='<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">'
     +'<div style="font-size:13px;color:#64748b">Animez le développement de vos comptes stratégiques : responsable, objectif, actions et rituel de comité.'
       +(nRevue?' <b style="color:#b45309">'+nRevue+' compte'+(nRevue>1?'s':'')+' à revoir.</b>':'')+'</div>'
-    +'<button class="bp" data-act="comite-start" title="Dérouler les comptes un par un en séance de comité">▶ Lancer un comité de revue</button></div>';
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +(['admin','super_admin','gestionnaire'].indexOf(S.role)>=0?'<button class="lb" data-act="notif-open" title="Configurer les rappels d\'échéance par email et Microsoft Teams">🔔 Notifications</button>':'')
+    +'<button class="bp" data-act="comite-start" title="Dérouler les comptes un par un en séance de comité">▶ Lancer un comité de revue</button></div></div>';
   /* Bandeau d'alertes de pilotage. */
   var alerts=[];accs.forEach(function(a){accAlertList(a.id).forEach(function(m){alerts.push({a:a,m:m});});});
   var alertBox=alerts.length?('<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:12px 14px;margin-bottom:14px">'
