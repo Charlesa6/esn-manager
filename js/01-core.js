@@ -661,7 +661,12 @@ function loadDemoData(){
     {id:'k1',type:'reunion',title:'Point trimestriel DSI Risques',account_id:'a1',contact_id:'ct1',opportunity_id:null,status:'planifie',next_action:'Préparer la proposition conformité',next_action_date:_fut(7), date_realised:null,      assigned_to:'Thomas Bernard',notes:''},
     {id:'k2',type:'relance',title:'Relancer sur le cadrage cloud',   account_id:'a2',contact_id:'ct2',opportunity_id:'o2', status:'planifie',next_action:'Envoyer le planning de migration', next_action_date:_fut(-3),date_realised:null,      assigned_to:'Marie Lefebvre',notes:''},
     {id:'k3',type:'reunion',title:'Atelier de cadrage cloud',        account_id:'a2',contact_id:'ct2',opportunity_id:'o2', status:'realise', next_action:'',                                next_action_date:null,     date_realised:_fut(-10),assigned_to:'Marie Lefebvre',notes:'Périmètre validé.'},
-    {id:'k4',type:'reunion',title:'Rencontre Directeur Conformité',  account_id:'a1',contact_id:'ct3',opportunity_id:null,status:'planifie',next_action:'Cadrer le besoin conformité 2026',next_action_date:_fut(14), date_realised:null,      assigned_to:'Thomas Bernard',notes:''}
+    {id:'k4',type:'reunion',title:'Rencontre Directeur Conformité',  account_id:'a1',contact_id:'ct3',opportunity_id:null,status:'planifie',next_action:'Cadrer le besoin conformité 2026',next_action_date:_fut(14), date_realised:null,      assigned_to:'Thomas Bernard',notes:''},
+    /* Historique d'engagements pour illustrer le taux de tenue (tenu / en retard / non tenu / reporté). */
+    {id:'k5',type:'reunion',title:'Atelier cadrage risques',        account_id:'a1',status:'realise', next_action_date:_fut(-20),date_realised:_fut(-22),assigned_to:'Thomas Bernard',notes:''},
+    {id:'k6',type:'relance',title:'Relance proposition conformité', account_id:'a1',status:'planifie',next_action_date:_fut(10), date_realised:null,     assigned_to:'Thomas Bernard',reported_count:2,notes:''},
+    {id:'k7',type:'appel',  title:'Point sponsor conformité',       account_id:'a1',status:'realise', next_action_date:_fut(-15),date_realised:_fut(-12),assigned_to:'Sophie Nguyen', notes:''},
+    {id:'k8',type:'email',  title:'Envoi dossier de référence',     account_id:'a1',status:'planifie',next_action_date:_fut(-8), date_realised:null,     assigned_to:'Thomas Bernard',notes:''}
   ];
   /* Plans de compte (Key Account Management) : responsable, objectif de CA,
      enjeux/stratégie, prochaine revue. Un historique de comité sur BNP. */

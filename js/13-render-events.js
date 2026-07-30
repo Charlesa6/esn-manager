@@ -1102,6 +1102,8 @@ function bind(){
       else if(a==='comite-close'){comiteClose();}
       else if(a==='comite-export'){comiteExport();}
       else if(a==='act-done'){actMarkDone(id);}
+      else if(a==='act-report'){actReport(id);}
+      else if(a==='act-abandon'){actAbandon(id);}
       else if(a==='planf-mine'){S.planFilter=S.planFilter||{mine:false,statut:'',sante:''};S.planFilter.mine=!S.planFilter.mine;render();}
       else if(a==='planf-statut'){S.planFilter=S.planFilter||{mine:false,statut:'',sante:''};S.planFilter.statut=id||'';render();}
       else if(a==='planf-sante'){S.planFilter=S.planFilter||{mine:false,statut:'',sante:''};S.planFilter.sante=id||'';render();}

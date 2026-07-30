@@ -359,6 +359,9 @@ function bizSaveAct(){
     next_action_date:gv('biz-act-next-date')||null,
     assigned_to:gv('biz-act-assign'),
     notes:gv('biz-act-notes'),
+    reported_count:it?(+it.reported_count||0):0,
+    committed_at:(it&&it.committed_at)||new Date().toISOString().slice(0,10),
+    abandoned:it?!!it.abandoned:false,
   };
   if(!k.title){alert('Titre requis');return;}
   if(it){S.bizActivities=S.bizActivities.map(function(x){return x.id===it.id?k:x;});}
@@ -1432,13 +1435,14 @@ function planForAccount(accId){return (S.accountPlans||[]).find(function(p){retu
 function planOrDefault(accId){return planForAccount(accId)||{id:null,account_id:accId,owner_name:'',owner_email:'',statut:'developper',ca_objectif:null,ca_objectif_dr:null,enjeux:'',strategie:'',prochaine_revue:null,revue_cadence:null};}
 /* Équipe de gouvernance du compte + cadence des comités. */
 var TEAM_ROLES=[{id:'kam',lb:'KAM',bg:'#dcfce7',fg:'#166534'},{id:'ingenieur_affaires',lb:'Ingénieur d\'affaires',bg:'#dbeafe',fg:'#1e40af'},{id:'directeur',lb:'Directeur',bg:'#ede9fe',fg:'#5b21b6'},{id:'sponsor',lb:'Sponsor',bg:'#fef3c7',fg:'#92400e'},{id:'membre',lb:'Membre',bg:'#f1f5f9',fg:'#475569'}];
-var CADENCES=[{id:'mensuel',lb:'Mensuel',months:1},{id:'trimestriel',lb:'Trimestriel',months:3},{id:'semestriel',lb:'Semestriel',months:6},{id:'annuel',lb:'Annuel',months:12}];
+var CADENCES=[{id:'hebdomadaire',lb:'Hebdomadaire',days:7},{id:'mensuel',lb:'Mensuel',months:1},{id:'trimestriel',lb:'Trimestriel',months:3},{id:'semestriel',lb:'Semestriel',months:6},{id:'annuel',lb:'Annuel',months:12}];
 function teamRoleObj(id){return TEAM_ROLES.find(function(x){return x.id===id;})||TEAM_ROLES[4];}
 function cadenceObj(id){return CADENCES.find(function(x){return x.id===id;})||null;}
 function accTeam(accId){var order={kam:0,ingenieur_affaires:1,directeur:2,sponsor:3,membre:4};return (S.accountTeam||[]).filter(function(m){return m.account_id===accId;}).sort(function(a,b){return (order[a.role]||9)-(order[b.role]||9);});}
 function buName(id){return (id&&typeof buLabel==='function'&&buLabel(id))||(id||'');}
 /* Prochaine échéance de comité selon la cadence (à partir d'aujourd'hui). */
 function _dPlusMonths(m){var d=new Date();d.setMonth(d.getMonth()+m);return d.toISOString().slice(0,10);}
+function _dPlusCadence(cad){if(!cad)return _dPlus(90);return cad.days?_dPlus(cad.days):_dPlusMonths(cad.months||3);}
 async function sbUpsertTeam(m){if(!sb||!SB_CID)return;return sb.from('account_team').upsert(Object.assign({},m,{company_id:SB_CID}),{onConflict:'id'});}
 function teamSave(){
   var mm=S.bizModal;if(!mm||mm.type!=='team')return;var accId=mm.accId;
@@ -1475,7 +1479,14 @@ function accLandingER(accId){return accER(accId)+accPipelineCA(accId);}
 function accLandingDR(accId){return accDR(accId)+accPipelineDR(accId);}
 /* « Mon portefeuille » : responsable du plan = utilisateur courant (nom). */
 function meName(){return ((S.profileFirstName||'')+' '+(S.profileLastName||'')).trim();}
-function accIsMine(accId){var o=(planOrDefault(accId).owner_name||'').toLowerCase(),me=meName().toLowerCase();return !!me&&!!o&&o.indexOf(me)>=0;}
+/* « Mes comptes » : je suis responsable OU membre de l'équipe de gouvernance du compte. */
+function accIsMine(accId){
+  var me=meName().toLowerCase(),meEmail=(S._userEmail||'').toLowerCase();
+  if(me&&(planOrDefault(accId).owner_name||'').toLowerCase().indexOf(me)>=0)return true;
+  return accTeam(accId).some(function(m){
+    return (me&&(m.member_name||'').toLowerCase().indexOf(me)>=0)||(meEmail&&(m.member_email||'').toLowerCase()===meEmail);
+  });
+}
 /* Toutes les actions planifiées (non faites), toutes fiches confondues, triées par échéance. */
 function allPlannedActions(accIds){
   var set=accIds?null:null,out=[];
@@ -1508,9 +1519,42 @@ function actMarkDone(id){
 function accWonCA(accId){return accER(accId);}
 function accPipelineCA(accId){return accOpenOpps(accId).reduce(function(s,o){return s+caPot(o)*((+o.probability||0)/100);},0);}
 function accActions(accId){return (S.bizActivities||[]).filter(function(k){return k.account_id===accId;});}
-function actIsDone(k){return k.status==='realise'||(!!k.date_realised&&k.status!=='planifie');}
-function actIsPlanned(k){return !actIsDone(k);}
+function actIsAbandoned(k){return !!k.abandoned;}
+function actIsDone(k){return !actIsAbandoned(k)&&(k.status==='realise'||(!!k.date_realised&&k.status!=='planifie'));}
+function actIsPlanned(k){return !actIsDone(k)&&!actIsAbandoned(k);}
 function actIsLate(k){return actIsPlanned(k)&&k.next_action_date&&pD(k.next_action_date)<_today();}
+/* ── Boucle d'engagement : verdict de tenue d'une action, d'un comité à l'autre ── */
+var VERDICTS={
+  tenu:{lb:'Tenu',c:'#16a34a',bg:'#dcfce7'},tenu_retard:{lb:'Tenu en retard',c:'#b45309',bg:'#fef3c7'},
+  non_tenu:{lb:'Non tenu',c:'#b91c1c',bg:'#fee2e2'},reporte:{lb:'Reporté',c:'#c2410c',bg:'#ffedd5'},
+  abandonne:{lb:'Abandonné',c:'#64748b',bg:'#f1f5f9'},a_venir:{lb:'À venir',c:'#1e40af',bg:'#dbeafe'}
+};
+function actVerdict(k){
+  if(actIsAbandoned(k))return 'abandonne';
+  if(actIsDone(k)){var due=k.next_action_date;if(due&&k.date_realised&&pD(k.date_realised)>pD(due))return 'tenu_retard';return 'tenu';}
+  if(actIsLate(k))return 'non_tenu';
+  if((+k.reported_count||0)>0)return 'reporte';
+  return 'a_venir';
+}
+/* Taux de tenue : engagements tenus / engagements arrivés à échéance (tenus, non tenus, abandonnés). */
+function _reliab(acts){var kept=0,total=0;acts.forEach(function(k){var v=actVerdict(k);if(v==='tenu'||v==='tenu_retard'){kept++;total++;}else if(v==='non_tenu'||v==='abandonne'){total++;}});return {kept:kept,total:total,pct:total?Math.round(kept/total*100):null};}
+function accReliability(accId){return _reliab(accActions(accId));}
+function personReliability(name){var n=(name||'').toLowerCase();return _reliab((S.bizActivities||[]).filter(function(k){return (k.assigned_to||'').toLowerCase()===n;}));}
+function reliabColor(pct){return pct==null?'#94a3b8':pct>=80?'#16a34a':pct>=50?'#d97706':'#dc2626';}
+/* Verdicts posés en comité : Tenu (actMarkDone), Reporté (+1 semaine, glissement compté), Abandonné. */
+function actReport(id){
+  var k=(S.bizActivities||[]).find(function(x){return x.id===id;});if(!k)return;
+  var base=(k.next_action_date&&pD(k.next_action_date)>_today())?pD(k.next_action_date):_today();
+  var d=new Date(base);d.setDate(d.getDate()+7);
+  k.next_action_date=d.toISOString().slice(0,10);k.reported_count=(+k.reported_count||0)+1;k.status='planifie';k.abandoned=false;k.committed_at=new Date().toISOString().slice(0,10);
+  S.bizActivities=S.bizActivities.map(function(x){return x.id===id?k:x;});if(typeof sbUpsertAct==='function')sbUpsertAct(k);render();
+}
+function actAbandon(id){
+  var k=(S.bizActivities||[]).find(function(x){return x.id===id;});if(!k)return;
+  var why=prompt('Motif d\'abandon (optionnel) :','');if(why===null)return;
+  k.abandoned=true;if(why)k.notes=(k.notes?k.notes+' · ':'')+'Abandon : '+why;
+  S.bizActivities=S.bizActivities.map(function(x){return x.id===id?k:x;});if(typeof sbUpsertAct==='function')sbUpsertAct(k);render();
+}
 function accContacts(accId){return (S.bizContacts||[]).filter(function(c){return c.account_id===accId;});}
 function accReviews(accId){return (S.accountReviews||[]).filter(function(r){return r.account_id===accId;}).sort(function(a,b){return (b.review_date||'').localeCompare(a.review_date||'');});}
 function accSante(accId){
@@ -1572,6 +1616,8 @@ function tBizPlans(){
   var allAccs=portfolioAccounts();
   if(!allAccs.length)return tEmpty('📁','Aucun compte','Créez d\'abord des comptes clients dans l\'onglet « Comptes » pour bâtir leurs plans de compte.','');
   var pf=S.planFilter||(S.planFilter={mine:false,statut:'',sante:''});
+  /* KAM / Business Manager : par défaut on cadre sur « Mes comptes » (équipe). */
+  if(!pf._init){pf._init=true;pf.mine=(S.role==='sales'||S.role==='utilisateur');}
   var accs=allAccs.filter(function(a){
     if(pf.mine&&!accIsMine(a.id))return false;
     if(pf.statut&&planOrDefault(a.id).statut!==pf.statut)return false;
@@ -1700,15 +1746,24 @@ function tPlanDetail(accId){
   /* Plan d'actions */
   var acts=accActions(accId).slice().sort(function(x,y){return (x.next_action_date||x.date_realised||'').localeCompare(y.next_action_date||y.date_realised||'');});
   var actRows=acts.length?acts.map(function(k){
-    var done=actIsDone(k), late=actIsLate(k), tp=(ACT_TYPES.find(function(t){return t.id===k.type;})||{}).lb||k.type;
+    var done=actIsDone(k), late=actIsLate(k), open=actIsPlanned(k), tp=(ACT_TYPES.find(function(t){return t.id===k.type;})||{}).lb||k.type;
     var when=done?('Fait le '+(k.date_realised?fDt(k.date_realised):'—')):(k.next_action_date?fDt(k.next_action_date):'—');
-    var badge=done?'<span style="background:#d1fae5;color:#065f46;font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px">Fait</span>'
-      :late?'<span style="background:#fee2e2;color:#b91c1c;font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px">En retard</span>'
-      :'<span style="background:#dbeafe;color:#1e40af;font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px">À venir</span>';
-    return '<tr><td>'+esc(tp)+'</td><td><b>'+esc(k.title||'')+'</b>'+(k.next_action&&!done?'<div style="font-size:11px;color:#94a3b8">→ '+esc(k.next_action)+'</div>':'')+'</td>'
+    var vd=VERDICTS[actVerdict(k)], rep=+k.reported_count||0;
+    var badge='<span style="background:'+vd.bg+';color:'+vd.c+';font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px">'+vd.lb+'</span>'
+      +(rep?' <span title="Reporté '+rep+' fois" style="background:#ffedd5;color:#c2410c;font-size:10px;font-weight:800;padding:2px 6px;border-radius:99px">×'+rep+'</span>':'');
+    return '<tr><td>'+esc(tp)+'</td><td><b>'+esc(k.title||'')+'</b>'+(k.next_action&&open?'<div style="font-size:11px;color:#94a3b8">→ '+esc(k.next_action)+'</div>':'')+'</td>'
       +'<td>'+badge+'</td><td style="white-space:nowrap;color:'+(late?'#dc2626':'#475569')+'">'+when+'</td><td>'+esc(k.assigned_to||'—')+'</td>'
-      +'<td class="tr" style="white-space:nowrap">'+(done?'':'<button class="lb" data-act="act-done" data-id="'+k.id+'" title="Marquer comme fait" style="padding:2px 8px;margin-right:4px">✓</button>')+'<button class="lr" data-act="biz-edit-act" data-id="'+k.id+'">✏️</button></td></tr>';
+      +'<td class="tr" style="white-space:nowrap">'+(open?'<button class="lb" data-act="act-done" data-id="'+k.id+'" title="Tenu" style="padding:2px 7px;margin-right:2px">✓</button><button class="lb" data-act="act-report" data-id="'+k.id+'" title="Reporter" style="padding:2px 7px;margin-right:2px">⟳</button>':'')+'<button class="lr" data-act="biz-edit-act" data-id="'+k.id+'">✏️</button></td></tr>';
   }).join(''):'<tr><td colspan="6" class="emp">Aucune action. Planifiez prospection, rencontres et relances.</td></tr>';
+  /* Taux de tenue des engagements du compte + par personne. */
+  var rel=accReliability(accId);
+  var teamRel=(function(){var names={};accActions(accId).forEach(function(k){if(k.assigned_to)names[k.assigned_to]=1;});return Object.keys(names).map(function(n){var r=personReliability(n);return {n:n,r:r};}).filter(function(x){return x.r.total>0;}).sort(function(a,b){return (b.r.pct||0)-(a.r.pct||0);});})();
+  var reliabCard='<div style="background:#fff;border:1px solid #e5e9ee;border-radius:12px;padding:14px 16px;margin-bottom:18px">'
+    +'<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><div style="font-size:13px;font-weight:800;color:#0f172a">🎯 Tenue des engagements</div>'
+    +'<div style="font-size:26px;font-weight:800;color:'+reliabColor(rel.pct)+'">'+(rel.pct!=null?rel.pct+'%':'—')+'</div>'
+    +'<div style="font-size:12px;color:#94a3b8">'+rel.kept+' tenu(s) / '+rel.total+' engagement(s) arrivé(s) à échéance</div></div>'
+    +(teamRel.length?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'+teamRel.map(function(x){return '<span style="font-size:11px;background:#f8fafc;border:1px solid #e5e9ee;border-radius:99px;padding:3px 10px"><b>'+esc(x.n)+'</b> · <b style="color:'+reliabColor(x.r.pct)+'">'+(x.r.pct!=null?x.r.pct+'%':'—')+'</b> <span style="color:#94a3b8">('+x.r.kept+'/'+x.r.total+')</span></span>';}).join('')+'</div>':'')
+    +'<p class="fh" style="margin-top:8px">Chaque engagement pris en comité est confronté à un verdict au comité suivant (Tenu / Reporté / Abandonné). Le taux mesure la fiabilité d\'exécution.</p></div>';
   var actions='<div style="margin-bottom:18px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:13px;font-weight:800;color:#0f172a">✅ Plan d\'actions</div>'
     +'<button class="bp" data-act="plan-act-new" data-id="'+accId+'" style="font-size:12px;padding:6px 12px">+ Action</button></div>'
     +'<div class="ov"><table><thead><tr><th>Type</th><th>Action</th><th>Statut</th><th>Échéance</th><th>Responsable</th><th class="tr"></th></tr></thead><tbody>'+actRows+'</tbody></table></div></div>';
@@ -1744,7 +1799,7 @@ function tPlanDetail(accId){
   var teamBlock='<div style="margin-bottom:18px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:13px;font-weight:800;color:#0f172a">🧑‍💼 Équipe du compte <span style="color:#94a3b8;font-weight:600">— gouvernance & comité</span></div>'
     +'<button class="bp" data-act="plan-team-new" data-id="'+accId+'" style="font-size:12px;padding:6px 12px">+ Membre</button></div>'
     +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+teamCards+'</div></div>';
-  return '<div class="vw">'+back+header+metrics+strat+teamBlock+powerMap+actions+oppsBlock+revBlock+'</div>';
+  return '<div class="vw">'+back+header+metrics+strat+teamBlock+powerMap+reliabCard+actions+oppsBlock+revBlock+'</div>';
 }
 
 /* ── Comité de revue de compte (le rituel) ── */
@@ -1768,7 +1823,7 @@ function comiteSaveNext(){
     var ka={id:uid2(),type:'relance',title:ns.slice(0,90),account_id:accId,contact_id:null,opportunity_id:null,status:'planifie',next_action:'',next_action_date:_dPlus(14),date_realised:null,assigned_to:(pl&&pl.owner_name)||'',notes:'Créée en comité du '+new Date().toISOString().slice(0,10)};
     S.bizActivities=(S.bizActivities||[]).concat([ka]);if(typeof sbUpsertAct==='function')sbUpsertAct(ka);
   }
-  if(pl){var cad=cadenceObj(pl.revue_cadence);pl.prochaine_revue=cad?_dPlusMonths(cad.months):_dPlus(90);S.accountPlans=S.accountPlans.map(function(x){return x.account_id===accId?pl:x;});sbUpsertPlan(pl);}
+  if(pl){pl.prochaine_revue=_dPlusCadence(cadenceObj(pl.revue_cadence));S.accountPlans=S.accountPlans.map(function(x){return x.account_id===accId?pl:x;});sbUpsertPlan(pl);}
   S.comiteIdx=idx+1;render();
 }
 function tComite(){
@@ -1786,6 +1841,7 @@ function tComite(){
   if(!a){return '<div class="vw"><button class="bg" data-act="comite-close">Fermer</button></div>';}
   var pl=planOrDefault(accId),st=accSante(accId),obj=+pl.ca_objectif||0,er=accER(accId),dr=accDR(accId),pip=accPipelineCA(accId);
   var acts=accActions(accId),lateActs=acts.filter(actIsLate),openActs=acts.filter(actIsPlanned),doneActs=acts.filter(actIsDone);
+  var rel=accReliability(accId);
   var lastRev=accReviews(accId)[0];
   var delta='';
   if(lastRev&&lastRev.er!=null){var dEr=er-(+lastRev.er||0),dDr=dr-(lastRev.dr!=null?+lastRev.dr:0);
@@ -1797,18 +1853,23 @@ function tComite(){
     +'<span style="margin-left:auto;font-size:13px;font-weight:800;color:'+st.color+';background:#fff;padding:3px 10px;border-radius:99px">'+st.lb+'</span></div>'
     +'<div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:#cbd5e1">'
     +'<span>Objectif : <b style="color:#fff">'+(obj?cEur(obj):'—')+'</b></span><span>ER : <b style="color:#a3e635">'+cEur(er)+'</b></span><span>DR : <b style="color:#fff">'+cEur(dr)+'</b></span><span>Pipeline : <b style="color:#fff">'+cEur(pip)+'</b></span>'
+    +'<span>Tenue : <b style="color:'+(rel.pct!=null&&rel.pct>=80?'#a3e635':rel.pct!=null&&rel.pct>=50?'#fcd34d':'#fca5a5')+'">'+(rel.pct!=null?rel.pct+'%':'—')+'</b></span>'
     +(lastRev?'<span>Dernière revue : <b style="color:#fff">'+fDt(lastRev.review_date)+'</b></span>':'<span style="color:#94a3b8">Première revue</span>')+'</div>'+delta+'</div>';
-  /* Actions cochables en séance + création rapide. */
-  var actLines=openActs.length?openActs.slice().sort(function(x,y){return (x.next_action_date||'9999').localeCompare(y.next_action_date||'9999');}).map(function(k){var late=actIsLate(k);
-    return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px solid #f1f5f9">'
-      +'<button class="lb" data-act="act-done" data-id="'+k.id+'" title="Marquer comme fait" style="padding:1px 8px;font-size:11px">✓</button>'
-      +'<span style="flex:1;min-width:0;font-size:12px;color:#0f172a">'+esc(k.title||'')+'</span>'
-      +'<span style="font-size:11px;white-space:nowrap;color:'+(late?'#dc2626':'#94a3b8')+';font-weight:'+(late?'800':'600')+'">'+(k.next_action_date?fDt(k.next_action_date):'—')+(late?' ⚠':'')+'</span></div>';
-  }).join(''):'<div style="font-size:12px;color:#16a34a;margin-top:4px">Aucune action ouverte.</div>';
+  /* Boucle d'engagement : chaque action ouverte reçoit un verdict en séance. */
+  var actLines=openActs.length?openActs.slice().sort(function(x,y){return (x.next_action_date||'9999').localeCompare(y.next_action_date||'9999');}).map(function(k){var late=actIsLate(k),rep=+k.reported_count||0;
+    return '<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-top:1px solid #f1f5f9;flex-wrap:wrap">'
+      +'<span style="flex:1;min-width:150px;font-size:12px;color:#0f172a">'+esc(k.title||'')+(rep?' <span title="Reporté '+rep+' fois" style="background:#ffedd5;color:#c2410c;font-size:10px;font-weight:800;padding:1px 6px;border-radius:99px">×'+rep+'</span>':'')+'</span>'
+      +'<span style="font-size:11px;white-space:nowrap;color:'+(late?'#dc2626':'#94a3b8')+';font-weight:'+(late?'800':'600')+'">'+(k.next_action_date?fDt(k.next_action_date):'—')+(late?' ⚠':'')+'</span>'
+      +'<span style="display:flex;gap:4px">'
+        +'<button class="lb" data-act="act-done" data-id="'+k.id+'" title="Tenu" style="padding:2px 8px;font-size:11px;color:#166534;border-color:#bbf7d0;background:#f0fdf4">✓ Tenu</button>'
+        +'<button class="lb" data-act="act-report" data-id="'+k.id+'" title="Reporter d\'une semaine" style="padding:2px 8px;font-size:11px;color:#c2410c;border-color:#fed7aa;background:#fff7ed">⟳ Reporter</button>'
+        +'<button class="lb" data-act="act-abandon" data-id="'+k.id+'" title="Abandonner" style="padding:2px 8px;font-size:11px;color:#64748b">✕</button>'
+      +'</span></div>';
+  }).join(''):'<div style="font-size:12px;color:#16a34a;margin-top:6px">Aucun engagement en cours. 👍</div>';
   var situ='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">'
-    +'<div style="flex:2;min-width:280px;background:#fff;border:1px solid #e5e9ee;border-radius:10px;padding:12px">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px"><div style="font-size:12px;font-weight:800;color:#0f172a">Actions <span style="color:#94a3b8;font-weight:600">— '+doneActs.length+' faites · '+openActs.length+' à venir · '+lateActs.length+' en retard</span></div>'
-      +'<button class="lb" data-act="plan-act-new" data-id="'+accId+'" style="font-size:11px;padding:3px 9px">+ Action</button></div>'+actLines+'</div>'
+    +'<div style="flex:2;min-width:300px;background:#fff;border:1px solid #e5e9ee;border-radius:10px;padding:12px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px"><div style="font-size:12px;font-weight:800;color:#0f172a">Engagements à valider <span style="color:#94a3b8;font-weight:600">— tenue '+(rel.pct!=null?rel.pct+'% ('+rel.kept+'/'+rel.total+')':'—')+'</span></div>'
+      +'<button class="lb" data-act="plan-act-new" data-id="'+accId+'" style="font-size:11px;padding:3px 9px">+ Engagement</button></div>'+actLines+'</div>'
     +'<div style="flex:1;min-width:160px;background:#fff;border:1px solid #e5e9ee;border-radius:10px;padding:12px"><div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:4px">À rencontrer</div><div style="font-size:12px;color:#475569">'+(accContacts(accId).filter(function(c){return c.a_rencontrer;}).map(function(c){return esc((c.first_name||'')+' '+(c.last_name||''));}).join(', ')||'—')+'</div></div>'
     +'</div>';
   var form='<div style="background:#fff;border:1px solid #e5e9ee;border-radius:12px;padding:14px 16px">'

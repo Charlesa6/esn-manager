@@ -221,6 +221,20 @@ async function newPage(browser) {
       check('Équipe du compte : section + membres (' + teamF.n + ') + rôle KAM', teamF.team && teamF.kam && teamF.n >= 2);
       check('Comité récurrent : cadence affichée dans le plan', teamF.cadence);
 
+      const eng = await p.evaluate(() => {
+        S.planView = 'a1'; render();
+        const txt = document.body.innerText;
+        const rel = accReliability('a1');
+        const hebdo = (typeof CADENCES !== 'undefined') && CADENCES.some(function (c) { return c.id === 'hebdomadaire'; });
+        const rk = (S.bizActivities || []).find(function (k) { return k.account_id === 'a1' && actIsPlanned(k); });
+        var beforeRep = rk ? (+rk.reported_count || 0) : -1, afterRep = beforeRep;
+        if (rk) { actReport(rk.id); afterRep = (+((S.bizActivities || []).find(function (x) { return x.id === rk.id; }).reported_count) || 0); }
+        return { relCard: /Tenue des engagements/i.test(txt), pct: rel.pct, total: rel.total, hebdo: hebdo, reported: afterRep > beforeRep };
+      });
+      check('Engagements : taux de tenue calculé (' + eng.pct + '% sur ' + eng.total + ') + carte', eng.relCard && eng.pct != null && eng.total >= 2);
+      check('Engagements : « Reporter » incrémente le glissement', eng.reported);
+      check('Comité : cadence hebdomadaire disponible', eng.hebdo);
+
       const com = await p.evaluate(() => {
         S.planView = null; comiteStart();
         const n0 = (S.accountReviews || []).length;
