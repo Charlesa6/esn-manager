@@ -6,8 +6,8 @@
 <meta name="color-scheme" content="dark">
 <meta name="google-site-verification" content="h7qwv13QRZ3Zld2hU8_bd5gjSdZY1fEMmo_jjkN67-w">
 <title>Konsilys — Studio d'intelligence appliquée · Logiciels, SaaS & services</title>
-<meta name="description" content="Konsilys est un studio qui conçoit des logiciels, des SaaS et des services augmentés par l'IA. Découvrez nos réalisations — à commencer par notre plateforme de pilotage pour les ESN.">
-<meta name="keywords" content="Konsilys, studio IA, intelligence artificielle, logiciels sur-mesure, SaaS, services, éditeur, pilotage ESN">
+<meta name="description" content="Konsilys, studio d'intelligence appliquée : création de sites internet et de SaaS sur-mesure (ERP, CRM, outils métier) augmentés par l'IA. Découvrez nos réalisations, dont notre plateforme de pilotage pour les ESN.">
+<meta name="keywords" content="Konsilys, création site internet, développement SaaS sur-mesure, ERP sur-mesure, CRM sur-mesure, logiciel métier, studio IA, intelligence artificielle, pilotage ESN">
 <meta name="author" content="Konsilys">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta name="theme-color" content="#05060b">
@@ -32,7 +32,7 @@
 <meta name="twitter:image" content="https://konsilys.fr/assets/og-konsilys.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@graph":[
-{"@type":"Organization","@id":"https://konsilys.fr/#organization","name":"Konsilys","url":"https://konsilys.fr/","email":"contact@konsilys.fr","logo":"https://konsilys.fr/assets/og-konsilys.png","description":"Studio qui conçoit des logiciels, SaaS et services augmentés par l'IA. Première réalisation : la plateforme de pilotage Konsilys pour les ESN.","areaServed":"Europe"},
+{"@type":"Organization","@id":"https://konsilys.fr/#organization","name":"Konsilys","url":"https://konsilys.fr/","email":"contact@konsilys.fr","logo":"https://konsilys.fr/assets/og-konsilys.png","description":"Studio d'intelligence appliquée : création de sites internet et de SaaS sur-mesure (ERP, CRM, outils métier) augmentés par l'IA. Première réalisation : la plateforme de pilotage Konsilys pour les ESN.","areaServed":"Europe","makesOffer":[{"@type":"Offer","itemOffered":{"@type":"Service","name":"Création de sites internet","description":"Sites vitrines, landing pages et sites sur-mesure optimisés SEO."}},{"@type":"Offer","itemOffered":{"@type":"Service","name":"Développement de SaaS sur-mesure","description":"Plateformes métier : ERP, CRM, portails et outils internes."}},{"@type":"Offer","itemOffered":{"@type":"Service","name":"IA appliquée","description":"Agents, extraction, recommandation et automatisation pour des usages métier."}},{"@type":"Offer","itemOffered":{"@type":"Service","name":"Conseil & intégration","description":"Cadrage, architecture et intégration à votre écosystème."}}]},
 {"@type":"WebSite","@id":"https://konsilys.fr/#website","url":"https://konsilys.fr/","name":"Konsilys","inLanguage":"fr-FR","publisher":{"@id":"https://konsilys.fr/#organization"}},
 {"@type":"ItemList","@id":"https://konsilys.fr/#realisations","name":"Réalisations Konsilys","itemListElement":[
 {"@type":"ListItem","position":1,"item":{"@type":"SoftwareApplication","name":"Konsilys — Pilotage ESN","applicationCategory":"BusinessApplication","operatingSystem":"Web","url":"https://konsilys.fr/pilotage-esn","inLanguage":"fr-FR","description":"Plateforme SaaS de pilotage pour ESN : missions, staffing, marge, absences, recrutement et CRM en temps réel.","offers":{"@type":"AggregateOffer","priceCurrency":"EUR","lowPrice":"8","highPrice":"49","offerCount":"6"}}}
@@ -159,12 +159,16 @@ section{position:relative;z-index:2;padding:110px 24px}
 .caps-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:52px}
 @media(max-width:900px){.caps-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:520px){.caps-grid{grid-template-columns:1fr}}
-.cap{border:1px solid var(--border);background:var(--glass);border-radius:18px;padding:24px;transition:border-color .22s,transform .22s,background .22s}
+.cap{border:1px solid var(--border);background:var(--glass);border-radius:18px;padding:24px;display:flex;flex-direction:column;transition:border-color .22s,transform .22s,background .22s}
 .cap:hover{border-color:rgba(167,139,250,.5);transform:translateY(-4px);background:var(--glass2)}
 .cap .ic{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;
   background:linear-gradient(135deg,rgba(139,92,246,.25),rgba(34,211,238,.18));border:1px solid var(--border);margin-bottom:14px}
 .cap h3{font-size:16px;font-weight:600;margin-bottom:7px}
 .cap p{font-size:13.5px;color:var(--muted);line-height:1.6}
+.cap .chips{display:flex;flex-wrap:wrap;gap:6px;margin:13px 0 16px}
+.cap-cta{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;font-weight:600;color:#fff;margin-top:auto}
+.cap-cta .arw{transition:transform .18s}
+.cap:hover .cap-cta .arw{transform:translateX(4px)}
 
 /* ── Réalisations ── */
 .real{background:linear-gradient(180deg,transparent,rgba(139,92,246,.05),transparent)}
@@ -178,6 +182,8 @@ section{position:relative;z-index:2;padding:110px 24px}
 .card:hover{transform:translateY(-5px);border-color:transparent;box-shadow:0 24px 60px rgba(4,6,20,.7)}
 .card:hover::before{opacity:1}
 .card.live{background:linear-gradient(160deg,rgba(139,92,246,.14),var(--glass))}
+.card.ghost{background:transparent;border-style:dashed}
+.card.ghost:hover{border-color:rgba(167,139,250,.55)}
 .card-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
 .card-ic{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;
   background:linear-gradient(135deg,rgba(139,92,246,.28),rgba(34,211,238,.2));border:1px solid var(--border)}
@@ -255,7 +261,7 @@ footer{position:relative;z-index:2;border-top:1px solid var(--border);padding:52
   <div class="nav-inner">
     <a href="/" class="logo"><span class="logo-orb"></span><span class="logo-name">Konsilys</span></a>
     <div class="nav-links">
-      <a href="#capacites">Ce que nous faisons</a>
+      <a href="#offres">Offres</a>
       <a href="#realisations">Réalisations</a>
       <a href="#contact">Contact</a>
     </div>
@@ -272,7 +278,7 @@ footer{position:relative;z-index:2;border-top:1px solid var(--border);padding:52
       <div>
         <span class="eyebrow rv"><span class="dot"></span>Studio d'intelligence appliquée</span>
         <h1 class="rv d1">Des systèmes <span class="grad-text">intelligents</span> pour vos métiers</h1>
-        <p class="lead rv d2">Konsilys conçoit des logiciels, des SaaS et des services augmentés par l'IA. Nous transformons des problèmes complexes en produits sobres et opérationnels — explorez nos réalisations.</p>
+        <p class="lead rv d2">Konsilys conçoit vos <strong style="color:#fff;font-weight:600">sites internet</strong> et vos <strong style="color:#fff;font-weight:600">SaaS sur-mesure</strong> — ERP, CRM, outils métier — augmentés par l'IA. De l'idée au produit en production, taillé pour votre activité.</p>
         <div class="hero-cta rv d3">
           <a href="#realisations" class="btn-grad">Explorer les réalisations →</a>
           <a href="#contact" class="btn-line">Nous contacter</a>
@@ -297,17 +303,12 @@ footer{position:relative;z-index:2;border-top:1px solid var(--border);padding:52
 </section>
 
 <!-- CAPACITÉS -->
-<section id="capacites">
+<section id="offres">
   <div class="container">
-    <span class="eyebrow rv"><span class="dot"></span>Ce que nous faisons</span>
-    <h2 class="sec-title rv d1">Une équipe, plusieurs terrains de jeu</h2>
-    <p class="sec-sub rv d2">De l'idée au produit exploité en production, nous couvrons toute la chaîne — avec l'intelligence artificielle comme fil conducteur.</p>
-    <div class="caps-grid">
-      <div class="cap rv d1"><div class="ic">🧠</div><h3>IA appliquée</h3><p>Agents, extraction, recommandation, automatisation. L'IA au service d'usages métier concrets, pas de la démo.</p></div>
-      <div class="cap rv d2"><div class="ic">🛰️</div><h3>Produits SaaS</h3><p>Des plateformes multi-tenant, sécurisées et hébergées en Europe, pensées pour passer à l'échelle.</p></div>
-      <div class="cap rv d3"><div class="ic">⚙️</div><h3>Logiciels sur-mesure</h3><p>Des outils taillés pour votre métier quand l'existant ne suffit pas — du prototype à la production.</p></div>
-      <div class="cap rv d4"><div class="ic">🧭</div><h3>Conseil & intégration</h3><p>Cadrage, architecture et intégration à votre écosystème (données, RH, paie, facturation…).</p></div>
-    </div>
+    <span class="eyebrow rv"><span class="dot"></span>Nos offres</span>
+    <h2 class="sec-title rv d1">Ce que nous concevons pour vous</h2>
+    <p class="sec-sub rv d2">Des sites internet aux plateformes SaaS métier, nous transformons votre besoin en produit sobre, sécurisé et opérationnel — avec l'IA comme fil conducteur.</p>
+    <div class="caps-grid" id="offres-grid"></div>
   </div>
 </section>
 
@@ -316,7 +317,7 @@ footer{position:relative;z-index:2;border-top:1px solid var(--border);padding:52
   <div class="container">
     <span class="eyebrow rv"><span class="dot"></span>Réalisations</span>
     <h2 class="sec-title rv d1">Ce que nous avons mis en orbite</h2>
-    <p class="sec-sub rv d2">Nos produits en production et ceux qui décollent bientôt. Certains sont disponibles sur abonnement, dès aujourd'hui.</p>
+    <p class="sec-sub rv d2">La preuve par le produit. Notre plateforme de pilotage ESN tourne en production, disponible sur abonnement — et la prochaine réalisation sera peut-être la vôtre.</p>
     <div class="real-grid" id="real-grid"></div>
   </div>
 </section>
@@ -345,7 +346,7 @@ footer{position:relative;z-index:2;border-top:1px solid var(--border);padding:52
     <div class="foot-col">
       <h4>Explorer</h4>
       <ul>
-        <li><a href="#capacites">Ce que nous faisons</a></li>
+        <li><a href="#offres">Offres</a></li>
         <li><a href="#realisations">Réalisations</a></li>
         <li><a href="#contact">Contact</a></li>
         <li><a href="/blog/">Blog</a></li>
@@ -369,57 +370,81 @@ footer{position:relative;z-index:2;border-top:1px solid var(--border);padding:52
 </div><!-- /.wrap -->
 
 <script>
-/* ═══ Réalisations (catalogue éditable) ═══
-   ÉDITEZ CE TABLEAU. status:'live' → carte active + lien href ;
-   status:'soon' → carte « Bientôt » + bouton « Être prévenu » (email pré-rempli).
-   cat = regroupement affiché (l'ordre suit la 1re apparition). */
+/* ═══ Réalisations (produits en production — éditable) ═══
+   Ajoutez ici vos produits déjà livrés. status:'live' → carte + lien href.
+   Une carte « votre projet » (contact) est ajoutée automatiquement en fin de
+   grille. Les offres de service (sites, SaaS sur-mesure…) sont gérées plus
+   haut dans le tableau OFFRES. */
 var REALISATIONS=[
-  {cat:'SaaS',icon:'📡',name:'Pilotage ESN',status:'live',href:'/pilotage-esn',
-   desc:'Plateforme de pilotage pour ESN et sociétés de conseil : staffing, missions & marge, absences (validation N+1), recrutement et CRM — en temps réel.',
-   tags:['SaaS','Temps réel','Sur abonnement'],cta:'Découvrir la solution'},
-
-  {cat:'IA',icon:'🧠',name:'Projet IA',status:'soon',
-   desc:'Une brique d’intelligence appliquée en préparation. Remplacez ce texte par le descriptif de votre offre IA.',
-   tags:['Bientôt']},
-
-  {cat:'Logiciels',icon:'⚙️',name:'Logiciel métier',status:'soon',
-   desc:'Un logiciel sur-mesure bientôt disponible. Décrivez ici sa proposition de valeur.',
-   tags:['Bientôt']},
-
-  {cat:'Services',icon:'🧭',name:'Services & accompagnement',status:'soon',
-   desc:'Conseil, architecture et intégration autour de vos outils et de vos données. Détaillez ici votre offre.',
-   tags:['Bientôt']}
+  {icon:'📡',name:'Pilotage ESN',status:'live',href:'/pilotage-esn',
+   desc:'Plateforme SaaS de pilotage pour ESN et sociétés de conseil : staffing, missions & marge, absences (validation N+1), recrutement et CRM — en temps réel.',
+   tags:['SaaS','Temps réel','Sur abonnement'],cta:'Découvrir la solution'}
 ];
 
 (function(){
   function e(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-  var cats=[],map={};
-  REALISATIONS.forEach(function(s){if(!map[s.cat]){map[s.cat]=[];cats.push(s.cat);}map[s.cat].push(s);});
-  var h='',n=0;
-  cats.forEach(function(c){
-    h+='<div class="cat-label rv">'+e(c)+'</div>';
-    map[c].forEach(function(s){
-      n++;var dl=' d'+(((n-1)%4)+1);
-      var badge=s.status==='live'?'<span class="badge badge-live">En production</span>':'<span class="badge badge-soon">Bientôt</span>';
-      var tags=(s.tags||[]).map(function(t){return '<span class="tag">'+e(t)+'</span>';}).join('');
-      var cta;
-      if(s.status==='live'){
-        cta='<a class="card-cta live" href="'+e(s.href||'#')+'">'+e(s.cta||'Découvrir')+' <span class="arw">→</span></a>';
-      }else{
-        var subject='Konsilys — être prévenu du lancement : '+s.name;
-        var body='Bonjour,\n\nJe souhaite être informé·e du lancement de « '+s.name+' ».\n\nMerci !';
-        var mail='mailto:contact@konsilys.fr?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
-        cta='<a class="card-cta soon" href="'+e(mail)+'">Être prévenu·e →</a>';
-      }
-      h+='<div class="card'+(s.status==='live'?' live':'')+' rv'+dl+'">'
-        +'<div class="card-top"><div class="card-ic">'+e(s.icon||'▫️')+'</div>'+badge+'</div>'
-        +'<h3>'+e(s.name)+'</h3>'
-        +'<div class="desc">'+e(s.desc)+'</div>'
-        +(tags?'<div class="tags">'+tags+'</div>':'')
-        +cta+'</div>';
-    });
+  var h='';
+  REALISATIONS.forEach(function(s,i){
+    var dl=' d'+((i%3)+1);
+    var badge='<span class="badge badge-live">En production</span>';
+    var tags=(s.tags||[]).map(function(t){return '<span class="tag">'+e(t)+'</span>';}).join('');
+    var cta='<a class="card-cta live" href="'+e(s.href||'#')+'">'+e(s.cta||'Découvrir')+' <span class="arw">→</span></a>';
+    h+='<div class="card live rv'+dl+'">'
+      +'<div class="card-top"><div class="card-ic">'+e(s.icon||'▫️')+'</div>'+badge+'</div>'
+      +'<h3>'+e(s.name)+'</h3>'
+      +'<div class="desc">'+e(s.desc)+'</div>'
+      +(tags?'<div class="tags">'+tags+'</div>':'')
+      +cta+'</div>';
   });
+  // Carte « votre projet » : invite au contact.
+  var gm='mailto:contact@konsilys.fr?subject='+encodeURIComponent('Konsilys — démarrer un projet')
+    +'&body='+encodeURIComponent('Bonjour,\n\nJe souhaite discuter d’un projet (site internet / SaaS métier / autre) :\n\n');
+  h+='<div class="card ghost rv d2">'
+    +'<div class="card-top"><div class="card-ic">✦</div><span class="badge badge-soon">Votre projet</span></div>'
+    +'<h3>La prochaine en orbite&nbsp;?</h3>'
+    +'<div class="desc">Site internet, SaaS métier (ERP, CRM), outil interne… Parlons de ce que nous pouvons construire pour vous.</div>'
+    +'<a class="card-cta soon" href="'+gm+'">Démarrer un projet →</a></div>';
   var el=document.getElementById('real-grid');if(el)el.innerHTML=h;
+})();
+</script>
+
+<script>
+/* ═══ Offres de service (éditable) ═══
+   Chaque offre = une carte avec exemples (chips) et un bouton « Parlons-en »
+   qui ouvre un email pré-rempli. Ajoutez/retirez librement. */
+var OFFRES=[
+  {icon:'🌐',name:'Sites internet',
+   desc:'Sites vitrines, landing pages et sites sur-mesure : rapides, soignés, optimisés pour le référencement et pensés mobile d’abord.',
+   chips:['Vitrine','Landing page','E-commerce','SEO']},
+  {icon:'🛰️',name:'SaaS sur-mesure',
+   desc:'Des plateformes métier taillées pour votre activité — ERP, CRM, portails, outils internes. Multi-tenant, sécurisées, hébergées en Europe.',
+   chips:['ERP','CRM','Portail client','Outils métier']},
+  {icon:'🧠',name:'IA appliquée',
+   desc:'Agents, extraction de documents, recommandation, automatisation. L’IA branchée sur des usages concrets, pas de la démo.',
+   chips:['Agents','Extraction','Automatisation']},
+  {icon:'🧭',name:'Conseil & intégration',
+   desc:'Cadrage, architecture et intégration à votre écosystème existant (données, RH, paie, facturation…).',
+   chips:['Cadrage','Architecture','Données']}
+];
+
+(function(){
+  function e(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  var h='';
+  OFFRES.forEach(function(o,i){
+    var dl=' d'+((i%4)+1);
+    var chips=(o.chips||[]).map(function(c){return '<span class="tag">'+e(c)+'</span>';}).join('');
+    var subject='Konsilys — projet : '+o.name;
+    var body='Bonjour,\n\nJe souhaite échanger sur une offre « '+o.name+' ».\n\nMon besoin en quelques mots :\n';
+    var mail='mailto:contact@konsilys.fr?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+    h+='<div class="cap rv'+dl+'">'
+      +'<div class="ic">'+e(o.icon||'▫️')+'</div>'
+      +'<h3>'+e(o.name)+'</h3>'
+      +'<p>'+e(o.desc)+'</p>'
+      +(chips?'<div class="chips">'+chips+'</div>':'')
+      +'<a class="cap-cta" href="'+mail+'">Parlons-en <span class="arw">→</span></a>'
+      +'</div>';
+  });
+  var el=document.getElementById('offres-grid');if(el)el.innerHTML=h;
 })();
 </script>
 
