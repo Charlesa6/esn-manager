@@ -108,8 +108,8 @@ nav.scrolled{background:rgba(6,8,16,.72);backdrop-filter:blur(16px) saturate(140
 .nav-links{display:flex;align-items:center;gap:30px}
 .nav-links a{color:var(--muted);font-size:14px;font-weight:500;transition:color .15s}
 .nav-links a:hover{color:#fff}
-.btn-login{border:1px solid var(--border);background:var(--glass);color:#fff;padding:9px 20px;border-radius:99px;font-size:13.5px;font-weight:600;transition:border-color .15s,background .15s;white-space:nowrap}
-.btn-login:hover{border-color:rgba(167,139,250,.6);background:rgba(139,92,246,.12)}
+.nav-links a.nav-cta{border:1px solid var(--border);background:var(--glass);color:#fff;padding:8px 18px;border-radius:99px;transition:border-color .15s,background .15s;white-space:nowrap}
+.nav-links a.nav-cta:hover{border-color:rgba(167,139,250,.6);background:rgba(139,92,246,.12);color:#fff}
 
 /* ── Boutons ── */
 .btn-grad{display:inline-flex;align-items:center;gap:8px;background:var(--grad2);color:#fff;padding:14px 30px;border-radius:99px;font-size:15px;font-weight:600;border:none;cursor:pointer;font-family:inherit;
@@ -291,9 +291,8 @@ footer{position:relative;z-index:2;border-top:1px solid var(--border);padding:52
     <div class="nav-links">
       <a href="#offres">Offres</a>
       <a href="#realisations">Réalisations</a>
-      <a href="#contact">Contact</a>
+      <a href="#contact" class="nav-cta">Contact</a>
     </div>
-    <a href="/login" class="btn-login">Se connecter</a>
   </div>
 </nav>
 
@@ -410,9 +409,8 @@ footer{position:relative;z-index:2;border-top:1px solid var(--border);padding:52
       </ul>
     </div>
     <div class="foot-col">
-      <h4>Accès</h4>
+      <h4>Légal</h4>
       <ul>
-        <li><a href="/login">Se connecter</a></li>
         <li><a href="/cgu">CGU & confidentialité</a></li>
         <li><a href="mailto:contact@konsilys.fr">contact@konsilys.fr</a></li>
       </ul>
