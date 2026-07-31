@@ -290,6 +290,8 @@ function bizSaveCt(){
     notes:gv('biz-ct-notes'),
     influence:gv('biz-ct-influence')||null,
     relation:gv('biz-ct-relation')||null,
+    hierarchy_level:gv('biz-ct-hier')||null,
+    last_contact_date:gv('biz-ct-lastcontact')||null,
     a_rencontrer:!!(document.getElementById('biz-ct-arenc')&&document.getElementById('biz-ct-arenc').checked),
   };
   if(!ct.first_name&&!ct.last_name){alert('Nom requis');return;}
@@ -354,6 +356,7 @@ function bizSaveAct(){
     title:gv('biz-act-title'),
     account_id:gv('biz-act-acc')||null,
     opportunity_id:gv('biz-act-opp')||null,
+    biz_target:+gv('biz-act-biztarget')||null,
     contact_id:gv('biz-act-ct')||null,
     date_realised:gv('biz-act-date')||new Date().toISOString().slice(0,10),
     status:gv('biz-act-status')||'realise',
@@ -1026,6 +1029,9 @@ function tBizModal(){
         +INFLUENCE.map(function(x){return '<option value="'+x.id+'"'+(it.influence===x.id?' selected':'')+'>'+x.lb+'</option>';}).join('')+'</select></div>'
       +'<div class="fd"><label class="fl">Relation</label><select class="ic" id="biz-ct-relation"><option value="">—</option>'
         +RELATION.map(function(x){return '<option value="'+x.id+'"'+(it.relation===x.id?' selected':'')+'>'+x.lb+'</option>';}).join('')+'</select></div>'
+      +'<div class="fd"><label class="fl">Niveau hiérarchique</label><select class="ic" id="biz-ct-hier"><option value="">—</option>'
+        +HIER_LEVELS.map(function(x){return '<option value="'+x.id+'"'+(it.hierarchy_level===x.id?' selected':'')+'>'+x.lb+'</option>';}).join('')+'</select><p class="fh">« Plus haut » : vise le COMEX / C-level pour vendre de la valeur.</p></div>'
+      +'<div class="fd"><label class="fl">Dernier contact</label><input class="ic" type="date" id="biz-ct-lastcontact" value="'+(it.last_contact_date||'')+'"><p class="fh">« Plus souvent » : entretenez la relation régulièrement.</p></div>'
       +'<div class="fd cs2"><label class="cx" style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="biz-ct-arenc"'+(it.a_rencontrer?' checked':'')+'> À rencontrer (interlocuteur clé non encore rencontré)</label></div>'
       +'<div class="fd cs2"><label class="fl">Notes</label><textarea class="ic" id="biz-ct-notes" rows="2">'+esc(it.notes||'')+'</textarea></div>'
       +'</div>';
@@ -1100,7 +1106,8 @@ function tBizModal(){
       +'<div class="fd cs2"><label class="fl">Titre *</label><input class="ic" id="biz-act-title" value="'+esc(it.title||'')+'" placeholder="Ex: Appel découverte avec DSI"></div>'
       +'<div class="fd"><label class="fl">Compte</label><select class="ic" id="biz-act-acc">'+accOpts+'</select></div>'
       +'<div class="fd"><label class="fl">Contact</label><select class="ic" id="biz-act-ct">'+ctOpts+'</select></div>'
-      +'<div class="fd"><label class="fl">Opportunité</label><select class="ic" id="biz-act-opp">'+oppOpts+'</select></div>'
+      +'<div class="fd"><label class="fl">Pour quel biz — opportunité</label><select class="ic" id="biz-act-opp">'+oppOpts+'</select></div>'
+      +'<div class="fd"><label class="fl">…ou cible de CA (€)</label><input class="ic" type="number" id="biz-act-biztarget" value="'+(it.biz_target||'')+'" placeholder="Ex: 250000"><p class="fh">À défaut d\'opportunité déjà créée, chiffrez le business visé par cette action.</p></div>'
       +'<div class="fd"><label class="fl">Date</label><input class="ic" type="date" id="biz-act-date" value="'+(it.date_realised||new Date().toISOString().slice(0,10))+'"></div>'
       +'<div class="fd"><label class="fl">Assigné à</label><input class="ic" id="biz-act-assign" value="'+esc(it.assigned_to||'')+'"></div>'
       +'<div class="fd"><label class="fl">Prochaine action</label><input class="ic" id="biz-act-next" value="'+esc(it.next_action||'')+'" placeholder="Ex: Envoyer proposition"></div>'
@@ -1114,13 +1121,16 @@ function tBizModal(){
     saveAction='planSave()';
     body='<div class="g2">'
       +'<div class="fd"><label class="fl">Responsable de compte</label><input class="ic" id="plan-owner" value="'+esc(it.owner_name||'')+'" placeholder="Nom du responsable"></div>'
-      +'<div class="fd"><label class="fl">Statut du compte</label><select class="ic" id="plan-statut">'
+      +'<div class="fd"><label class="fl">Typologie du compte</label><select class="ic" id="plan-type">'
+        +ACCOUNT_TYPES.map(function(t){return '<option value="'+t.id+'"'+((it.type||'potentiel')===t.id?' selected':'')+'>'+t.ic+' '+t.lb+'</option>';}).join('')+'</select><p class="fh">Stratégique = compte majeur (double Business Review S1 + Q1). À potentiel = à formaliser et développer.</p></div>'
+      +'<div class="fd"><label class="fl">Statut / posture</label><select class="ic" id="plan-statut">'
         +PLAN_STATUS.map(function(s){return '<option value="'+s.id+'"'+(it.statut===s.id?' selected':'')+'>'+s.lb+'</option>';}).join('')+'</select></div>'
       +'<div class="fd"><label class="fl">Objectif ER — External Revenue (€)</label><input class="ic" type="number" id="plan-obj" value="'+(it.ca_objectif||'')+'" placeholder="1500000"></div>'
       +'<div class="fd"><label class="fl">Objectif DR — Delivery Revenue (€)</label><input class="ic" type="number" id="plan-obj-dr" value="'+(it.ca_objectif_dr||'')+'" placeholder="900000"></div>'
-      +'<div class="fd"><label class="fl">Cadence du comité</label><select class="ic" id="plan-cadence"><option value="">— Ponctuel —</option>'
+      +'<div class="fd"><label class="fl">⚙️ Cadence BR opérationnelle</label><select class="ic" id="plan-cadence"><option value="">— Ponctuel —</option>'
         +CADENCES.map(function(cd){return '<option value="'+cd.id+'"'+(it.revue_cadence===cd.id?' selected':'')+'>'+cd.lb+'</option>';}).join('')+'</select></div>'
-      +'<div class="fd"><label class="fl">Prochaine revue</label><input class="ic" type="date" id="plan-revue" value="'+(it.prochaine_revue||'')+'"></div>'
+      +'<div class="fd"><label class="fl">Prochaine BR opérationnelle</label><input class="ic" type="date" id="plan-revue" value="'+(it.prochaine_revue||'')+'"></div>'
+      +'<div class="fd cs2"><label class="fl">🎯 Prochaine BR stratégique <span style="color:#94a3b8;font-weight:500">(comptes stratégiques — semestrielle)</span></label><input class="ic" type="date" id="plan-br-strat" value="'+(it.next_br_strat||'')+'"></div>'
       +'<div class="fd cs2"><label class="fl">🎯 Enjeux</label><textarea class="ic" id="plan-enjeux" rows="3" placeholder="Ambition sur le compte, périmètres à conquérir…">'+esc(it.enjeux||'')+'</textarea></div>'
       +'<div class="fd cs2"><label class="fl">🧭 Stratégie de développement</label><textarea class="ic" id="plan-strat" rows="3" placeholder="Leviers, relations à renforcer, plan d\'attaque…">'+esc(it.strategie||'')+'</textarea></div>'
       +'</div>';
@@ -1440,13 +1450,36 @@ var RELATION=[
   {id:'opposant',lb:'Opposant',bg:'#fee2e2',fg:'#b91c1c'},
 ];
 var SANTE={green:{lb:'Sain',color:'#16a34a'},amber:{lb:'À surveiller',color:'#d97706'},red:{lb:'En risque',color:'#dc2626'}};
+/* Typologie du compte (besoin CGI) : Stratégique (Top comptes, double revue) vs À potentiel. */
+var ACCOUNT_TYPES=[
+  {id:'strategique',lb:'Stratégique',bg:'#f5f3ff',fg:'#6d28d9',ic:'⭐'},
+  {id:'potentiel',  lb:'À potentiel',bg:'#eff6ff',fg:'#1d4ed8',ic:'🌱'},
+];
+function accTypeObj(id){return ACCOUNT_TYPES.find(function(x){return x.id===id;})||ACCOUNT_TYPES[1];}
+/* Types de Business Review : stratégique (semestrielle, S1) & opérationnelle (trimestrielle, Q1). */
+var BR_TYPES=[
+  {id:'strategique',  lb:'BR Stratégique',  short:'BR Strat.', cadence:'semestriel', ic:'🎯', c:'#6d28d9'},
+  {id:'operationnelle',lb:'BR Opérationnelle',short:'BR Ope.',  cadence:'trimestriel',ic:'⚙️', c:'#0891b2'},
+];
+function brTypeObj(id){return BR_TYPES.find(function(x){return x.id===id;})||BR_TYPES[1];}
+/* Niveaux hiérarchiques côté client (plan d'influence : « plus haut »). rank↑ = plus haut. */
+var HIER_LEVELS=[
+  {id:'c_level',     lb:'C-level / COMEX', short:'C-level', rank:3},
+  {id:'n1',          lb:'N-1 (Directeur)', short:'N-1',     rank:2},
+  {id:'n2',          lb:'N-2 (Manager)',   short:'N-2',     rank:1},
+  {id:'operationnel',lb:'Opérationnel',    short:'Opé.',    rank:0},
+];
+function hierObj(id){return HIER_LEVELS.find(function(x){return x.id===id;})||null;}
 
 function _today(){var d=new Date();d.setHours(0,0,0,0);return d;}
 function planStObj(id){return PLAN_STATUS.find(function(x){return x.id===id;})||PLAN_STATUS[1];}
 function relObj(id){return RELATION.find(function(x){return x.id===id;});}
 function cEur(n){n=Math.round(+n||0);if(Math.abs(n)>=1e6)return (n/1e6).toFixed(n%1e6===0?0:1).replace('.',',')+' M€';if(Math.abs(n)>=1000)return Math.round(n/1000)+' k€';return fEur(n);}
 function planForAccount(accId){return (S.accountPlans||[]).find(function(p){return p.account_id===accId;})||null;}
-function planOrDefault(accId){return planForAccount(accId)||{id:null,account_id:accId,owner_name:'',owner_email:'',statut:'developper',ca_objectif:null,ca_objectif_dr:null,enjeux:'',strategie:'',prochaine_revue:null,revue_cadence:null};}
+function planOrDefault(accId){return planForAccount(accId)||{id:null,account_id:accId,owner_name:'',owner_email:'',statut:'developper',type:'potentiel',ca_objectif:null,ca_objectif_dr:null,enjeux:'',strategie:'',prochaine_revue:null,next_br_strat:null,revue_cadence:null};}
+/* Typologie du compte (défaut : à potentiel). */
+function planType(accId){return planOrDefault(accId).type||'potentiel';}
+function isStrategic(accId){return planType(accId)==='strategique';}
 /* Équipe de gouvernance du compte + cadence des comités. */
 var TEAM_ROLES=[{id:'kam',lb:'KAM',bg:'#dcfce7',fg:'#166534'},{id:'ingenieur_affaires',lb:'Ingénieur d\'affaires',bg:'#dbeafe',fg:'#1e40af'},{id:'directeur',lb:'Directeur',bg:'#ede9fe',fg:'#5b21b6'},{id:'sponsor',lb:'Sponsor',bg:'#fef3c7',fg:'#92400e'},{id:'membre',lb:'Membre',bg:'#f1f5f9',fg:'#475569'}];
 var CADENCES=[{id:'hebdomadaire',lb:'Hebdomadaire',days:7},{id:'mensuel',lb:'Mensuel',months:1},{id:'trimestriel',lb:'Trimestriel',months:3},{id:'semestriel',lb:'Semestriel',months:6},{id:'annuel',lb:'Annuel',months:12}];
@@ -1549,6 +1582,13 @@ function actMarkDone(id){
 function accWonCA(accId){return accER(accId);}
 function accPipelineCA(accId){return accOpenOpps(accId).reduce(function(s,o){return s+caPot(o)*((+o.probability||0)/100);},0);}
 function accActions(accId){return (S.bizActivities||[]).filter(function(k){return k.account_id===accId;});}
+/* « Pour quel biz » : opportunité liée (prioritaire) ou cible de CA saisie sur l'action. */
+function actBizLabel(k){
+  if(!k)return '';
+  if(k.opportunity_id){var o=(S.bizOpps||[]).find(function(x){return x.id===k.opportunity_id;});if(o)return o.name||'Opportunité';}
+  if(+k.biz_target>0)return cEur(+k.biz_target)+' (cible)';
+  return '';
+}
 function actIsAbandoned(k){return !!k.abandoned;}
 function actIsDone(k){return !actIsAbandoned(k)&&(k.status==='realise'||(!!k.date_realised&&k.status!=='planifie'));}
 function actIsPlanned(k){return !actIsDone(k)&&!actIsAbandoned(k);}
@@ -1600,6 +1640,36 @@ function actAbandon(id){
   S.bizActivities=S.bizActivities.map(function(x){return x.id===id?k:x;});if(typeof sbUpsertAct==='function')sbUpsertAct(k);render();
 }
 function accContacts(accId){return (S.bizContacts||[]).filter(function(c){return c.account_id===accId;});}
+/* ── Plan d'influence / lobbying : accès aux décideurs (« plus haut, plus tôt, plus souvent ») ── */
+function ctFullName(c){return ((c.first_name||'')+' '+(c.last_name||'')).trim()||'—';}
+function ctRank(c){var h=hierObj(c.hierarchy_level);return h?h.rank:-1;}
+/* Prochaine action de relation planifiée liée à cet interlocuteur. */
+function contactNextAction(ctId){
+  return (S.bizActivities||[]).filter(function(k){return k.contact_id===ctId&&actIsPlanned(k)&&k.next_action_date;})
+    .sort(function(a,b){return (a.next_action_date||'').localeCompare(b.next_action_date||'');})[0]||null;
+}
+/* Récence de contact en jours (via last_contact_date ou dernière action réalisée liée). */
+function contactRecencyDays(c){
+  var dates=[];if(c.last_contact_date)dates.push(c.last_contact_date);
+  (S.bizActivities||[]).forEach(function(k){if(k.contact_id===c.id&&actIsDone(k)&&k.date_realised)dates.push(k.date_realised);});
+  if(!dates.length)return null;
+  var last=dates.sort().reverse()[0];
+  return Math.round((_today()-pD(last))/86400000);
+}
+/* Indicateurs de couverture exécutive du compte. */
+function execCoverage(accId){
+  var cts=accContacts(accId);
+  var deciders=cts.filter(function(c){return c.role_type==='decideur'||ctRank(c)>=2;}); /* décideurs ou N-1/C-level */
+  var high=cts.filter(function(c){return ctRank(c)>=2;});                                /* C-level + N-1 */
+  var met=high.filter(function(c){return !c.a_rencontrer&&(c.relation||contactRecencyDays(c)!=null);});
+  var toMeet=cts.filter(function(c){return c.a_rencontrer;});
+  var champions=cts.filter(function(c){return c.relation==='champion';});
+  var recs=cts.map(contactRecencyDays).filter(function(d){return d!=null;});
+  var avgRec=recs.length?Math.round(recs.reduce(function(s,d){return s+d;},0)/recs.length):null;
+  return {n:cts.length,deciders:deciders.length,high:high.length,met:met.length,
+    coverage:high.length?Math.round(met.length/high.length*100):null,
+    toMeet:toMeet.length,champions:champions.length,avgRec:avgRec};
+}
 function accReviews(accId){return (S.accountReviews||[]).filter(function(r){return r.account_id===accId;}).sort(function(a,b){return (b.review_date||'').localeCompare(a.review_date||'');});}
 function accSante(accId){
   var acts=accActions(accId), late=acts.filter(actIsLate).length, openA=acts.filter(actIsPlanned).length;
@@ -1642,12 +1712,14 @@ function planSave(){
     owner_name:gv('plan-owner'),
     owner_email:(ex&&ex.owner_email)||'',
     statut:gv('plan-statut')||'developper',
+    type:gv('plan-type')||'potentiel',
     ca_objectif:+gv('plan-obj')||null,
     ca_objectif_dr:+gv('plan-obj-dr')||null,
     revue_cadence:gv('plan-cadence')||null,
     enjeux:gv('plan-enjeux'),
     strategie:gv('plan-strat'),
     prochaine_revue:gv('plan-revue')||null,
+    next_br_strat:gv('plan-br-strat')||null,
   };
   if(ex){S.accountPlans=S.accountPlans.map(function(x){return x.account_id===accId?pl:x;});}
   else{S.accountPlans=(S.accountPlans||[]).concat([pl]);}
@@ -1664,6 +1736,7 @@ function tBizPlans(){
   if(!pf._init){pf._init=true;pf.mine=(S.role==='sales'||S.role==='utilisateur');}
   var accs=allAccs.filter(function(a){
     if(pf.mine&&!accIsMine(a.id))return false;
+    if(pf.type&&planType(a.id)!==pf.type)return false;
     if(pf.statut&&planOrDefault(a.id).statut!==pf.statut)return false;
     if(pf.sante&&accSante(a.id).code!==pf.sante)return false;
     return true;
@@ -1686,6 +1759,8 @@ function tBizPlans(){
   var filterBar='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px">'
     +fbtn((pf.mine?'✓ ':'')+'Mon portefeuille',pf.mine,'planf-mine','')
     +'<span style="width:1px;height:20px;background:#e2e8f0;margin:0 4px"></span>'
+    +fbtn('Tous types',!pf.type,'planf-type','')+ACCOUNT_TYPES.map(function(t){return fbtn(t.ic+' '+t.lb,pf.type===t.id,'planf-type',t.id);}).join('')
+    +'<span style="width:1px;height:20px;background:#e2e8f0;margin:0 4px"></span>'
     +fbtn('Tous statuts',!pf.statut,'planf-statut','')+PLAN_STATUS.map(function(s){return fbtn(s.lb,pf.statut===s.id,'planf-statut',s.id);}).join('')
     +'<span style="width:1px;height:20px;background:#e2e8f0;margin:0 4px"></span>'
     +fbtn('Toute santé',!pf.sante,'planf-sante','')+[['red','🔴 En risque'],['amber','🟠 À surveiller'],['green','🟢 Sain']].map(function(x){return fbtn(x[1],pf.sante===x[0],'planf-sante',x[0]);}).join('')
@@ -1699,7 +1774,7 @@ function tBizPlans(){
       var when=k.next_action_date?(fDt(k.next_action_date)+(late?' · en retard de '+Math.abs(dn)+' j ⚠':dn===0?' · aujourd\'hui':dn!=null&&dn>0?' · dans '+dn+' j'+(imm?' ⏰':''):'')):'—';
       return '<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-top:1px solid #f1f5f9">'
         +'<button class="lb" data-act="act-done" data-id="'+k.id+'" title="Marquer comme fait" style="padding:2px 8px;font-size:12px">✓</button>'
-        +'<div data-act="plan-open" data-id="'+it.acc.id+'" style="flex:1;cursor:pointer;min-width:0"><span style="font-weight:700;color:#0f172a">'+esc(k.title||'')+'</span> <span style="color:#94a3b8;font-size:12px">· '+esc(it.acc.name)+(k.assigned_to?' · '+esc(k.assigned_to):'')+'</span></div>'
+        +'<div data-act="plan-open" data-id="'+it.acc.id+'" style="flex:1;cursor:pointer;min-width:0"><span style="font-weight:700;color:#0f172a">'+esc(k.title||'')+'</span> <span style="color:#94a3b8;font-size:12px">· '+esc(it.acc.name)+(k.assigned_to?' · '+esc(k.assigned_to):'')+'</span>'+(actBizLabel(k)?' <span style="font-size:10px;font-weight:800;color:#0e7490">💶 '+esc(actBizLabel(k))+'</span>':'')+'</div>'
         +'<span style="font-size:12px;white-space:nowrap;color:'+col+';font-weight:'+(late||imm?'800':'600')+'">'+when+'</span></div>';
     }).join('')
     +(acts.length>8?'<div style="font-size:11px;color:#94a3b8;margin-top:6px">+ '+(acts.length-8)+' autre(s) échéance(s)…</div>':'')+'</div>'):'';
@@ -1709,8 +1784,10 @@ function tBizPlans(){
     var pct=obj>0?Math.min(100,Math.round(er/obj*100)):0;
     var late=accActions(a.id).filter(actIsLate).length;
     var bar='<div style="background:#eef2f6;border-radius:6px;height:8px;overflow:hidden;margin-top:4px"><div style="height:100%;width:'+pct+'%;background:'+(pct>=70?'#16a34a':pct>=40?'#d97706':'#dc2626')+'"></div></div>';
+    var to=accTypeObj(pl.type);
     return '<tr data-act="plan-open" data-id="'+a.id+'" style="cursor:pointer">'
       +'<td><div style="font-weight:800;color:#0f172a">'+esc(a.name)+'</div><div style="font-size:11px;color:#94a3b8">'+esc(a.sector||'—')+'</div></td>'
+      +'<td><span title="'+to.lb+'" style="background:'+to.bg+';color:'+to.fg+';font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px;white-space:nowrap">'+to.ic+' '+to.lb+'</span></td>'
       +'<td>'+esc(pl.owner_name||'—')+'</td>'
       +'<td>'+planStChip(pl.statut)+'</td>'
       +'<td title="'+st.lb+'">'+santeDot(st.code)+' <span style="font-size:12px;color:'+st.color+';font-weight:700">'+st.lb+'</span></td>'
@@ -1721,7 +1798,7 @@ function tBizPlans(){
       +'<td class="tr" style="white-space:nowrap;font-size:12px;color:'+(pl.prochaine_revue&&pD(pl.prochaine_revue)<=_today()?'#b45309':'#64748b')+'">'+(pl.prochaine_revue?fDt(pl.prochaine_revue):'—')+'</td>'
       +'</tr>';
   }).join('');
-  var table=accs.length?('<div class="ov"><table><thead><tr><th>Compte</th><th>Responsable</th><th>Statut</th><th>Santé</th><th title="External Revenue : tout le CA gagné">ER / objectif</th><th class="tr" title="Delivery Revenue : délivré par mes consultants">DR</th><th class="tr">Pipeline</th><th class="tr">Actions ⚠</th><th class="tr">Prochaine revue</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+  var table=accs.length?('<div class="ov"><table><thead><tr><th>Compte</th><th>Type</th><th>Responsable</th><th>Statut</th><th>Santé</th><th title="External Revenue : tout le CA gagné">ER / objectif</th><th class="tr" title="Delivery Revenue : délivré par mes consultants">DR</th><th class="tr">Pipeline</th><th class="tr">Actions ⚠</th><th class="tr">Prochaine BR</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
     +'<p class="fh" style="margin-top:10px"><b>ER</b> (External Revenue) = tout le CA gagné sur le compte (exercice courant) · <b>DR</b> (Delivery Revenue) = délivré par vos consultants · Pipeline = opportunités ouvertes pondérées. Cliquez une ligne pour ouvrir le plan de compte.</p>')
     :'<div class="emp">Aucun compte ne correspond à ces filtres.</div>';
   return '<div class="vw">'+head+alertBox+filterBar+echeances+table+'</div>';
@@ -1736,9 +1813,14 @@ function tPlanDetail(accId){
   var pct=obj>0?Math.min(100,Math.round(er/obj*100)):0;
   var pctDr=objDr>0?Math.min(100,Math.round(dr/objDr*100)):0;
   var back='<button class="bg" data-act="plan-close" style="margin-bottom:12px">← Portefeuille</button>';
+  var tObj=accTypeObj(pl.type);
+  var typeChip='<span style="background:'+tObj.bg+';color:'+tObj.fg+';font-size:11px;font-weight:800;padding:2px 10px;border-radius:99px">'+tObj.ic+' '+tObj.lb+'</span>';
+  var brInfo=(pl.revue_cadence?' · BR ope. <b>'+esc((cadenceObj(pl.revue_cadence)||{}).lb||pl.revue_cadence).toLowerCase()+'</b>':'')
+    +(pl.prochaine_revue?' → <b>'+fDt(pl.prochaine_revue)+'</b>':'')
+    +(pl.type==='strategique'&&pl.next_br_strat?' · 🎯 BR strat. → <b>'+fDt(pl.next_br_strat)+'</b>':'');
   var header='<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px">'
-    +'<div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="pt">'+esc(a.name)+'</div>'+planStChip(pl.statut)+'<span title="'+st.lb+'">'+santeDot(st.code)+' <span style="font-size:12px;font-weight:700;color:'+st.color+'">'+st.lb+'</span></span></div>'
-      +'<div class="ps">'+esc(a.sector||'—')+' · Responsable : <b>'+esc(pl.owner_name||'—')+'</b>'+(pl.revue_cadence?' · Comité <b>'+esc((cadenceObj(pl.revue_cadence)||{}).lb||pl.revue_cadence).toLowerCase()+'</b>':'')+(pl.prochaine_revue?' · Prochaine revue : <b>'+fDt(pl.prochaine_revue)+'</b>':'')+'</div></div>'
+    +'<div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="pt">'+esc(a.name)+'</div>'+typeChip+planStChip(pl.statut)+'<span title="'+st.lb+'">'+santeDot(st.code)+' <span style="font-size:12px;font-weight:700;color:'+st.color+'">'+st.lb+'</span></span></div>'
+      +'<div class="ps">'+esc(a.sector||'—')+' · Responsable : <b>'+esc(pl.owner_name||'—')+'</b>'+brInfo+'</div></div>'
     +'<div style="display:flex;gap:8px"><button class="bg" data-act="plan-edit" data-id="'+accId+'">✏️ Éditer le plan</button><button class="bp" data-act="comite-start-one" data-id="'+accId+'">▶ Revue de compte</button></div></div>';
   /* Métriques */
   function metric(lb,val,sub,col){return '<div style="flex:1;min-width:150px;background:#fff;border:1px solid #e5e9ee;border-top:3px solid '+(col||'#1B2B3A')+';border-radius:12px;padding:14px 16px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#94a3b8">'+lb+'</div><div style="font-size:22px;font-weight:800;color:#0f172a;margin-top:4px">'+val+'</div>'+(sub?'<div style="font-size:12px;color:#94a3b8;margin-top:2px">'+sub+'</div>':'')+'</div>';}
@@ -1799,7 +1881,8 @@ function tPlanDetail(accId){
     var vd=VERDICTS[actVerdict(k)], rep=+k.reported_count||0;
     var badge='<span style="background:'+vd.bg+';color:'+vd.c+';font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px">'+vd.lb+'</span>'
       +(rep?' <span title="Reporté '+rep+' fois" style="background:#ffedd5;color:#c2410c;font-size:10px;font-weight:800;padding:2px 6px;border-radius:99px">×'+rep+'</span>':'');
-    return '<tr><td>'+esc(tp)+'</td><td><b>'+esc(k.title||'')+'</b>'+(k.next_action&&open?'<div style="font-size:11px;color:#94a3b8">→ '+esc(k.next_action)+'</div>':'')+'</td>'
+    var biz=actBizLabel(k);
+    return '<tr><td>'+esc(tp)+'</td><td><b>'+esc(k.title||'')+'</b>'+(biz?' <span title="Business visé par cette action" style="font-size:10px;font-weight:800;color:#0e7490;background:#ecfeff;border:1px solid #a5f3fc;border-radius:99px;padding:1px 7px;white-space:nowrap">💶 '+esc(biz)+'</span>':'')+(k.next_action&&open?'<div style="font-size:11px;color:#94a3b8">→ '+esc(k.next_action)+'</div>':'')+'</td>'
       +'<td>'+badge+'</td><td style="white-space:nowrap;color:'+(late?'#dc2626':'#475569')+'">'+when+'</td><td>'+esc(k.assigned_to||'—')+'</td>'
       +'<td class="tr" style="white-space:nowrap">'+(open?'<button class="lb" data-act="act-done" data-id="'+k.id+'" title="Tenu" style="padding:2px 7px;margin-right:2px">✓</button><button class="lb" data-act="act-report" data-id="'+k.id+'" title="Reporter" style="padding:2px 7px;margin-right:2px">⟳</button>':'')+'<button class="lr" data-act="biz-edit-act" data-id="'+k.id+'">✏️</button></td></tr>';
   }).join(''):'<tr><td colspan="6" class="emp">Aucune action. Planifiez prospection, rencontres et relances.</td></tr>';
@@ -1830,7 +1913,7 @@ function tPlanDetail(accId){
   var revs=accReviews(accId);
   var revBlock=revs.length?('<div style="margin-bottom:8px"><div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:8px">🗓️ Historique des comités</div>'
     +revs.map(function(r){return '<div style="background:#fff;border:1px solid #e5e9ee;border-radius:10px;padding:10px 12px;margin-bottom:8px">'
-      +'<div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:12px">Revue du '+fDt(r.review_date)+(r.reliability!=null?' · <span style="color:'+reliabColor(r.reliability)+'">tenue '+r.reliability+'%</span>':'')+'</b><span style="font-size:11px;color:#94a3b8">'+esc(r.participants||'')+'</span></div>'
+      +'<div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:12px">'+(function(){var bt=brTypeObj(r.review_type);return '<span style="color:'+bt.c+'">'+bt.ic+' '+bt.short+'</span> · ';})()+'Revue du '+fDt(r.review_date)+(r.reliability!=null?' · <span style="color:'+reliabColor(r.reliability)+'">tenue '+r.reliability+'%</span>':'')+'</b><span style="font-size:11px;color:#94a3b8">'+esc(r.participants||'')+'</span></div>'
       +(r.decisions?'<div style="font-size:12px;color:#475569;margin-top:4px"><b>Décisions :</b> '+esc(r.decisions)+'</div>':'')
       +(r.next_steps?'<div style="font-size:12px;color:#475569;margin-top:2px"><b>Prochaines étapes :</b> '+esc(r.next_steps)+'</div>':'')
       +'</div>';}).join('')+'</div>'):'';
@@ -1849,7 +1932,48 @@ function tPlanDetail(accId){
   var teamBlock='<div style="margin-bottom:18px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:13px;font-weight:800;color:#0f172a">🧑‍💼 Équipe du compte <span style="color:#94a3b8;font-weight:600">— gouvernance & comité</span></div>'
     +'<button class="bp" data-act="plan-team-new" data-id="'+accId+'" style="font-size:12px;padding:6px 12px">+ Membre</button></div>'
     +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+teamCards+'</div></div>';
-  return '<div class="vw">'+back+header+metrics+strat+teamBlock+powerMap+reliabCard+actions+oppsBlock+revBlock+'</div>';
+  var influence=tInfluencePlan(accId);
+  return '<div class="vw">'+back+header+metrics+strat+teamBlock+powerMap+influence+reliabCard+actions+oppsBlock+revBlock+'</div>';
+}
+
+/* ── Plan d'influence / lobbying : cartographie actionnable des décideurs ── */
+function tInfluencePlan(accId){
+  var cts=accContacts(accId).slice().sort(function(a,b){return ctRank(b)-ctRank(a)||(a.a_rencontrer===b.a_rencontrer?0:(a.a_rencontrer?-1:1));});
+  var cov=execCoverage(accId);
+  function kpi(lb,val,col){return '<div style="flex:1;min-width:130px;background:#fff;border:1px solid #e5e9ee;border-radius:10px;padding:10px 12px"><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:#94a3b8">'+lb+'</div><div style="font-size:18px;font-weight:800;color:'+(col||'#0f172a')+';margin-top:2px">'+val+'</div></div>';}
+  var covCol=cov.coverage==null?'#94a3b8':cov.coverage>=70?'#16a34a':cov.coverage>=40?'#d97706':'#dc2626';
+  var recCol=cov.avgRec==null?'#94a3b8':cov.avgRec<=30?'#16a34a':cov.avgRec<=90?'#d97706':'#dc2626';
+  var kpis='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">'
+    +kpi('Couverture exécutive',cov.coverage!=null?cov.coverage+'%':'—',covCol)
+    +kpi('Décideurs haut niveau',cov.high+' <span style="font-size:11px;color:#94a3b8">C-level/N-1</span>','#6d28d9')
+    +kpi('À rencontrer',String(cov.toMeet),cov.toMeet>0?'#b45309':'#16a34a')
+    +kpi('Champions',String(cov.champions),cov.champions>0?'#16a34a':'#94a3b8')
+    +kpi('Récence moyenne',cov.avgRec!=null?cov.avgRec+' j':'—',recCol)
+    +'</div>';
+  function recBadge(c){var d=contactRecencyDays(c);if(d==null)return '<span style="color:#cbd5e1">jamais</span>';var col=d<=30?'#16a34a':d<=90?'#d97706':'#dc2626';return '<span style="color:'+col+';font-weight:700">'+(d===0?'aujourd\'hui':'il y a '+d+' j')+'</span>';}
+  var rows=cts.map(function(c){
+    var h=hierObj(c.hierarchy_level),rel=relObj(c.relation),inf=(INFLUENCE.find(function(x){return x.id===c.influence;})||{}).lb;
+    var na=contactNextAction(c.id);
+    var relChip=rel?'<span style="background:'+rel.bg+';color:'+rel.fg+';font-size:10px;font-weight:800;padding:1px 8px;border-radius:99px">'+rel.lb+'</span>':'<span style="color:#cbd5e1">—</span>';
+    var hChip=h?'<span style="background:#f5f3ff;color:#6d28d9;font-size:10px;font-weight:800;padding:1px 8px;border-radius:99px">'+h.short+'</span>':'<span style="color:#cbd5e1">—</span>';
+    return '<tr>'
+      +'<td><div style="font-weight:700;color:#0f172a">'+esc(ctFullName(c))+(c.a_rencontrer?' <span title="À rencontrer" style="font-size:11px">🎯</span>':'')+'</div><div style="font-size:11px;color:#94a3b8">'+esc(c.position||'')+'</div></td>'
+      +'<td>'+hChip+'</td>'
+      +'<td style="font-size:12px;color:#475569">'+esc((CONTACT_ROLES.find(function(x){return x.id===c.role_type;})||{}).lb||'—')+'</td>'
+      +'<td style="font-size:12px;color:#475569">'+esc(inf||'—')+'</td>'
+      +'<td>'+relChip+'</td>'
+      +'<td style="font-size:12px;white-space:nowrap">'+recBadge(c)+'</td>'
+      +'<td style="font-size:12px;color:#475569">'+(na?'<b>'+esc(na.title||'')+'</b> <span style="color:#94a3b8">· '+fDt(na.next_action_date)+'</span>':'<span style="color:#cbd5e1">—</span>')+'</td>'
+      +'<td class="tr" style="white-space:nowrap"><button class="lb" data-act="plan-lobby-new" data-id="'+accId+'" data-ct="'+c.id+'" title="Planifier une action de relation" style="padding:2px 7px;margin-right:2px">📅</button><button class="lr" data-act="biz-edit-ct" data-id="'+c.id+'">✏️</button></td>'
+      +'</tr>';
+  }).join('');
+  var table=cts.length
+    ?'<div class="ov"><table><thead><tr><th>Interlocuteur</th><th>Niveau</th><th>Rôle</th><th>Influence</th><th>Relation</th><th>Dernier contact</th><th>Prochaine action de relation</th><th class="tr"></th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    :'<div class="emp">Aucun interlocuteur cartographié. Identifiez les décideurs et bâtissez le plan d\'accès.</div>';
+  return '<div style="margin-bottom:18px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+    +'<div style="font-size:13px;font-weight:800;color:#0f172a">🎯 Plan d\'influence / lobbying <span style="color:#94a3b8;font-weight:600">— accès aux décideurs : plus haut, plus tôt, plus souvent</span></div>'
+    +'<button class="bp" data-act="plan-ct-new" data-id="'+accId+'" style="font-size:12px;padding:6px 12px">+ Interlocuteur</button></div>'
+    +kpis+table+'</div>';
 }
 
 /* ── Comité de revue de compte (le rituel) ── */
@@ -1862,10 +1986,12 @@ function comiteSaveNext(){
   var q=S.comiteQueue||[],idx=S.comiteIdx||0,accId=q[idx];if(!accId)return;
   var st=accSante(accId),pl=planForAccount(accId);
   /* Snapshot des engagements + taux de tenue figés à cette revue (courbe de fiabilité). */
-  var engSnap=accActions(accId).map(function(k){return {id:k.id,title:k.title||'',assigned_to:k.assigned_to||'',verdict:actVerdict(k),due:k.next_action_date||null,done:actIsDone(k)};});
+  var engSnap=accActions(accId).map(function(k){return {id:k.id,title:k.title||'',assigned_to:k.assigned_to||'',verdict:actVerdict(k),due:k.next_action_date||null,done:actIsDone(k),biz:actBizLabel(k)};});
+  var brType=gv('com-brtype')||'operationnelle';
   var rv={id:uid2(),account_id:accId,review_date:new Date().toISOString().slice(0,10),
-    participants:gv('com-part'),sante:st.code,ca_objectif:(pl?+pl.ca_objectif||null:null),
-    er:accER(accId),dr:accDR(accId),ca_realise:accER(accId),
+    review_type:brType,participants:gv('com-part'),sante:st.code,ca_objectif:(pl?+pl.ca_objectif||null:null),
+    er:accER(accId),dr:accDR(accId),ca_realise:accER(accId),pipeline:accPipelineCA(accId),
+    landing_er:accLandingER(accId),landing_dr:accLandingDR(accId),
     engagements:engSnap,reliability:accReliability(accId).pct,
     decisions:gv('com-dec'),next_steps:gv('com-next'),created_by:S._userEmail||S.profileFirstName||''};
   S.accountReviews=(S.accountReviews||[]).concat([rv]);sbUpsertReview(rv);
@@ -1876,7 +2002,12 @@ function comiteSaveNext(){
     var ka={id:uid2(),type:'relance',title:ns.slice(0,90),account_id:accId,contact_id:null,opportunity_id:null,status:'planifie',next_action:'',next_action_date:_dPlus(14),date_realised:null,assigned_to:(pl&&pl.owner_name)||'',notes:'Créée en comité du '+new Date().toISOString().slice(0,10)};
     S.bizActivities=(S.bizActivities||[]).concat([ka]);if(typeof sbUpsertAct==='function')sbUpsertAct(ka);
   }
-  if(pl){pl.prochaine_revue=_dPlusCadence(cadenceObj(pl.revue_cadence));S.accountPlans=S.accountPlans.map(function(x){return x.account_id===accId?pl:x;});sbUpsertPlan(pl);}
+  if(pl){
+    /* Reprogramme la prochaine occurrence selon le type de BR revue. */
+    if(brType==='strategique'){pl.next_br_strat=_dPlusMonths(6);}
+    else{pl.prochaine_revue=_dPlusCadence(cadenceObj(pl.revue_cadence));}
+    S.accountPlans=S.accountPlans.map(function(x){return x.account_id===accId?pl:x;});sbUpsertPlan(pl);
+  }
   S.comiteIdx=idx+1;render();
 }
 function tComite(){
@@ -1923,16 +2054,27 @@ function tComite(){
     +'<div style="flex:2;min-width:300px;background:#fff;border:1px solid #e5e9ee;border-radius:10px;padding:12px">'
       +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px"><div style="font-size:12px;font-weight:800;color:#0f172a">Engagements à valider <span style="color:#94a3b8;font-weight:600">— tenue '+(rel.pct!=null?rel.pct+'% ('+rel.kept+'/'+rel.total+')':'—')+'</span></div>'
       +'<button class="lb" data-act="plan-act-new" data-id="'+accId+'" style="font-size:11px;padding:3px 9px">+ Engagement</button></div>'+actLines+'</div>'
-    +'<div style="flex:1;min-width:160px;background:#fff;border:1px solid #e5e9ee;border-radius:10px;padding:12px"><div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:4px">À rencontrer</div><div style="font-size:12px;color:#475569">'+(accContacts(accId).filter(function(c){return c.a_rencontrer;}).map(function(c){return esc((c.first_name||'')+' '+(c.last_name||''));}).join(', ')||'—')+'</div></div>'
+    +'<div style="flex:1;min-width:160px;background:#fff;border:1px solid #e5e9ee;border-radius:10px;padding:12px"><div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:4px">🎯 Relations clés</div>'
+      +(function(){var cv=execCoverage(accId);return '<div style="font-size:12px;color:#475569">Couverture exécutive <b style="color:'+(cv.coverage==null?'#94a3b8':cv.coverage>=70?'#16a34a':cv.coverage>=40?'#d97706':'#dc2626')+'">'+(cv.coverage!=null?cv.coverage+'%':'—')+'</b> · Champions <b>'+cv.champions+'</b></div>'
+        +'<div style="font-size:11px;color:#94a3b8;margin-top:4px">À rencontrer : '+(accContacts(accId).filter(function(c){return c.a_rencontrer;}).map(function(c){return esc(ctFullName(c));}).join(', ')||'—')+'</div>';})()+'</div>'
     +'</div>';
+  /* Pipeline : opportunités ouvertes pondérées (bilan business de la BR). */
+  var oppOpen=accOpenOpps(accId);
+  var pipeBlock='<div style="background:#fff;border:1px solid #e5e9ee;border-radius:10px;padding:12px;margin-bottom:14px"><div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:4px">💼 Pipeline — '+cEur(pip)+' pondéré <span style="color:#94a3b8;font-weight:600">('+oppOpen.length+' opportunité(s))</span></div>'
+    +(oppOpen.length?'<div style="font-size:12px;color:#475569">'+oppOpen.slice(0,6).map(function(o){return esc(o.name||'')+' <span style="color:#94a3b8">('+cEur(caPot(o))+' · '+(o.probability!=null?o.probability+'%':'—')+')</span>';}).join(' · ')+(oppOpen.length>6?' …':'')+'</div>':'<div style="font-size:12px;color:#94a3b8">Aucune opportunité ouverte.</div>')+'</div>';
+  /* Type de Business Review par défaut : stratégique si compte stratégique et BR strat. due. */
+  var dueStrat=pl.type==='strategique'&&(!pl.next_br_strat||pD(pl.next_br_strat)<=_today());
+  var defBr=dueStrat?'strategique':'operationnelle';
+  var brOpts=BR_TYPES.map(function(t){return '<option value="'+t.id+'"'+(t.id===defBr?' selected':'')+'>'+t.ic+' '+t.lb+' ('+t.cadence+')</option>';}).join('');
   var form='<div style="background:#fff;border:1px solid #e5e9ee;border-radius:12px;padding:14px 16px">'
+    +'<div class="fd"><label class="fl">Type de Business Review</label><select class="ic" id="com-brtype">'+brOpts+'</select><p class="fh">Stratégique = revue semestrielle de fond (S1). Opérationnelle = revue trimestrielle d\'exécution (Q1).</p></div>'
     +'<div class="fd"><label class="fl">Participants</label><input class="ic" id="com-part" value="'+esc((lastRev&&lastRev.participants)||accTeam(accId).map(function(m){return m.member_name;}).join(', ')||pl.owner_name||'')+'" placeholder="Responsable de compte, direction commerciale…"></div>'
     +'<div class="fd"><label class="fl">Décisions prises en séance</label><textarea class="ic" id="com-dec" rows="3" placeholder="Ex : investir sur le programme conformité, staffer un architecte senior…"></textarea></div>'
     +'<div class="fd"><label class="fl">Prochaines étapes</label><textarea class="ic" id="com-next" rows="2" placeholder="Ex : RDV DSI avant fin de mois, proposition sous 3 semaines…"></textarea></div>'
     +'<div class="fd"><label class="cx" style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="com-mkact" checked> Créer une <b>action de suivi</b> depuis « Prochaines étapes » (échéance +2 semaines)</label></div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><button class="bp" data-act="comite-save-next">✓ Enregistrer la revue &amp; suivant</button>'
     +'<button class="bg" data-act="comite-next">Passer</button><button class="bg" data-act="comite-close" style="margin-left:auto">Terminer le comité</button></div></div>';
-  return '<div class="vw">'+prog+hd+situ+form+'</div>';
+  return '<div class="vw">'+prog+hd+situ+pipeBlock+form+'</div>';
 }
 /* Compte rendu de comité (imprimable / PDF via le navigateur). */
 function comiteExport(){
@@ -1942,8 +2084,19 @@ function comiteExport(){
   var org=(S.settings&&(S.settings.orgName||S.settings.companyName))||'';
   var today=new Date().toLocaleDateString('fr-FR');
   var rows=revs.map(function(r){var a=S.bizAccounts.find(function(x){return x.id===r.account_id;});var sc=SANTE[r.sante]||SANTE.green;
-    return '<div class="card"><div class="ch"><div class="cn">'+esc(a?a.name:'')+'</div><div class="sd" style="background:'+sc.color+'">'+esc(sc.lb)+'</div></div>'
-      +'<div class="mt">Objectif : <b>'+(r.ca_objectif?cEur(r.ca_objectif):'—')+'</b> · ER : <b>'+cEur((r.er!=null?r.er:r.ca_realise)||0)+'</b> · DR : <b>'+cEur(r.dr||0)+'</b>'+(r.participants?' · Participants : '+esc(r.participants):'')+'</div>'
+    var bt=brTypeObj(r.review_type);
+    var engs=(r.engagements||[]);
+    var kept=engs.filter(function(e){return e.verdict==='tenu'||e.verdict==='tenu_retard';}).length;
+    var resolved=engs.filter(function(e){return e.verdict!=='a_venir';}).length;
+    var engHtml=engs.length?('<table class="eng"><thead><tr><th>Engagement</th><th>Responsable</th><th>Pour quel biz</th><th>Verdict</th></tr></thead><tbody>'
+      +engs.map(function(e){var v=(VERDICTS[e.verdict]||VERDICTS.a_venir);return '<tr><td>'+esc(e.title||'')+'</td><td>'+esc(e.assigned_to||'—')+'</td><td>'+esc(e.biz||'—')+'</td><td><span class="vv" style="background:'+v.bg+';color:'+v.c+'">'+v.lb+'</span></td></tr>';}).join('')
+      +'</tbody></table>'):'<div class="sec">Aucun engagement suivi.</div>';
+    return '<div class="card"><div class="ch"><div class="cn">'+esc(a?a.name:'')+' <span class="brt" style="color:'+bt.c+'">'+bt.ic+' '+bt.lb+'</span></div><div class="sd" style="background:'+sc.color+'">'+esc(sc.lb)+'</div></div>'
+      +'<div class="mt">Revue du '+fDt(r.review_date)+(r.participants?' · Participants : '+esc(r.participants):'')+'</div>'
+      +'<div class="sec"><span>Bilan business</span>Objectif ER <b>'+(r.ca_objectif?cEur(r.ca_objectif):'—')+'</b> · ER réalisé <b>'+cEur((r.er!=null?r.er:r.ca_realise)||0)+'</b> · DR <b>'+cEur(r.dr||0)+'</b>'
+        +(r.pipeline!=null?' · Pipeline <b>'+cEur(r.pipeline)+'</b>':'')
+        +((r.landing_er!=null||r.landing_dr!=null)?'<br>Atterrissage : ER <b>'+cEur(r.landing_er||0)+'</b>'+(r.ca_objectif?' (écart '+cEur((r.ca_objectif||0)-(r.landing_er||0))+')':'')+' · DR <b>'+cEur(r.landing_dr||0)+'</b>':'')+'</div>'
+      +'<div class="sec"><span>Engagements — tenue '+(r.reliability!=null?r.reliability+'%':(resolved?Math.round(kept/resolved*100)+'%':'—'))+' ('+kept+'/'+resolved+')</span>'+engHtml+'</div>'
       +(r.decisions?'<div class="sec"><span>Décisions</span>'+esc(r.decisions)+'</div>':'')
       +(r.next_steps?'<div class="sec"><span>Prochaines étapes</span>'+esc(r.next_steps)+'</div>':'')+'</div>';}).join('');
   var html='<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Compte rendu de comité — '+esc(org||'Konsilys')+'</title><style>'
@@ -1954,6 +2107,9 @@ function comiteExport(){
     +'.card{background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:14px 16px;margin-bottom:12px}.ch{display:flex;justify-content:space-between;align-items:center}.cn{font-weight:800;font-size:16px}'
     +'.sd{color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:99px}.mt{font-size:12px;color:#64748b;margin-top:4px}'
     +'.sec{margin-top:8px;font-size:13px;color:#334155}.sec span{display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#94a3b8;margin-bottom:2px}'
+    +'.brt{font-size:12px;font-weight:800;margin-left:8px}'
+    +'.eng{width:100%;border-collapse:collapse;margin-top:4px}.eng th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:#94a3b8;padding:3px 6px;border-bottom:1px solid #e4e7ec}.eng td{font-size:12px;color:#334155;padding:4px 6px;border-bottom:1px solid #f1f5f9}'
+    +'.vv{font-size:10px;font-weight:800;padding:1px 8px;border-radius:99px;white-space:nowrap}'
     +'@media print{.bar{display:none}body{background:#fff}}'
     +'</style></head><body><div class="wrap"><div class="bar"><button class="p" onclick="window.print()">🖨 Imprimer / PDF</button><button onclick="window.close()">Fermer</button></div>'
     +'<div class="hd"><div class="k">'+(org?esc(org)+' · ':'')+'Comité de revue de comptes</div><h1>Compte rendu — '+esc(today)+'</h1></div>'

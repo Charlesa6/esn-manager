@@ -629,9 +629,10 @@ function loadDemoData(){
     {id:'a2',name:'TotalEnergies', status:'client_actif',sector:'Énergie & Utilities',size:'Grand compte',website:'',siret:'',address:'Paris',notes:''}
   ];
   S.bizContacts=[
-    {id:'ct1',account_id:'a1',first_name:'Hélène',last_name:'Dubois', email:'h.dubois@bnp.demo',   phone:'',role_type:'decideur',position:'Responsable SI Risques',notes:'',influence:'fort', relation:'champion',a_rencontrer:false},
-    {id:'ct2',account_id:'a2',first_name:'Marc',  last_name:'Lefevre',email:'m.lefevre@total.demo',phone:'',role_type:'decideur',position:'Directeur Cloud',       notes:'',influence:'fort', relation:'neutre',  a_rencontrer:true},
-    {id:'ct3',account_id:'a1',first_name:'Paul',  last_name:'Girard', email:'p.girard@bnp.demo',   phone:'',role_type:'prescripteur',position:'Directeur Conformité',notes:'Sponsor du programme conformité 2026.',influence:'fort',relation:'neutre',a_rencontrer:true}
+    {id:'ct1',account_id:'a1',first_name:'Hélène',last_name:'Dubois', email:'h.dubois@bnp.demo',   phone:'',role_type:'decideur',position:'Responsable SI Risques',notes:'',influence:'fort', relation:'champion',a_rencontrer:false,hierarchy_level:'n1',last_contact_date:_fut(-12)},
+    {id:'ct2',account_id:'a2',first_name:'Marc',  last_name:'Lefevre',email:'m.lefevre@total.demo',phone:'',role_type:'decideur',position:'Directeur Cloud',       notes:'',influence:'fort', relation:'neutre',  a_rencontrer:true,hierarchy_level:'c_level',last_contact_date:_fut(-95)},
+    {id:'ct3',account_id:'a1',first_name:'Paul',  last_name:'Girard', email:'p.girard@bnp.demo',   phone:'',role_type:'prescripteur',position:'Directeur Conformité',notes:'Sponsor du programme conformité 2026.',influence:'fort',relation:'neutre',a_rencontrer:true,hierarchy_level:'n1',last_contact_date:null},
+    {id:'ct4',account_id:'a1',first_name:'Claire',last_name:'Fontaine',email:'c.fontaine@bnp.demo', phone:'',role_type:'decideur',position:'DGA / COMEX',           notes:'Sponsor exécutif à conquérir.',influence:'fort',relation:'neutre',a_rencontrer:true,hierarchy_level:'c_level',last_contact_date:null}
   ];
   S.bizOpps=[
     {id:'o1',name:'TMA Plateforme Risques',account_id:'a1',contact_id:'ct1',status:'proposition',btype:'at',
@@ -658,10 +659,10 @@ function loadDemoData(){
   ];
   /* Plan d'actions du compte (réutilise les activités CRM rattachées au compte). */
   S.bizActivities=[
-    {id:'k1',type:'reunion',title:'Point trimestriel DSI Risques',account_id:'a1',contact_id:'ct1',opportunity_id:null,status:'planifie',next_action:'Préparer la proposition conformité',next_action_date:_fut(7), date_realised:null,      assigned_to:'Thomas Bernard',notes:''},
+    {id:'k1',type:'reunion',title:'Point trimestriel DSI Risques',account_id:'a1',contact_id:'ct1',opportunity_id:'o1',status:'planifie',next_action:'Préparer la proposition conformité',next_action_date:_fut(7), date_realised:null,      assigned_to:'Thomas Bernard',notes:''},
     {id:'k2',type:'relance',title:'Relancer sur le cadrage cloud',   account_id:'a2',contact_id:'ct2',opportunity_id:'o2', status:'planifie',next_action:'Envoyer le planning de migration', next_action_date:_fut(-3),date_realised:null,      assigned_to:'Marie Lefebvre',notes:''},
     {id:'k3',type:'reunion',title:'Atelier de cadrage cloud',        account_id:'a2',contact_id:'ct2',opportunity_id:'o2', status:'realise', next_action:'',                                next_action_date:null,     date_realised:_fut(-10),assigned_to:'Marie Lefebvre',notes:'Périmètre validé.'},
-    {id:'k4',type:'reunion',title:'Rencontre Directeur Conformité',  account_id:'a1',contact_id:'ct3',opportunity_id:null,status:'planifie',next_action:'Cadrer le besoin conformité 2026',next_action_date:_fut(14), date_realised:null,      assigned_to:'Thomas Bernard',notes:''},
+    {id:'k4',type:'reunion',title:'Rencontre Directeur Conformité',  account_id:'a1',contact_id:'ct3',opportunity_id:null,biz_target:500000,status:'planifie',next_action:'Cadrer le besoin conformité 2026',next_action_date:_fut(14), date_realised:null,      assigned_to:'Thomas Bernard',notes:''},
     /* Historique d'engagements pour illustrer le taux de tenue (tenu / en retard / non tenu / reporté). */
     {id:'k5',type:'reunion',title:'Atelier cadrage risques',        account_id:'a1',status:'realise', next_action_date:_fut(-20),date_realised:_fut(-22),assigned_to:'Thomas Bernard',notes:''},
     {id:'k6',type:'relance',title:'Relance proposition conformité', account_id:'a1',status:'planifie',next_action_date:_fut(10), date_realised:null,     assigned_to:'Thomas Bernard',reported_count:2,notes:''},
@@ -671,8 +672,8 @@ function loadDemoData(){
   /* Plans de compte (Key Account Management) : responsable, objectif de CA,
      enjeux/stratégie, prochaine revue. Un historique de comité sur BNP. */
   S.accountPlans=[
-    {id:'ap1',account_id:'a1',owner_name:'Thomas Bernard',owner_email:'',statut:'strategique',ca_objectif:1500000,ca_objectif_dr:900000,revue_cadence:'mensuel',enjeux:'Devenir le partenaire de référence sur la plateforme risques et étendre au périmètre conformité.',strategie:'Renforcer la relation avec le DSI Risques, se positionner sur le programme conformité 2026, monter une équipe dédiée.',prochaine_revue:_fut(21)},
-    {id:'ap2',account_id:'a2',owner_name:'Marie Lefebvre',owner_email:'',statut:'developper',  ca_objectif:900000, ca_objectif_dr:700000,revue_cadence:'trimestriel',enjeux:'Prendre pied sur la migration cloud puis élargir aux projets data.',strategie:'Livrer le cadrage, capitaliser sur la relation Directeur Cloud, viser le run.',prochaine_revue:_fut(35)}
+    {id:'ap1',account_id:'a1',owner_name:'Thomas Bernard',owner_email:'',statut:'developper',type:'strategique',ca_objectif:1500000,ca_objectif_dr:900000,revue_cadence:'trimestriel',enjeux:'Devenir le partenaire de référence sur la plateforme risques et étendre au périmètre conformité.',strategie:'Renforcer la relation avec le DSI Risques, se positionner sur le programme conformité 2026, monter une équipe dédiée.',prochaine_revue:_fut(21),next_br_strat:_fut(45)},
+    {id:'ap2',account_id:'a2',owner_name:'Marie Lefebvre',owner_email:'',statut:'developper',  type:'potentiel',ca_objectif:900000, ca_objectif_dr:700000,revue_cadence:'trimestriel',enjeux:'Prendre pied sur la migration cloud puis élargir aux projets data.',strategie:'Livrer le cadrage, capitaliser sur la relation Directeur Cloud, viser le run.',prochaine_revue:_fut(35)}
   ];
   /* Équipe de gouvernance de compte : KAM, ingénieur d'affaires, directeur — multi-BU. */
   S.accountTeam=[
@@ -682,8 +683,8 @@ function loadDemoData(){
     {id:'at4',account_id:'a2',member_name:'Marie Lefebvre', member_email:'',role:'kam',bu_id:'bu_energie',consultant_id:null}
   ];
   S.accountReviews=[
-    {id:'ar0',account_id:'a1',review_date:_fut(-60),participants:'T. Bernard, Direction commerciale',sante:'amber',ca_objectif:1500000,ca_realise:520000,reliability:48,engagements:[],decisions:'Prioriser la plateforme risques.',next_steps:'Cadrer le programme conformité.',created_by:'demo',created_at:''},
-    {id:'ar1',account_id:'a1',review_date:_fut(-30),participants:'T. Bernard, Direction commerciale',sante:'green',ca_objectif:1500000,ca_realise:715000,reliability:58,engagements:[],decisions:'Investir sur le programme conformité. Staffer un architecte senior.',next_steps:'RDV DSI Risques avant fin de mois ; proposition conformité sous 3 semaines.',created_by:'demo',created_at:''}
+    {id:'ar0',account_id:'a1',review_date:_fut(-60),review_type:'strategique',participants:'T. Bernard, Direction commerciale',sante:'amber',ca_objectif:1500000,ca_realise:520000,pipeline:280000,landing_er:800000,landing_dr:520000,reliability:48,engagements:[],decisions:'Prioriser la plateforme risques.',next_steps:'Cadrer le programme conformité.',created_by:'demo',created_at:''},
+    {id:'ar1',account_id:'a1',review_date:_fut(-30),review_type:'operationnelle',participants:'T. Bernard, Direction commerciale',sante:'green',ca_objectif:1500000,ca_realise:715000,pipeline:350000,landing_er:1065000,landing_dr:715000,reliability:58,engagements:[],decisions:'Investir sur le programme conformité. Staffer un architecte senior.',next_steps:'RDV DSI Risques avant fin de mois ; proposition conformité sous 3 semaines.',created_by:'demo',created_at:''}
   ];
   /* Fiches de poste de démonstration — chacune issue d'un deal CRM (oppId) et avec des
      candidats du vivier déjà assignés (candidateIds), pour montrer l'assignation, le

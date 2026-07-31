@@ -215,11 +215,11 @@ async function newPage(browser) {
         S.planView = 'a1'; render();
         const txt = document.body.innerText;
         return { team: /Équipe du compte/i.test(txt), kam: /KAM/.test(txt),
-                 cadence: /Comité/i.test(txt) && /mensuel/i.test(txt),
+                 cadence: /BR ope\./i.test(txt) && /trimestriel/i.test(txt),
                  n: (typeof accTeam === 'function') ? accTeam('a1').length : 0 };
       });
       check('Équipe du compte : section + membres (' + teamF.n + ') + rôle KAM', teamF.team && teamF.kam && teamF.n >= 2);
-      check('Comité récurrent : cadence affichée dans le plan', teamF.cadence);
+      check('Comité récurrent : cadence BR affichée dans le plan', teamF.cadence);
 
       const eng = await p.evaluate(() => {
         S.planView = 'a1'; render();
@@ -254,6 +254,57 @@ async function newPage(browser) {
       });
       check('Notifications : bouton config visible (admin) + modale email/Teams', notif.hasBtn && notif.modal);
       check('Notifications : enregistrement des réglages (digest + webhook Teams)', notif.saved);
+
+      // Besoin CGI : typologie compte, BR double cadence, influence/lobbying, « pour quel biz »
+      const cgi = await p.evaluate(() => {
+        S.tab = 'business'; S.bizTab = 'plans'; S.planView = null; S.comiteQueue = null;
+        S.planFilter = { mine: false, statut: '', sante: '', type: '' }; render();
+        const porto = document.body.innerText;
+        const typeChip = /stratégique/i.test(porto) && /à potentiel/i.test(porto);
+        const typeFilter = !!document.querySelector('[data-act="planf-type"]');
+        // filtre par type stratégique
+        S.planFilter.type = 'strategique'; render();
+        const filtered = (typeof portfolioAccounts === 'function');
+        const strat = (typeof isStrategic === 'function') && isStrategic('a1') && !isStrategic('a2');
+        S.planFilter.type = '';
+        // détail : plan d'influence + KPIs couverture + biz label
+        S.planView = 'a1'; render();
+        const txt = document.body.innerText;
+        const cov = (typeof execCoverage === 'function') ? execCoverage('a1') : null;
+        const bizLabel = (typeof actBizLabel === 'function') ? actBizLabel({ opportunity_id: 'o1' }) : '';
+        const bizTarget = (typeof actBizLabel === 'function') ? actBizLabel({ biz_target: 500000 }) : '';
+        return {
+          typeChip, typeFilter, strat,
+          influence: /Plan d'influence/i.test(txt) && /lobbying/i.test(txt),
+          coverage: /Couverture exécutive/i.test(txt),
+          highDeciders: cov ? cov.high : 0,
+          toMeet: cov ? cov.toMeet : 0,
+          pourQuelBiz: /pour quel biz/i.test(txt) || /💶/.test(txt),
+          bizLabelOk: /./.test(bizLabel) && /cible/i.test(bizTarget),
+          brStrat: /BR strat/i.test(txt),
+        };
+      });
+      check('Typologie : chips Stratégique / À potentiel + filtre', cgi.typeChip && cgi.typeFilter && cgi.strat);
+      check('Double Business Review : BR stratégique affichée sur compte stratégique', cgi.brStrat);
+      check('Plan d\'influence / lobbying : section + KPI couverture exécutive (' + cgi.highDeciders + ' décideurs haut niveau)', cgi.influence && cgi.coverage && cgi.highDeciders >= 2);
+      check('Actions « pour quel biz » : lien opportunité / cible de CA', cgi.pourQuelBiz && cgi.bizLabelOk);
+
+      const br = await p.evaluate(() => {
+        S.planView = null; comiteStartOne('a1'); render();
+        const txt = document.body.innerText;
+        const hasSelector = !!document.getElementById('com-brtype');
+        const hasPipe = /Pipeline/i.test(txt), hasRel = /Relations clés/i.test(txt);
+        const bt = document.getElementById('com-brtype'); if (bt) bt.value = 'strategique';
+        const dec = document.getElementById('com-dec'); if (dec) dec.value = 'Décision BR stratégique';
+        const n0 = (S.accountReviews || []).length;
+        comiteSaveNext();
+        const last = (S.accountReviews || [])[(S.accountReviews || []).length - 1];
+        return { hasSelector, hasPipe, hasRel, grew: (S.accountReviews || []).length > n0,
+                 typed: last && last.review_type === 'strategique', landing: last && last.landing_er != null };
+      });
+      check('Business Review structurée : sélecteur type + pipeline + relations clés', br.hasSelector && br.hasPipe && br.hasRel);
+      check('Business Review : revue typée stratégique + atterrissage snapshoté', br.grew && br.typed && br.landing);
+      await p.evaluate(() => { comiteClose(); S.planView = null; render(); });
 
       const com = await p.evaluate(() => {
         S.planView = null; comiteStart();
