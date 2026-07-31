@@ -540,7 +540,7 @@ var S={
   role:'admin',dirName:'',consId:null,fdir:[],fexp:[],fsec:[],kpiSort:null,kpiSortAsc:false,kpiDirSort:null,kpiDirSortAsc:false,kpiDirOpen:{},invites:[],svpInvites:[],recruteurInvites:[],vpDirMap:{},vpName:'',profileFirstName:'',profileLastName:'',profileTitle:'',fvp:[],settings:{currency:'EUR',currencySymbol:'€',fyStartMonth:10,fyStartDay:1,roleLabels:{},hasBusinessModule:false,hasRecrutementModule:false,cpQuota:27,rttQuota:12},kpiVPOpen:{},kpiDirDirOpen:{},navOpen:{},apprOpen:{},actCid:'',actMonth:'',_all:null,leaveApprovalRole:'super_admin',allInvites:[],managerId:null,approvalDelegateTo:null,approvalDelegateUntil:null,orgProfiles:[],
   /* CRM Business */
   bizTab:'pipeline',bizAccounts:[],bizContacts:[],bizOpps:[],bizActivities:[],bizApprovals:[],bizModal:null,bizFilter:{status:'all',account:'',exp:''},
-  accountPlans:[],accountReviews:[],accountTeam:[],planView:null,planModal:null,comiteQueue:null,comiteIdx:0,planFilter:{mine:false,statut:'',sante:''},notifSettings:null,notifModal:null,
+  accountPlans:[],accountReviews:[],accountTeam:[],planView:null,planModal:null,comiteQueue:null,comiteIdx:0,planFilter:{mine:false,statut:'',sante:''},notifSettings:null,notifModal:null,roleCatalog:null,
   sbSt:'\uD83D\uDFE2 Sauvegarde locale active',
   sbSync:false,
   imp:null,
@@ -681,7 +681,7 @@ function loadDemoData(){
     {id:'at2',account_id:'a1',member_name:'Sophie Nguyen', member_email:'',role:'ingenieur_affaires',bu_id:'bu_data',consultant_id:null,pct_time:40,is_support:false},
     {id:'at3',account_id:'a1',member_name:'Antoine Mercier',member_email:'',role:'directeur',bu_id:'bu_dg',consultant_id:null,pct_time:10,is_support:false},
     {id:'at5',account_id:'a1',member_name:'Julie Marchand',member_email:'',role:'membre',bu_id:'bu_data',consultant_id:null,is_support:true},
-    {id:'at4',account_id:'a2',member_name:'Marie Lefebvre', member_email:'',role:'kam',bu_id:'bu_energie',consultant_id:null,pct_time:100,is_support:false}
+    {id:'at4',account_id:'a2',member_name:'Marie Lefebvre', member_email:'',role:'directeur',bu_id:'bu_energie',consultant_id:null,pct_time:15,is_support:false}
   ];
   S.accountReviews=[
     {id:'ar0',account_id:'a1',review_date:_fut(-60),review_type:'strategique',participants:'T. Bernard, Direction commerciale',sante:'amber',ca_objectif:1500000,ca_realise:520000,pipeline:280000,landing_er:800000,landing_dr:520000,reliability:48,engagements:[],decisions:'Prioriser la plateforme risques.',next_steps:'Cadrer le programme conformité.',created_by:'demo',created_at:''},

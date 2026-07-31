@@ -65,7 +65,7 @@ function uid2(){return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,fu
 async function loadBiz(){
   if(!sb||!SB_CID)return;
   try{
-    var [ra,rc,ro,rk,rp,rv,rt,rn]=await Promise.all([
+    var [ra,rc,ro,rk,rp,rv,rt,rn,rrc]=await Promise.all([
       sb.from('crm_accounts').select('*').eq('company_id',SB_CID).order('name'),
       sb.from('crm_contacts').select('*').eq('company_id',SB_CID).order('last_name'),
       sb.from('crm_opportunities').select('*').eq('company_id',SB_CID).order('created_at',{ascending:false}),
@@ -74,6 +74,7 @@ async function loadBiz(){
       sb.from('account_reviews').select('*').eq('company_id',SB_CID).order('review_date',{ascending:false}),
       sb.from('account_team').select('*').eq('company_id',SB_CID),
       sb.from('notification_settings').select('*').eq('company_id',SB_CID).maybeSingle(),
+      sb.from('account_role_catalog').select('data').eq('company_id',SB_CID).maybeSingle(),
     ]);
     if(ra.data)S.bizAccounts=ra.data;
     if(rc.data)S.bizContacts=rc.data;
@@ -83,6 +84,7 @@ async function loadBiz(){
     if(rv.data)S.accountReviews=rv.data;
     if(rt.data)S.accountTeam=rt.data;
     if(rn&&rn.data)S.notifSettings=rn.data;
+    if(rrc&&rrc.data&&rrc.data.data)S.roleCatalog=rrc.data.data;
   }catch(e){console.warn('CRM load:',e);}
 }
 function visibleOpps(){
@@ -1223,6 +1225,20 @@ function tBizModal(){
       +'<div class="fd cs2"><label class="fl">URL du webhook entrant Teams</label><input class="ic" id="notif-teams-url" value="'+esc(ns.teams_webhook_url||'')+'" placeholder="https://outlook.office.com/webhook/..."><p class="fh">Teams → canal cible → Connecteurs → « Incoming Webhook » → copiez l\'URL générée.</p></div>'
       +'</div>';
   }
+  else if(m.type==='rolemodel'){
+    var cat=roleCatalog();
+    var tp_=function(id){return (cat.tiers.find(function(t){return t.id===id;})||{}).er_max;};
+    title='🧩 Modèle de rôles par compte';
+    saveAction='rolemodelSave()';
+    body='<p class="fh" style="margin:0 0 14px">Konsilys recommande le modèle de rôles d\'animation selon la taille du compte. Ajustez les seuils de CA (ER) qui déterminent le passage d\'un palier à l\'autre.</p>'
+      +'<div class="g2">'
+      +'<div class="fd"><label class="fl">Plafond « Compte à potentiel » (€ ER)</label><input class="ic" type="number" id="rm-er-potentiel" value="'+(tp_('potentiel')||500000)+'"><p class="fh">En dessous : 1 Account Manager à temps partiel.</p></div>'
+      +'<div class="fd"><label class="fl">Plafond « En développement » (€ ER)</label><input class="ic" type="number" id="rm-er-developpement" value="'+(tp_('developpement')||2000000)+'"><p class="fh">Au-dessus : compte stratégique (KAM dédié + IA + Directeur + Sponsor).</p></div>'
+      +'</div>'
+      +'<div style="margin-top:14px"><div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:8px">Catalogue de rôles Konsilys</div>'
+      +Object.keys(cat.roles).map(function(rid){var d=cat.roles[rid],ro=teamRoleObj(rid);return '<div style="border:1px solid #e5e9ee;border-radius:10px;padding:8px 10px;margin-bottom:6px"><span style="background:'+ro.bg+';color:'+ro.fg+';font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px">'+esc(d.title||rid)+'</span><div style="font-size:12px;color:#475569;margin-top:4px">'+esc(d.mission||'')+'</div></div>';}).join('')
+      +'<p class="fh">Les fiches de poste (mission, responsabilités, KPIs) sont fournies par le catalogue Konsilys et servent de base à la création d\'une vraie fiche de poste dans le module Recrutement.</p></div>';
+  }
 
   /* Pont Business → Recrutement : depuis une opportunité enregistrée, générer une
      fiche de poste pré-remplie (profil, client, TJM, dates). Disponible dès qu'un
@@ -1543,9 +1559,84 @@ function planOrDefault(accId){return planForAccount(accId)||{id:null,account_id:
 function planType(accId){return planOrDefault(accId).type||'potentiel';}
 function isStrategic(accId){return planType(accId)==='strategique';}
 /* Équipe de gouvernance du compte + cadence des comités. */
-var TEAM_ROLES=[{id:'kam',lb:'KAM',bg:'#dcfce7',fg:'#166534'},{id:'ingenieur_affaires',lb:'Ingénieur d\'affaires',bg:'#dbeafe',fg:'#1e40af'},{id:'directeur',lb:'Directeur',bg:'#ede9fe',fg:'#5b21b6'},{id:'sponsor',lb:'Sponsor',bg:'#fef3c7',fg:'#92400e'},{id:'membre',lb:'Membre',bg:'#f1f5f9',fg:'#475569'}];
+var TEAM_ROLES=[
+  {id:'kam',lb:'Key Account Manager',bg:'#dcfce7',fg:'#166534'},
+  {id:'account_manager',lb:'Account Manager',bg:'#d1fae5',fg:'#047857'},
+  {id:'ingenieur_affaires',lb:'Ingénieur d\'affaires',bg:'#dbeafe',fg:'#1e40af'},
+  {id:'directeur',lb:'Directeur de compte',bg:'#ede9fe',fg:'#5b21b6'},
+  {id:'sponsor',lb:'Sponsor exécutif',bg:'#fef3c7',fg:'#92400e'},
+  {id:'membre',lb:'Support / autre',bg:'#f1f5f9',fg:'#475569'}
+];
+/* ── Modèle de rôles d'animation de compte (Account Operating Model) ──
+   Métier reconnu pour animer un compte, dimensionné à sa taille. Catalogue
+   best-practice Konsilys (éditable par l'ESN via account_role_catalog). */
+var ROLE_CATALOG_DEFAULT={
+  roles:{
+    account_manager:{title:'Account Manager',seniority:'confirme',reports_to:'Directeur de BU',
+      mission:'Animer et développer un portefeuille de comptes à potentiel : prospection, relation, coordination des affaires.',
+      responsibilities:['Prospecter et qualifier les besoins','Entretenir la relation avec les interlocuteurs clés','Coordonner les propositions commerciales','Suivre les actions et engagements du compte'],
+      kpis:['Croissance de l\'ER','Nombre de rendez-vous décideurs','Taux de tenue des engagements']},
+    kam:{title:'Key Account Manager',seniority:'senior',reports_to:'Directeur commercial',
+      mission:'Piloter le développement d\'un compte stratégique : plan de compte, gouvernance, croissance de l\'ER et du DR.',
+      responsibilities:['Bâtir et animer le plan de compte','Piloter les Business Reviews (opérationnelle & stratégique)','Développer la couverture des décideurs (plan d\'influence)','Coordonner l\'équipe de compte multi-BU','Sécuriser les deals must-win'],
+      kpis:['Croissance ER/DR vs objectif','Couverture exécutive','Taux de tenue des engagements','Pipeline & must-win gagnés']},
+    ingenieur_affaires:{title:'Ingénieur d\'affaires',seniority:'confirme',reports_to:'Key Account Manager',
+      mission:'Transformer les opportunités en missions : chiffrage, staffing, closing sur le compte.',
+      responsibilities:['Qualifier et chiffrer les opportunités','Monter les équipes projet (staffing)','Négocier et closer les affaires','Suivre la marge et la delivery'],
+      kpis:['CA signé','Taux de transformation','Marge des affaires']},
+    directeur:{title:'Directeur de compte',seniority:'directeur',reports_to:'Direction générale',
+      mission:'Porter la relation exécutive et la stratégie du compte ; garant de la croissance long terme.',
+      responsibilities:['Porter la relation au niveau COMEX/C-level','Arbitrer les investissements sur le compte','Sponsoriser les deals stratégiques','Garantir la satisfaction (CSAP)'],
+      kpis:['Croissance long terme','CSAP','Relations exécutives établies']},
+    sponsor:{title:'Sponsor exécutif',seniority:'directeur',reports_to:'Direction générale',
+      mission:'Sponsor de haut niveau : ouvre les portes exécutives et sécurise les décisions stratégiques.',
+      responsibilities:['Nouer la relation au plus haut niveau','Débloquer les escalades','Représenter l\'ESN dans les instances clés'],
+      kpis:['Accès C-level','Escalades débloquées']},
+    membre:{title:'Rôle support',seniority:'confirme',reports_to:'Key Account Manager',
+      mission:'Appui spécialisé au compte (offre, industrie, delivery, partenaires).',
+      responsibilities:['Apporter l\'expertise offre/industrie','Contribuer aux Business Reviews'],
+      kpis:['Contribution aux gains']}
+  },
+  /* Paliers dimensionnés par CA (ER) — seuils éditables. */
+  tiers:[
+    {id:'potentiel',lb:'Compte à potentiel',er_max:500000,
+     roles:[{role:'account_manager',pct:20,dedicated:false}]},
+    {id:'developpement',lb:'Compte en développement',er_max:2000000,
+     roles:[{role:'kam',pct:40,dedicated:false},{role:'ingenieur_affaires',pct:30,dedicated:false},{role:'sponsor',pct:5,dedicated:false}]},
+    {id:'strategique',lb:'Compte stratégique',er_max:null,
+     roles:[{role:'kam',pct:100,dedicated:true},{role:'ingenieur_affaires',pct:100,dedicated:true},{role:'directeur',pct:15,dedicated:false},{role:'sponsor',pct:5,dedicated:false},{role:'membre',pct:20,dedicated:false}]}
+  ]
+};
 var CADENCES=[{id:'hebdomadaire',lb:'Hebdomadaire',days:7},{id:'mensuel',lb:'Mensuel',months:1},{id:'trimestriel',lb:'Trimestriel',months:3},{id:'semestriel',lb:'Semestriel',months:6},{id:'annuel',lb:'Annuel',months:12}];
-function teamRoleObj(id){return TEAM_ROLES.find(function(x){return x.id===id;})||TEAM_ROLES[4];}
+function teamRoleObj(id){return TEAM_ROLES.find(function(x){return x.id===id;})||TEAM_ROLES[TEAM_ROLES.length-1];}
+/* Catalogue de rôles effectif : défaut Konsilys fusionné avec l'override ESN. */
+function roleCatalog(){
+  var d=ROLE_CATALOG_DEFAULT, o=S.roleCatalog;
+  if(!o||!o.tiers&&!o.roles)return d;
+  return {roles:Object.assign({},d.roles,o.roles||{}),tiers:(o.tiers&&o.tiers.length?o.tiers:d.tiers)};
+}
+/* Palier (modèle de rôles) applicable à un compte : tier stratégique → dernier
+   palier ; sinon selon l'ER réalisé + pipeline (atterrissage). */
+function accRoleTier(accId){
+  var cat=roleCatalog(),tiers=cat.tiers;
+  if(planType(accId)==='strategique')return tiers[tiers.length-1];
+  var er=accLandingER(accId);
+  for(var i=0;i<tiers.length;i++){if(tiers[i].er_max==null||er<+tiers[i].er_max)return tiers[i];}
+  return tiers[tiers.length-1];
+}
+/* Modèle cible : rôles recommandés (avec %temps) enrichis du catalogue. */
+function recommendedModel(accId){
+  var cat=roleCatalog(),tier=accRoleTier(accId);
+  return {tier:tier,roles:(tier.roles||[]).map(function(r){return Object.assign({},r,{def:cat.roles[r.role]||{title:r.role}});})};
+}
+/* Écart modèle cible vs équipe actuelle : par rôle, membres nommés + manquant. */
+function roleGap(accId){
+  var model=recommendedModel(accId),team=accTeam(accId);
+  return model.roles.map(function(r){
+    var members=team.filter(function(m){return m.role===r.role;});
+    return {role:r.role,def:r.def,pct:r.pct,dedicated:r.dedicated,members:members,covered:members.length>0};
+  });
+}
 function cadenceObj(id){return CADENCES.find(function(x){return x.id===id;})||null;}
 function accTeam(accId){var order={kam:0,ingenieur_affaires:1,directeur:2,sponsor:3,membre:4};return (S.accountTeam||[]).filter(function(m){return m.account_id===accId;}).sort(function(a,b){return (order[a.role]||9)-(order[b.role]||9);});}
 function buName(id){return (id&&typeof buLabel==='function'&&buLabel(id))||(id||'');}
@@ -2052,7 +2143,8 @@ function tPlanDetail(accId){
     +'<button class="bp" data-act="plan-team-new" data-id="'+accId+'" style="font-size:12px;padding:6px 12px">+ Membre</button></div>'
     +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+teamCards+'</div></div>';
   var influence=tInfluencePlan(accId);
-  return '<div class="vw">'+back+execSum+header+metrics+strat+takeaways+teamBlock+powerMap+influence+reliabCard+actions+oppsBlock+revBlock+'</div>';
+  var roleModel=tRoleModel(accId);
+  return '<div class="vw">'+back+execSum+header+metrics+strat+takeaways+teamBlock+roleModel+powerMap+influence+reliabCard+actions+oppsBlock+revBlock+'</div>';
 }
 
 /* ── Plan d'influence / lobbying : cartographie actionnable des décideurs ── */
@@ -2110,6 +2202,66 @@ function tInfluencePlan(accId){
     +'<div style="font-size:13px;font-weight:800;color:#0f172a">🎯 Plan d\'influence / lobbying <span style="color:#94a3b8;font-weight:600">— accès aux décideurs : plus haut, plus tôt, plus souvent</span></div>'
     +'<button class="bp" data-act="plan-ct-new" data-id="'+accId+'" style="font-size:12px;padding:6px 12px">+ Interlocuteur</button></div>'
     +kpis+table+cxoBlock+'</div>';
+}
+
+/* ── Modèle de rôles & staffing du compte (Account Operating Model) ── */
+function tRoleModel(accId){
+  var model=recommendedModel(accId), gaps=roleGap(accId), tier=model.tier;
+  var totalPct=model.roles.reduce(function(s,r){return s+(+r.pct||0);},0);
+  var covered=gaps.filter(function(g){return g.covered;}).length;
+  var missing=gaps.filter(function(g){return !g.covered;});
+  var team=accTeam(accId);
+  /* Reconnaissance : un rôle d'animation dédié (KAM/Account Manager) est-il nommé ? */
+  var hasDedicatedAnim=team.some(function(m){return (m.role==='kam'||m.role==='account_manager');});
+  var seniorsOnly=!hasDedicatedAnim&&team.some(function(m){return m.role==='directeur'||m.role==='sponsor';});
+  var recoNote=seniorsOnly?'<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:#9a3412">⚠️ Aucun rôle d\'animation dédié (KAM / Account Manager) n\'est nommé : le compte est animé par des rôles de direction, « en plus » de leur activité. Formalisez un rôle reconnu et sa fiche de poste.</div>':'';
+  var rows=gaps.map(function(g){
+    var ro=teamRoleObj(g.role), def=g.def||{};
+    var chips=g.members.map(function(m){return '<span style="background:'+ro.bg+';color:'+ro.fg+';font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;margin:0 4px 4px 0;display:inline-block">'+esc(m.member_name||'—')+(m.pct_time?' · '+(+m.pct_time)+'%':'')+'</span>';}).join('');
+    return '<div style="background:#fff;border:1px solid '+(g.covered?'#e5e9ee':'#fde68a')+';border-radius:12px;padding:12px 14px;margin-bottom:8px">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
+      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="background:'+ro.bg+';color:'+ro.fg+';font-size:11px;font-weight:800;padding:2px 10px;border-radius:99px">'+esc(def.title||ro.lb)+'</span>'
+        +'<span title="Temps recommandé" style="font-size:11px;font-weight:800;color:#0e7490;background:#ecfeff;border-radius:99px;padding:2px 8px">'+(+g.pct)+'%'+(g.dedicated?' · dédié':'')+'</span>'
+        +(g.covered?'<span style="font-size:11px;color:#16a34a;font-weight:700">● pourvu</span>':'<span style="font-size:11px;color:#b45309;font-weight:800">○ à pourvoir</span>')+'</div>'
+      +'<div style="display:flex;gap:6px"><button class="lb" data-act="role-assign" data-id="'+accId+'" data-role="'+g.role+'" data-pct="'+(+g.pct)+'" style="font-size:11px;padding:3px 9px">👤 Nommer</button>'
+        +'<button class="lb" data-act="role-jobpost" data-id="'+accId+'" data-role="'+g.role+'" title="Créer une vraie fiche de poste dans le module Recrutement" style="font-size:11px;padding:3px 9px">📋 Fiche de poste</button></div></div>'
+      +(def.mission?'<div style="font-size:12px;color:#475569;margin-top:6px">'+esc(def.mission)+'</div>':'')
+      +(chips?'<div style="margin-top:8px">'+chips+'</div>':'')
+      +'</div>';
+  }).join('');
+  return '<div style="margin-bottom:18px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+    +'<div style="font-size:13px;font-weight:800;color:#0f172a">🧩 Modèle de rôles &amp; staffing <span style="color:#94a3b8;font-weight:600">— dimensionné à la taille du compte</span></div>'
+    +'<button class="lr" data-act="rolemodel-edit" title="Éditer le catalogue de rôles &amp; les seuils" style="font-size:11px;padding:3px 9px">⚙️ Modèle</button></div>'
+    +'<div style="background:#f5f3ff;border:1px solid #e9d5ff;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:#5b21b6"><b>'+esc(tier.lb)+'</b> — modèle cible : '+model.roles.length+' rôle(s) · ~'+totalPct+'% de temps cumulé · <b>'+covered+'/'+gaps.length+'</b> pourvu(s)'+(missing.length?' · <span style="color:#b45309">'+missing.length+' à pourvoir</span>':'')+'</div>'
+    +recoNote+rows+'</div>';
+}
+/* Crée une vraie fiche de poste (module Recrutement) à partir d'un rôle du catalogue. */
+function roleJobPost(accId,roleId){
+  var acc=(S.bizAccounts||[]).find(function(x){return x.id===accId;})||{}, cat=roleCatalog(), def=(cat.roles||{})[roleId]||{}, pl=planOrDefault(accId);
+  var missions=(def.mission||'')
+    +(def.responsibilities&&def.responsibilities.length?'\n\nResponsabilités :\n- '+def.responsibilities.join('\n- '):'')
+    +(def.kpis&&def.kpis.length?'\n\nIndicateurs de performance :\n- '+def.kpis.join('\n- '):'')
+    +(def.reports_to?'\n\nRattachement : '+def.reports_to:'');
+  var sen=(typeof JOB_SENIORITY!=='undefined'&&JOB_SENIORITY.some(function(s){return s.id===def.seniority;}))?def.seniority:'';
+  var preJob={id:(typeof uid==='function'?uid():uid2()),createdBy:S._userEmail||'',oppId:null,buId:(typeof myBuId==='function'?myBuId():null),
+    title:(def.title||roleId)+' — '+(acc.name||'compte'),seniority:sen,status:'ouvert',
+    location:acc.address||'',reqSector:acc.sector||'',contractKind:'',startDate:'',nbPositions:1,
+    reqMinYears:(typeof senMinYears==='function'?senMinYears(sen):null)||null,reqExpertise:[],
+    missionDesc:missions,expectations:'',clientName:acc.name||'',assignedTo:pl.owner_name||'',
+    salaryMin:null,salaryMax:null,tjmTarget:null,recruiter:'',extBody:''};
+  S.bizModal=null;S.tab='recrutement';S.recTab='jobs';S.jobSel=null;
+  S.modal={type:'job',item:null,expSel:[],prefill:preJob};
+  render();
+}
+/* Enregistre les seuils du modèle de rôles (override ESN). */
+function rolemodelSave(){
+  var cat=roleCatalog();
+  var t0=+gv('rm-er-potentiel')||500000, t1=+gv('rm-er-developpement')||2000000;
+  var tiers=cat.tiers.map(function(t){var c=Object.assign({},t);if(t.id==='potentiel')c.er_max=t0;if(t.id==='developpement')c.er_max=t1;return c;});
+  var data={roles:(S.roleCatalog&&S.roleCatalog.roles)||undefined,tiers:tiers};
+  S.roleCatalog=data;
+  if(sb&&SB_CID)sb.from('account_role_catalog').upsert({company_id:SB_CID,data:data,updated_at:new Date().toISOString()},{onConflict:'company_id'}).then(function(r){if(r&&r.error)console.warn('role catalog:',r.error);});
+  S.bizModal=null;render();
 }
 
 /* ── Comité de revue de compte (le rituel) ── */

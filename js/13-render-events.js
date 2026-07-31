@@ -1092,6 +1092,9 @@ function bind(){
       else if(a==='plan-ct-new'){S.bizModal={type:'ct',item:{account_id:id}};render();}
       else if(a==='plan-act-new'){S.bizModal={type:'act',item:{account_id:id,status:'planifie'}};render();}
       else if(a==='plan-lobby-new'){var _ct=b.getAttribute('data-ct');S.bizModal={type:'act',item:{account_id:id,contact_id:_ct||null,type:'reunion',status:'planifie',title:'Rencontre'}};render();}
+      else if(a==='role-assign'){var _rr=b.getAttribute('data-role'),_rp=b.getAttribute('data-pct');S.bizModal={type:'team',item:{account_id:id,role:_rr,pct_time:_rp?+_rp:null,is_support:_rr==='membre'},accId:id};render();}
+      else if(a==='role-jobpost'){roleJobPost(id,b.getAttribute('data-role'));}
+      else if(a==='rolemodel-edit'){S.bizModal={type:'rolemodel'};render();}
       else if(a==='plan-team-new'){S.bizModal={type:'team',item:null,accId:id};render();}
       else if(a==='plan-team-edit'){var _tm=(S.accountTeam||[]).find(function(x){return x.id===id;});S.bizModal={type:'team',item:_tm,accId:_tm&&_tm.account_id};render();}
       else if(a==='plan-team-del'){teamDel(id);}

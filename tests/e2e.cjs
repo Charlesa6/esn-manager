@@ -214,7 +214,7 @@ async function newPage(browser) {
       const teamF = await p.evaluate(() => {
         S.planView = 'a1'; render();
         const txt = document.body.innerText;
-        return { team: /Équipe du compte/i.test(txt), kam: /KAM/.test(txt),
+        return { team: /Équipe du compte/i.test(txt), kam: /Key Account Manager/i.test(txt),
                  cadence: /BR ope\./i.test(txt) && /trimestriel/i.test(txt),
                  n: (typeof accTeam === 'function') ? accTeam('a1').length : 0 };
       });
@@ -377,6 +377,36 @@ async function newPage(browser) {
       check('CDP — Key takeaways & call to action (plan)', cdp2.takeaways);
       check('CDP — export : Resources & Governance + Key Takeaways + Priority actions', cdp2.exportOk);
       await p.evaluate(() => { S.planView = null; render(); });
+
+      // Modèle de rôles par compte (Account Operating Model)
+      const roles = await p.evaluate(() => {
+        const stratModel = recommendedModel('a1');
+        const potModel = recommendedModel('a2');
+        S.planView = 'a1'; render();
+        const txt1 = document.body.innerText;
+        S.planView = 'a2'; render();
+        const txt2 = document.body.innerText;
+        // création d'une fiche de poste depuis un rôle → ouvre le module recrutement avec prefill
+        roleJobPost('a1', 'kam');
+        const jobPrefill = S.modal && S.modal.type === 'job' && S.modal.prefill && /Key Account Manager/i.test(S.modal.prefill.title) && /Responsabilités/i.test(S.modal.prefill.missionDesc || '');
+        S.modal = null; S.tab = 'business';
+        return {
+          stratTier: stratModel.tier.id,                       // 'strategique'
+          stratRoles: stratModel.roles.map(r => r.role),
+          potHasAM: potModel.roles.some(r => r.role === 'account_manager'),
+          section: /Modèle de rôles/i.test(txt1) && /modèle cible/i.test(txt1),
+          gapAffiche: /à pourvoir/i.test(txt1),
+          recoWarn: /aucun rôle d'animation dédié/i.test(txt2),   // TotalEnergies animé par un directeur
+          jobPrefill: jobPrefill,
+        };
+      });
+      check('Modèle de rôles : compte stratégique → modèle KAM dédié + IA + Directeur + Sponsor',
+        roles.stratTier === 'strategique' && roles.stratRoles.indexOf('kam') >= 0 && roles.stratRoles.indexOf('sponsor') >= 0);
+      check('Modèle de rôles : compte à potentiel → Account Manager', roles.potHasAM);
+      check('Modèle de rôles : section + écart (rôle à pourvoir)', roles.section && roles.gapAffiche);
+      check('Modèle de rôles : alerte « animé sans rôle dédié » (reconnaissance)', roles.recoWarn);
+      check('Modèle de rôles : « Fiche de poste » préremplit une vraie offre (Recrutement)', roles.jobPrefill);
+      await p.evaluate(() => { S.tab = 'business'; S.bizTab = 'plans'; S.planView = null; render(); });
 
       const com = await p.evaluate(() => {
         S.planView = null; comiteStart();
