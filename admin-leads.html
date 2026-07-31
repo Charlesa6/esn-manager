@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
+<title>Konsilys — Admin · Leads</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='7'%20fill='%2305060b'/%3E%3Ccircle%20cx='16'%20cy='16'%20r='6'%20fill='%238b5cf6'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--navy:#1B2B3A;--violet:#8b5cf6;--muted:#64748B;--border:#E6EAF1;--off:#F8FAFC;--ink:#0F172A}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--off);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:var(--violet)}
+.top{background:var(--navy);color:#fff;padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800}
+.brand .orb{width:22px;height:22px;border-radius:6px;background:radial-gradient(circle at 34% 30%,#a78bfa,#22d3ee)}
+.top .r{display:flex;align-items:center;gap:14px;font-size:13px}
+.top .r .who{color:rgba(255,255,255,.7)}
+.btn{border:none;border-radius:8px;padding:8px 14px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:filter .15s}
+.btn-p{background:var(--violet);color:#fff}
+.btn-g{background:rgba(255,255,255,.12);color:#fff}
+.btn:hover{filter:brightness(1.08)}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 24px}
+h1{font-size:22px;font-weight:800;margin-bottom:4px}
+.sub{color:var(--muted);font-size:14px;margin-bottom:20px}
+.bar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.count{font-size:13px;color:var(--muted)}
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+th{background:var(--off);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700}
+tr:last-child td{border-bottom:none}
+tr.done{opacity:.55}
+.pill{display:inline-block;font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px}
+.pill.new{background:#ecfccb;color:#3f6212}
+.pill.done{background:#e2e8f0;color:#475569}
+.subj{font-weight:700}
+.msg{max-width:340px;white-space:pre-wrap;color:#334155}
+.em{color:var(--violet);word-break:break-all}
+.mut{color:var(--muted)}
+.act{border:1px solid var(--border);background:#fff;border-radius:7px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+.act:hover{border-color:var(--violet);color:var(--violet)}
+.empty{padding:60px 20px;text-align:center;color:var(--muted)}
+/* Login */
+.login{max-width:380px;margin:80px auto;background:#fff;border:1px solid var(--border);border-radius:16px;padding:32px}
+.login h2{font-size:18px;font-weight:800;margin-bottom:6px}
+.login p{font-size:13px;color:var(--muted);margin-bottom:20px}
+.login input{width:100%;padding:11px 13px;border:1px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;margin-bottom:10px}
+.login input:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 3px rgba(139,92,246,.15)}
+.login .btn-p{width:100%;padding:12px}
+.err{color:#dc2626;font-size:13px;margin-top:10px;min-height:16px;text-align:center}
+.hidden{display:none!important}
+@media(max-width:720px){.msg{max-width:180px}.hide-sm{display:none}}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand"><span class="orb"></span> Konsilys · Admin</div>
+  <div class="r" id="top-actions"></div>
+</div>
+
+<!-- Écran de connexion -->
+<div id="login-view" class="login hidden">
+  <h2>Espace administrateur</h2>
+  <p>Connectez-vous pour consulter les demandes reçues via le formulaire de contact.</p>
+  <form id="login-form">
+    <input id="li-email" type="email" placeholder="Email" autocomplete="username" required>
+    <input id="li-pw" type="password" placeholder="Mot de passe" autocomplete="current-password" required>
+    <button class="btn btn-p" type="submit" id="li-btn">Se connecter</button>
+    <div class="err" id="li-err"></div>
+  </form>
+</div>
+
+<!-- Tableau des leads -->
+<div id="app-view" class="wrap hidden">
+  <h1>Leads</h1>
+  <div class="sub">Demandes reçues via le formulaire de contact de konsilys.fr.</div>
+  <div class="bar">
+    <button class="btn btn-p" id="reload">Rafraîchir</button>
+    <span class="count" id="count"></span>
+  </div>
+  <div class="card">
+    <table>
+      <thead><tr>
+        <th>Reçu le</th><th>Statut</th><th>Sujet</th><th>Contact</th><th class="hide-sm">Message</th><th></th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div id="empty" class="empty hidden">Aucun lead pour le moment.</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var SUPA_URL='https://rwmstlesxnglpblrurqj.supabase.co';
+  var SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3bXN0bGVzeG5nbHBibHJ1cnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MjcyNTMsImV4cCI6MjA5NzEwMzI1M30.9SrsA1sYjdsqdPCnZ_sc2iTl01NKXsl7gAu2Y_VYgSQ';
+  var sb=(window.supabase&&window.supabase.createClient)?window.supabase.createClient(SUPA_URL,SUPA_ANON):null;
+  function $(id){return document.getElementById(id);}
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function show(el){el&&el.classList.remove('hidden');}
+  function hide(el){el&&el.classList.add('hidden');}
+
+  function fmtDate(s){try{var d=new Date(s);return d.toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});}catch(e){return s||'';}}
+
+  function renderTopActions(email){
+    $('top-actions').innerHTML='<span class="who">'+esc(email||'')+'</span>'
+      +'<button class="btn btn-g" id="logout">Se déconnecter</button>';
+    var lo=$('logout');if(lo)lo.addEventListener('click',function(){if(sb)sb.auth.signOut().then(boot);});
+  }
+
+  function renderRows(list){
+    var tb=$('rows');
+    if(!list.length){hide($('rows'));show($('empty'));$('count').textContent='0 lead';tb.innerHTML='';return;}
+    hide($('empty'));show(tb);
+    $('count').textContent=list.length+' lead'+(list.length>1?'s':'');
+    tb.innerHTML=list.map(function(l){
+      var done=l.status==='done';
+      var contact='<div><strong>'+esc(l.name||'—')+'</strong></div>'
+        +(l.company?'<div class="mut">'+esc(l.company)+'</div>':'')
+        +'<div class="em"><a href="mailto:'+esc(l.email)+'">'+esc(l.email)+'</a></div>';
+      return '<tr class="'+(done?'done':'')+'" data-id="'+esc(l.id)+'">'
+        +'<td class="mut">'+esc(fmtDate(l.created_at))+'</td>'
+        +'<td><span class="pill '+(done?'done':'new')+'">'+(done?'Traité':'Nouveau')+'</span></td>'
+        +'<td class="subj">'+esc(l.subject||'—')+'</td>'
+        +'<td>'+contact+'</td>'
+        +'<td class="hide-sm"><div class="msg">'+esc(l.message||'')+'</div></td>'
+        +'<td><button class="act" data-toggle data-id="'+esc(l.id)+'" data-next="'+(done?'new':'done')+'">'+(done?'Rouvrir':'Marquer traité')+'</button></td>'
+        +'</tr>';
+    }).join('');
+    Array.prototype.forEach.call(tb.querySelectorAll('[data-toggle]'),function(btn){
+      btn.addEventListener('click',function(){toggle(btn.getAttribute('data-id'),btn.getAttribute('data-next'));});
+    });
+  }
+
+  function toggle(id,next){
+    if(!sb)return;
+    sb.from('leads').update({status:next}).eq('id',id).then(function(res){
+      if(res&&res.error){alert('Erreur : '+res.error.message);return;}
+      load();
+    });
+  }
+
+  function load(){
+    if(!sb)return;
+    $('count').textContent='Chargement…';
+    sb.from('leads').select('*').order('created_at',{ascending:false}).then(function(res){
+      if(res&&res.error){
+        var msg=(res.error.message||'').toLowerCase();
+        hide($('rows'));show($('empty'));$('count').textContent='';
+        if(msg.indexOf('does not exist')>=0||msg.indexOf('relation')>=0||res.error.code==='42P01'){
+          $('empty').innerHTML='La table <code>leads</code> n’existe pas encore.<br>Appliquez la migration <code>supabase/migrations/create_leads_table.sql</code> (SQL Editor Supabase), puis rafraîchissez.';
+        }else{
+          $('empty').textContent='Erreur : '+res.error.message;
+        }
+        return;
+      }
+      renderRows((res&&res.data)||[]);
+    });
+  }
+
+  function openApp(email){
+    hide($('login-view'));show($('app-view'));
+    renderTopActions(email);
+    load();
+  }
+  function openLogin(){
+    $('top-actions').innerHTML='';
+    hide($('app-view'));show($('login-view'));
+  }
+
+  function boot(){
+    if(!sb){openLogin();$('li-err').textContent='Service indisponible.';return;}
+    sb.auth.getSession().then(function(res){
+      var s=res&&res.data&&res.data.session;
+      if(s&&s.user){openApp(s.user.email);}else{openLogin();}
+    });
+  }
+
+  var lf=$('login-form');
+  if(lf)lf.addEventListener('submit',function(ev){
+    ev.preventDefault();
+    var err=$('li-err');err.textContent='';
+    var email=($('li-email').value||'').trim().toLowerCase();
+    var pw=$('li-pw').value||'';
+    if(!sb){err.textContent='Service indisponible.';return;}
+    var btn=$('li-btn');btn.disabled=true;btn.textContent='Connexion…';
+    sb.auth.signInWithPassword({email:email,password:pw}).then(function(res){
+      btn.disabled=false;btn.textContent='Se connecter';
+      if(res&&res.error){err.textContent='Identifiants invalides.';return;}
+      var u=res&&res.data&&res.data.user;openApp(u&&u.email);
+    }).catch(function(){btn.disabled=false;btn.textContent='Se connecter';err.textContent='Erreur réseau.';});
+  });
+
+  var rl=$('reload');if(rl)rl.addEventListener('click',load);
+  boot();
+})();
+</script>
+</body>
+</html>
