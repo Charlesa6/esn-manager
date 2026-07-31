@@ -1,0 +1,16 @@
+# Dépendances et sorties générées (jamais committées)
+node_modules/
+package-lock.json
+
+# Contenu web assemblé par scripts/copy-web.mjs (dérivé de la racine du repo)
+www/
+
+# Projet natif iOS généré par `npx cap add ios` (sur le Mac / le runner CI)
+ios/
+
+# Divers
+.DS_Store
+*.log
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/test_output

@@ -1,0 +1,26 @@
+{
+  "name": "konsilys-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Application iOS Konsilys (Capacitor) — shell natif embarquant l'app web.",
+  "scripts": {
+    "sync-web": "node scripts/copy-web.mjs",
+    "add-ios": "cap add ios",
+    "sync": "node scripts/copy-web.mjs && cap sync ios",
+    "open": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/app": "^6.0.1",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/haptics": "^6.0.1",
+    "@capacitor/ios": "^6.1.2",
+    "@capacitor/push-notifications": "^6.0.2",
+    "@capacitor/splash-screen": "^6.0.2",
+    "@capacitor/status-bar": "^6.0.1",
+    "@aparajita/capacitor-biometric-auth": "^7.1.5"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2"
+  }
+}

@@ -1,0 +1,81 @@
+name: iOS · TestFlight
+
+# Build de l'app iOS Konsilys sur un runner macOS (aucun Mac local requis) et
+# envoi sur TestFlight. Déclenché à la main, ou en poussant un tag ios-v*.
+on:
+  workflow_dispatch:
+  push:
+    tags: ['ios-v*']
+
+concurrency:
+  group: ios-testflight
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build & TestFlight
+    runs-on: macos-14
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Installer les dépendances JS
+        run: npm install
+
+      - name: Assembler le bundle web (www/)
+        run: npm run sync-web
+
+      - name: Ajouter la plateforme iOS
+        run: npx cap add ios || true
+
+      - name: Synchroniser Capacitor
+        run: npx cap sync ios
+
+      - name: CocoaPods
+        run: |
+          gem install cocoapods --no-document || true
+          cd ios/App && pod install
+
+      - name: Ruby + fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: false
+      - run: gem install fastlane --no-document
+
+      - name: Build + TestFlight (fastlane)
+        env:
+          APP_IDENTIFIER: fr.konsilys.app
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ITC_TEAM_ID: ${{ secrets.ITC_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_GIT_BASIC_AUTH: ${{ secrets.MATCH_GIT_BASIC_AUTH }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: fastlane beta
+
+      - name: Archiver l'IPA (diagnostic)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: konsilys-ipa
+          path: mobile/build/*.ipa
+          if-no-files-found: ignore
