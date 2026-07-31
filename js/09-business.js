@@ -1128,9 +1128,11 @@ function tBizModal(){
       +'<div class="fd"><label class="fl">Objectif ER — External Revenue (€)</label><input class="ic" type="number" id="plan-obj" value="'+(it.ca_objectif||'')+'" placeholder="1500000"></div>'
       +'<div class="fd"><label class="fl">Objectif DR — Delivery Revenue (€)</label><input class="ic" type="number" id="plan-obj-dr" value="'+(it.ca_objectif_dr||'')+'" placeholder="900000"></div>'
       +'<div class="fd"><label class="fl">⚙️ Cadence BR opérationnelle</label><select class="ic" id="plan-cadence"><option value="">— Ponctuel —</option>'
-        +CADENCES.map(function(cd){return '<option value="'+cd.id+'"'+(it.revue_cadence===cd.id?' selected':'')+'>'+cd.lb+'</option>';}).join('')+'</select></div>'
+        +CADENCES.map(function(cd){return '<option value="'+cd.id+'"'+(it.revue_cadence===cd.id?' selected':'')+'>'+cd.lb+'</option>';}).join('')+'</select><p class="fh">Temporalité libre : de l\'hebdomadaire à l\'annuel selon l\'intensité du suivi.</p></div>'
       +'<div class="fd"><label class="fl">Prochaine BR opérationnelle</label><input class="ic" type="date" id="plan-revue" value="'+(it.prochaine_revue||'')+'"></div>'
-      +'<div class="fd cs2"><label class="fl">🎯 Prochaine BR stratégique <span style="color:#94a3b8;font-weight:500">(comptes stratégiques — semestrielle)</span></label><input class="ic" type="date" id="plan-br-strat" value="'+(it.next_br_strat||'')+'"></div>'
+      +'<div class="fd"><label class="fl">🎯 Cadence BR stratégique</label><select class="ic" id="plan-cadence-strat">'
+        +CADENCES.map(function(cd){return '<option value="'+cd.id+'"'+((it.cadence_strat||'semestriel')===cd.id?' selected':'')+'>'+cd.lb+'</option>';}).join('')+'</select></div>'
+      +'<div class="fd"><label class="fl">🎯 Prochaine BR stratégique <span style="color:#94a3b8;font-weight:500">(comptes stratégiques)</span></label><input class="ic" type="date" id="plan-br-strat" value="'+(it.next_br_strat||'')+'"></div>'
       +'<div class="fd cs2"><label class="fl">🎯 Enjeux</label><textarea class="ic" id="plan-enjeux" rows="3" placeholder="Ambition sur le compte, périmètres à conquérir…">'+esc(it.enjeux||'')+'</textarea></div>'
       +'<div class="fd cs2"><label class="fl">🧭 Stratégie de développement</label><textarea class="ic" id="plan-strat" rows="3" placeholder="Leviers, relations à renforcer, plan d\'attaque…">'+esc(it.strategie||'')+'</textarea></div>'
       +'</div>';
@@ -1476,7 +1478,7 @@ function planStObj(id){return PLAN_STATUS.find(function(x){return x.id===id;})||
 function relObj(id){return RELATION.find(function(x){return x.id===id;});}
 function cEur(n){n=Math.round(+n||0);if(Math.abs(n)>=1e6)return (n/1e6).toFixed(n%1e6===0?0:1).replace('.',',')+' M€';if(Math.abs(n)>=1000)return Math.round(n/1000)+' k€';return fEur(n);}
 function planForAccount(accId){return (S.accountPlans||[]).find(function(p){return p.account_id===accId;})||null;}
-function planOrDefault(accId){return planForAccount(accId)||{id:null,account_id:accId,owner_name:'',owner_email:'',statut:'developper',type:'potentiel',ca_objectif:null,ca_objectif_dr:null,enjeux:'',strategie:'',prochaine_revue:null,next_br_strat:null,revue_cadence:null};}
+function planOrDefault(accId){return planForAccount(accId)||{id:null,account_id:accId,owner_name:'',owner_email:'',statut:'developper',type:'potentiel',ca_objectif:null,ca_objectif_dr:null,enjeux:'',strategie:'',prochaine_revue:null,next_br_strat:null,revue_cadence:null,cadence_strat:'semestriel'};}
 /* Typologie du compte (défaut : à potentiel). */
 function planType(accId){return planOrDefault(accId).type||'potentiel';}
 function isStrategic(accId){return planType(accId)==='strategique';}
@@ -1716,6 +1718,7 @@ function planSave(){
     ca_objectif:+gv('plan-obj')||null,
     ca_objectif_dr:+gv('plan-obj-dr')||null,
     revue_cadence:gv('plan-cadence')||null,
+    cadence_strat:gv('plan-cadence-strat')||'semestriel',
     enjeux:gv('plan-enjeux'),
     strategie:gv('plan-strat'),
     prochaine_revue:gv('plan-revue')||null,
@@ -1817,7 +1820,7 @@ function tPlanDetail(accId){
   var typeChip='<span style="background:'+tObj.bg+';color:'+tObj.fg+';font-size:11px;font-weight:800;padding:2px 10px;border-radius:99px">'+tObj.ic+' '+tObj.lb+'</span>';
   var brInfo=(pl.revue_cadence?' · BR ope. <b>'+esc((cadenceObj(pl.revue_cadence)||{}).lb||pl.revue_cadence).toLowerCase()+'</b>':'')
     +(pl.prochaine_revue?' → <b>'+fDt(pl.prochaine_revue)+'</b>':'')
-    +(pl.type==='strategique'&&pl.next_br_strat?' · 🎯 BR strat. → <b>'+fDt(pl.next_br_strat)+'</b>':'');
+    +(pl.type==='strategique'?' · 🎯 BR strat. <b>'+esc((cadenceObj(pl.cadence_strat||'semestriel')||{}).lb||'').toLowerCase()+'</b>'+(pl.next_br_strat?' → <b>'+fDt(pl.next_br_strat)+'</b>':''):'');
   var header='<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px">'
     +'<div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="pt">'+esc(a.name)+'</div>'+typeChip+planStChip(pl.statut)+'<span title="'+st.lb+'">'+santeDot(st.code)+' <span style="font-size:12px;font-weight:700;color:'+st.color+'">'+st.lb+'</span></span></div>'
       +'<div class="ps">'+esc(a.sector||'—')+' · Responsable : <b>'+esc(pl.owner_name||'—')+'</b>'+brInfo+'</div></div>'
@@ -2003,8 +2006,8 @@ function comiteSaveNext(){
     S.bizActivities=(S.bizActivities||[]).concat([ka]);if(typeof sbUpsertAct==='function')sbUpsertAct(ka);
   }
   if(pl){
-    /* Reprogramme la prochaine occurrence selon le type de BR revue. */
-    if(brType==='strategique'){pl.next_br_strat=_dPlusMonths(6);}
+    /* Reprogramme la prochaine occurrence selon la cadence de la BR revue. */
+    if(brType==='strategique'){pl.next_br_strat=_dPlusCadence(cadenceObj(pl.cadence_strat||'semestriel'));}
     else{pl.prochaine_revue=_dPlusCadence(cadenceObj(pl.revue_cadence));}
     S.accountPlans=S.accountPlans.map(function(x){return x.account_id===accId?pl:x;});sbUpsertPlan(pl);
   }
@@ -2065,7 +2068,8 @@ function tComite(){
   /* Type de Business Review par défaut : stratégique si compte stratégique et BR strat. due. */
   var dueStrat=pl.type==='strategique'&&(!pl.next_br_strat||pD(pl.next_br_strat)<=_today());
   var defBr=dueStrat?'strategique':'operationnelle';
-  var brOpts=BR_TYPES.map(function(t){return '<option value="'+t.id+'"'+(t.id===defBr?' selected':'')+'>'+t.ic+' '+t.lb+' ('+t.cadence+')</option>';}).join('');
+  var brCad={operationnelle:(cadenceObj(pl.revue_cadence)||{}).lb,strategique:(cadenceObj(pl.cadence_strat||'semestriel')||{}).lb};
+  var brOpts=BR_TYPES.map(function(t){var cd=brCad[t.id];return '<option value="'+t.id+'"'+(t.id===defBr?' selected':'')+'>'+t.ic+' '+t.lb+(cd?' ('+cd.toLowerCase()+')':'')+'</option>';}).join('');
   var form='<div style="background:#fff;border:1px solid #e5e9ee;border-radius:12px;padding:14px 16px">'
     +'<div class="fd"><label class="fl">Type de Business Review</label><select class="ic" id="com-brtype">'+brOpts+'</select><p class="fh">Stratégique = revue semestrielle de fond (S1). Opérationnelle = revue trimestrielle d\'exécution (Q1).</p></div>'
     +'<div class="fd"><label class="fl">Participants</label><input class="ic" id="com-part" value="'+esc((lastRev&&lastRev.participants)||accTeam(accId).map(function(m){return m.member_name;}).join(', ')||pl.owner_name||'')+'" placeholder="Responsable de compte, direction commerciale…"></div>'

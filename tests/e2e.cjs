@@ -306,6 +306,23 @@ async function newPage(browser) {
       check('Business Review : revue typée stratégique + atterrissage snapshoté', br.grew && br.typed && br.landing);
       await p.evaluate(() => { comiteClose(); S.planView = null; render(); });
 
+      const cad = await p.evaluate(() => {
+        // BR opérationnelle à temporalité choisie : TotalEnergies en hebdomadaire.
+        S.planView = 'a2'; render();
+        const weekly = /hebdomadaire/i.test(document.body.innerText);
+        // modale plan : sélecteurs de cadence op. ET stratégique (temporalité libre)
+        S.bizModal = { type: 'plan', accId: 'a2', item: (S.accountPlans || []).find(function (p) { return p.account_id === 'a2'; }) }; render();
+        const opSel = document.getElementById('plan-cadence');
+        const stratSel = document.getElementById('plan-cadence-strat');
+        const hasWeeklyOpt = !!opSel && Array.prototype.some.call(opSel.options, function (o) { return o.value === 'hebdomadaire'; });
+        const bothSelectors = !!opSel && !!stratSel;
+        S.bizModal = null; render();
+        return { weekly: weekly, hasWeeklyOpt: hasWeeklyOpt, bothSelectors: bothSelectors };
+      });
+      check('BR opérationnelle : temporalité choisie (hebdomadaire affichée)', cad.weekly && cad.hasWeeklyOpt);
+      check('Plan : cadences BR opérationnelle + stratégique choisissables', cad.bothSelectors);
+      await p.evaluate(() => { S.planView = null; render(); });
+
       const com = await p.evaluate(() => {
         S.planView = null; comiteStart();
         const n0 = (S.accountReviews || []).length;

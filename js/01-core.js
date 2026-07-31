@@ -672,8 +672,8 @@ function loadDemoData(){
   /* Plans de compte (Key Account Management) : responsable, objectif de CA,
      enjeux/stratégie, prochaine revue. Un historique de comité sur BNP. */
   S.accountPlans=[
-    {id:'ap1',account_id:'a1',owner_name:'Thomas Bernard',owner_email:'',statut:'developper',type:'strategique',ca_objectif:1500000,ca_objectif_dr:900000,revue_cadence:'trimestriel',enjeux:'Devenir le partenaire de référence sur la plateforme risques et étendre au périmètre conformité.',strategie:'Renforcer la relation avec le DSI Risques, se positionner sur le programme conformité 2026, monter une équipe dédiée.',prochaine_revue:_fut(21),next_br_strat:_fut(45)},
-    {id:'ap2',account_id:'a2',owner_name:'Marie Lefebvre',owner_email:'',statut:'developper',  type:'potentiel',ca_objectif:900000, ca_objectif_dr:700000,revue_cadence:'trimestriel',enjeux:'Prendre pied sur la migration cloud puis élargir aux projets data.',strategie:'Livrer le cadrage, capitaliser sur la relation Directeur Cloud, viser le run.',prochaine_revue:_fut(35)}
+    {id:'ap1',account_id:'a1',owner_name:'Thomas Bernard',owner_email:'',statut:'developper',type:'strategique',ca_objectif:1500000,ca_objectif_dr:900000,revue_cadence:'trimestriel',cadence_strat:'semestriel',enjeux:'Devenir le partenaire de référence sur la plateforme risques et étendre au périmètre conformité.',strategie:'Renforcer la relation avec le DSI Risques, se positionner sur le programme conformité 2026, monter une équipe dédiée.',prochaine_revue:_fut(21),next_br_strat:_fut(45)},
+    {id:'ap2',account_id:'a2',owner_name:'Marie Lefebvre',owner_email:'',statut:'developper',  type:'potentiel',ca_objectif:900000, ca_objectif_dr:700000,revue_cadence:'hebdomadaire',cadence_strat:'semestriel',enjeux:'Prendre pied sur la migration cloud puis élargir aux projets data.',strategie:'Livrer le cadrage, capitaliser sur la relation Directeur Cloud, viser le run.',prochaine_revue:_fut(5)}
   ];
   /* Équipe de gouvernance de compte : KAM, ingénieur d'affaires, directeur — multi-BU. */
   S.accountTeam=[
