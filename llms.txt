@@ -1,8 +1,10 @@
 # Konsilys
 
-> Konsilys est une plateforme SaaS française de pilotage pour les ESN (entreprises de services du numérique) et les sociétés de conseil. Elle centralise en temps réel le staffing, les missions et la marge, les absences, le recrutement et le CRM commercial — avec des intégrations vers les outils RH, paie et facturation du marché. Multi-tenant, isolation stricte par entreprise, données hébergées en Europe (RGPD).
+> Konsilys est un éditeur français de logiciels, SaaS et services métier pour les entreprises. Le catalogue s'enrichit progressivement ; d'autres offres arrivent. Sa première solution, disponible aujourd'hui, est une plateforme SaaS de pilotage pour les ESN (entreprises de services du numérique) et les sociétés de conseil : elle centralise en temps réel le staffing, les missions et la marge, les absences, le recrutement et le CRM commercial — avec des intégrations vers les outils RH, paie et facturation du marché. Multi-tenant, isolation stricte par entreprise, données hébergées en Europe (RGPD).
 
-Site : https://konsilys.fr · Contact : contact@konsilys.fr · Langue : français
+Site : https://konsilys.fr · Solution Pilotage ESN : https://konsilys.fr/pilotage-esn · Contact : contact@konsilys.fr · Langue : français
+
+Tout ce qui suit décrit la solution « Pilotage ESN » (https://konsilys.fr/pilotage-esn).
 
 ## Ce que fait Konsilys
 
