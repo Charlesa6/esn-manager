@@ -42,6 +42,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -208,6 +209,33 @@ section{position:relative;z-index:2;padding:110px 24px}
 .cta-card h2{font-size:clamp(26px,3.6vw,40px);font-weight:600;margin-bottom:14px}
 .cta-card p{color:var(--muted);font-size:16px;margin-bottom:30px;max-width:520px;margin-left:auto;margin-right:auto}
 
+/* CTA en <button> (offres / carte projet) : mêmes styles que les liens */
+button.cap-cta,button.card-cta{background:none;border:none;padding:0;cursor:pointer;font-family:inherit}
+
+/* ── Formulaire de contact ── */
+.contact-card{max-width:980px;margin:0 auto;border:1px solid var(--border);border-radius:28px;padding:40px;position:relative;overflow:hidden;text-align:left;
+  background:linear-gradient(150deg,rgba(139,92,246,.14),rgba(34,211,238,.06));display:grid;grid-template-columns:.9fr 1.1fr;gap:40px;align-items:start}
+@media(max-width:760px){.contact-card{grid-template-columns:1fr;padding:28px 22px;gap:24px}}
+.contact-intro h2{font-size:clamp(23px,3vw,32px);font-weight:600;margin:14px 0 12px;line-height:1.12}
+.contact-intro p{color:var(--muted);font-size:15px}
+.contact-side{margin-top:22px;display:flex;flex-direction:column;gap:9px;font-size:13.5px;color:var(--muted)}
+.contact-side a{color:#fff}
+.contact-side .row{display:flex;align-items:center;gap:9px}
+#lead-form{display:flex;flex-direction:column;gap:13px}
+.fld{display:flex;flex-direction:column;gap:6px}
+.fld-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:480px){.fld-2{grid-template-columns:1fr}}
+.fld label{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em}
+.fld input,.fld select,.fld textarea{width:100%;background:rgba(8,10,18,.6);border:1px solid var(--border);border-radius:12px;padding:11px 13px;color:var(--ink);font-family:inherit;font-size:14px;transition:border-color .15s,box-shadow .15s}
+.fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:rgba(167,139,250,.7);box-shadow:0 0 0 3px rgba(139,92,246,.18)}
+.fld textarea{min-height:92px;resize:vertical}
+.fld select{appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 18px) 18px,calc(100% - 13px) 18px;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.fld select option{background:#0a0d1a;color:var(--ink)}
+.hp{position:absolute!important;left:-9999px!important;top:auto;width:1px;height:1px;opacity:0;pointer-events:none}
+#lead-form .btn-grad{justify-content:center;margin-top:4px;width:100%}
+.lead-msg{font-size:13px;min-height:18px;text-align:center}
+.lead-msg.ok{color:#86efac}.lead-msg.err{color:#fca5a5}.lead-msg.info{color:var(--muted)}
+
 /* ── FOOTER ── */
 footer{position:relative;z-index:2;border-top:1px solid var(--border);padding:52px 24px 34px;background:rgba(6,8,16,.5)}
 .foot-inner{max-width:1180px;margin:0 auto;display:flex;justify-content:space-between;gap:36px;flex-wrap:wrap}
@@ -322,16 +350,45 @@ footer{position:relative;z-index:2;border-top:1px solid var(--border);padding:52
   </div>
 </section>
 
-<!-- CTA -->
+<!-- CONTACT -->
 <section class="cta-band" id="contact">
   <div class="container">
-    <div class="cta-card rv">
-      <h2>Un projet, une idée, un métier à outiller&nbsp;?</h2>
-      <p>Parlons de ce que l'IA et un logiciel bien conçu peuvent changer pour vous. Réponse rapide, sans blabla.</p>
-      <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
-        <a href="mailto:contact@konsilys.fr" class="btn-grad">contact@konsilys.fr</a>
-        <a href="#realisations" class="btn-line">Voir les réalisations</a>
+    <div class="contact-card rv">
+      <div class="contact-intro">
+        <span class="eyebrow"><span class="dot"></span>Contact</span>
+        <h2>Un projet, une idée, un métier à outiller&nbsp;?</h2>
+        <p>Dites-nous en deux mots ce que vous voulez construire — site, SaaS, outil métier. Réponse rapide, sans blabla.</p>
+        <div class="contact-side">
+          <div class="row">✉️ <a href="mailto:contact@konsilys.fr">contact@konsilys.fr</a></div>
+          <div class="row">🌍 Conçu en France · données en Europe</div>
+          <div class="row">⚡ Réponse sous 48&nbsp;h ouvrées</div>
+        </div>
       </div>
+      <form id="lead-form" novalidate>
+        <div class="fld-2">
+          <div class="fld"><label for="lead-name">Nom</label><input id="lead-name" type="text" autocomplete="name" placeholder="Votre nom"></div>
+          <div class="fld"><label for="lead-company">Société</label><input id="lead-company" type="text" autocomplete="organization" placeholder="Votre société"></div>
+        </div>
+        <div class="fld"><label for="lead-email">Email *</label><input id="lead-email" type="email" autocomplete="email" placeholder="vous@societe.fr" required></div>
+        <div class="fld"><label for="lead-subject">Sujet</label>
+          <select id="lead-subject">
+            <option value="">Choisir…</option>
+            <option>Site internet</option>
+            <option>SaaS sur-mesure</option>
+            <option>Application mobile</option>
+            <option>Refonte &amp; redesign</option>
+            <option>Maintenance &amp; TMA</option>
+            <option>IA appliquée</option>
+            <option>Conseil &amp; intégration</option>
+            <option>Pilotage ESN</option>
+            <option>Autre</option>
+          </select>
+        </div>
+        <div class="fld"><label for="lead-message">Votre besoin</label><textarea id="lead-message" placeholder="Décrivez votre projet en quelques lignes…"></textarea></div>
+        <input type="text" id="lead-hp" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" placeholder="Ne pas remplir">
+        <button type="submit" class="btn-grad" id="lead-btn">Envoyer →</button>
+        <div id="lead-msg" class="lead-msg" role="status" aria-live="polite"></div>
+      </form>
     </div>
   </div>
 </section>
@@ -396,14 +453,12 @@ var REALISATIONS=[
       +(tags?'<div class="tags">'+tags+'</div>':'')
       +cta+'</div>';
   });
-  // Carte « votre projet » : invite au contact.
-  var gm='mailto:contact@konsilys.fr?subject='+encodeURIComponent('Konsilys — démarrer un projet')
-    +'&body='+encodeURIComponent('Bonjour,\n\nJe souhaite discuter d’un projet (site internet / SaaS métier / autre) :\n\n');
+  // Carte « votre projet » : invite au contact (ouvre le formulaire).
   h+='<div class="card ghost rv d2">'
     +'<div class="card-top"><div class="card-ic">✦</div><span class="badge badge-soon">Votre projet</span></div>'
     +'<h3>La prochaine en orbite&nbsp;?</h3>'
     +'<div class="desc">Site internet, SaaS métier (ERP, CRM), outil interne… Parlons de ce que nous pouvons construire pour vous.</div>'
-    +'<a class="card-cta soon" href="'+gm+'">Démarrer un projet →</a></div>';
+    +'<button type="button" class="card-cta soon" data-lead data-subject="Autre">Démarrer un projet →</button></div>';
   var el=document.getElementById('real-grid');if(el)el.innerHTML=h;
 })();
 </script>
@@ -419,6 +474,15 @@ var OFFRES=[
   {icon:'🛰️',name:'SaaS sur-mesure',
    desc:'Des plateformes métier taillées pour votre activité — ERP, CRM, portails, outils internes. Multi-tenant, sécurisées, hébergées en Europe.',
    chips:['ERP','CRM','Portail client','Outils métier']},
+  {icon:'📱',name:'Applications mobiles',
+   desc:'Applications iOS et Android, ou PWA installables. Une expérience mobile fluide, connectée à vos données et à vos outils.',
+   chips:['iOS','Android','PWA']},
+  {icon:'♻️',name:'Refonte & redesign',
+   desc:'Modernisation d’un site ou d’un logiciel existant : design, performance, accessibilité et socle technique remis à niveau.',
+   chips:['UX/UI','Performance','Accessibilité']},
+  {icon:'🛠️',name:'Maintenance & TMA',
+   desc:'Hébergement, supervision, évolutions et support. On garde vos produits en orbite — corrections, montées de version et nouveautés.',
+   chips:['Hébergement','Support','Évolutions']},
   {icon:'🧠',name:'IA appliquée',
    desc:'Agents, extraction de documents, recommandation, automatisation. L’IA branchée sur des usages concrets, pas de la démo.',
    chips:['Agents','Extraction','Automatisation']},
@@ -433,18 +497,71 @@ var OFFRES=[
   OFFRES.forEach(function(o,i){
     var dl=' d'+((i%4)+1);
     var chips=(o.chips||[]).map(function(c){return '<span class="tag">'+e(c)+'</span>';}).join('');
-    var subject='Konsilys — projet : '+o.name;
-    var body='Bonjour,\n\nJe souhaite échanger sur une offre « '+o.name+' ».\n\nMon besoin en quelques mots :\n';
-    var mail='mailto:contact@konsilys.fr?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
     h+='<div class="cap rv'+dl+'">'
       +'<div class="ic">'+e(o.icon||'▫️')+'</div>'
       +'<h3>'+e(o.name)+'</h3>'
       +'<p>'+e(o.desc)+'</p>'
       +(chips?'<div class="chips">'+chips+'</div>':'')
-      +'<a class="cap-cta" href="'+mail+'">Parlons-en <span class="arw">→</span></a>'
+      +'<button type="button" class="cap-cta" data-lead data-subject="'+e(o.name)+'">Parlons-en <span class="arw">→</span></button>'
       +'</div>';
   });
   var el=document.getElementById('offres-grid');if(el)el.innerHTML=h;
+})();
+</script>
+
+<script>
+/* ═══ Formulaire de contact → table Supabase « leads » ═══
+   Insertion directe (RLS : insert public, aucune lecture). Repli automatique par
+   email si Supabase est indisponible ou si la table n'existe pas encore, pour
+   qu'aucune demande ne soit perdue. */
+(function(){
+  var SUPA_URL='https://rwmstlesxnglpblrurqj.supabase.co';
+  var SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3bXN0bGVzeG5nbHBibHJ1cnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MjcyNTMsImV4cCI6MjA5NzEwMzI1M30.9SrsA1sYjdsqdPCnZ_sc2iTl01NKXsl7gAu2Y_VYgSQ';
+  var sb=null;try{if(window.supabase&&window.supabase.createClient)sb=window.supabase.createClient(SUPA_URL,SUPA_ANON);}catch(e){}
+  function $(id){return document.getElementById(id);}
+  function val(id){var el=$(id);return el?(el.value||'').trim():'';}
+  function isEmail(v){return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);}
+
+  /* Boutons « Parlons-en » / « Démarrer un projet » → ouvre le formulaire et
+     présélectionne le sujet. Délégation : marche quel que soit l'ordre de rendu. */
+  document.addEventListener('click',function(ev){
+    var b=ev.target.closest?ev.target.closest('[data-lead]'):null;
+    if(!b)return;
+    ev.preventDefault();
+    var subj=b.getAttribute('data-subject')||'';
+    var sel=$('lead-subject');
+    if(sel&&subj){var found=false;for(var i=0;i<sel.options.length;i++){if(sel.options[i].value===subj||sel.options[i].text===subj){sel.selectedIndex=i;found=true;break;}}if(!found){for(var j=0;j<sel.options.length;j++){if(sel.options[j].text==='Autre'){sel.selectedIndex=j;break;}}}}
+    var sec=$('contact');if(sec&&sec.scrollIntoView)sec.scrollIntoView({behavior:'smooth',block:'start'});
+    setTimeout(function(){var n=$('lead-name');if(n&&n.focus)n.focus();},420);
+  });
+
+  var form=$('lead-form');
+  if(form){
+    form.addEventListener('submit',function(ev){
+      ev.preventDefault();
+      var msg=$('lead-msg'),btn=$('lead-btn');
+      function say(t,cls){if(msg){msg.className='lead-msg '+(cls||'info');msg.textContent=t;}}
+      var name=val('lead-name'),email=val('lead-email'),company=val('lead-company'),
+          subject=val('lead-subject'),message=val('lead-message'),hp=val('lead-hp');
+      if(hp){say('Merci !','ok');form.reset();return;} // honeypot : bot silencieux
+      if(!isEmail(email)){say('Indiquez un email valide.','err');var em=$('lead-email');if(em)em.focus();return;}
+      if(btn){btn.disabled=true;btn.textContent='Envoi…';}
+      function reset(){if(btn){btn.disabled=false;btn.textContent='Envoyer →';}}
+      function success(){reset();say('Merci ! Votre message est bien parti — nous revenons vers vous rapidement.','ok');form.reset();}
+      function fallbackMail(){
+        var body='Nom : '+name+'\nEmail : '+email+'\nSociété : '+company+'\nSujet : '+(subject||'—')+'\n\n'+message;
+        var m='mailto:contact@konsilys.fr?subject='+encodeURIComponent('Konsilys — '+(subject||'Contact'))+'&body='+encodeURIComponent(body);
+        reset();say('Ouverture de votre messagerie pour finaliser l’envoi…','info');
+        try{window.location.href=m;}catch(e){}
+      }
+      var row={kind:'contact',subject:subject||null,name:name||null,email:email,company:company||null,message:message||null,source:'hub'};
+      var p=null;
+      try{if(sb)p=sb.from('leads').insert(row);}catch(e){p=null;}
+      if(!p||typeof p.then!=='function'){fallbackMail();return;}
+      p.then(function(res){if(res&&res.error){fallbackMail();}else{success();}})
+       .catch(function(){fallbackMail();});
+    });
+  }
 })();
 </script>
 
