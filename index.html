@@ -110,6 +110,10 @@ nav.scrolled{background:rgba(6,8,16,.72);backdrop-filter:blur(16px) saturate(140
 .nav-links a:hover{color:#fff}
 .nav-links a.nav-cta{border:1px solid var(--border);background:var(--glass);color:#fff;padding:8px 18px;border-radius:99px;transition:border-color .15s,background .15s;white-space:nowrap}
 .nav-links a.nav-cta:hover{border-color:rgba(167,139,250,.6);background:rgba(139,92,246,.12);color:#fff}
+.nav-right{display:flex;align-items:center;gap:26px}
+/* Accès à l'outil : toujours visible dans l'en-tête (mobile compris) */
+.nav-login{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(167,139,250,.5);background:linear-gradient(135deg,rgba(139,92,246,.24),rgba(34,211,238,.16));color:#fff;font-size:14px;font-weight:600;padding:9px 20px;border-radius:99px;white-space:nowrap;transition:border-color .15s,background .15s,transform .12s,box-shadow .15s}
+.nav-login:hover{border-color:rgba(167,139,250,.95);box-shadow:0 6px 20px rgba(139,92,246,.28);transform:translateY(-1px);color:#fff}
 
 /* ── Boutons ── */
 .btn-grad{display:inline-flex;align-items:center;gap:8px;background:var(--grad2);color:#fff;padding:14px 30px;border-radius:99px;font-size:15px;font-weight:600;border:none;cursor:pointer;font-family:inherit;
@@ -288,10 +292,13 @@ footer{position:relative;z-index:2;border-top:1px solid var(--border);padding:52
 <nav id="nav">
   <div class="nav-inner">
     <a href="/" class="logo"><span class="logo-orb"></span><span class="logo-name">Konsilys</span></a>
-    <div class="nav-links">
-      <a href="#offres">Offres</a>
-      <a href="#realisations">Réalisations</a>
-      <a href="#contact" class="nav-cta">Contact</a>
+    <div class="nav-right">
+      <div class="nav-links">
+        <a href="#offres">Offres</a>
+        <a href="#realisations">Réalisations</a>
+        <a href="#contact" class="nav-cta">Contact</a>
+      </div>
+      <a href="/login" class="nav-login">Se connecter</a>
     </div>
   </div>
 </nav>
