@@ -323,6 +323,41 @@ async function newPage(browser) {
       check('Plan : cadences BR opérationnelle + stratégique choisissables', cad.bothSelectors);
       await p.evaluate(() => { S.planView = null; render(); });
 
+      // CDP : alignement Client Development Plan (4 briques)
+      const cdp = await p.evaluate(() => {
+        S.planView = 'a1'; render();
+        const txt = document.body.innerText;
+        return {
+          execSummary: /executive summary/i.test(txt) && /ambition fy\+1/i.test(txt) && /partenaire IT de référence/i.test(txt),
+          client360: /budget IT/i.test(txt) && /concurrents/i.test(txt),
+          rag: /critical/i.test(txt) && /escalade/i.test(txt),         // Brique A
+          mustWin: /must-win/i.test(txt) && /RFPs stratégiques/i.test(txt), // Brique C
+          cxo: /cxo mapping/i.test(txt) && /preference/i.test(txt),    // Brique B
+          hasExport: !!document.querySelector('[data-act="cdp-export"]'),
+        };
+      });
+      check('CDP — Executive Summary (ambition FY+1/FY+3) + Client 360', cdp.execSummary && cdp.client360);
+      check('CDP — Execution Plan & Accountability (statut Critical + escalade)', cdp.rag);
+      check('CDP — Pipeline & Strategic RFPs (must-win)', cdp.mustWin);
+      check('CDP — Powermap & CxO plan (Power/Preference)', cdp.cxo);
+      check('CDP — bouton d\'export du plan complet', cdp.hasExport);
+
+      const cdpExp = await p.evaluate(() => {
+        // Génère le HTML du CDP sans ouvrir de fenêtre (stub window.open).
+        var captured = '';
+        var _open = window.open;
+        window.open = function () { return { document: { open: function () {}, write: function (h) { captured = h; }, close: function () {} } }; };
+        try { cdpExport('a1'); } catch (e) { captured = 'ERR:' + e.message; }
+        window.open = _open;
+        return {
+          ok: /Client Development Plan/i.test(captured) && /Executive Summary/i.test(captured)
+            && /Powermap/i.test(captured) && /Strategic RFPs/i.test(captured) && /Execution Plan/i.test(captured),
+          len: captured.length,
+        };
+      });
+      check('CDP — export document complet (5 sections, ' + cdpExp.len + ' o)', cdpExp.ok);
+      await p.evaluate(() => { S.planView = null; render(); });
+
       const com = await p.evaluate(() => {
         S.planView = null; comiteStart();
         const n0 = (S.accountReviews || []).length;

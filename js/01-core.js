@@ -625,17 +625,17 @@ function loadDemoData(){
      fiches de poste — un en AT (o1) et un en FORFAIT (o2) — pour illustrer le lien
      fiche → opportunité et la mission auto (AT vs forfait) au passage « pourvu ». */
   S.bizAccounts=[
-    {id:'a1',name:'BNP Paribas',   status:'client_actif',sector:'Banque & Finance',   size:'Grand compte',website:'',siret:'',address:'Paris',notes:''},
-    {id:'a2',name:'TotalEnergies', status:'client_actif',sector:'Énergie & Utilities',size:'Grand compte',website:'',siret:'',address:'Paris',notes:''}
+    {id:'a1',name:'BNP Paribas',   status:'client_actif',sector:'Banque & Finance',   size:'Grand compte',website:'',siret:'',address:'Paris',notes:'',it_spend:600000000,it_spend_ext_pct:45,competitors:'Capgemini, Sopra Steria, Accenture',strategic_priorities:'Conformité réglementaire, migration cloud souverain, IA de confiance.'},
+    {id:'a2',name:'TotalEnergies', status:'client_actif',sector:'Énergie & Utilities',size:'Grand compte',website:'',siret:'',address:'Paris',notes:'',it_spend:400000000,it_spend_ext_pct:38,competitors:'Capgemini, Atos',strategic_priorities:'Transition énergétique, data platform, cybersécurité industrielle.'}
   ];
   S.bizContacts=[
-    {id:'ct1',account_id:'a1',first_name:'Hélène',last_name:'Dubois', email:'h.dubois@bnp.demo',   phone:'',role_type:'decideur',position:'Responsable SI Risques',notes:'',influence:'fort', relation:'champion',a_rencontrer:false,hierarchy_level:'n1',last_contact_date:_fut(-12)},
-    {id:'ct2',account_id:'a2',first_name:'Marc',  last_name:'Lefevre',email:'m.lefevre@total.demo',phone:'',role_type:'decideur',position:'Directeur Cloud',       notes:'',influence:'fort', relation:'neutre',  a_rencontrer:true,hierarchy_level:'c_level',last_contact_date:_fut(-95)},
-    {id:'ct3',account_id:'a1',first_name:'Paul',  last_name:'Girard', email:'p.girard@bnp.demo',   phone:'',role_type:'prescripteur',position:'Directeur Conformité',notes:'Sponsor du programme conformité 2026.',influence:'fort',relation:'neutre',a_rencontrer:true,hierarchy_level:'n1',last_contact_date:null},
-    {id:'ct4',account_id:'a1',first_name:'Claire',last_name:'Fontaine',email:'c.fontaine@bnp.demo', phone:'',role_type:'decideur',position:'DGA / COMEX',           notes:'Sponsor exécutif à conquérir.',influence:'fort',relation:'neutre',a_rencontrer:true,hierarchy_level:'c_level',last_contact_date:null}
+    {id:'ct1',account_id:'a1',first_name:'Hélène',last_name:'Dubois', email:'h.dubois@bnp.demo',   phone:'',role_type:'decideur',position:'Responsable SI Risques',notes:'',influence:'fort', relation:'champion',a_rencontrer:false,hierarchy_level:'n1',last_contact_date:_fut(-12),power:3,preference:30,cgi_owner:'Thomas Bernard',pain_gain:'Fiabiliser la plateforme risques',elevate_action:'L\'impliquer comme référence client'},
+    {id:'ct2',account_id:'a2',first_name:'Marc',  last_name:'Lefevre',email:'m.lefevre@total.demo',phone:'',role_type:'decideur',position:'Directeur Cloud',       notes:'',influence:'fort', relation:'neutre',  a_rencontrer:true,hierarchy_level:'c_level',last_contact_date:_fut(-95),power:4,preference:5,cgi_owner:'Marie Lefebvre',pain_gain:'Réduire le coût de migration',elevate_action:'Atelier de cadrage exécutif'},
+    {id:'ct3',account_id:'a1',first_name:'Paul',  last_name:'Girard', email:'p.girard@bnp.demo',   phone:'',role_type:'prescripteur',position:'Directeur Conformité',notes:'Sponsor du programme conformité 2026.',influence:'fort',relation:'neutre',a_rencontrer:true,hierarchy_level:'n1',last_contact_date:null,power:2,preference:10,cgi_owner:'Thomas Bernard',pain_gain:'Tenir les délais réglementaires',elevate_action:'Proposition conformité chiffrée'},
+    {id:'ct4',account_id:'a1',first_name:'Claire',last_name:'Fontaine',email:'c.fontaine@bnp.demo', phone:'',role_type:'decideur',position:'DGA / COMEX',           notes:'Sponsor exécutif à conquérir.',influence:'fort',relation:'neutre',a_rencontrer:true,hierarchy_level:'c_level',last_contact_date:null,power:5,preference:-10,cgi_owner:'Antoine Mercier',pain_gain:'Sécuriser la trajectoire IT groupe',elevate_action:'Executive lunch + vision multi-BU'}
   ];
   S.bizOpps=[
-    {id:'o1',name:'TMA Plateforme Risques',account_id:'a1',contact_id:'ct1',status:'proposition',btype:'at',
+    {id:'o1',name:'TMA Plateforme Risques',account_id:'a1',contact_id:'ct1',status:'proposition',btype:'at',must_win:true,tcv:2400000,renewal_type:'new',win_strategy:'Capitaliser sur la relation DSI Risques + montée d\'une équipe dédiée.',
      tjm_cible:650,jours_estimes:220,deal_amount:null,date_start:_fut(30),date_end:_fut(240),date_closing:_fut(20),probability:70,
      consultant_ids:[],opp_team:null,req_expertise:['React','Node.js','TypeScript'],location:'Lyon',req_seniority:'confirme',req_sector:'Banque & Finance',
      assigned_to:'Thomas Bernard',owner_name:'Thomas Bernard',bu_id:null,notes:'Besoin de 2 dev fullstack sur la plateforme risques.',linked_mission_id:null},
@@ -644,7 +644,7 @@ function loadDemoData(){
      consultant_ids:[],opp_team:[{cid:'',taux:100,wdays:[1,2],tmar:28}],req_expertise:['Azure','Cloud','DevOps'],location:'Paris',req_seniority:'senior',req_sector:'Énergie & Utilities',
      assigned_to:'Marie Lefebvre',owner_name:'Marie Lefebvre',bu_id:null,notes:'Forfait de cadrage puis migration cloud.',linked_mission_id:null},
     /* Opportunités gagnées : alimentent le « CA réalisé » des plans de compte. */
-    {id:'o3',name:'TMA Risques — vague 1',account_id:'a1',contact_id:'ct1',status:'gagne',btype:'at',
+    {id:'o3',name:'TMA Risques — vague 1',account_id:'a1',contact_id:'ct1',status:'gagne',btype:'at',renewal_type:'renewal',tcv:1200000,
      tjm_cible:640,jours_estimes:220,deal_amount:null,date_start:_fut(-120),date_end:_fut(100),date_closing:_fut(-120),probability:100,
      consultant_ids:[],opp_team:null,req_expertise:['React','Node.js'],location:'Lyon',req_seniority:'confirme',req_sector:'Banque & Finance',
      assigned_to:'Thomas Bernard',owner_name:'Thomas Bernard',bu_id:null,notes:'',linked_mission_id:null},
@@ -659,20 +659,20 @@ function loadDemoData(){
   ];
   /* Plan d'actions du compte (réutilise les activités CRM rattachées au compte). */
   S.bizActivities=[
-    {id:'k1',type:'reunion',title:'Point trimestriel DSI Risques',account_id:'a1',contact_id:'ct1',opportunity_id:'o1',status:'planifie',next_action:'Préparer la proposition conformité',next_action_date:_fut(7), date_realised:null,      assigned_to:'Thomas Bernard',notes:''},
+    {id:'k1',type:'reunion',title:'Point trimestriel DSI Risques',account_id:'a1',contact_id:'ct1',opportunity_id:'o1',status:'planifie',next_action:'Préparer la proposition conformité',next_action_date:_fut(7), date_realised:null,      assigned_to:'Thomas Bernard',notes:'',exec_status:'on_track',bu_id:'bu_banque'},
     {id:'k2',type:'relance',title:'Relancer sur le cadrage cloud',   account_id:'a2',contact_id:'ct2',opportunity_id:'o2', status:'planifie',next_action:'Envoyer le planning de migration', next_action_date:_fut(-3),date_realised:null,      assigned_to:'Marie Lefebvre',notes:''},
     {id:'k3',type:'reunion',title:'Atelier de cadrage cloud',        account_id:'a2',contact_id:'ct2',opportunity_id:'o2', status:'realise', next_action:'',                                next_action_date:null,     date_realised:_fut(-10),assigned_to:'Marie Lefebvre',notes:'Périmètre validé.'},
-    {id:'k4',type:'reunion',title:'Rencontre Directeur Conformité',  account_id:'a1',contact_id:'ct3',opportunity_id:null,biz_target:500000,status:'planifie',next_action:'Cadrer le besoin conformité 2026',next_action_date:_fut(14), date_realised:null,      assigned_to:'Thomas Bernard',notes:''},
+    {id:'k4',type:'reunion',title:'Rencontre Directeur Conformité',  account_id:'a1',contact_id:'ct3',opportunity_id:null,biz_target:500000,status:'planifie',next_action:'Cadrer le besoin conformité 2026',next_action_date:_fut(14), date_realised:null,      assigned_to:'Thomas Bernard',notes:'',exec_status:'at_risk',escalation:'Arbitrage staffing d\'un architecte senior par la direction',bu_id:'bu_banque'},
     /* Historique d'engagements pour illustrer le taux de tenue (tenu / en retard / non tenu / reporté). */
     {id:'k5',type:'reunion',title:'Atelier cadrage risques',        account_id:'a1',status:'realise', next_action_date:_fut(-20),date_realised:_fut(-22),assigned_to:'Thomas Bernard',notes:''},
-    {id:'k6',type:'relance',title:'Relance proposition conformité', account_id:'a1',status:'planifie',next_action_date:_fut(10), date_realised:null,     assigned_to:'Thomas Bernard',reported_count:2,notes:''},
+    {id:'k6',type:'relance',title:'Relance proposition conformité', account_id:'a1',opportunity_id:'o1',status:'planifie',next_action_date:_fut(10), date_realised:null,     assigned_to:'Thomas Bernard',reported_count:2,notes:'',exec_status:'critical',escalation:'Décision go/no-go proposition sous 5 jours',bu_id:'bu_banque'},
     {id:'k7',type:'appel',  title:'Point sponsor conformité',       account_id:'a1',status:'realise', next_action_date:_fut(-15),date_realised:_fut(-12),assigned_to:'Sophie Nguyen', notes:''},
     {id:'k8',type:'email',  title:'Envoi dossier de référence',     account_id:'a1',status:'planifie',next_action_date:_fut(-8), date_realised:null,     assigned_to:'Thomas Bernard',notes:''}
   ];
   /* Plans de compte (Key Account Management) : responsable, objectif de CA,
      enjeux/stratégie, prochaine revue. Un historique de comité sur BNP. */
   S.accountPlans=[
-    {id:'ap1',account_id:'a1',owner_name:'Thomas Bernard',owner_email:'',statut:'developper',type:'strategique',ca_objectif:1500000,ca_objectif_dr:900000,revue_cadence:'trimestriel',cadence_strat:'semestriel',enjeux:'Devenir le partenaire de référence sur la plateforme risques et étendre au périmètre conformité.',strategie:'Renforcer la relation avec le DSI Risques, se positionner sur le programme conformité 2026, monter une équipe dédiée.',prochaine_revue:_fut(21),next_br_strat:_fut(45)},
+    {id:'ap1',account_id:'a1',owner_name:'Thomas Bernard',owner_email:'',statut:'developper',type:'strategique',ca_objectif:1500000,ca_objectif_dr:900000,revue_cadence:'trimestriel',cadence_strat:'semestriel',enjeux:'Devenir le partenaire de référence sur la plateforme risques et étendre au périmètre conformité.',strategie:'Renforcer la relation avec le DSI Risques, se positionner sur le programme conformité 2026, monter une équipe dédiée.',prochaine_revue:_fut(21),next_br_strat:_fut(45),ambition:'Devenir le partenaire IT de référence de BNP sur le risque et la conformité.',ambition_fy1:'2,1 M€ d\'ER, gagner le programme conformité 2026.',ambition_fy3:'5 M€ d\'ER, statut de partenaire stratégique multi-BU.',gm_pct:34,csap:8.4,n_eie:6,n_voc:4},
     {id:'ap2',account_id:'a2',owner_name:'Marie Lefebvre',owner_email:'',statut:'developper',  type:'potentiel',ca_objectif:900000, ca_objectif_dr:700000,revue_cadence:'hebdomadaire',cadence_strat:'semestriel',enjeux:'Prendre pied sur la migration cloud puis élargir aux projets data.',strategie:'Livrer le cadrage, capitaliser sur la relation Directeur Cloud, viser le run.',prochaine_revue:_fut(5)}
   ];
   /* Équipe de gouvernance de compte : KAM, ingénieur d'affaires, directeur — multi-BU. */

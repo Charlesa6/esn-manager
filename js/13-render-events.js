@@ -1103,6 +1103,7 @@ function bind(){
       else if(a==='comite-save-next'){comiteSaveNext();}
       else if(a==='comite-close'){comiteClose();}
       else if(a==='comite-export'){comiteExport();}
+      else if(a==='cdp-export'){cdpExport(id);}
       else if(a==='act-done'){actMarkDone(id);}
       else if(a==='act-report'){actReport(id);}
       else if(a==='act-abandon'){actAbandon(id);}
