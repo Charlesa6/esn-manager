@@ -356,6 +356,26 @@ async function newPage(browser) {
         };
       });
       check('CDP — export document complet (5 sections, ' + cdpExp.len + ' o)', cdpExp.ok);
+
+      const cdp2 = await p.evaluate(() => {
+        S.planView = 'a1'; render();
+        const txt = document.body.innerText;
+        // Resources & Governance : % de temps sur l'équipe
+        const pctTime = /25%|40%|100%/.test(txt.replace(/\s/g, ''));
+        // Key takeaways & call to action
+        const takeaways = /key messages/i.test(txt) && /call to action/i.test(txt);
+        // export : sections Resources & Governance + Key Takeaways présentes
+        var captured = '';
+        var _open = window.open;
+        window.open = function () { return { document: { open: function () {}, write: function (h) { captured = h; }, close: function () {} } }; };
+        cdpExport('a1');
+        window.open = _open;
+        const exportOk = /Resources &amp; Governance/i.test(captured) && /Key Takeaways/i.test(captured) && /Priority actions/i.test(captured);
+        return { pctTime: pctTime, takeaways: takeaways, exportOk: exportOk };
+      });
+      check('CDP — Resources & Governance (% de temps alloué)', cdp2.pctTime);
+      check('CDP — Key takeaways & call to action (plan)', cdp2.takeaways);
+      check('CDP — export : Resources & Governance + Key Takeaways + Priority actions', cdp2.exportOk);
       await p.evaluate(() => { S.planView = null; render(); });
 
       const com = await p.evaluate(() => {

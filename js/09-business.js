@@ -1191,6 +1191,8 @@ function tBizModal(){
       +'<div class="fd"><label class="fl">CSAP (satisfaction /10)</label><input class="ic" type="number" step="0.1" id="plan-csap" value="'+(it.csap||'')+'" placeholder="Ex: 8.5"></div>'
       +'<div class="fd"><label class="fl">Nb d\'EIE</label><input class="ic" type="number" id="plan-eie" value="'+(it.n_eie||'')+'" placeholder="Executive Involved Employees"></div>'
       +'<div class="fd"><label class="fl">Nb d\'entretiens VOC</label><input class="ic" type="number" id="plan-voc" value="'+(it.n_voc||'')+'" placeholder="Voice of Customer"></div>'
+      +'<div class="fd cs2"><label class="fl">🔑 Key messages (à la direction)</label><textarea class="ic" id="plan-keymsg" rows="2" placeholder="Priorités, tactiques sales/marketing, ressources/investissements, intro à des sponsors…">'+esc(it.key_messages||'')+'</textarea></div>'
+      +'<div class="fd cs2"><label class="fl">📣 Call to action / décisions attendues</label><textarea class="ic" id="plan-cta" rows="2" placeholder="Ce que l\'on attend du management pour faire grandir le compte">'+esc(it.call_to_action||'')+'</textarea></div>'
       +'</div>';
   }
   else if(m.type==='team'){
@@ -1205,6 +1207,8 @@ function tBizModal(){
       +'<div class="fd"><label class="fl">Rôle</label><select class="ic" id="team-role">'+TEAM_ROLES.map(function(r){return '<option value="'+r.id+'"'+(it.role===r.id?' selected':'')+'>'+r.lb+'</option>';}).join('')+'</select></div>'
       +'<div class="fd"><label class="fl">BU de rattachement</label><select class="ic" id="team-bu">'+buOpts+'</select></div>'
       +'<div class="fd"><label class="fl">Email</label><input class="ic" type="email" id="team-email" value="'+esc(it.member_email||'')+'"></div>'
+      +'<div class="fd"><label class="fl">% de temps alloué</label><input class="ic" type="number" min="0" max="100" id="team-pct" value="'+(it.pct_time==null?'':it.pct_time)+'" placeholder="Ex: 30"></div>'
+      +'<div class="fd"><label class="cx" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:24px"><input type="checkbox" id="team-support"'+(it.is_support?' checked':'')+'> Rôle support (Industry Lead, IP/GTO, partenaires…)</label></div>'
       +'</div>';
   }
   else if(m.type==='notif'){
@@ -1566,7 +1570,7 @@ function notifSave(){
 function teamSave(){
   var mm=S.bizModal;if(!mm||mm.type!=='team')return;var accId=mm.accId;
   var consId=gv('team-cons');
-  var m={id:(mm.item&&mm.item.id)||uid2(),account_id:accId,role:gv('team-role')||'membre',member_name:gv('team-name'),member_email:gv('team-email'),bu_id:gv('team-bu')||null,consultant_id:consId||null};
+  var m={id:(mm.item&&mm.item.id)||uid2(),account_id:accId,role:gv('team-role')||'membre',member_name:gv('team-name'),member_email:gv('team-email'),bu_id:gv('team-bu')||null,consultant_id:consId||null,pct_time:+gv('team-pct')||null,is_support:!!(document.getElementById('team-support')&&document.getElementById('team-support').checked)};
   if(consId){var c=(S.cons||[]).find(function(x){return x.id===consId;});if(c){m.member_name=c.name;m.member_email=c.email||m.member_email;if(!m.bu_id)m.bu_id=c.bu_id||null;}}
   if(!m.member_name){alert('Nom requis');return;}
   if(mm.item&&mm.item.id){S.accountTeam=S.accountTeam.map(function(x){return x.id===m.id?m:x;});}
@@ -1791,6 +1795,9 @@ function planSave(){
     csap:+gv('plan-csap')||null,
     n_eie:+gv('plan-eie')||null,
     n_voc:+gv('plan-voc')||null,
+    /* CDP — Key takeaways & call to action. */
+    key_messages:gv('plan-keymsg')||null,
+    call_to_action:gv('plan-cta')||null,
   };
   if(ex){S.accountPlans=S.accountPlans.map(function(x){return x.account_id===accId?pl:x;});}
   else{S.accountPlans=(S.accountPlans||[]).concat([pl]);}
@@ -1945,6 +1952,10 @@ function tPlanDetail(accId){
   /* Enjeux & stratégie */
   function block(t,txt){return '<div style="background:#fff;border:1px solid #e5e9ee;border-radius:12px;padding:14px 16px;flex:1;min-width:260px"><div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:6px">'+t+'</div><div style="font-size:13px;color:#475569;line-height:1.55;white-space:pre-wrap">'+(txt?esc(txt):'<span style="color:#94a3b8">Non renseigné.</span>')+'</div></div>';}
   var strat='<div style="display:flex;gap:12px;flex-wrap:wrap;margin:18px 0">'+block('🎯 Enjeux',pl.enjeux)+block('🧭 Stratégie de développement',pl.strategie)+'</div>';
+  /* CDP — Key takeaways & call to action. */
+  var takeaways=(pl.key_messages||pl.call_to_action)?('<div style="display:flex;gap:12px;flex-wrap:wrap;margin:0 0 18px">'
+    +'<div style="flex:1;min-width:260px;background:#faf5ff;border:1px solid #e9d5ff;border-radius:12px;padding:14px 16px"><div style="font-size:12px;font-weight:800;color:#6d28d9;margin-bottom:6px">🔑 Key messages</div><div style="font-size:13px;color:#475569;line-height:1.55;white-space:pre-wrap">'+(pl.key_messages?esc(pl.key_messages):'<span style="color:#94a3b8">—</span>')+'</div></div>'
+    +'<div style="flex:1;min-width:260px;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:14px 16px"><div style="font-size:12px;font-weight:800;color:#c2410c;margin-bottom:6px">📣 Call to action</div><div style="font-size:13px;color:#475569;line-height:1.55;white-space:pre-wrap">'+(pl.call_to_action?esc(pl.call_to_action):'<span style="color:#94a3b8">—</span>')+'</div></div></div>'):'';
   /* Power map interlocuteurs */
   var cts=accContacts(accId);
   /* Grille de pouvoir : influence (lignes) × relation (colonnes). */
@@ -2031,6 +2042,8 @@ function tPlanDetail(accId){
       +'<div style="white-space:nowrap"><button class="lr" data-act="plan-team-edit" data-id="'+m.id+'" style="padding:2px 6px">✏️</button><button class="lr" data-act="plan-team-del" data-id="'+m.id+'" style="padding:2px 6px">✕</button></div></div>'
       +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center">'
       +'<span style="background:'+ro.bg+';color:'+ro.fg+';font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px">'+ro.lb+'</span>'
+      +(m.is_support?'<span title="Rôle support" style="background:#ede9fe;color:#6d28d9;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px">Support</span>':'')
+      +(m.pct_time?'<span title="% de temps alloué" style="background:#ecfeff;color:#0e7490;font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px">'+(+m.pct_time)+'%</span>':'')
       +(m.bu_id?'<span style="background:#f1f5f9;color:#475569;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px">'+esc(buName(m.bu_id))+'</span>':'')
       +(m.consultant_id?'<span title="Membre Konsilys" style="font-size:10px;color:#16a34a;font-weight:700">● Konsilys</span>':'')+'</div>'
       +(m.member_email?'<div style="font-size:11px;color:#94a3b8;margin-top:4px">'+esc(m.member_email)+'</div>':'')+'</div>';
@@ -2039,7 +2052,7 @@ function tPlanDetail(accId){
     +'<button class="bp" data-act="plan-team-new" data-id="'+accId+'" style="font-size:12px;padding:6px 12px">+ Membre</button></div>'
     +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+teamCards+'</div></div>';
   var influence=tInfluencePlan(accId);
-  return '<div class="vw">'+back+execSum+header+metrics+strat+teamBlock+powerMap+influence+reliabCard+actions+oppsBlock+revBlock+'</div>';
+  return '<div class="vw">'+back+execSum+header+metrics+strat+takeaways+teamBlock+powerMap+influence+reliabCard+actions+oppsBlock+revBlock+'</div>';
 }
 
 /* ── Plan d'influence / lobbying : cartographie actionnable des décideurs ── */
@@ -2285,6 +2298,21 @@ function cdpExport(accId){
     return '<tr><td>'+esc2(actBizLabel(k)||'—')+'</td><td><b>'+esc2(k.title||'')+'</b></td><td>'+E(k.assigned_to)+'</td><td>'+(k.next_action_date?fDt(k.next_action_date):'—')+'</td><td>'+stat+'</td><td>'+E(k.escalation)+'</td><td>'+E(k.bu_id&&typeof buName==='function'?buName(k.bu_id):'')+'</td></tr>';}).join('');
   var execPlan=sec('Execution Plan &amp; Accountability',
     acts.length?'<table class="t"><thead><tr><th>Deal / sujet</th><th>Action critique</th><th>Owner</th><th>Deadline</th><th>Statut</th><th>Escalade</th><th>BU</th></tr></thead><tbody>'+exRows+'</tbody></table>':'<div class="mut">Aucune action en cours.</div>');
+  /* 6. Resources & Governance. */
+  var team=accTeam(accId);
+  var resRows=team.filter(function(m){return !m.is_support;}).map(function(m){return '<tr><td><b>'+esc2(m.member_name||'—')+'</b></td><td>'+esc2(teamRoleObj(m.role).lb)+'</td><td>'+E(m.bu_id&&typeof buName==='function'?buName(m.bu_id):'')+'</td><td class="tc">'+(m.pct_time?(+m.pct_time)+' %':'—')+'</td></tr>';}).join('');
+  var supRows=team.filter(function(m){return m.is_support;}).map(function(m){return '<tr><td><b>'+esc2(m.member_name||'—')+'</b></td><td>'+esc2(teamRoleObj(m.role).lb)+'</td></tr>';}).join('');
+  var govern=sec('Resources &amp; Governance',
+    (team.length?'<div class="two"><div><span class="l">Resources</span><table class="t"><thead><tr><th>Nom</th><th>Rôle</th><th>BU</th><th class="tc">% temps</th></tr></thead><tbody>'+(resRows||'<tr><td colspan="4" class="mut">—</td></tr>')+'</tbody></table></div>'
+      +'<div><span class="l">Supporting roles / teams</span><table class="t"><thead><tr><th>Nom</th><th>Rôle</th></tr></thead><tbody>'+(supRows||'<tr><td colspan="2" class="mut">—</td></tr>')+'</tbody></table></div></div>':'<div class="mut">Aucune ressource affectée.</div>')
+    +'<div class="mt">Gouvernance : BR opérationnelle <b>'+esc2((cadenceObj(pl.revue_cadence)||{}).lb||'ponctuelle').toLowerCase()+'</b>'+(pl.type==='strategique'?' · BR stratégique <b>'+esc2((cadenceObj(pl.cadence_strat||'semestriel')||{}).lb||'').toLowerCase()+'</b>':'')+'</div>');
+  /* 7. Key takeaways & call to action. */
+  var prio=accActions(accId).filter(function(k){return actIsPlanned(k)&&(k.exec_status==='critical'||k.exec_status==='at_risk'||(k.opportunity_id&&(S.bizOpps||[]).find(function(o){return o.id===k.opportunity_id&&o.must_win;})));})
+    .sort(function(x,y){return (x.next_action_date||'9999').localeCompare(y.next_action_date||'9999');});
+  var prioRows=prio.map(function(k){return '<tr><td>'+E(k.assigned_to)+'</td><td><b>'+esc2(k.title||'')+'</b>'+(k.escalation?'<br><span class="mut">'+esc2(k.escalation)+'</span>':'')+'</td><td class="tc">'+(k.next_action_date?fDt(k.next_action_date):'—')+'</td></tr>';}).join('');
+  var takeaway=(pl.key_messages||pl.call_to_action||prio.length)?sec('Key Takeaways &amp; Call to Action',
+    '<div class="two"><div><span class="l">Key messages</span>'+E(pl.key_messages)+'</div><div><span class="l">Call to action / décisions</span>'+E(pl.call_to_action)+'</div></div>'
+    +(prio.length?'<div style="margin-top:10px"><span class="l">Priority actions</span><table class="t"><thead><tr><th>Owner</th><th>Description</th><th class="tc">Échéance</th></tr></thead><tbody>'+prioRows+'</tbody></table></div>':'')):'';
   var html='<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Client Development Plan — '+esc2(a.name)+'</title><style>'
     +'*{box-sizing:border-box}body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#111823;background:#f6f7f9;font-size:13px}'
     +'.wrap{max-width:1000px;margin:0 auto;padding:28px}.bar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px}'
@@ -2301,7 +2329,7 @@ function cdpExport(accId){
     +'</style></head><body><div class="wrap"><div class="bar"><button class="p" onclick="window.print()">🖨 Imprimer / PDF</button><button onclick="window.close()">Fermer</button></div>'
     +'<div class="hd"><div class="k">'+(org?esc2(org)+' · ':'')+'Client Development Plan · '+esc2(accTypeObj(pl.type).lb)+'</div><h1>'+esc2(a.name)+'</h1>'
       +'<div style="font-size:12px;color:#e9d5ff;margin-top:4px">Responsable : '+esc2(pl.owner_name||'—')+' · Santé : '+st.lb+' · '+esc2(today)+'</div></div>'
-    +exec+client+powermap+pipeline+execPlan
+    +exec+client+powermap+pipeline+execPlan+govern+takeaway
     +'<div style="text-align:right;font-size:11px;color:#94a3b8;margin-top:14px">Généré via Konsilys · konsilys.fr</div></div></body></html>';
   var w=null;try{w=window.open('','_blank');}catch(e){}
   if(w&&w.document){w.document.open();w.document.write(html);w.document.close();}

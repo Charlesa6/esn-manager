@@ -672,15 +672,16 @@ function loadDemoData(){
   /* Plans de compte (Key Account Management) : responsable, objectif de CA,
      enjeux/stratégie, prochaine revue. Un historique de comité sur BNP. */
   S.accountPlans=[
-    {id:'ap1',account_id:'a1',owner_name:'Thomas Bernard',owner_email:'',statut:'developper',type:'strategique',ca_objectif:1500000,ca_objectif_dr:900000,revue_cadence:'trimestriel',cadence_strat:'semestriel',enjeux:'Devenir le partenaire de référence sur la plateforme risques et étendre au périmètre conformité.',strategie:'Renforcer la relation avec le DSI Risques, se positionner sur le programme conformité 2026, monter une équipe dédiée.',prochaine_revue:_fut(21),next_br_strat:_fut(45),ambition:'Devenir le partenaire IT de référence de BNP sur le risque et la conformité.',ambition_fy1:'2,1 M€ d\'ER, gagner le programme conformité 2026.',ambition_fy3:'5 M€ d\'ER, statut de partenaire stratégique multi-BU.',gm_pct:34,csap:8.4,n_eie:6,n_voc:4},
+    {id:'ap1',account_id:'a1',owner_name:'Thomas Bernard',owner_email:'',statut:'developper',type:'strategique',ca_objectif:1500000,ca_objectif_dr:900000,revue_cadence:'trimestriel',cadence_strat:'semestriel',enjeux:'Devenir le partenaire de référence sur la plateforme risques et étendre au périmètre conformité.',strategie:'Renforcer la relation avec le DSI Risques, se positionner sur le programme conformité 2026, monter une équipe dédiée.',prochaine_revue:_fut(21),next_br_strat:_fut(45),ambition:'Devenir le partenaire IT de référence de BNP sur le risque et la conformité.',ambition_fy1:'2,1 M€ d\'ER, gagner le programme conformité 2026.',ambition_fy3:'5 M€ d\'ER, statut de partenaire stratégique multi-BU.',gm_pct:34,csap:8.4,n_eie:6,n_voc:4,key_messages:'Prioriser le programme conformité 2026 ; besoin d\'un architecte senior dédié ; introduire CGI auprès du DGA (COMEX).',call_to_action:'Valider l\'investissement d\'un architecte senior et obtenir un executive lunch avec le DGA sous 6 semaines.'},
     {id:'ap2',account_id:'a2',owner_name:'Marie Lefebvre',owner_email:'',statut:'developper',  type:'potentiel',ca_objectif:900000, ca_objectif_dr:700000,revue_cadence:'hebdomadaire',cadence_strat:'semestriel',enjeux:'Prendre pied sur la migration cloud puis élargir aux projets data.',strategie:'Livrer le cadrage, capitaliser sur la relation Directeur Cloud, viser le run.',prochaine_revue:_fut(5)}
   ];
   /* Équipe de gouvernance de compte : KAM, ingénieur d'affaires, directeur — multi-BU. */
   S.accountTeam=[
-    {id:'at1',account_id:'a1',member_name:'Thomas Bernard',member_email:'',role:'kam',bu_id:'bu_banque',consultant_id:null},
-    {id:'at2',account_id:'a1',member_name:'Sophie Nguyen', member_email:'',role:'ingenieur_affaires',bu_id:'bu_data',consultant_id:null},
-    {id:'at3',account_id:'a1',member_name:'Antoine Mercier',member_email:'',role:'directeur',bu_id:'bu_dg',consultant_id:null},
-    {id:'at4',account_id:'a2',member_name:'Marie Lefebvre', member_email:'',role:'kam',bu_id:'bu_energie',consultant_id:null}
+    {id:'at1',account_id:'a1',member_name:'Thomas Bernard',member_email:'',role:'kam',bu_id:'bu_banque',consultant_id:null,pct_time:25,is_support:false},
+    {id:'at2',account_id:'a1',member_name:'Sophie Nguyen', member_email:'',role:'ingenieur_affaires',bu_id:'bu_data',consultant_id:null,pct_time:40,is_support:false},
+    {id:'at3',account_id:'a1',member_name:'Antoine Mercier',member_email:'',role:'directeur',bu_id:'bu_dg',consultant_id:null,pct_time:10,is_support:false},
+    {id:'at5',account_id:'a1',member_name:'Julie Marchand',member_email:'',role:'membre',bu_id:'bu_data',consultant_id:null,is_support:true},
+    {id:'at4',account_id:'a2',member_name:'Marie Lefebvre', member_email:'',role:'kam',bu_id:'bu_energie',consultant_id:null,pct_time:100,is_support:false}
   ];
   S.accountReviews=[
     {id:'ar0',account_id:'a1',review_date:_fut(-60),review_type:'strategique',participants:'T. Bernard, Direction commerciale',sante:'amber',ca_objectif:1500000,ca_realise:520000,pipeline:280000,landing_er:800000,landing_dr:520000,reliability:48,engagements:[],decisions:'Prioriser la plateforme risques.',next_steps:'Cadrer le programme conformité.',created_by:'demo',created_at:''},
