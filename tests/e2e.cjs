@@ -408,6 +408,18 @@ async function newPage(browser) {
       check('Modèle de rôles : « Fiche de poste » préremplit une vraie offre (Recrutement)', roles.jobPrefill);
       await p.evaluate(() => { S.tab = 'business'; S.bizTab = 'plans'; S.planView = null; render(); });
 
+      // PWA : balises d'installation + deep-link onglet
+      const pwa = await p.evaluate(() => ({
+        manifest: !!document.querySelector('link[rel="manifest"]'),
+        theme: !!document.querySelector('meta[name="theme-color"]'),
+        appleIcon: !!document.querySelector('link[rel="apple-touch-icon"]'),
+        installBtn: !!document.getElementById('pwa-install'),
+        deepLink: typeof applyDeepLinkTab === 'function',
+      }));
+      check('PWA : balises manifest + theme-color + apple-touch-icon', pwa.manifest && pwa.theme && pwa.appleIcon);
+      check('PWA : bouton d\'installation + deep-link onglet (?tab=)', pwa.installBtn && pwa.deepLink);
+      await p.evaluate(() => { S.tab = 'business'; S.bizTab = 'plans'; S.planView = null; render(); });
+
       const com = await p.evaluate(() => {
         S.planView = null; comiteStart();
         const n0 = (S.accountReviews || []).length;

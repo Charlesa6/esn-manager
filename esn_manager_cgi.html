@@ -2,8 +2,16 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Konsilys</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#1B2B3A">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="/icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Konsilys">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 /* ═══ Design system modernisé (inspiration Linear / Stripe / Vercel) ═══
@@ -304,6 +312,17 @@ tr[data-act]{transition:background .12s}
 .cmdk-empty{padding:20px;text-align:center;color:#94a3b8;font-size:13px}
 .cmdk-foot{display:flex;gap:16px;padding:10px 16px;border-top:1px solid var(--line);font-size:11px;color:#94a3b8}
 .cmdk-foot kbd{background:#f1f5f9;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-family:inherit;font-size:10px;color:#64748b}
+/* ═══ PWA installée (standalone) : respect des encoches (safe areas iOS/Android) ═══ */
+@media(display-mode:standalone){
+  .topbar{padding-top:calc(10px + env(safe-area-inset-top))}
+  #sb-open{top:calc(14px + env(safe-area-inset-top))}
+  #sb{padding-top:env(safe-area-inset-top)}
+  #mc{padding-bottom:env(safe-area-inset-bottom)}
+}
+/* Invite d'installation (Android/desktop via beforeinstallprompt) */
+#pwa-install{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:400;display:none;align-items:center;gap:10px;background:#1B2B3A;color:#fff;border:none;border-radius:14px;padding:11px 16px;font:inherit;font-size:13px;font-weight:700;box-shadow:0 12px 30px rgba(2,6,23,.35);cursor:pointer}
+#pwa-install .x{opacity:.7;font-weight:800;padding:0 2px}
+@media(display-mode:standalone){#pwa-install{display:none !important}}
 </style>
 <script>/* Applique le thème avant peinture (pas de flash) : préférence sauvegardée, sinon système. */
 (function(){try{var t=localStorage.getItem('theme');if(!t&&window.matchMedia&&matchMedia('(prefers-color-scheme:dark)').matches)t='dark';if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
@@ -336,5 +355,31 @@ tr[data-act]{transition:background .12s}
   <script src="js/14-data-boot.js"></script>
 
 <script>(function(){function m(){return window.innerWidth<=767;}if(m())document.body.classList.add('sb-col');window.addEventListener('resize',function(){if(!m())document.body.classList.remove('sb-col');});})();</script>
+
+<button id="pwa-install" type="button" aria-label="Installer l'application"><span>📲 Installer l'app</span><span class="x" title="Plus tard">✕</span></button>
+<script>
+/* ═══ PWA : enregistrement du service worker + invite d'installation ═══ */
+(function(){
+  if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')){
+    window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});
+  }
+  /* Invite d'installation Android/desktop (iOS = « Ajouter à l'écran d'accueil » via Safari). */
+  var deferred=null, btn=document.getElementById('pwa-install');
+  function hide(){if(btn)btn.style.display='none';}
+  try{if(localStorage.getItem('pwa-install-dismissed')==='1')hide();}catch(e){}
+  window.addEventListener('beforeinstallprompt',function(ev){
+    ev.preventDefault();deferred=ev;
+    try{if(localStorage.getItem('pwa-install-dismissed')==='1')return;}catch(e){}
+    if(btn)btn.style.display='flex';
+  });
+  if(btn){
+    btn.addEventListener('click',function(e){
+      if(e.target&&e.target.classList.contains('x')){hide();try{localStorage.setItem('pwa-install-dismissed','1');}catch(_){}return;}
+      if(deferred){deferred.prompt();deferred.userChoice.finally(function(){deferred=null;hide();});}
+    });
+  }
+  window.addEventListener('appinstalled',function(){hide();try{localStorage.setItem('pwa-install-dismissed','1');}catch(_){}});
+})();
+</script>
 </body>
 </html>

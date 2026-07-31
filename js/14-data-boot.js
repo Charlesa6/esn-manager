@@ -742,10 +742,19 @@ async function syncToSB(){
   if(btn){btn.textContent='Synchroniser vers Supabase';btn.disabled=false;}
 }
 
+/* Deep-link PWA : ?tab=business|leaves… (raccourcis du manifest) ouvre l'onglet. */
+function applyDeepLinkTab(){
+  try{
+    var t=new URLSearchParams(location.search).get('tab');
+    var ok=['dashboard','missions','planning','timesheet','business','opportunites','leaves','teams','recrutement','kpis','activite','approvals','profile'];
+    if(t&&ok.indexOf(t)>=0)S.tab=t;
+  }catch(e){}
+}
 async function initApp(){
   /* ── Mode démo : ?demo=true dans l'URL → données fictives, pas de Supabase ── */
   if(new URLSearchParams(window.location.search).get('demo')==='true'){
     loadDemoData();
+    applyDeepLinkTab();
     render();
     return;
   }
@@ -933,6 +942,7 @@ async function initApp(){
     /* Supabase non configur\u00e9 - mode local */
     loadLocal();
   }
+  applyDeepLinkTab();
   render();
   /* Teams sync désactivé - intégration Azure Portal abandonnée */
 }
