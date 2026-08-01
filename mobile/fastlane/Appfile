@@ -1,6 +1,0 @@
-# Identité de l'app pour fastlane. Les valeurs sensibles viennent des variables
-# d'environnement (secrets GitHub) — rien de confidentiel n'est committé ici.
-app_identifier(ENV["APP_IDENTIFIER"] || "fr.konsilys.app")
-apple_id(ENV["APPLE_ID"])                 # e-mail du compte Apple Developer
-itc_team_id(ENV["ITC_TEAM_ID"])           # App Store Connect team id (optionnel)
-team_id(ENV["APPLE_TEAM_ID"])             # Developer Portal team id
