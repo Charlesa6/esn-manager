@@ -17,7 +17,7 @@
     { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Plans de compte", "short_name": "Comptes", "url": "/app?tab=business" },
+    { "name": "Plans de compte", "short_name": "Comptes", "url": "/app?tab=plans" },
     { "name": "Congés à valider", "short_name": "Congés", "url": "/app?tab=leaves" }
   ]
 }

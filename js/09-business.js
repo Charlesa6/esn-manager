@@ -551,13 +551,18 @@ function tBusinessPaywall(){
     +'<div style="font-size:12px;color:#94a3b8;margin-top:12px">contact@konsilys.fr · Activation sous 24h</div>'
     +'</div></div>';
 }
+/* Onglet principal « Plans de compte » (Account Management) — vue autonome,
+   réutilise le portefeuille / détail / comité (mêmes fonctions que le sous-onglet). */
+function tPlans(){
+  if(S.role!=='sales'&&!(S.settings&&S.settings.hasBusinessModule))return tBusinessPaywall();
+  return S.comiteQueue?tComite():(S.planView?tPlanDetail(S.planView):tBizPlans());
+}
 function tBusiness(){
   /* Business Manager a toujours accès au Business ; les autres ont besoin du module */
   /* Business Manager a toujours accès ; TOUS les autres (y compris Super Admin) ont besoin du module */
   if(S.role!=='sales'&&!(S.settings&&S.settings.hasBusinessModule))return tBusinessPaywall();
   var subTabs=[
     {id:'pipeline',  lb:'📋 Pipeline',    n:S.bizOpps.filter(function(o){return o.status!=='gagne'&&o.status!=='perdu';}).length},
-    {id:'plans',     lb:'📁 Plans de compte', n:S.bizAccounts.length},
     {id:'comptes',   lb:'🏢 Comptes',     n:S.bizAccounts.length},
     {id:'contacts',  lb:'👤 Contacts',    n:S.bizContacts.length},
     {id:'activites', lb:'📅 Activités',   n:S.bizActivities.length},

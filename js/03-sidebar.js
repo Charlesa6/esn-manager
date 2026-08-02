@@ -33,6 +33,7 @@ function tSB(){
   }else if(S.role==='sales'){
     /* Licence Business Manager : Business + Activité + Absences */
     NAV=[
+      {id:'plans',      ic:'\ud83d\uDCC1',lb:'Plans de compte'},
       {id:'business',   ic:'\ud83d\uDCBC',lb:'Opportunit\u00e9s'},
       {id:'opportunites',ic:'\ud83d\uDEEC',lb:'Intercontrats'},
       {id:'recrutement',ic:'\uD83C\uDFAF',lb:'Recrutement'},
@@ -57,6 +58,7 @@ function tSB(){
        autres. \u00c9quipe et Activit\u00e9 (non cit\u00e9es) sont conserv\u00e9es juste apr\u00e8s
        Recrutement. Gestion des acc\u00e8s se place juste avant Aide. */
     NAV=[
+      {id:'plans',     ic:'\uD83D\uDCC1',lb:'Plans de compte'},
       {id:'kpis',      ic:'\uD83D\uDCC8',lb:'KPIs'},
       {id:'dashboard', ic:'\uD83D\uDCCA',lb:'Dashboard'},
       {id:'business',  ic:'\uD83D\uDCBC',lb:'Opportunit\u00E9s'},
@@ -94,7 +96,7 @@ function tSB(){
      Business Manager (Business) dont la licence inclut l'accès. */
   NAV=NAV.filter(function(n){
     if(n.id==='recrutement')return S.role==='recruteur'||!!(S.settings&&S.settings.hasRecrutementModule);
-    if(n.id==='business')return S.role!=='utilisateur'&&(S.role==='sales'||!!(S.settings&&S.settings.hasBusinessModule));
+    if(n.id==='business'||n.id==='plans')return S.role!=='utilisateur'&&(S.role==='sales'||!!(S.settings&&S.settings.hasBusinessModule));
     return true;
   });
   /* ── Regroupement en pôles repliables (allègement de la barre) ──
@@ -109,6 +111,7 @@ function tSB(){
   var navById={};NAV.forEach(function(n){navById[n.id]=n;});
   if(!S.navOpen)S.navOpen={};
   var NAV_PLAN=[
+    {leaf:'plans'},          /* Plans de compte — onglet principal, en tête */
     NAV_GROUPS[0],           /* Pilotage   */
     NAV_GROUPS[1],           /* Commercial */
     {leaf:'recrutement'},

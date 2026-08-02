@@ -418,6 +418,21 @@ async function newPage(browser) {
       }));
       check('PWA : balises manifest + theme-color + apple-touch-icon', pwa.manifest && pwa.theme && pwa.appleIcon);
       check('PWA : bouton d\'installation + deep-link onglet (?tab=)', pwa.installBtn && pwa.deepLink);
+
+      // « Plans de compte » = onglet principal, en tête + écran d'accueil
+      const plansTab = await p.evaluate(() => {
+        const navs = Array.prototype.map.call(document.querySelectorAll('.snv [data-nav]'), function (b) { return b.getAttribute('data-nav'); });
+        S.tab = 'plans'; S.planView = null; S.comiteQueue = null; render();
+        const txt = document.body.innerText;
+        return {
+          firstNav: navs[0] === 'plans',
+          hasNav: navs.indexOf('plans') >= 0,
+          renders: /Plans de compte/i.test(txt) && /portefeuille/i.test(txt),
+        };
+      });
+      check('Plans de compte : onglet principal en tête de la navigation', plansTab.firstNav && plansTab.hasNav);
+      check('Plans de compte : l\'onglet rend le portefeuille de comptes', plansTab.renders);
+      await p.evaluate(() => { S.tab = 'plans'; S.planView = null; render(); });
       await p.evaluate(() => { S.tab = 'business'; S.bizTab = 'plans'; S.planView = null; render(); });
 
       const com = await p.evaluate(() => {

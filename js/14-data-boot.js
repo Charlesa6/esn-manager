@@ -746,7 +746,7 @@ async function syncToSB(){
 function applyDeepLinkTab(){
   try{
     var t=new URLSearchParams(location.search).get('tab');
-    var ok=['dashboard','missions','planning','timesheet','business','opportunites','leaves','teams','recrutement','kpis','activite','approvals','profile'];
+    var ok=['plans','dashboard','missions','planning','timesheet','business','opportunites','leaves','teams','recrutement','kpis','activite','approvals','profile'];
     if(t&&ok.indexOf(t)>=0)S.tab=t;
   }catch(e){}
 }
