@@ -8,6 +8,17 @@ function saveLocal(){
   try{localStorage.setItem(SKEY,JSON.stringify({cons:S.cons,miss:S.miss,lvs:S.lvs,cands:S.cands}));}
   catch(e){console.warn('localStorage indisponible',e);}
 }
+/* Sécurité : à la déconnexion, purger le cache de données local (aucune donnée
+   d'entreprise ne doit rester sur un appareil partagé). On conserve les simples
+   préférences d'affichage (thème, état de la barre). */
+function clearLocalCache(){
+  try{
+    localStorage.removeItem(SKEY);
+    Object.keys(localStorage).forEach(function(k){
+      if(k.indexOf('esn_settings_')===0)localStorage.removeItem(k);
+    });
+  }catch(e){}
+}
 
 function loadLocal(){
   try{
@@ -130,7 +141,7 @@ function showPaywall(co){
     +'</div></div>';
   var host=document.createElement('div');host.innerHTML=html;document.body.appendChild(host);
   var out=document.getElementById('pw-out');
-  if(out)out.onclick=function(e){e.preventDefault();try{sb.auth.signOut().then(function(){location.href='/login';});}catch(_e){location.href='/login';}};
+  if(out)out.onclick=function(e){e.preventDefault();clearLocalCache();try{sb.auth.signOut().then(function(){location.href='/login';});}catch(_e){location.href='/login';}};
   var go=document.getElementById('pw-go');
   if(go)go.onclick=async function(){
     go.disabled=true;go.textContent='Redirection…';
@@ -2773,6 +2784,7 @@ async function changePassword(){
 }
 
 async function doLogout(){
+  clearLocalCache();
   if(sb)await sb.auth.signOut().catch(function(){});
   window.location.href="/login";
 }
