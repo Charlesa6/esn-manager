@@ -1,7 +1,9 @@
 {
+  "redirects": [
+    { "source": "/pilotage-esn", "destination": "/", "permanent": true }
+  ],
   "rewrites": [
     { "source": "/",      "destination": "/index.html" },
-    { "source": "/pilotage-esn", "destination": "/pilotage-esn.html" },
     { "source": "/admin-leads", "destination": "/admin-leads.html" },
     { "source": "/login", "destination": "/esn_login.html" },
     { "source": "/app",   "destination": "/esn_manager_cgi.html" },
