@@ -750,6 +750,17 @@ function applyDeepLinkTab(){
     if(t&&ok.indexOf(t)>=0)S.tab=t;
   }catch(e){}
 }
+/* Écran neutre bloquant (aucune session accordée) en cas d'échec d'authentification. */
+function _authErrorHTML(title,msg){
+  return '<div style="max-width:440px;margin:18vh auto;text-align:center;font-family:system-ui,-apple-system,sans-serif;color:#334155;padding:24px">'
+    +'<div style="display:inline-flex;align-items:flex-end;gap:4px;height:34px;margin-bottom:14px">'
+    +'<div style="width:6px;border-radius:3px;height:45%;background:#cbd5e1"></div>'
+    +'<div style="width:6px;border-radius:3px;height:68%;background:#cbd5e1"></div>'
+    +'<div style="width:6px;border-radius:3px;height:100%;background:#84CC16"></div></div>'
+    +'<h2 style="color:#0f172a;font-size:20px;margin:0 0 8px">'+title+'</h2>'
+    +'<p style="font-size:14px;line-height:1.5;margin:0 0 18px">'+msg+'</p>'
+    +'<a href="/login" style="background:#84CC16;color:#16240a;padding:11px 20px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px">Se reconnecter</a></div>';
+}
 async function initApp(){
   /* ── Mode démo : ?demo=true dans l'URL → données fictives, pas de Supabase ── */
   if(new URLSearchParams(window.location.search).get('demo')==='true'){
@@ -935,12 +946,16 @@ async function initApp(){
 
     }catch(err){
       console.error('initApp error:',err);
-      /* En cas d\u2019erreur inattendue, charger en mode local plut\u00f4t que boucler */
-      loadLocal();
+      /* S\u00c9CURIT\u00c9 : en cas d'\u00e9chec de v\u00e9rification de session, on N'OUVRE PAS de
+         session locale (ce serait un acc\u00e8s non authentifi\u00e9). \u00c9cran neutre + reco. */
+      document.getElementById('app').innerHTML=_authErrorHTML('Session indisponible',
+        'Impossible de v\u00e9rifier votre connexion. Rechargez la page ou reconnectez-vous.');
+      return;
     }
   }else{
-    /* Supabase non configur\u00e9 - mode local */
-    loadLocal();
+    /* Client d'authentification indisponible (script Supabase non charg\u00e9) :
+       impossible de v\u00e9rifier l'identit\u00e9 \u2192 acc\u00e8s bloqu\u00e9, retour \u00e0 la connexion. */
+    window.location.href='/login';return;
   }
   applyDeepLinkTab();
   render();

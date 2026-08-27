@@ -488,6 +488,11 @@ if (sb) {
       if (r.data && r.data.session) window.location.href = '/app';
     } catch(e) {}
   });
+} else {
+  /* Client d'authentification indisponible : prévenir l'utilisateur (fail-closed). */
+  document.addEventListener('DOMContentLoaded', function() {
+    try { showBanner('err', "Service d'authentification momentanément indisponible. Rechargez la page."); } catch(e) {}
+  });
 }
 
 function sw(m) {
@@ -575,9 +580,10 @@ async function doLogin() {
   if (!ok) return;
   loading('b-login','sp-login','lb-login', true);
   if (!sb) {
-    await wait(900);
+    /* SÉCURITÉ : sans client d'authentification (script Supabase non chargé), on
+       NE connecte JAMAIS — on bloque au lieu d'ouvrir un accès non authentifié. */
     loading('b-login','sp-login','lb-login', false);
-    window.location.href = '/app';
+    showBanner('err', "Service d'authentification indisponible. Rechargez la page et réessayez.");
     return;
   }
   var res = await sb.auth.signInWithPassword({ email: em, password: pw });
