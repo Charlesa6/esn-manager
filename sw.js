@@ -4,7 +4,7 @@
    - Requêtes API (Supabase, Microsoft, Stripe) et autres cross-origin : réseau direct,
      jamais mises en cache (données fraîches + confidentialité).
    Bump CACHE à chaque déploiement pour purger l'ancien shell. */
-const CACHE = 'konsilys-shell-v1';
+const CACHE = 'konsilys-shell-v2';
 const SHELL = [
   '/app',
   '/esn_manager_cgi.html',
@@ -16,7 +16,7 @@ const SHELL = [
   '/js/06-kpis.js', '/js/07-leaves.js', '/js/08-access-admin.js', '/js/09-business.js',
   '/js/10-help-tutorials.js', '/js/11-directeurs-modal.js', '/js/12-recrutement.js',
   '/js/13-render-events.js', '/js/15-integrations.js', '/js/16-imports.js', '/js/14-data-boot.js',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
+  '/vendor/supabase-js.min.js'
 ];
 
 self.addEventListener('install', (e) => {
