@@ -4,7 +4,7 @@
    - Requêtes API (Supabase, Microsoft, Stripe) et autres cross-origin : réseau direct,
      jamais mises en cache (données fraîches + confidentialité).
    Bump CACHE à chaque déploiement pour purger l'ancien shell. */
-const CACHE = 'konsilys-shell-v3';
+const CACHE = 'konsilys-shell-v4';
 const SHELL = [
   '/app',
   '/esn_manager_cgi.html',

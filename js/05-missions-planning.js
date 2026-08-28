@@ -35,9 +35,9 @@ function recalcMissionTjm(){
     var c=_missSelectedCons();
     var marge=+((document.getElementById('mmarge')||{}).value)||0;
     if(c&&c.scr>0){
-      var cost=consDailyCost(c),tjm=tjmFromScr(c,marge);
+      var tjm=tjmFromScr(c,marge);
       tjEl.value=tjm;
-      if(prev)prev.innerHTML='Coût journalier '+fEur(Math.round(cost))+' ('+(c.contract==='freelance'?'freelance':'SCR '+fEur(c.scr)+' × charges')+') → <b>TJM '+fEur(tjm)+'</b> à '+marge+'% de marge.';
+      if(prev)prev.innerHTML='SCR '+fEur(c.scr)+' + '+marge+'% de marge → <b>TJM '+fEur(tjm)+'</b>.';
     }else{
       tjEl.value='';
       if(prev)prev.textContent='Sélectionnez un consultant avec un SCR renseigné pour calculer le TJM.';

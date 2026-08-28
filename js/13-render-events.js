@@ -514,7 +514,7 @@ function bind(){
           if(bt==='forfait'){
             if(!deal||tmar==null){alert('Pour un forfait : indiquez le montant du deal (CA) et la marge recherchée.');return;}
           }else if(_tjMode==='marge'){
-            if(_marge==null||_marge<0||_marge>=100){alert('Marge sur SCR : indiquez un % de marge valide (0 à 99).');return;}
+            if(_marge==null||_marge<0){alert('Marge sur SCR : indiquez un % de marge valide (≥ 0).');return;}
             if(selCids.some(function(_c){var cc=_consById(_c);return !cc||!(cc.scr>0);})){alert('Marge sur SCR : chaque consultant sélectionné doit avoir un SCR renseigné.');return;}
           }else if(!tj){alert('Pour une mission en Assistance technique : indiquez le TJM.');return;}
         }

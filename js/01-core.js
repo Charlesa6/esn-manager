@@ -725,13 +725,12 @@ function recStLbD(id){return recStLb(id);}
 function recStCol(id){var s=REC_STATUS.find(function(x){return x.id===id;});return s?[s.bg,s.fg]:['#f1f5f9','#475569'];}
 function recScr(sal){return sal>0?sal/SCR_FACTOR:0;}
 function recTjm(sal,mar){var scr=recScr(sal);return scr>0?scr/(1-(mar||25)/100):0;}
-/* Coût journalier réel d'un consultant : SCR × charges patronales (freelance = 1). */
-function consDailyCost(c){return c&&c.scr>0?c.scr*(c.contract==='freelance'?1:EMPLOYER_FACTOR):0;}
-/* TJM déduit d'un % de marge sur le SCR : marge = (TJM − coût)/TJM ⇒ TJM = coût/(1 − marge). */
+/* TJM déduit d'un % de marge appliqué directement au SCR du profil : TJM = SCR × (1 + marge/100).
+   Ex. SCR 500 € + 20 % ⇒ TJM 600 €. (Le SCR est la base ; les charges n'entrent pas ici.) */
 function tjmFromScr(c,margePct){
-  var cost=consDailyCost(c);if(!cost)return 0;
-  var m=Math.min(99,Math.max(0,+margePct||0));
-  return Math.round(cost/(1-m/100));
+  var scr=c&&c.scr>0?c.scr:0;if(!scr)return 0;
+  var m=Math.max(0,+margePct||0);
+  return Math.round(scr*(1+m/100));
 }
 
 /* \u2550\u2550\u2550 RECRUTEMENT : listes pr\u00e9d\u00e9finies (Expertises + Secteurs), tri\u00e9es alphab\u00e9tiquement (FR) \u2550\u2550\u2550 */

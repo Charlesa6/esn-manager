@@ -808,9 +808,9 @@ function tModal(){
         +'</div>'
         +'<div class="g2">'
         +'<div class="fd"><input class="ic" id="mtj" type="number" min="0" value="'+esc(it?String(it.tjm):'')+'" placeholder="750 (TJM en \u20ac)"></div>'
-        +'<div class="fd" id="mmarge-wrap" style="display:none"><input class="ic" id="mmarge" type="number" min="0" max="99" placeholder="% de marge (ex\u00a0: 25)" oninput="recalcMissionTjm()"></div>'
+        +'<div class="fd" id="mmarge-wrap" style="display:none"><input class="ic" id="mmarge" type="number" min="0" placeholder="% de marge (ex\u00a0: 20)" oninput="recalcMissionTjm()"></div>'
         +'</div>'
-        +'<p class="fh" id="mtj-hint">Prix journalier de vente. \u00ab Marge sur SCR \u00bb calcule le TJM automatiquement depuis le SCR du consultant (par consultant en cr\u00e9ation multiple).</p>'
+        +'<p class="fh" id="mtj-hint">Prix journalier de vente. \u00ab Marge sur SCR \u00bb applique le % directement au SCR du consultant : TJM = SCR \u00d7 (1 + marge). Ex. SCR 500\u00a0\u20ac + 20\u00a0% = 600\u00a0\u20ac (par consultant en cr\u00e9ation multiple).</p>'
         +'</div></div>'
         :'<input type="hidden" id="mtj" value="0">')
       +'<div class="cs2"><div class="fd"><label class="fl">Type de mission *</label>'
