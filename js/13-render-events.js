@@ -498,6 +498,11 @@ function bind(){
         var lo=gv('mlo'),mg=gv('mmg'),cc=gv('mcc'),cr=gv('mcr');
         var btEl=document.querySelector('input[name="mbt"]:checked');
         var bt=btEl?btEl.value:'at';
+        /* TJM : saisie libre OU marge sur SCR (TJM calculé par consultant). */
+        var _tjMode=(document.querySelector('input[name="mtjmode"]:checked')||{}).value||'libre';
+        var _marge=(gv('mmarge')===''?null:+gv('mmarge'));
+        function _consById(_id){return (S.cons||[]).concat((S._all&&S._all.cons)||[]).find(function(x){return x.id===_id;});}
+        function _tjmFor(_id){return (bt!=='forfait'&&_tjMode==='marge')?tjmFromScr(_consById(_id),_marge):tj;}
         var wdays=[];var wdEls=document.querySelectorAll('.mwd:checked');
         for(var wi=0;wi<wdEls.length;wi++)wdays.push(+wdEls[wi].value);
         var wmode2=(S.modal&&S.modal.wmode==='man')?'man':'rec';
@@ -508,6 +513,9 @@ function bind(){
         if(S.role!=='utilisateur'){
           if(bt==='forfait'){
             if(!deal||tmar==null){alert('Pour un forfait : indiquez le montant du deal (CA) et la marge recherchée.');return;}
+          }else if(_tjMode==='marge'){
+            if(_marge==null||_marge<0||_marge>=100){alert('Marge sur SCR : indiquez un % de marge valide (0 à 99).');return;}
+            if(selCids.some(function(_c){var cc=_consById(_c);return !cc||!(cc.scr>0);})){alert('Marge sur SCR : chaque consultant sélectionné doit avoir un SCR renseigné.');return;}
           }else if(!tj){alert('Pour une mission en Assistance technique : indiquez le TJM.');return;}
         }
         if(!wdays.length&&wmode2!=='man'){alert('Sélectionnez au moins un jour travaillé.');return;}
@@ -527,12 +535,13 @@ function bind(){
           if(it){
             /* Édition : une seule ligne mission = un consultant */
             var nm=null;
-            S.miss=S.miss.map(function(m){if(m.id===it.id){nm=Object.assign({},m,d,{cid:cid});return nm;}return m;});
+            S.miss=S.miss.map(function(m){if(m.id===it.id){nm=Object.assign({},m,d,{cid:cid,tjm:_tjmFor(cid)});return nm;}return m;});
             if(nm)sbUpsertMiss(nm);
           }else{
-            /* Création : une mission par consultant sélectionné (AT). En forfait, un seul évite de dédupliquer le CA. */
+            /* Création : une mission par consultant sélectionné (AT). En forfait, un seul évite de dédupliquer le CA.
+               En mode « marge sur SCR », le TJM est calculé pour chaque consultant. */
             var targets=(bt==='forfait')?[cid]:selCids;
-            targets.forEach(function(_c){var nmn=Object.assign({id:uid()},d,{cid:_c});S.miss=S.miss.concat([nmn]);sbUpsertMiss(nmn);});
+            targets.forEach(function(_c){var nmn=Object.assign({id:uid()},d,{cid:_c,tjm:_tjmFor(_c)});S.miss=S.miss.concat([nmn]);sbUpsertMiss(nmn);});
           }
           S.modal=null;render();
         }

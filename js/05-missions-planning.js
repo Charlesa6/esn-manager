@@ -12,6 +12,42 @@ function missNamesDistinct(){
 function missNameDatalistOpts(){
   return missNamesDistinct().map(function(n){return '<option value="'+esc(n)+'"></option>';}).join('');
 }
+/* ── TJM du formulaire mission : saisie libre OU marge sur SCR (calcul auto) ── */
+/* Consultant actuellement sélectionné dans la modale mission (mono ou 1er du multi). */
+function _missSelectedCons(){
+  var chk=document.querySelector('.mcid-chk:checked');
+  var el=document.getElementById('mcid');
+  var cid=chk?chk.value:(el?el.value:'');
+  if(!cid)return null;
+  var all=(S.cons||[]).concat((S._all&&S._all.cons)||[]);
+  return all.find(function(x){return x.id===cid;})||null;
+}
+/* Recalcule/verrouille le TJM selon le mode choisi (appelé sur chaque changement). */
+function recalcMissionTjm(){
+  var modeEl=document.querySelector('input[name="mtjmode"]:checked');
+  var mode=modeEl?modeEl.value:'libre';
+  var tjEl=document.getElementById('mtj');if(!tjEl)return;
+  var mgWrap=document.getElementById('mmarge-wrap');
+  var prev=document.getElementById('mtj-hint');
+  if(mode==='marge'){
+    if(mgWrap)mgWrap.style.display='';
+    tjEl.readOnly=true;tjEl.style.background='#f1f5f9';tjEl.style.color='#64748b';
+    var c=_missSelectedCons();
+    var marge=+((document.getElementById('mmarge')||{}).value)||0;
+    if(c&&c.scr>0){
+      var cost=consDailyCost(c),tjm=tjmFromScr(c,marge);
+      tjEl.value=tjm;
+      if(prev)prev.innerHTML='Coût journalier '+fEur(Math.round(cost))+' ('+(c.contract==='freelance'?'freelance':'SCR '+fEur(c.scr)+' × charges')+') → <b>TJM '+fEur(tjm)+'</b> à '+marge+'% de marge.';
+    }else{
+      tjEl.value='';
+      if(prev)prev.textContent='Sélectionnez un consultant avec un SCR renseigné pour calculer le TJM.';
+    }
+  }else{
+    if(mgWrap)mgWrap.style.display='none';
+    tjEl.readOnly=false;tjEl.style.background='';tjEl.style.color='';
+    if(prev)prev.textContent='';
+  }
+}
 /* Pré-remplit les champs vides du formulaire mission à partir d'une mission existante de même nom */
 function missPrefillFromName(){
   var el=document.getElementById('mmn');if(!el)return;

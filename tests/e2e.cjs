@@ -884,6 +884,33 @@ async function newPage(browser) {
     check('Charte reporting : couleur CGI reprise dans le HTML (en-tête/boutons/tableaux)', brand.brandCgi && brand.htmlBrand);
     check('Charte reporting : couleur CGI reprise dans le remplissage d’en-tête .xlsx', brand.xlsxFill);
 
+    // Mission — TJM libre vs marge sur SCR : coût journalier (charges patronales) + TJM déduit.
+    const mtjm = await p.evaluate(() => {
+      var sal = { scr: 400, contract: 'cdi' };       // salarié : coût = SCR × 1,25 = 500
+      var frl = { scr: 400, contract: 'freelance' };  // freelance : coût = SCR = 400
+      var vide = { scr: 0, contract: 'cdi' };
+      return {
+        factor: EMPLOYER_FACTOR,
+        costSal: consDailyCost(sal), costFrl: consDailyCost(frl), costVide: consDailyCost(vide),
+        // marge 25 % sur salarié : 500 / (1 − 0,25) = 666,67 → 667
+        tjmSal25: tjmFromScr(sal, 25),
+        // marge 20 % sur freelance : 400 / 0,8 = 500
+        tjmFrl20: tjmFromScr(frl, 20),
+        // marge 0 % : TJM = coût
+        tjmSal0: tjmFromScr(sal, 0),
+        // SCR absent : pas de calcul possible
+        tjmVide: tjmFromScr(vide, 25),
+        // borne : marge ≥ 99 clampée (pas de division par ~0)
+        tjmClamp: tjmFromScr(sal, 150)
+      };
+    });
+    check('Mission TJM : coût journalier = SCR × charges (salarié) / SCR seul (freelance)',
+      mtjm.factor === 1.25 && mtjm.costSal === 500 && mtjm.costFrl === 400 && mtjm.costVide === 0);
+    check('Mission TJM : marge sur SCR déduit le TJM (500→667 à 25 %, 400→500 à 20 %)',
+      mtjm.tjmSal25 === 667 && mtjm.tjmFrl20 === 500 && mtjm.tjmSal0 === 500);
+    check('Mission TJM : SCR absent = pas de calcul (0) ; marge extrême bornée',
+      mtjm.tjmVide === 0 && Number.isFinite(mtjm.tjmClamp) && mtjm.tjmClamp > 0);
+
     // Import générique — Candidats : modèle .xlsx, auto-mapping, dédoublonnage, commit.
     const impC = await p.evaluate(() => {
       // Modèle .xlsx (zip OOXML valide, en-tête + exemple)

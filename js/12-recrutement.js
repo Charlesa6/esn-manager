@@ -787,9 +787,9 @@ function tModal(){
     var wdsel=(it&&it.wdays&&it.wdays.length)?it.wdays:[1,2,3,4,5];
     var WLBL=[['1','Lun'],['2','Mar'],['3','Mer'],['4','Jeu'],['5','Ven']];
     body='<div class="g2"><div class="cs2"><div class="fd"><label class="fl">Consultant *</label>'
-      +(it?'<select class="ic" id="mcid">'+co+'</select>'
+      +(it?'<select class="ic" id="mcid" onchange="recalcMissionTjm()">'+co+'</select>'
           :('<input class="ic" id="mcid-search" placeholder="Rechercher un consultant\u2026" oninput="missConsFilter(this.value)" style="margin-bottom:6px">'
-            +'<div id="mcid-multi" style="max-height:190px;overflow:auto;border:1px solid #e2e8f0;border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:2px;background:#fff">'
+            +'<div id="mcid-multi" onchange="recalcMissionTjm()" style="max-height:190px;overflow:auto;border:1px solid #e2e8f0;border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:2px;background:#fff">'
             +_teamCons.map(function(c){
                 return '<label class="mcid-opt" data-name="'+esc((c.name||'').toLowerCase())+'" onmouseover="this.style.background=&quot;#f1f5f9&quot;" onmouseout="this.style.background=&quot;&quot;" style="display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:13px"><input type="checkbox" class="mcid-chk" value="'+c.id+'" style="accent-color:#84CC16;width:15px;height:15px;cursor:pointer"> '+esc(c.name)+'</label>';
               }).join('')
@@ -800,7 +800,19 @@ function tModal(){
       +'<div class="cs2"><div class="fd"><label class="fl">Nom de la mission *</label><input class="ic" id="mmn" list="mmn-list" value="'+esc(it?it.name:'')+'" placeholder="ex\u00a0: Transformation Digitale SI" onchange="missPrefillFromName()"><datalist id="mmn-list">'+missNameDatalistOpts()+'</datalist><p class="fh">Choisissez une mission existante pour affecter un consultant \u00e0 la m\u00eame mission \u2014 le client et les d\u00e9tails se pr\u00e9-remplissent.</p></div></div>'
       +'<div class="cs2"><div class="fd"><label class="fl">Code projet</label><input class="ic" id="mpcd" value="'+(it&&it.pcode?esc(it.pcode):'')+'" placeholder="ex\u00a0: 300000000106376"><p class="fh">Code de facturation PSA/SAP \u2014 utilis\u00e9 pour le recoupement des imputations import\u00e9es</p></div></div>'
       +'<div class="cs2"><div class="fd"><label class="fl">Nom du client *</label><input class="ic" id="mcl" value="'+esc(it?it.cli:'')+'" placeholder="ex\u00a0: BNP Paribas"></div></div>'
-      +(S.role!=='utilisateur'?'<div class="fd"><label class="fl">TJM factur\u00e9 (\u20ac)</label><input class="ic" id="mtj" type="number" min="0" value="'+esc(it?String(it.tjm):'')+'" placeholder="750"><p class="fh">Prix journalier de vente (Assistance technique)</p></div>':'<input type="hidden" id="mtj" value="0">')
+      +(S.role!=='utilisateur'?
+        '<div class="cs2"><div class="fd"><label class="fl">TJM factur\u00e9 (\u20ac) \u2014 Assistance technique</label>'
+        +'<div style="display:flex;gap:18px;padding:2px 0 6px">'
+        +'<label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:500"><input type="radio" name="mtjmode" value="libre" checked onchange="recalcMissionTjm()" style="accent-color:#84CC16"> TJM libre</label>'
+        +'<label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:500"><input type="radio" name="mtjmode" value="marge" onchange="recalcMissionTjm()" style="accent-color:#84CC16"> Marge sur SCR</label>'
+        +'</div>'
+        +'<div class="g2">'
+        +'<div class="fd"><input class="ic" id="mtj" type="number" min="0" value="'+esc(it?String(it.tjm):'')+'" placeholder="750 (TJM en \u20ac)"></div>'
+        +'<div class="fd" id="mmarge-wrap" style="display:none"><input class="ic" id="mmarge" type="number" min="0" max="99" placeholder="% de marge (ex\u00a0: 25)" oninput="recalcMissionTjm()"></div>'
+        +'</div>'
+        +'<p class="fh" id="mtj-hint">Prix journalier de vente. \u00ab Marge sur SCR \u00bb calcule le TJM automatiquement depuis le SCR du consultant (par consultant en cr\u00e9ation multiple).</p>'
+        +'</div></div>'
+        :'<input type="hidden" id="mtj" value="0">')
       +'<div class="cs2"><div class="fd"><label class="fl">Type de mission *</label>'
       +'<div style="display:flex;gap:18px;padding:4px 0">'
       +'<label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:500"><input type="radio" name="mbt" value="at"'+(bt!=='forfait'?' checked':'')+' style="accent-color:#84CC16"> Assistance technique</label>'
