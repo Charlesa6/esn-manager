@@ -903,6 +903,58 @@ async function newPage(browser) {
       mtjm.tjm20 === 600 && mtjm.tjm25 === 625 && mtjm.tjm0 === 500);
     check('Mission TJM : SCR absent = pas de calcul (0)', mtjm.tjmVide === 0);
 
+    // Mission globale — édition groupée : ouverture du modal + save (durée, marge, ajout/retrait consultant).
+    const grpOpen = await p.evaluate(() => {
+      var withScr = S.cons.filter(function(c){return c.scr>0 && c.grade!=='sales_grade';});
+      if (withScr.length < 3) return { skip: true };
+      var cA = withScr[0], cB = withScr[1], cNew = withScr[2];
+      // dates futures : évite le verrou Time Sheet (CRA approuvés) de la démo.
+      var base = { name:'MissionGroupeQA', cli:'ClientGrpQA', sd:'2027-01-01', ed:'2027-06-30',
+        btype:'at', wdays:[1,2,3,4,5], wmode:'rec', manualDays:[], loc:'', mgr:'', ccn:'', ccr:'', pcode:'' };
+      var mA = Object.assign({ id:'gtA', cid:cA.id, tjm:600 }, base);
+      var mB = Object.assign({ id:'gtB', cid:cB.id, tjm:650 }, base);
+      S.miss = S.miss.concat([mA, mB]);
+      S.tab = 'missions'; S.fmc = 'all'; S.fms = 'all'; S.fmt = 'all'; S.fmn = 'all';
+      render();
+      var btn = document.querySelector('[data-act="emg"][data-id="gtA"]') || document.querySelector('[data-act="emg"]');
+      if (!btn) return { err: 'no emg button' };
+      btn.click();
+      return {
+        hasBtn: true,
+        hasModal: !!(S.modal && S.modal.type === 'missgroup' && (S.modal.ids || []).length === 2),
+        hasFields: !!document.getElementById('mgn') && !!document.getElementById('mgtj') && !!document.getElementById('mgadd-multi'),
+        hasDelB: !!document.querySelector('.mgrp-del[value="gtB"]'),
+        cAId: cA.id, cBId: cB.id, cNewId: cNew.id, scrA: cA.scr, scrNew: cNew.scr
+      };
+    });
+    check('Mission globale : bouton « Modifier la mission » ouvre le modal groupé (2 consultants)',
+      !grpOpen.skip && grpOpen.hasBtn && grpOpen.hasModal && grpOpen.hasFields && grpOpen.hasDelB);
+
+    const grpSave = grpOpen.skip ? { skip: true } : await p.evaluate((info) => {
+      document.querySelector('input[name="mgtjmode"][value="marge"]').checked = true;
+      recalcMissGrpTjm();
+      document.getElementById('mgmarge').value = '20';
+      document.getElementById('mged').value = '2027-12-31';           // durée modifiée pour tous
+      var delCb = document.querySelector('.mgrp-del[value="gtB"]'); if (delCb) delCb.checked = true;  // retrait cB
+      var addCb = document.querySelector('.mgadd-chk[value="' + info.cNewId + '"]'); if (addCb) addCb.checked = true; // ajout cNew
+      document.querySelector('[data-act="smg"]').click();
+      var rows = S.miss.filter(function(m){return m.name==='MissionGroupeQA' && m.cli==='ClientGrpQA';});
+      var byCid = {}; rows.forEach(function(m){byCid[m.cid]=m;});
+      return {
+        modalClosed: S.modal === null,
+        count: rows.length,
+        hasA: !!byCid[info.cAId], hasB: !!byCid[info.cBId], hasNew: !!byCid[info.cNewId],
+        edApplied: rows.every(function(m){return m.ed==='2027-12-31';}),
+        tjmA: byCid[info.cAId] ? byCid[info.cAId].tjm : null,
+        tjmNew: byCid[info.cNewId] ? byCid[info.cNewId].tjm : null,
+        expA: Math.round(info.scrA * 1.2), expNew: Math.round(info.scrNew * 1.2)
+      };
+    }, grpOpen);
+    check('Mission globale : save applique la durée à tous + retire/ajoute les consultants',
+      grpSave.skip || (grpSave.modalClosed && grpSave.count === 2 && grpSave.hasA && !grpSave.hasB && grpSave.hasNew && grpSave.edApplied));
+    check('Mission globale : marge sur SCR recalcule le TJM de chaque consultant (conservé + ajouté)',
+      grpSave.skip || (grpSave.tjmA === grpSave.expA && grpSave.tjmNew === grpSave.expNew));
+
     // Import générique — Candidats : modèle .xlsx, auto-mapping, dédoublonnage, commit.
     const impC = await p.evaluate(() => {
       // Modèle .xlsx (zip OOXML valide, en-tête + exemple)

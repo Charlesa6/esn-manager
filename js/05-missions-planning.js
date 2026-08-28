@@ -115,10 +115,13 @@ function _missCardGroup(list){
       +'</tr>';
   }).join('');
   return '<div class="card" style="padding:18px">'
-    +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
+    +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px">'
+    +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
     +'<span style="font-weight:700;font-size:14px;color:#0f172a">'+esc(first.name)+'</span>'
     +'<span class="badge '+(isFf?'bblu':'bgry')+'">'+(isFf?'Forfait':'AT')+'</span>'
     +'<span style="font-size:12px;color:#64748b">'+esc(first.cli||'')+' \u00b7 '+list.length+' consultants</span></div>'
+    +(S.role!=='utilisateur'?'<button class="lb" style="flex-shrink:0" data-act="emg" data-id="'+first.id+'">Modifier la mission</button>':'')
+    +'</div>'
     +'<div class="gc3" style="margin-bottom:12px">'+shared.map(function(f){return '<div><span style="color:#94a3b8">'+esc(f[0])+' : </span><span style="font-weight:600;color:#243447">'+esc(f[1]||'\u2014')+'</span></div>';}).join('')+'</div>'
     +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
     +'<thead><tr style="text-align:left;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.04em"><th style="padding:6px 10px">Consultant</th><th style="padding:6px 10px">D\u00e9but</th><th style="padding:6px 10px">Fin</th><th style="padding:6px 10px">'+(isFf?'CA deal':'TJM')+'</th><th style="padding:6px 10px">Statut</th><th></th></tr></thead>'
@@ -129,6 +132,28 @@ function missConsFilter(q){
   q=(q||'').trim().toLowerCase();
   var opts=document.querySelectorAll('#mcid-multi .mcid-opt');
   for(var i=0;i<opts.length;i++){var n=opts[i].getAttribute('data-name')||'';opts[i].style.display=(!q||n.indexOf(q)>=0)?'flex':'none';}
+}
+/* Filtre la liste « Ajouter des consultants » du modal d'édition globale d'une mission. */
+function missGrpAddFilter(q){
+  q=(q||'').trim().toLowerCase();
+  var opts=document.querySelectorAll('#mgadd-multi .mgadd-opt');
+  for(var i=0;i<opts.length;i++){var n=opts[i].getAttribute('data-name')||'';opts[i].style.display=(!q||n.indexOf(q)>=0)?'flex':'none';}
+}
+/* Bascule TJM libre / marge sur SCR dans le modal d'édition globale (TJM appliqué à toute la mission). */
+function recalcMissGrpTjm(){
+  var mode=(document.querySelector('input[name="mgtjmode"]:checked')||{}).value||'libre';
+  var tjEl=document.getElementById('mgtj');if(!tjEl)return;
+  var mgWrap=document.getElementById('mgmarge-wrap');
+  var hint=document.getElementById('mgtj-hint');
+  if(mode==='marge'){
+    if(mgWrap)mgWrap.style.display='';
+    tjEl.readOnly=true;tjEl.style.background='#f1f5f9';tjEl.style.color='#64748b';tjEl.value='';tjEl.placeholder='calculé par consultant';
+    if(hint)hint.textContent='TJM calculé par consultant : SCR × (1 + marge). Chaque consultant conservé ou ajouté doit avoir un SCR renseigné.';
+  }else{
+    if(mgWrap)mgWrap.style.display='none';
+    tjEl.readOnly=false;tjEl.style.background='';tjEl.style.color='';tjEl.placeholder='TJM commun (vide = garder chacun)';
+    if(hint)hint.textContent='« TJM libre » : laissez vide pour conserver le TJM actuel de chaque consultant, ou saisissez un TJM appliqué à tous.';
+  }
 }
 function tMiss(){
   var ORD=['critical','soon','active','future','ended'];

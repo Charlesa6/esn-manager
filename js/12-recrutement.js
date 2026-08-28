@@ -847,6 +847,57 @@ function tModal(){
       +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="sm">'+(it?'Enregistrer':'Ajouter')+'</button></div>';
   }
 
+  if(tp==='missgroup'){
+    wide=true;
+    var _gids=m.ids||[];
+    var grp=S.miss.filter(function(x){return _gids.indexOf(x.id)>=0;});
+    var g0=grp[0]||{};
+    var gIsFf=(g0.btype==='forfait');
+    title='Modifier la mission — '+(g0.name||'');
+    var inG={};grp.forEach(function(x){inG[x.cid]=1;});
+    var addCands=_teamCons.filter(function(c){return !inG[c.id];});
+    var _tjSet={};grp.forEach(function(x){_tjSet[x.tjm]=1;});
+    var _commonTjm=(Object.keys(_tjSet).length===1)?g0.tjm:'';
+    body='<div class="g2">'
+      +'<div class="cs2"><div class="fd"><label class="fl">Nom de la mission *</label><input class="ic" id="mgn" value="'+esc(g0.name||'')+'"></div></div>'
+      +'<div class="cs2"><div class="fd"><label class="fl">Nom du client *</label><input class="ic" id="mgcl" value="'+esc(g0.cli||'')+'"></div></div>'
+      +'<div class="fd"><label class="fl">Date de démarrage *</label><input class="ic" id="mgsd" type="date" value="'+esc(g0.sd||'')+'"></div>'
+      +'<div class="fd"><label class="fl">Date de fin</label><input class="ic" id="mged" type="date" value="'+esc(g0.ed||'')+'"><p class="fh">Appliquée à tous les consultants — laisser vide si inconnue</p></div>'
+      +(!gIsFf?
+        '<div class="cs2"><div class="fd"><label class="fl">TJM facturé (€) — appliqué à toute la mission</label>'
+        +'<div style="display:flex;gap:18px;padding:2px 0 6px">'
+        +'<label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:500"><input type="radio" name="mgtjmode" value="libre" checked onchange="recalcMissGrpTjm()" style="accent-color:#84CC16"> TJM libre</label>'
+        +'<label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:500"><input type="radio" name="mgtjmode" value="marge" onchange="recalcMissGrpTjm()" style="accent-color:#84CC16"> Marge sur SCR</label>'
+        +'</div><div class="g2">'
+        +'<div class="fd"><input class="ic" id="mgtj" type="number" min="0" value="'+esc(_commonTjm===''?'':String(_commonTjm))+'" placeholder="TJM commun (vide = garder chacun)"></div>'
+        +'<div class="fd" id="mgmarge-wrap" style="display:none"><input class="ic" id="mgmarge" type="number" min="0" placeholder="% de marge (ex : 20)" oninput="recalcMissGrpTjm()"></div>'
+        +'</div>'
+        +'<p class="fh" id="mgtj-hint">« TJM libre » : laissez vide pour conserver le TJM actuel de chaque consultant, ou saisissez un TJM appliqué à tous.</p>'
+        +'</div></div>'
+        :'<div class="cs2"><p class="fh">Mission au forfait — le CA/deal se modifie par consultant depuis chaque ligne du tableau.</p></div>')
+      +'<div class="cs2"><div class="fd"><label class="fl">Consultants sur la mission</label>'
+      +'<div style="display:flex;flex-direction:column;gap:2px;border:1px solid #e2e8f0;border-radius:8px;padding:6px;background:#fff">'
+      +grp.map(function(x){var c=S.cons.find(function(cc){return cc.id===x.cid;});
+          return '<label style="display:flex;align-items:center;justify-content:space-between;gap:9px;padding:5px 8px;border-radius:6px;font-size:13px">'
+            +'<span style="font-weight:600;color:#0f172a">'+esc(c?c.name:'—')+(c&&c.scr>0?' <span style="color:#94a3b8;font-weight:400">· SCR '+fEur(c.scr)+'</span>':'')+(!gIsFf?' <span style="color:#94a3b8;font-weight:400">· TJM '+fEur(x.tjm)+'</span>':'')+'</span>'
+            +'<span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#dc2626;cursor:pointer"><input type="checkbox" class="mgrp-del" value="'+x.id+'" style="accent-color:#dc2626;cursor:pointer"> Retirer</span>'
+            +'</label>';
+        }).join('')
+      +'</div><p class="fh">Cochez « Retirer » pour désaffecter un consultant (sa ligne de mission est supprimée).</p></div></div>'
+      +'<div class="cs2"><div class="fd"><label class="fl">Ajouter des consultants</label>'
+      +(addCands.length?
+        '<input class="ic" id="mgadd-search" placeholder="Rechercher un consultant…" oninput="missGrpAddFilter(this.value)" style="margin-bottom:6px">'
+        +'<div id="mgadd-multi" style="max-height:170px;overflow:auto;border:1px solid #e2e8f0;border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:2px;background:#fff">'
+        +addCands.map(function(c){
+            return '<label class="mgadd-opt" data-name="'+esc((c.name||'').toLowerCase())+'" style="display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:13px"><input type="checkbox" class="mgadd-chk" value="'+c.id+'" style="accent-color:#84CC16;width:15px;height:15px;cursor:pointer"> '+esc(c.name)+(c.scr>0?' <span style="color:#94a3b8">· SCR '+fEur(c.scr)+'</span>':'')+'</label>';
+          }).join('')
+        +'</div><p class="fh">Les nouveaux consultants héritent des dates, du client et des paramètres de la mission ; leur TJM suit le mode choisi ci-dessus.</p>'
+        :'<p class="fh">Tous les consultants disponibles sont déjà sur cette mission.</p>')
+      +'</div></div>'
+      +'</div>'
+      +'<div class="br"><button class="bg" data-act="mc">Annuler</button><button class="bp" data-act="smg">Enregistrer</button></div>';
+  }
+
   if(tp==='onboarding'){
     var steps=(ONBOARDING_STEPS[S.role]||ONBOARDING_STEPS.utilisateur);
     var step=(m.step||0);

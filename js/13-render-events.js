@@ -388,6 +388,15 @@ function bind(){
         manualDays:(_it&&_it.manualDays)?_it.manualDays.slice():[],
         calYear:_now2.getFullYear(),calMonth:_now2.getMonth()};
       render();}
+      else if(a==='emg'){
+        /* Édition « mission globale » : regroupe toutes les lignes de même nom + client. */
+        var _mg=S.miss.find(function(m){return m.id===id;});
+        if(_mg){
+          var _gk=((_mg.name||'').trim().toLowerCase())+'¦'+((_mg.cli||'').trim().toLowerCase());
+          var _gids=S.miss.filter(function(m){return ((m.name||'').trim().toLowerCase())+'¦'+((m.cli||'').trim().toLowerCase())===_gk;}).map(function(m){return m.id;});
+          S.modal={type:'missgroup',ids:_gids};render();
+        }
+      }
       else if(a==='el'){S.modal={type:'leave',item:S.lvs.find(function(l){return l.id===id;})};render();}
       else if(a==='dc'){var c=S.cons.find(function(c){return c.id===id;});if(c&&confirm('Supprimer '+c.name+' ?')){S.cons=S.cons.filter(function(c){return c.id!==id;});sbDel('consultants',id);render();}}
       else if(a==='dm'){
@@ -545,6 +554,59 @@ function bind(){
           }
           S.modal=null;render();
         }
+      }
+      /* save mission globale — édition groupée (dates, TJM, ajout/retrait de consultants) */
+      else if(a==='smg'){
+        var _gids2=(S.modal&&S.modal.ids)||[];
+        var grp=S.miss.filter(function(x){return _gids2.indexOf(x.id)>=0;});
+        if(!grp.length){S.modal=null;render();return;}
+        var g0=grp[0];var gIsFf=(g0.btype==='forfait');
+        var gname=(gv('mgn')||'').trim(),gcli=(gv('mgcl')||'').trim();
+        var gsd=gv('mgsd')||'',ged=gv('mged')||'';
+        if(!gname||!gcli||!gsd){alert('Nom de la mission, client et date de démarrage sont requis.');return;}
+        var gMode=(document.querySelector('input[name="mgtjmode"]:checked')||{}).value||'libre';
+        var gTjLibre=(gv('mgtj')===''?null:+gv('mgtj'));
+        var gMarge=(gv('mgmarge')===''?null:+gv('mgmarge'));
+        var _del={};[].forEach.call(document.querySelectorAll('.mgrp-del:checked'),function(cb){_del[cb.value]=1;});
+        var _keep=grp.filter(function(x){return !_del[x.id];});
+        var _addCids=[];[].forEach.call(document.querySelectorAll('.mgadd-chk:checked'),function(cb){_addCids.push(cb.value);});
+        if(!_keep.length&&!_addCids.length){alert('La mission doit conserver au moins un consultant.');return;}
+        function _mgCons(_id){return (S.cons||[]).concat((S._all&&S._all.cons)||[]).find(function(x){return x.id===_id;});}
+        if(!gIsFf&&gMode==='marge'){
+          if(gMarge==null||gMarge<0){alert('Marge sur SCR : indiquez un % de marge valide (≥ 0).');return;}
+          var _allC=_keep.map(function(x){return x.cid;}).concat(_addCids);
+          if(_allC.some(function(cid){var cc=_mgCons(cid);return !cc||!(cc.scr>0);})){alert('Marge sur SCR : chaque consultant (conservé ou ajouté) doit avoir un SCR renseigné.');return;}
+        }
+        function _mgTjm(cid,cur){
+          if(gIsFf)return cur;
+          if(gMode==='marge')return tjmFromScr(_mgCons(cid),gMarge);
+          return (gTjLibre!=null)?gTjLibre:cur;
+        }
+        /* Verrou Time Sheet : lignes conservées (nouvelles dates), retirées (dates actuelles), ajoutées (nouvelles dates). */
+        var _aff=_keep.map(function(x){return {cid:x.cid,sd:gsd,ed:ged,wmode:x.wmode,manualDays:x.manualDays};})
+          .concat(grp.filter(function(x){return _del[x.id];}).map(function(x){return {cid:x.cid,sd:x.sd,ed:x.ed,wmode:x.wmode,manualDays:x.manualDays};}))
+          .concat(_addCids.map(function(cid){return {cid:cid,sd:gsd,ed:ged,wmode:'rec',manualDays:[]};}));
+        if(_aff.some(function(a2){return (a2.wmode==='man')?tsDaysLocked(a2.cid,a2.manualDays):tsRangeLocked(a2.cid,a2.sd,a2.ed);})){tsLockAlert();return;}
+        /* Mise à jour des lignes conservées */
+        S.miss=S.miss.map(function(x){
+          if(_gids2.indexOf(x.id)>=0&&!_del[x.id]){
+            var nm=Object.assign({},x,{name:gname,cli:gcli,sd:gsd,ed:ged,tjm:_mgTjm(x.cid,x.tjm)});
+            sbUpsertMiss(nm).catch(function(e){console.warn('miss group upd:',e);});return nm;
+          }
+          return x;
+        });
+        /* Suppression des lignes retirées */
+        Object.keys(_del).forEach(function(rid){S.miss=S.miss.filter(function(x){return x.id!==rid;});sbDel('missions',rid).catch(function(e){console.warn('miss group del:',e);});});
+        /* Ajout des nouveaux consultants (héritent des paramètres de la mission) */
+        _addCids.forEach(function(cid){
+          var nmn={id:uid(),cid:cid,name:gname,cli:gcli,sd:gsd,ed:ged,tjm:_mgTjm(cid,g0.tjm||0),
+            pcode:g0.pcode||'',btype:g0.btype||'at',wdays:(g0.wdays&&g0.wdays.slice())||[1,2,3,4,5],
+            loc:g0.loc||'',mgr:g0.mgr||'',ccn:g0.ccn||'',ccr:g0.ccr||'',
+            deal:g0.deal||0,tmar:(g0.tmar!=null?g0.tmar:null),wmode:g0.wmode||'rec',
+            manualDays:(g0.manualDays&&g0.manualDays.slice())||[]};
+          S.miss=S.miss.concat([nmn]);sbUpsertMiss(nmn).catch(function(e){console.warn('miss group add:',e);});
+        });
+        S.modal=null;render();
       }
       /* save leave — MODÈLE PAR IDENTITÉ (N+1) */
       else if(a==='sl'){
