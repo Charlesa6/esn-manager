@@ -115,10 +115,10 @@ function tSB(){
   var NAV_PLAN=[
     NAV_GROUPS[0],           /* Pilotage   */
     NAV_GROUPS[1],           /* Commercial : Opportunités · Intercontrats · Plans de compte */
-    {leaf:'recrutement'},
     NAV_GROUPS[2],           /* Delivery   */
     NAV_GROUPS[3],           /* Temps & absences */
     {leaf:'teams'},
+    {leaf:'recrutement'},    /* Recrutement — juste avant Aide */
     {leaf:'help'},
     {leaf:'svp_integrations'}
   ];
