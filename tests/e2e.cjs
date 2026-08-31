@@ -419,18 +419,22 @@ async function newPage(browser) {
       check('PWA : balises manifest + theme-color + apple-touch-icon', pwa.manifest && pwa.theme && pwa.appleIcon);
       check('PWA : bouton d\'installation + deep-link onglet (?tab=)', pwa.installBtn && pwa.deepLink);
 
-      // « Plans de compte » = onglet principal, en tête + écran d'accueil
+      // « Plans de compte » = sous-onglet du pôle Commercial (avec Opportunités + Intercontrats)
       const plansTab = await p.evaluate(() => {
-        const navs = Array.prototype.map.call(document.querySelectorAll('.snv [data-nav]'), function (b) { return b.getAttribute('data-nav'); });
         S.tab = 'plans'; S.planView = null; S.comiteQueue = null; render();
         const txt = document.body.innerText;
+        const tgl = document.querySelector('[data-navtoggle="g_commercial"]');
+        const sub = tgl && tgl.nextElementSibling;
         return {
-          firstNav: navs[0] === 'plans',
-          hasNav: navs.indexOf('plans') >= 0,
+          hasNav: !!document.querySelector('.snv [data-nav="plans"]'),
+          inCommercial: !!(sub && sub.classList.contains('nsub')
+            && sub.querySelector('[data-nav="plans"]')
+            && sub.querySelector('[data-nav="business"]')
+            && sub.querySelector('[data-nav="opportunites"]')),
           renders: /Plans de compte/i.test(txt) && /portefeuille/i.test(txt),
         };
       });
-      check('Plans de compte : onglet principal en tête de la navigation', plansTab.firstNav && plansTab.hasNav);
+      check('Plans de compte : sous-onglet du pôle Commercial (avec Opportunités + Intercontrats)', plansTab.hasNav && plansTab.inCommercial);
       check('Plans de compte : l\'onglet rend le portefeuille de comptes', plansTab.renders);
       await p.evaluate(() => { S.tab = 'plans'; S.planView = null; render(); });
       await p.evaluate(() => { S.tab = 'business'; S.bizTab = 'plans'; S.planView = null; render(); });
@@ -453,11 +457,21 @@ async function newPage(browser) {
       !!document.querySelector('[data-nav="svp_acces"]') || !!document.querySelector('[data-nav="svp_settings"]'));
     check('Sidebar : Gestion des accès & Paramètres masqués', hiddenTabs === false);
 
+    // Time Sheet & Approbations : fonctionnalités masquées de la nav (et de la palette ⌘K)
+    const tsApHidden = await p.evaluate(() => ({
+      navTs: !!document.querySelector('.snv [data-nav="timesheet"]'),
+      navAp: !!document.querySelector('.snv [data-nav="approvals"]'),
+    }));
+    check('Sidebar : Time Sheet & Approbations masqués de la navigation', tsApHidden.navTs === false && tsApHidden.navAp === false);
+
     // Time Sheet (CRA hebdo) : onglet, statuts, cohérence congé, soumission, verrou
     {
       const before = p._appErrors.length;
-      const okTab = await goTab('timesheet');
-      check('onglet Time Sheet présent', okTab, 'bouton nav absent');
+      // La fonctionnalité est masquée de la nav mais reste routable (feature intacte) :
+      // on route directement pour continuer à couvrir le comportement Time Sheet.
+      const okTab = await p.evaluate(() => { S.tab = 'timesheet'; render(); return S.tab === 'timesheet'; });
+      await p.waitForTimeout(300);
+      check('Time Sheet : vue routable (masquée de la nav, feature conservée)', okTab);
       if (okTab) {
         const tsTxt = await p.evaluate(() => document.body.innerText);
         check('Time Sheet : en-tête hebdomadaire affiché', /Time Sheet/.test(tsTxt) && /hebdomadaire/.test(tsTxt));

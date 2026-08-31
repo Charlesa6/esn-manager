@@ -13,7 +13,7 @@ function qSeg(id,lb,active,title){
    Chaque pôle est REPLIÉ par défaut ; l'ouverture est manuelle (S.navOpen[gid]). */
 var NAV_GROUPS=[
   {gid:'g_pilotage',  ic:'🧭',lb:'Pilotage',         members:['kpis','dashboard']},
-  {gid:'g_commercial',ic:'🤝',lb:'Commercial',       members:['business','opportunites']},
+  {gid:'g_commercial',ic:'🤝',lb:'Commercial',       members:['business','opportunites','plans']},
   {gid:'g_delivery',  ic:'🚀',lb:'Delivery',         members:['missions','planning']},
   {gid:'g_temps',     ic:'⏱️',lb:'Temps & absences', members:['activite','timesheet','leaves']}
 ];
@@ -95,6 +95,8 @@ function tSB(){
      entreprise). Exceptions : le rôle recruteur (Recrutement) et le rôle sales /
      Business Manager (Business) dont la licence inclut l'accès. */
   NAV=NAV.filter(function(n){
+    /* Time Sheet & Approbations : fonctionnalités masquées (sur toutes les licences). */
+    if(n.id==='timesheet'||n.id==='approvals')return false;
     if(n.id==='recrutement')return S.role==='recruteur'||!!(S.settings&&S.settings.hasRecrutementModule);
     if(n.id==='business'||n.id==='plans')return S.role!=='utilisateur'&&(S.role==='sales'||!!(S.settings&&S.settings.hasBusinessModule));
     return true;
@@ -111,14 +113,12 @@ function tSB(){
   var navById={};NAV.forEach(function(n){navById[n.id]=n;});
   if(!S.navOpen)S.navOpen={};
   var NAV_PLAN=[
-    {leaf:'plans'},          /* Plans de compte — onglet principal, en tête */
     NAV_GROUPS[0],           /* Pilotage   */
-    NAV_GROUPS[1],           /* Commercial */
+    NAV_GROUPS[1],           /* Commercial : Opportunités · Intercontrats · Plans de compte */
     {leaf:'recrutement'},
     NAV_GROUPS[2],           /* Delivery   */
     NAV_GROUPS[3],           /* Temps & absences */
     {leaf:'teams'},
-    {leaf:'approvals'},
     {leaf:'help'},
     {leaf:'svp_integrations'}
   ];
