@@ -40,8 +40,9 @@ function render(){
   var _canPlan=(_myTabs.indexOf('plans')>=0)&&(S.role==='sales'||!!(S.settings&&S.settings.hasBusinessModule));
   if(_myTabs.indexOf(S.tab)<0||(S.tab==='plans'&&!_canPlan)){
     /* Onglet non autorisé (ou Plans sans module) → onglet d'accueil du rôle.
-       Par défaut on privilégie « Plans de compte » quand il est disponible. */
-    S.tab=_canPlan?'plans':(S.role==='sales')?'business':(S.role==='recruteur')?'recrutement':(S.role==='utilisateur')?'activite':'kpis';
+       Accueil par défaut : KPIs (sales → Opportunités, recruteur → Recrutement,
+       utilisateur → Activité). */
+    S.tab=(S.role==='sales')?'business':(S.role==='recruteur')?'recrutement':(S.role==='utilisateur')?'activite':'kpis';
   }
   var v=S.tab==='plans'?tPlans():S.tab==='dashboard'?tDash():S.tab==='teams'?tTeams():S.tab==='recrutement'?tRecrut():S.tab==='missions'?tMiss():S.tab==='planning'?tPlan():S.tab==='kpis'?tKPIs():S.tab==='leaves'?tLeaves():S.tab==='timesheet'?tTimesheet():S.tab==='activite'?tActivite():S.tab==='directeurs'?tSVPAcces():S.tab==='approvals'?tApprovals():S.tab==='admin'?tAdmin():S.tab==='profile'?tProfile():S.tab==='kpis_dir'?tKPIsDirSection():S.tab==='svp_acces'?tSVPAcces():S.tab==='svp_settings'?tSettings():S.tab==='svp_integrations'?tIntegrations():S.tab==='business'?tBusiness():S.tab==='opportunites'?tOpps():tHelp();
   var _ini=function(n){return n.split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();};

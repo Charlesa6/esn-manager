@@ -517,7 +517,7 @@ var IL=[];
    STATE
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 var S={
-  tab:'plans',
+  tab:'kpis',
   cons:IC.map(function(c){return Object.assign({},c);}),
   miss:IM.map(function(m){return Object.assign({},m);}),
   lvs:IL.map(function(l){return Object.assign({},l);}),
@@ -562,7 +562,7 @@ function loadDemoData(){
   S.role='admin';
   S.year=2026;
   S.quarter=null;
-  S.tab=S.role==='utilisateur'?'activite':S.role==='recruteur'?'recrutement':'plans';
+  S.tab=S.role==='utilisateur'?'activite':S.role==='recruteur'?'recrutement':S.role==='sales'?'business':'kpis';
   /* Démo : on active les modules Business (Opportunités) et Recrutement pour montrer
      le CRM, les fiches de poste, l'assignation de candidats et la mission auto. */
   S.settings.hasBusinessModule=true;
