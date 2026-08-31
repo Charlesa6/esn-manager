@@ -2671,8 +2671,10 @@ function tProfile(){
     +'</div>'
 
 
-    /* ── Délégation d'approbation (rôles approbateurs uniquement) ── */
-    +((S.role==='super_admin'||S.role==='admin'||S.role==='gestionnaire')?(function(){
+    /* ── Délégation d'approbation — MASQUÉE (comme Time Sheet & Approbations).
+       Pour réactiver : remplacer « false » par la condition de rôle
+       (S.role==='super_admin'||S.role==='admin'||S.role==='gestionnaire'). ── */
+    +((false)?(function(){
       var cand=delegationCandidates();
       var curDeleg=S.approvalDelegateTo;
       var curUntil=S.approvalDelegateUntil;
