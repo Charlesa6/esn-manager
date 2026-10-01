@@ -464,6 +464,18 @@ async function newPage(browser) {
     }));
     check('Sidebar : Time Sheet & Approbations masqués de la navigation', tsApHidden.navTs === false && tsApHidden.navAp === false);
 
+    // Onglet Fun 🎉 : présent dans la nav + se rend sans erreur
+    const funTab = await p.evaluate(() => {
+      var hasNav = !!document.querySelector('.snv [data-nav="fun"]');
+      S.tab = 'fun'; render();
+      var txt = document.body.innerText;
+      var renders = /Fun/.test(txt) && /blague ESN/i.test(txt) && /boule magique/i.test(txt) && typeof tFun === 'function';
+      var burst = typeof funBurst === 'function';
+      return { hasNav: hasNav, renders: renders, burst: burst };
+    });
+    check('Onglet Fun : présent dans la nav', funTab.hasNav);
+    check('Onglet Fun : la vue se rend (blague, boule magique, confettis)', funTab.renders && funTab.burst);
+
     // Time Sheet (CRA hebdo) : onglet, statuts, cohérence congé, soumission, verrou
     {
       const before = p._appErrors.length;

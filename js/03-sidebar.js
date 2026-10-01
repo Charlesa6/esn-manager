@@ -82,6 +82,8 @@ function tSB(){
     if(S.role==='super_admin')NAV.push({id:'svp_integrations',ic:'\ud83d\udd0c',lb:'Int\u00e9grations'});
     NAV.push({id:'help',ic:'\u2753',lb:'Aide'});
   }
+  /* Onglet \u00ab Fun \u00bb \ud83c\udf89 \u2014 accessible \u00e0 tous, plac\u00e9 juste avant Aide. */
+  (function(){var _hi=NAV.map(function(n){return n.id;}).indexOf('help');var _fun={id:'fun',ic:'\ud83c\udf89',lb:'Fun'};if(_hi>=0)NAV.splice(_hi,0,_fun);else NAV.push(_fun);})();
   var alC=(function(){
     /* Compteur unifié par identité : demandes (approvals + leaves) dont JE suis l'approbateur */
     function _mine(rec){var aid=rec.approver_id||rec.approverId||(rec.payload&&rec.payload.approver_id);if(aid)return aid===S._userId;if(rec.approval_role){var mr=S.role==='super_admin'?'super_admin':S.role==='admin'?'admin':S.role==='gestionnaire'?'gestionnaire':'';return rec.approval_role===mr;}if(rec.dirName!==undefined)return rec.dirName===S.dirName;return false;}
@@ -119,6 +121,7 @@ function tSB(){
     NAV_GROUPS[3],           /* Temps & absences */
     {leaf:'teams'},
     {leaf:'recrutement'},    /* Recrutement — juste avant Aide */
+    {leaf:'fun'},            /* Fun 🎉 */
     {leaf:'help'},
     {leaf:'svp_integrations'}
   ];
