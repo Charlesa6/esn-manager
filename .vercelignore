@@ -1,0 +1,8 @@
+# Fichiers internes : ne doivent pas être servis publiquement sur konsilys.fr
+.claude/
+deliverables/
+docs/
+scripts/
+supabase/
+tests/
+CLAUDE.md
