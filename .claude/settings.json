@@ -1,8 +1,9 @@
 {
   "language": "french",
   "permissions": {
-    "defaultMode": "bypassPermissions"
-  },
+  "defaultMode": "bypassPermissions",
+  "allow": ["mcp__Supabase__execute_sql"]
+},
   "hooks": {
     "SessionStart": [
       {
