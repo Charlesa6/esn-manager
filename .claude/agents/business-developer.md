@@ -62,7 +62,7 @@ Ces tables ne sont accessibles qu'en SQL d'administration — jamais depuis l'ap
   ```
   Si l'outil d'envoi accepte des en-têtes, ajoute aussi `List-Unsubscribe: <https://rwmstlesxnglpblrurqj.supabase.co/functions/v1/bd-unsubscribe?t=<unsub_token>>` et `List-Unsubscribe-Post: List-Unsubscribe=One-Click`.
 - **Séquence** : email 1 (J0) → relance 1 (J+4 ouvrés, nouvel angle) → relance 2 (J+10 ouvrés, courte, « je clos le sujet »). Sans réponse après la relance 2 : `status = 'perdu'`, `notes` « sans réponse ».
-- **Volumes (protection de la réputation du domaine konsilys.fr)** : 2 premières semaines d'envoi = **10 premiers contacts max/jour** ; ensuite **25 max/jour** ; **40 emails max/jour** tous types confondus ; **2 contacts max par entreprise**. Uniquement du lundi au vendredi.
+- **Volumes (protection de la réputation du domaine konsilys.fr)** : 2 premières semaines d'envoi = **10 premiers contacts max/jour** ; ensuite **25 max/jour** ; **40 emails max/jour** tous types confondus ; **2 contacts max par entreprise**. Envois 7 jours sur 7 (lundi → dimanche).
 
 ### Contrôles AVANT chaque envoi — tous obligatoires
 
