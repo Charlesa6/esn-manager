@@ -453,16 +453,16 @@ async function newPage(browser) {
       check('Modèle de rôles : « Fiche de poste » préremplit une vraie offre (Recrutement)', roles.jobPrefill);
       await p.evaluate(() => { S.tab = 'business'; S.bizTab = 'plans'; S.planView = null; render(); });
 
-      // PWA : balises d'installation + deep-link onglet
+      // Installation de l'app depuis le web désactivée : ni manifeste, ni bouton
+      // « Installer l'app » ; le deep-link d'onglet (?tab=) reste disponible.
       const pwa = await p.evaluate(() => ({
         manifest: !!document.querySelector('link[rel="manifest"]'),
-        theme: !!document.querySelector('meta[name="theme-color"]'),
-        appleIcon: !!document.querySelector('link[rel="apple-touch-icon"]'),
         installBtn: !!document.getElementById('pwa-install'),
+        theme: !!document.querySelector('meta[name="theme-color"]'),
         deepLink: typeof applyDeepLinkTab === 'function',
       }));
-      check('PWA : balises manifest + theme-color + apple-touch-icon', pwa.manifest && pwa.theme && pwa.appleIcon);
-      check('PWA : bouton d\'installation + deep-link onglet (?tab=)', pwa.installBtn && pwa.deepLink);
+      check('Installation web désactivée : pas de manifeste ni de bouton « Installer »', !pwa.manifest && !pwa.installBtn);
+      check('Thème + deep-link onglet (?tab=) conservés', pwa.theme && pwa.deepLink);
 
       // « Plans de compte » = sous-onglet du pôle Commercial (avec Opportunités + Intercontrats)
       const plansTab = await p.evaluate(() => {
@@ -1146,6 +1146,53 @@ async function newPage(browser) {
     check('KPIs paginé : top clients serveur affiché', /ClientAlphaXYZ/.test(paged));
     // Restaurer l'état par défaut (drapeau off, rôle initial).
     await p.evaluate(() => { window.KPI_SERVER_AGG = false; S.role = S._roleBak; S.kpiCards = null; S.calMode = '445'; render(); });
+
+    // Assistant IA : proposition (serveur simulé) → carte → création via les règles de l'app
+    {
+      const ai = await p.evaluate(async () => {
+        var save = { role: S.role, demo: S.demo, miss: S.miss, lvs: S.lvs, avail: window.aiAvailable, fetch: window.fetch, sb: window.sb };
+        S.role = 'super_admin'; S.ai = null;
+        window.aiAvailable = function () { return true; };
+        var c = aiConsList()[0];
+        window.sb = { auth: { getSession: function () { return Promise.resolve({ data: { session: { access_token: 't' } } }); } } };
+        var sent = null;
+        window.fetch = function (url, opt) {
+          sent = JSON.parse(opt.body);
+          return Promise.resolve({ ok: true, json: function () { return Promise.resolve({ reply: 'Je vous propose cette mission.', actions: [
+            { tool: 'create_mission', input: { consultant_ids: [String(c.id)], name: 'Data Lake', client: 'BNP Paribas', start_date: '2026-11-03', end_date: '2026-11-28', billing_type: 'at', tjm: 650, deal_amount: null, target_margin: null } },
+            { tool: 'create_leave', input: { consultant_id: String(c.id), type: 'Formation', start_date: '2026-12-01', end_date: '2026-12-01' } },
+            { tool: 'create_mission', input: { consultant_ids: ['inconnu'], name: 'X', client: 'Y', start_date: '2026-11-03', end_date: null, billing_type: 'at', tjm: 500, deal_amount: null, target_margin: null } }
+          ] }); } });
+        };
+        aiMount(); document.getElementById('ai-fab').click();
+        var opened = getComputedStyle(document.getElementById('ai-panel')).display === 'flex';
+        document.getElementById('ai-in').value = 'crée une mission pour ' + c.name;
+        await aiSend();
+        var ctxOk = !!(sent && sent.context && sent.context.consultants.length && sent.messages[0].role === 'user');
+        var cards = document.querySelectorAll('#ai-panel .ai-card').length;
+        var nMiss = S.miss.length, nLv = S.lvs.length;
+        document.querySelector('#ai-panel [data-ai="apply"][data-j="0"]').click();
+        var created = S.miss.length === nMiss + 1 && S.miss[S.miss.length - 1].tjm === 650 && S.miss[S.miss.length - 1].cli === 'BNP Paribas';
+        document.querySelector('#ai-panel [data-ai="apply"][data-j="1"]').click();
+        var leave = S.lvs.length === nLv + 1 || (S.approvals || []).some(function (a) { return a.type === 'leave_add'; });
+        document.querySelector('#ai-panel [data-ai="apply"][data-j="2"]').click();
+        var refused = S.miss.length === nMiss + 1 && /introuvable/.test(document.getElementById('ai-panel').innerText);
+        var hist = aiHistory(); var histOk = /créée/.test(hist[1].content);
+        S.modal = null;
+        S.role = save.role; S.miss = save.miss; S.lvs = save.lvs; window.aiAvailable = save.avail; window.fetch = save.fetch; window.sb = save.sb; S.ai = null;
+        aiMount(); render();
+        var hidden = getComputedStyle(document.getElementById('ai-fab')).display === 'none';
+        return { opened: opened, ctxOk: ctxOk, cards: cards, created: created, leave: leave, refused: refused, histOk: histOk, hidden: hidden };
+      });
+      check('Assistant IA : panneau ouvert depuis le bouton flottant', ai.opened);
+      check('Assistant IA : historique + contexte (consultants visibles) envoyés', ai.ctxOk);
+      check('Assistant IA : 3 cartes de confirmation affichées', ai.cards === 3, 'cartes=' + ai.cards);
+      check('Assistant IA : « Créer » crée la mission (client, TJM)', ai.created);
+      check('Assistant IA : « Créer » enregistre l’absence (ou la soumet au N+1)', ai.leave);
+      check('Assistant IA : consultant hors périmètre refusé', ai.refused);
+      check('Assistant IA : statut de la proposition renvoyé dans l’historique', ai.histOk);
+      check('Assistant IA : masqué en mode démo', ai.hidden);
+    }
 
     check('aucune erreur JS fatale sur tout le parcours app', p._appErrors.length === 0, p._appErrors.join(' | '));
     await p.context().close();

@@ -4,12 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Konsilys</title>
-<link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#1B2B3A">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="/icons/icon-192.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Konsilys">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -312,6 +309,48 @@ tr[data-act]{transition:background .12s}
 .cmdk-empty{padding:20px;text-align:center;color:#94a3b8;font-size:13px}
 .cmdk-foot{display:flex;gap:16px;padding:10px 16px;border-top:1px solid var(--line);font-size:11px;color:#94a3b8}
 .cmdk-foot kbd{background:#f1f5f9;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-family:inherit;font-size:10px;color:#64748b}
+/* ═══ Assistant IA (js/18-assistant.js) ═══ */
+#ai-fab{position:fixed;right:20px;bottom:20px;z-index:1500;display:flex;align-items:center;gap:8px;border:none;border-radius:999px;padding:12px 18px;background:#1B2B3A;color:#fff;font:inherit;font-size:14px;font-weight:800;box-shadow:0 12px 30px rgba(2,6,23,.3);cursor:pointer;transition:transform .15s}
+#ai-fab:hover{transform:translateY(-2px)}
+#ai-fab.on{background:#84CC16;color:#1B2B3A}
+#ai-panel{position:fixed;right:20px;bottom:78px;z-index:1500;width:400px;max-width:calc(100vw - 32px);height:560px;max-height:calc(100vh - 110px);display:none;flex-direction:column;background:#fff;border:1px solid #e2e8f0;border-radius:18px;box-shadow:0 24px 60px rgba(2,6,23,.25);overflow:hidden;font-size:13.5px;color:#0f172a}
+.ai-hd{display:flex;align-items:center;gap:8px;padding:14px 16px;background:#1B2B3A;color:#fff}
+.ai-hd b{font-size:14.5px}
+.ai-beta{font-size:10.5px;font-weight:800;background:#84CC16;color:#1B2B3A;border-radius:99px;padding:2px 8px}
+.ai-x{margin-left:auto;background:none;border:none;color:#cbd5e1;font-size:16px;cursor:pointer}
+.ai-body{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:#f8fafc}
+.ai-msg{display:flex;flex-direction:column;gap:8px;max-width:92%}
+.ai-msg.u{align-self:flex-end;align-items:flex-end}
+.ai-msg.a{align-self:flex-start}
+.ai-b{padding:10px 13px;border-radius:14px;line-height:1.5;background:#fff;border:1px solid #e2e8f0}
+.ai-msg.u .ai-b{background:#1B2B3A;color:#fff;border-color:#1B2B3A}
+.ai-b.err{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
+.ai-ex{display:block;width:100%;text-align:left;margin-top:8px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;font:inherit;font-size:12.5px;color:#334155;cursor:pointer}
+.ai-ex:hover{border-color:#84CC16;background:#f7fee7}
+.ai-card{background:#fff;border:1px solid #d9f99d;border-left:4px solid #84CC16;border-radius:12px;padding:12px;min-width:260px}
+.ai-ct{font-weight:800;margin-bottom:8px}
+.ai-row{display:flex;justify-content:space-between;gap:12px;padding:3px 0;font-size:12.5px}
+.ai-row span{color:#64748b}
+.ai-row b{text-align:right}
+.ai-act{display:flex;gap:8px;margin-top:10px}
+.ai-ok,.ai-no{flex:1;border:none;border-radius:9px;padding:8px;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer}
+.ai-ok{background:#84CC16;color:#1B2B3A}.ai-no{background:#f1f5f9;color:#475569}
+.ai-st{margin-top:10px;font-size:12.5px;font-weight:700;color:#64748b}
+.ai-st.ok{color:#15803d}.ai-st.err{color:#b91c1c}
+.ai-ft{display:flex;gap:8px;padding:10px;border-top:1px solid #e2e8f0;background:#fff}
+#ai-in{flex:1;resize:none;border:1px solid #e2e8f0;border-radius:10px;padding:9px 11px;font:inherit;font-size:13.5px;max-height:120px;color:#0f172a;background:#fff}
+#ai-in:focus{outline:none;border-color:#84CC16;box-shadow:0 0 0 3px rgba(132,204,22,.2)}
+.ai-send{border:none;border-radius:10px;background:#1B2B3A;color:#fff;width:42px;font-size:15px;cursor:pointer}
+.ai-send:disabled,#ai-in:disabled{opacity:.5}
+.ai-note{font-size:11px;color:#94a3b8;text-align:center;padding:0 10px 8px;background:#fff}
+.ai-typing{display:flex;gap:4px}.ai-typing i{width:6px;height:6px;border-radius:50%;background:#94a3b8;animation:aiDot 1s infinite}
+.ai-typing i:nth-child(2){animation-delay:.15s}.ai-typing i:nth-child(3){animation-delay:.3s}
+@keyframes aiDot{0%,80%,100%{opacity:.3}40%{opacity:1}}
+:root[data-theme="dark"] #ai-panel,:root[data-theme="dark"] .ai-ft,:root[data-theme="dark"] .ai-note{background:#141d28;color:#e2e8f0;border-color:#27323f}
+:root[data-theme="dark"] .ai-body{background:#0d131b}
+:root[data-theme="dark"] .ai-b,:root[data-theme="dark"] .ai-card,:root[data-theme="dark"] #ai-in{background:#1a2230;border-color:#27323f;color:#e2e8f0}
+:root[data-theme="dark"] .ai-ex,:root[data-theme="dark"] .ai-no{background:#27323f;border-color:#334155;color:#cbd5e1}
+@media(max-width:767px){#ai-fab{right:14px;bottom:14px;padding:12px 14px}#ai-fab .ai-fab-t{display:none}#ai-panel{right:8px;left:8px;width:auto;bottom:70px;height:calc(100vh - 100px)}}
 /* ═══ PWA installée (standalone) : respect des encoches (safe areas iOS/Android) ═══ */
 @media(display-mode:standalone){
   .topbar{padding-top:calc(10px + env(safe-area-inset-top))}
@@ -319,10 +358,6 @@ tr[data-act]{transition:background .12s}
   #sb{padding-top:env(safe-area-inset-top)}
   #mc{padding-bottom:env(safe-area-inset-bottom)}
 }
-/* Invite d'installation (Android/desktop via beforeinstallprompt) */
-#pwa-install{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:400;display:none;align-items:center;gap:10px;background:#1B2B3A;color:#fff;border:none;border-radius:14px;padding:11px 16px;font:inherit;font-size:13px;font-weight:700;box-shadow:0 12px 30px rgba(2,6,23,.35);cursor:pointer}
-#pwa-install .x{opacity:.7;font-weight:800;padding:0 2px}
-@media(display-mode:standalone){#pwa-install{display:none !important}}
 </style>
 <script>/* Applique le thème avant peinture (pas de flash) : préférence sauvegardée, sinon système. */
 (function(){try{var t=localStorage.getItem('theme');if(!t&&window.matchMedia&&matchMedia('(prefers-color-scheme:dark)').matches)t='dark';if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
@@ -353,33 +388,20 @@ tr[data-act]{transition:background .12s}
   <script src="js/15-integrations.js"></script>
   <script src="js/16-imports.js"></script>
   <script src="js/17-fun.js"></script>
+  <script src="js/18-assistant.js"></script>
   <script src="js/14-data-boot.js"></script>
 
 <script>(function(){function m(){return window.innerWidth<=767;}if(m())document.body.classList.add('sb-col');window.addEventListener('resize',function(){if(!m())document.body.classList.remove('sb-col');});})();</script>
 
-<button id="pwa-install" type="button" aria-label="Installer l'application"><span>📲 Installer l'app</span><span class="x" title="Plus tard">✕</span></button>
 <script>
-/* ═══ PWA : enregistrement du service worker + invite d'installation ═══ */
+/* ═══ Service worker (cache hors-ligne) ═══
+   L'installation de l'app depuis le web est désactivée : pas de manifeste,
+   pas de bouton « Installer », et l'invite native du navigateur est bloquée. */
 (function(){
   if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')){
     window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});
   }
-  /* Invite d'installation Android/desktop (iOS = « Ajouter à l'écran d'accueil » via Safari). */
-  var deferred=null, btn=document.getElementById('pwa-install');
-  function hide(){if(btn)btn.style.display='none';}
-  try{if(localStorage.getItem('pwa-install-dismissed')==='1')hide();}catch(e){}
-  window.addEventListener('beforeinstallprompt',function(ev){
-    ev.preventDefault();deferred=ev;
-    try{if(localStorage.getItem('pwa-install-dismissed')==='1')return;}catch(e){}
-    if(btn)btn.style.display='flex';
-  });
-  if(btn){
-    btn.addEventListener('click',function(e){
-      if(e.target&&e.target.classList.contains('x')){hide();try{localStorage.setItem('pwa-install-dismissed','1');}catch(_){}return;}
-      if(deferred){deferred.prompt();deferred.userChoice.finally(function(){deferred=null;hide();});}
-    });
-  }
-  window.addEventListener('appinstalled',function(){hide();try{localStorage.setItem('pwa-install-dismissed','1');}catch(_){}});
+  window.addEventListener('beforeinstallprompt',function(ev){ev.preventDefault();});
 })();
 </script>
 </body>
