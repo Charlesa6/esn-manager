@@ -1350,6 +1350,20 @@ async function newPage(browser) {
       check('Accueil : page d’accueil affichée (bienvenue, chiffres, accès rapide)', home.ok && home.tiles >= 5, 'tuiles=' + home.tiles);
       check('Accueil : un raccourci ouvre l’onglet', home.nav);
       check('Accueil : version Consultant (ses absences, pas de KPIs)', home.u);
+      const trial = await p.evaluate(() => {
+        var save = { role: S.role, tab: S.tab, demo: S.demo, sub: S.subscription };
+        S.role = 'admin'; S.demo = false; S.tab = 'home';
+        S.subscription = { status: 'trialing', current_period_end: new Date(Date.now() + 9 * 864e5).toISOString() };
+        render();
+        var mc = document.getElementById('mc'), txt = mc.innerText;
+        var card = /Votre essai gratuit/.test(txt) && /encore 9 jours/.test(txt) && !!mc.querySelector('.hm-trial [data-act="billing-open"]') && mc.querySelectorAll('.hm-step').length === 3;
+        S.subscription = { status: 'active' }; render();
+        var hidden = !/Votre essai gratuit/.test(document.getElementById('mc').innerText);
+        S.role = save.role; S.tab = save.tab; S.demo = save.demo; S.subscription = save.sub; S.ai = null; aiRender(); render();
+        return { card: card, hidden: hidden };
+      });
+      check('Accueil : carte « Votre essai gratuit » (jours restants, étapes, paiement)', trial.card);
+      check('Accueil : carte d’essai masquée pour un abonnement actif', trial.hidden);
     }
 
     check('aucune erreur JS fatale sur tout le parcours app', p._appErrors.length === 0, p._appErrors.join(' | '));

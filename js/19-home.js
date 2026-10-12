@@ -59,10 +59,35 @@ function tHome(){
     +'<h1>Bonjour'+(first?' '+esc(first):'')+' 👋</h1>'
     +'<p>Bienvenue sur Konsilys'+(S.role?' — '+esc(typeof rLabel==='function'?rLabel(S.role):S.role):'')+'.</p></div>'
     +'<button class="hm-ai" data-ai="toggle">✨ Demander à l’assistant</button></div>'
+    +homeTrialCard()
     +'<div class="hm-stats">'+stats+'</div>'
     +(pending.length?'<button class="hm-alert" data-nav="approvals">🔔 '+pending.length+' demande'+(pending.length>1?'s':'')+' en attente de votre validation →</button>':'')
     +'<div class="hm-grid">'
     +'<div class="card hm-card"><h3>Accès rapide</h3><div class="hm-tiles">'+shortcuts+'</div></div>'
     +'<div class="card hm-card"><h3>'+(manager?'Absences à venir (30 jours)':'Mes prochaines absences')+'</h3>'+(manager?lvRows:(upcomingLv.filter(function(l){return String(l.cid)===String(S.consId);}).length?upcomingLv.filter(function(l){return String(l.cid)===String(S.consId);}).slice(0,5).map(function(l){return '<div class="hm-row"><span>'+esc(l.type)+'</span><span class="hm-muted">'+fDt(l.s)+(l.e!==l.s?' → '+fDt(l.e):'')+'</span></div>';}).join(''):'<div class="hm-muted" style="padding:6px 0">Aucune absence prévue.</div>'))+'</div>'
     +'</div></div>';
+}
+
+/* Carte « Votre essai gratuit » (admin d'un espace en essai) : jours restants,
+   progression du démarrage avec une action par étape, ajout du moyen de paiement.
+   S'appuie sur aiTrial() / aiTrialSteps() (js/18-assistant.js). */
+function homeTrialCard(){
+  var t=(typeof aiTrial==='function')?aiTrial():null;
+  if(!t)return '';
+  var steps=aiTrialSteps(),done=steps.filter(function(x){return x.done;}).length;
+  var acts=[
+    '<button class="hm-tbtn" data-act="import-cons-open">📥 Importer (Excel)</button><button class="hm-tbtn" data-ai="toggle">✨ Via l’assistant</button>',
+    '<button class="hm-tbtn" data-nav="missions">💼 Ouvrir les missions</button>',
+    '<button class="hm-tbtn" data-nav="leaves">🌴 Ouvrir les absences</button>'
+  ];
+  var left=t.left;
+  return '<div class="card hm-trial">'
+    +'<div class="hm-trial-h"><div><h3>🎁 Votre essai gratuit'+(left!=null?' — '+(left<=1?'dernier jour':'encore '+left+' jours'):'')+'</h3>'
+    +'<p>Démarrage : '+done+'/'+steps.length+' étapes. Ajoutez un moyen de paiement pour continuer sans interruption à la fin de l’essai.</p></div>'
+    +'<button class="hm-pay" data-act="billing-open">💳 Ajouter un moyen de paiement</button></div>'
+    +'<div class="hm-prog"><span style="width:'+Math.round(done/steps.length*100)+'%"></span></div>'
+    +'<div class="hm-steps">'+steps.map(function(x,i){
+      return '<div class="hm-step'+(x.done?' ok':'')+'"><span class="hm-chk">'+(x.done?'✓':(i+1))+'</span><b>'+esc(x.label)+'</b>'
+        +(x.done?'<span class="hm-muted">Fait</span>':'<span class="hm-sacts">'+acts[i]+'</span>')+'</div>';
+    }).join('')+'</div></div>';
 }

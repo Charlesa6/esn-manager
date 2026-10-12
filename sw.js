@@ -1,21 +1,23 @@
-/* Service worker Konsilys (PWA).
-   - Shell same-origin en cache-first (mise à jour en arrière-plan).
+/* Service worker Konsilys (cache hors-ligne).
+   - Code de l'app (HTML, JS, CSS same-origin) en NETWORK-FIRST : une nouvelle
+     version déployée est utilisée dès la première ouverture (repli sur le cache
+     hors-ligne). Avant : cache-first → il fallait recharger deux fois.
+   - Images, polices et CDN en cache-first (mise à jour en arrière-plan).
    - Navigations en network-first (repli sur le shell mis en cache, utile hors-ligne).
    - Requêtes API (Supabase, Microsoft, Stripe) et autres cross-origin : réseau direct,
      jamais mises en cache (données fraîches + confidentialité).
    Bump CACHE à chaque déploiement pour purger l'ancien shell. */
-const CACHE = 'konsilys-shell-v10';
+const CACHE = 'konsilys-shell-v11';
 const SHELL = [
   '/app',
   '/esn_manager_cgi.html',
-  '/manifest.webmanifest',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/apple-touch-icon.png',
   '/js/01-core.js', '/js/03-sidebar.js', '/js/04-dashboard.js', '/js/05-missions-planning.js',
   '/js/06-kpis.js', '/js/07-leaves.js', '/js/08-access-admin.js', '/js/09-business.js',
   '/js/10-help-tutorials.js', '/js/11-directeurs-modal.js', '/js/12-recrutement.js',
-  '/js/13-render-events.js', '/js/15-integrations.js', '/js/16-imports.js', '/js/17-fun.js', '/js/14-data-boot.js',
+  '/js/13-render-events.js', '/js/15-integrations.js', '/js/16-imports.js', '/js/17-fun.js', '/js/18-assistant.js', '/js/19-home.js', '/js/14-data-boot.js',
   '/vendor/supabase-js.min.js'
 ];
 
@@ -62,7 +64,21 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Assets (same-origin + CDN/fonts) : cache-first, revalidation en arrière-plan.
+  // Code de l'app (JS/CSS/HTML same-origin) : network-first, repli sur le cache hors-ligne.
+  if (sameOrigin && /\.(js|css|html)$/.test(url.pathname)) {
+    e.respondWith((async () => {
+      try {
+        const net = await fetch(req, { cache: 'no-cache' });
+        if (net && net.ok) caches.open(CACHE).then((c) => c.put(req, net.clone())).catch(() => {});
+        return net;
+      } catch (_) {
+        return (await caches.match(req)) || Response.error();
+      }
+    })());
+    return;
+  }
+
+  // Autres assets (images, polices, CDN) : cache-first, revalidation en arrière-plan.
   e.respondWith((async () => {
     const cached = await caches.match(req);
     const fetchAndCache = fetch(req).then((res) => {
