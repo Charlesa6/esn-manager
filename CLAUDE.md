@@ -58,7 +58,7 @@ Functions in `supabase/functions/`:
 - `billing-portal` — opens the Stripe Customer Portal (auto-creates the portal config if missing).
 - `retry-seats` — re-runs provisioning for pending/errored seats (admin only).
 - `create-checkout` — legacy, superseded by `seats-checkout`.
-- `bd-unsubscribe` — public one-click unsubscribe link for Konsilys's own sales prospecting emails (`?t=<bd_prospects.unsub_token>` → status `desinscrit` + `bd_suppression`). **Deploy with `verify_jwt=false`** (clicked from emails). Tables `bd_prospects`/`bd_emails`/`bd_suppression` are global (not tenant) with RLS on and no client grants; used by the `business-developer` agent (`.claude/agents/`).
+- `bd-unsubscribe` — public one-click unsubscribe link for Konsilys's own sales prospecting emails (`?t=<bd_prospects.unsub_token>` → status `desinscrit` + `bd_suppression`). **Deploy with `verify_jwt=false`** (clicked from emails). Tables `bd_prospects`/`bd_emails`/`bd_suppression` (+ `bd_sourcing_vus`/`bd_sourcing_curseur`, the sourcing memory: examined SIRENs and page reached per NAF code) are global (not tenant) with RLS on and no client grants; used by the `business-developer` agent (`.claude/agents/`).
 - `assistant` — **disabled** (stub returning 410; delete it from the Supabase dashboard). The assistant runs locally in the browser.
 - `extract-cv` — reads a candidate's PDF CV (from `candidate-files` storage) and asks the Anthropic API to extract structured work experiences (forced tool-use schema), returned to the app to pre-fill the candidate's "Expériences" (for the CV Entreprise). **Requires the `ANTHROPIC_API_KEY` secret** (optional `CV_MODEL`). ⚠ Sends CV content to Anthropic (outside the EU) — RGPD arbitrage needed before enabling. `verify_jwt=true`.
 
