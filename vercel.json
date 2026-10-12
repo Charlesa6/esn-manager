@@ -1,9 +1,17 @@
 {
   "redirects": [
-    { "source": "/pilotage-esn", "destination": "/", "permanent": true }
+    { "source": "/pilotage-esn", "destination": "/", "permanent": true },
+    { "source": "/abonnement", "destination": "/tarifs", "permanent": true },
+    { "source": "/pricing", "destination": "/tarifs", "permanent": true },
+    { "source": "/trial", "destination": "/essai-gratuit", "permanent": true }
   ],
   "rewrites": [
     { "source": "/",      "destination": "/index.html" },
+    { "source": "/fonctionnalites", "destination": "/fonctionnalites.html" },
+    { "source": "/solutions", "destination": "/solutions.html" },
+    { "source": "/tarifs", "destination": "/tarifs.html" },
+    { "source": "/essai-gratuit", "destination": "/essai-gratuit.html" },
+    { "source": "/demo", "destination": "/demo.html" },
     { "source": "/admin-leads", "destination": "/admin-leads.html" },
     { "source": "/login", "destination": "/esn_login.html" },
     { "source": "/app",   "destination": "/esn_manager_cgi.html" },

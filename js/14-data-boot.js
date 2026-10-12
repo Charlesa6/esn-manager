@@ -118,24 +118,44 @@ function mapJob(r){return{
 };}
 
 /* Écran plein affiché quand l'entreprise n'est pas encore payée (inactive).
-   Propose de finaliser le paiement en rejouant le panier mémorisé (pending_cart)
-   via seats-checkout, ou de se déconnecter. */
-function showPaywall(co){
+   Deux cas :
+   • paiement / essai non finalisé → on rejoue le panier mémorisé (pending_cart,
+     y compris le drapeau d'essai gratuit) via seats-checkout ;
+   • abonnement annulé (ou essai gratuit terminé sans moyen de paiement) → on
+     propose de se réabonner avec les mêmes licences/modules que le dernier
+     abonnement (lu dans subscriptions). Pas de nouvel essai : seats-checkout le
+     refuse côté serveur pour une entreprise déjà abonnée. */
+async function showPaywall(co){
   var cart=(co&&co.pending_cart)||null;
-  var canFinish=!!(cart&&cart.items&&cart.items.length);
   var canceled=!!(co&&co.canceled_at); // abonnement annulé : accès suspendu, données conservées
-  var title=canceled?'Abonnement annulé':'Paiement à finaliser';
+  var items=null,seats=[],trial=false;
+  if(!canceled&&cart&&cart.items&&cart.items.length){items=cart.items;seats=cart.seats||[];trial=!!cart.trial;}
+  if(canceled){
+    try{
+      var _s=await sb.from('subscriptions').select('lines,created_at')
+        .eq('company_id',SB_CID).order('created_at',{ascending:false}).limit(1).maybeSingle();
+      var _l=(_s&&_s.data&&_s.data.lines)||[];
+      items=_l.filter(function(l){return l&&l.price_id;}).map(function(l){return {price_id:l.price_id,quantity:l.quantity||1};});
+      if(!items.length)items=null;
+    }catch(e){console.warn('paywall sub:',e);}
+  }
+  var canFinish=!!(items&&items.length);
+  var title=canceled?'Votre accès est suspendu':(trial?'Activez votre essai gratuit':'Paiement à finaliser');
   var msg=canceled
-    ? 'Votre abonnement a été annulé : l\'accès à votre espace est suspendu. Vos données sont conservées pendant 1 an. Pour réactiver votre espace, contactez contact@konsilys.fr.'
-    : ('Votre espace Konsilys s\'ouvre dès que votre abonnement est réglé. '
-       +(canFinish?'Finalisez votre paiement pour activer votre accès.':'Aucun paiement en attente n\'a été trouvé pour votre entreprise — contactez contact@konsilys.fr.'));
+    ? 'Votre abonnement (ou votre essai gratuit) est terminé : l\'accès à votre espace est suspendu. Vos données sont conservées pendant 1 an. '
+      +(canFinish?'Réabonnez-vous pour retrouver votre espace instantanément.':'Pour réactiver votre espace, contactez contact@konsilys.fr.')
+    : (trial
+      ? 'Plus qu\'une étape : confirmez votre essai gratuit de 14 jours (sans carte bancaire) pour ouvrir votre espace.'
+      : ('Votre espace Konsilys s\'ouvre dès que votre abonnement est réglé. '
+         +(canFinish?'Finalisez votre paiement pour activer votre accès.':'Aucun paiement en attente n\'a été trouvé pour votre entreprise — contactez contact@konsilys.fr.')));
+  var label=canceled?'Me réabonner →':(trial?'Démarrer mon essai gratuit →':'Finaliser mon paiement →');
   var html=''
     +'<div style="position:fixed;inset:0;background:#0f1720;color:#fff;display:flex;align-items:center;justify-content:center;padding:24px;z-index:99999;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif">'
     +'<div style="max-width:460px;text-align:center">'
-    +'<div style="font-size:40px;margin-bottom:12px">🔒</div>'
+    +'<div style="font-size:40px;margin-bottom:12px">'+(trial&&!canceled?'🎁':'🔒')+'</div>'
     +'<h1 style="font-size:22px;font-weight:800;margin:0 0 10px">'+title+'</h1>'
     +'<p style="font-size:15px;line-height:1.6;color:#cbd5e1;margin:0 0 22px">'+msg+'</p>'
-    +((canFinish&&!canceled)?'<button id="pw-go" style="background:#84CC16;color:#0f1720;border:none;border-radius:10px;padding:14px 22px;font-size:15px;font-weight:800;cursor:pointer">Finaliser mon paiement →</button>':'')
+    +(canFinish?'<button id="pw-go" style="background:#84CC16;color:#0f1720;border:none;border-radius:10px;padding:14px 22px;font-size:15px;font-weight:800;cursor:pointer">'+label+'</button>':'')
     +'<div id="pw-msg" style="font-size:13px;color:#fca5a5;margin-top:12px;min-height:16px"></div>'
     +'<div style="margin-top:22px"><a href="#" id="pw-out" style="color:#94a3b8;font-size:13px;text-decoration:underline">Se déconnecter</a></div>'
     +'</div></div>';
@@ -145,15 +165,15 @@ function showPaywall(co){
   var go=document.getElementById('pw-go');
   if(go)go.onclick=async function(){
     go.disabled=true;go.textContent='Redirection…';
-    var msg=document.getElementById('pw-msg');msg.textContent='';
+    var pmsg=document.getElementById('pw-msg');pmsg.textContent='';
     try{
       var ses=await sb.auth.getSession();
       var tok=ses&&ses.data&&ses.data.session&&ses.data.session.access_token;
-      var r=await fetch('https://rwmstlesxnglpblrurqj.supabase.co/functions/v1/seats-checkout',{method:'POST',headers:{'content-type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({items:cart.items,seats:cart.seats||[],success_url:location.origin+'/login?checkout=success',cancel_url:location.origin+'/app'})});
+      var r=await fetch('https://rwmstlesxnglpblrurqj.supabase.co/functions/v1/seats-checkout',{method:'POST',headers:{'content-type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({items:items,seats:seats,trial:trial,success_url:location.origin+'/login?checkout=success'+(trial?'&trial=1':''),cancel_url:location.origin+'/app'})});
       var d=await r.json();
       if(d&&d.url){location.href=d.url;return;}
-      msg.textContent=(d&&d.error)||'Erreur — réessayez.';go.disabled=false;go.textContent='Finaliser mon paiement →';
-    }catch(e){msg.textContent='Erreur réseau — réessayez.';go.disabled=false;go.textContent='Finaliser mon paiement →';}
+      pmsg.textContent=(d&&d.error)||'Erreur — réessayez.';go.disabled=false;go.textContent=label;
+    }catch(e){pmsg.textContent='Erreur réseau — réessayez.';go.disabled=false;go.textContent=label;}
   };
 }
 
@@ -949,6 +969,11 @@ async function initApp(){
       await loadConsInvites();
       await loadApprovals();
       await loadTimesheets();
+      /* Essai gratuit : les administrateurs voient le compte à rebours (bannière
+         dans render()) et peuvent ajouter un moyen de paiement. */
+      if(S.role==='admin'||S.role==='super_admin'){
+        loadSubscription().then(function(){if(S.subscription&&S.subscription.status==='trialing')render();});
+      }
 
       /* ── 4. Listener pour d\u00e9connexion / expiration de token ── */
       sb.auth.onAuthStateChange(function(event){

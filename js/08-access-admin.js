@@ -470,7 +470,7 @@ function tSVPAcces(){
       +'<div><h3 style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:10px">💳 Mon abonnement</h3>'
       +'<div style="display:flex;gap:24px;flex-wrap:wrap;font-size:13px">'
       +'<div><div style="color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Statut</div><span style="font-weight:700;color:'+statusColor+'">'+statusTxt+'</span></div>'
-      +'<div><div style="color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">'+(sub&&sub.status==='canceled'?'Fin d\'accès':'Prochaine échéance')+'</div><span style="font-weight:700;color:#0f172a">'+endTxt+'</span></div>'
+      +'<div><div style="color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">'+(sub&&sub.status==='canceled'?'Fin d\'accès':(sub&&sub.status==='trialing'?'Fin de l\'essai gratuit':'Prochaine échéance'))+'</div><span style="font-weight:700;color:#0f172a">'+endTxt+'</span></div>'
       +'<div><div style="color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Licences</div><span style="font-weight:700;color:#0f172a">'+(nLic||'—')+'</span></div>'
       +'</div></div>'
       +'<button class="bp" data-act="billing-open"'+(sbOn?'':' disabled style="opacity:.5"')+' title="Résilier, réactiver, changer de carte, voir les factures">Gérer mon abonnement →</button>'

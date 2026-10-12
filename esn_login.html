@@ -411,7 +411,22 @@ document.addEventListener('DOMContentLoaded', function() {
      Le compte admin a deja ete cree dans le tunnel : s'il est connecte, on file
      vers l'espace ; sinon on l'invite simplement a se connecter. */
   if (params.get('checkout') === 'success' && !isSetPw) {
-    if (sb) {
+    var isTrial = params.get('trial') === '1';
+    if (isTrial) {
+      var okMsg = '\u{1F381} Essai gratuit activé : 14 jours offerts ! ';
+      if (sb) {
+        sb.auth.getSession().then(function(s){
+          if (s && s.data && s.data.session) {
+            showBanner('ok', okMsg + 'Ouverture de votre espace…');
+            setTimeout(function(){ window.location.href = '/app'; }, 1200);
+          } else {
+            showBanner('ok', okMsg + 'Connectez-vous pour accéder à votre espace.');
+          }
+        });
+      } else {
+        showBanner('ok', okMsg + 'Connectez-vous pour accéder à votre espace.');
+      }
+    } else if (sb) {
       sb.auth.getSession().then(function(s){
         if (s && s.data && s.data.session) {
           showBanner('ok', '\u{1F389} Paiement réussi ! Ouverture de votre espace…');

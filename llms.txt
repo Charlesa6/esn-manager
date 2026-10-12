@@ -2,9 +2,9 @@
 
 > Konsilys est un éditeur français de logiciels, SaaS et services métier pour les entreprises. Le catalogue s'enrichit progressivement ; d'autres offres arrivent. Sa première solution, disponible aujourd'hui, est une plateforme SaaS de pilotage pour les ESN (entreprises de services du numérique) et les sociétés de conseil : elle centralise en temps réel le staffing, les missions et la marge, les absences, le recrutement et le CRM commercial — avec des intégrations vers les outils RH, paie et facturation du marché. Multi-tenant, isolation stricte par entreprise, données hébergées en Europe (RGPD).
 
-Site : https://konsilys.fr · Solution Pilotage ESN : https://konsilys.fr/pilotage-esn · Contact : contact@konsilys.fr · Langue : français
+Site : https://konsilys.fr · Fonctionnalités : https://konsilys.fr/fonctionnalites · Tarifs : https://konsilys.fr/tarifs · Essai gratuit 14 jours : https://konsilys.fr/essai-gratuit · Démo : https://konsilys.fr/demo · Contact : contact@konsilys.fr · Langue : français
 
-Tout ce qui suit décrit la solution « Pilotage ESN » (https://konsilys.fr/pilotage-esn).
+Tout ce qui suit décrit la solution « Pilotage ESN » (https://konsilys.fr/).
 
 ## Ce que fait Konsilys
 
@@ -35,7 +35,7 @@ Modèle par licence et par rôle (mensuel, sans engagement ; annuel = 2 mois off
 - Super Admin : 49 €/mois
 - Modules Recrutement et Business Développement : 59 €/mois par entreprise chacun
 
-La création d'un espace se fait uniquement via la souscription payante en ligne.
+Essai gratuit de 14 jours, sans carte bancaire (https://konsilys.fr/essai-gratuit) : toutes les fonctionnalités de la licence choisie ; à la fin de l'essai, l'abonnement continue si un moyen de paiement a été ajouté, sinon l'accès est suspendu sans prélèvement (données conservées).
 
 ## Sécurité & conformité
 
@@ -46,7 +46,7 @@ La création d'un espace se fait uniquement via la souscription payante en ligne
 
 ## Mise en route
 
-Souscription en ligne → import des consultants depuis Excel/CSV → ajout de l'équipe (chacun définit son mot de passe) → pilotage immédiat. Aucune installation ; accessible depuis un navigateur, sur mobile et desktop.
+Essai gratuit en ligne (sans carte bancaire) → import des consultants depuis Excel/CSV → ajout de l'équipe (chacun définit son mot de passe) → pilotage immédiat. Aucune installation ; accessible depuis un navigateur, sur mobile et desktop.
 
 ## Ressources (blog)
 
