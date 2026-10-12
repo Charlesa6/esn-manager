@@ -50,3 +50,4 @@ Disallow: /apercu/
 Disallow: /desinscription
 
 Sitemap: https://konsilys.fr/sitemap.xml
+Sitemap: https://www.konsilys.com/sitemap-com.xml
