@@ -1260,6 +1260,75 @@ async function newPage(browser) {
       check('Essai gratuit : le guide ne s’ouvre automatiquement qu’une fois', ai2.once);
     }
 
+    // Assistant : modifier / supprimer consultants, missions, absences
+    {
+      const ai3 = await p.evaluate(() => {
+        var save = { role: S.role, cons: S.cons, miss: S.miss, lvs: S.lvs, all: S._all };
+        S.role = 'super_admin'; S.ai = null;
+        var st = aiState();
+        var say = function (t) { st.msgs.push({ role: 'user', text: t }); var r = aiRespond(t); st.msgs.push(r); return r; };
+        /* Mission : plusieurs candidates → choix → modification */
+        var r1 = say('Prolonge la mission de Sophie Martin chez BNP Paribas jusqu\'au 31 décembre 2026');
+        var choice = r1.choices && r1.choices.length === 2 && r1.choices[0].act === 'pick-item';
+        aiMount(); st.open = true; aiRender();
+        document.querySelector('#ai-panel [data-ai="pick-item"][data-cid="m6"]').click();
+        var last = st.msgs[st.msgs.length - 1], a1 = last.actions && last.actions[0];
+        var upd = !!a1 && a1.tool === 'update_mission' && a1.input.id === 'm6' && a1.input.changes.ed === '2026-12-31';
+        var cardTxt = document.getElementById('ai-panel').innerText;
+        var beforeAfter = /30\/09\/2026 → 31\/12\/2026/.test(cardTxt);
+        /* m6 touche une semaine au Time Sheet approuvé → refus (même règle que le formulaire) */
+        var lockRes = aiApply(a1), locked = lockRes.ok === false && /Time Sheet/.test(lockRes.msg);
+        var r1b = say('Prolonge la mission de Inès Rousseau chez AXA jusqu\'au 31 décembre 2026');
+        var applied = locked && r1b.actions && aiApply(r1b.actions[0]).ok && S.miss.find(function (m) { return m.id === 'm3'; }).ed === '2026-12-31';
+        /* TJM */
+        var r2 = say('Passe le TJM de la mission de Claire Morin à 950 €');
+        var tjm = r2.actions && r2.actions[0].input.changes.tjm === 950 && aiApply(r2.actions[0]).ok && S.miss.find(function (m) { return m.id === 'm5'; }).tjm === 950;
+        /* Absence : changement de type puis de dates */
+        var r3 = say('Transforme le congé de Inès Rousseau en RTT');
+        var ltype = r3.actions && r3.actions[0].tool === 'update_leave' && r3.actions[0].input.changes.type === 'RTT' && aiApply(r3.actions[0]).ok && S.lvs.find(function (l) { return l.id === 'v5'; }).type === 'RTT';
+        var r4 = say('Décale le congé de Claire Morin du 2 au 6 novembre 2026');
+        var ldates = r4.actions && r4.actions[0].input.changes.s === '2026-11-02' && r4.actions[0].input.changes.e === '2026-11-06';
+        /* Consultant : SCR + poste */
+        var r5 = say('Change le SCR de Sophie Martin à 480');
+        var scr = r5.actions && r5.actions[0].tool === 'update_consultant' && r5.actions[0].input.changes.scr === 480 && aiApply(r5.actions[0]).ok && S.cons.find(function (c) { return c.id === 'd1'; }).scr === 480;
+        say('modifie le consultant Lucas Dupont'); var r6 = say('poste Architecte Cloud');
+        var title = r6.actions && r6.actions[0].input.changes.title === 'Architecte Cloud';
+        /* Suppressions */
+        var nM = S.miss.length, r7 = say('Supprime la mission de Karim Belhaj chez SNCF');
+        var delM = r7.actions && r7.actions[0].tool === 'delete_mission' && aiApply(r7.actions[0]).ok && S.miss.length === nM - 1;
+        var nL = S.lvs.length, r8 = say('Supprime la maladie de Karim Belhaj');
+        var delL = r8.actions && r8.actions[0].tool === 'delete_leave' && r8.actions[0].input.id === 'v6' && aiApply(r8.actions[0]).ok && S.lvs.length === nL - 1;
+        var nC = S.cons.length, r9 = say('Supprime le consultant Karim Belhaj');
+        var delC = r9.actions && r9.actions[0].tool === 'delete_consultant' && aiApply(r9.actions[0]).ok && S.cons.length === nC - 1;
+        var r10 = say('supprime Sophie Martin');
+        var ent = !!(r10.choices && r10.choices.length === 3 && r10.choices[0].act === 'pick-ent');
+        var r11 = say('Crée une mission pour Sophie Martin chez AXA du 3 au 28 novembre 2026 qui se termine fin novembre à 600 €');
+        var notOp = r11.actions && r11.actions[0].tool === 'create_mission';
+        /* Droits : un consultant ne supprime pas la mission d'un autre ; pas de suppression de consultant */
+        S.role = 'utilisateur';
+        var deny1 = aiApply({ tool: 'delete_consultant', input: { id: 'd2' } }).ok === false;
+        var deny2 = aiApply({ tool: 'delete_mission', input: { id: 'm3' } }).ok === false;
+        S.role = save.role; S.cons = save.cons; S.miss = save.miss; S.lvs = save.lvs; S._all = save.all; S.ai = null; S.modal = null;
+        aiRender(); render();
+        return { choice: choice, upd: upd, beforeAfter: beforeAfter, applied: applied, tjm: tjm, ltype: ltype, ldates: ldates, scr: scr, title: title,
+          delM: delM, delL: delL, delC: delC, ent: ent, notOp: notOp, deny: deny1 && deny2 };
+      });
+      check('Assistant : modification de mission → choix entre 2 missions', ai3.choice);
+      check('Assistant : « prolonge … jusqu’au » → nouvelle date de fin (avant → après)', ai3.upd && ai3.beforeAfter);
+      check('Assistant : modification refusée si Time Sheet approuvé, appliquée sinon', ai3.applied);
+      check('Assistant : changement de TJM appliqué', ai3.tjm);
+      check('Assistant : absence « en RTT » (changement de type)', ai3.ltype);
+      check('Assistant : absence décalée (nouvelles dates)', ai3.ldates);
+      check('Assistant : SCR d’un consultant modifié', ai3.scr);
+      check('Assistant : poste d’un consultant (question puis réponse)', ai3.title);
+      check('Assistant : suppression d’une mission', ai3.delM);
+      check('Assistant : suppression d’une absence (par type)', ai3.delL);
+      check('Assistant : suppression d’un consultant', ai3.delC);
+      check('Assistant : « supprime <nom> » → choix consultant / mission / absence', ai3.ent);
+      check('Assistant : une création n’est pas prise pour une modification', ai3.notOp);
+      check('Assistant : droits respectés (rôle Consultant)', ai3.deny);
+    }
+
     check('aucune erreur JS fatale sur tout le parcours app', p._appErrors.length === 0, p._appErrors.join(' | '));
     await p.context().close();
   } catch (e) { check('app démo charge sans exception', false, e.message); }
