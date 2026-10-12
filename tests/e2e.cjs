@@ -1329,6 +1329,29 @@ async function newPage(browser) {
       check('Assistant : droits respectés (rôle Consultant)', ai3.deny);
     }
 
+    // Accueil : clic sur le logo « Konsilys » → page d'accueil
+    {
+      const home = await p.evaluate(() => {
+        var save = { role: S.role, tab: S.tab };
+        S.role = 'super_admin'; S.tab = 'kpis'; render();
+        var logo = document.querySelector('#sb [data-nav="home"]');
+        if (logo) logo.click();
+        var txt = document.getElementById('mc').innerText;
+        var ok = S.tab === 'home' && /Bonjour/.test(txt) && /Accès rapide/.test(txt) && /missions? en cours/.test(txt);
+        var tiles = document.querySelectorAll('#mc .hm-tile').length;
+        var t = document.querySelector('#mc .hm-tile[data-nav="missions"]'); if (t) t.click();
+        var nav = S.tab === 'missions';
+        S.role = 'utilisateur'; S.tab = 'home'; render();
+        var u = S.tab === 'home' && /Mes prochaines absences/.test(document.getElementById('mc').innerText) && !document.querySelector('#mc .hm-tile[data-nav="kpis"]');
+        S.role = save.role; S.tab = save.tab; render();
+        return { logo: !!logo, ok: ok, tiles: tiles, nav: nav, u: u };
+      });
+      check('Accueil : le logo Konsilys est cliquable', home.logo);
+      check('Accueil : page d’accueil affichée (bienvenue, chiffres, accès rapide)', home.ok && home.tiles >= 5, 'tuiles=' + home.tiles);
+      check('Accueil : un raccourci ouvre l’onglet', home.nav);
+      check('Accueil : version Consultant (ses absences, pas de KPIs)', home.u);
+    }
+
     check('aucune erreur JS fatale sur tout le parcours app', p._appErrors.length === 0, p._appErrors.join(' | '));
     await p.context().close();
   } catch (e) { check('app démo charge sans exception', false, e.message); }
