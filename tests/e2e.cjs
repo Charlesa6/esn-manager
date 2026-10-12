@@ -533,13 +533,19 @@ async function newPage(browser) {
         const tsTxt = await p.evaluate(() => document.body.innerText);
         check('Time Sheet : en-tête hebdomadaire affiché', /Time Sheet/.test(tsTxt) && /hebdomadaire/.test(tsTxt));
         check('Time Sheet : navigation sans erreur JS', p._appErrors.length === before, p._appErrors.slice(before).join(' | '));
-        // d1 : semaine validée (2026-07-20) et soumise (2026-07-13) en démo → historique
+        // d1 : semaine validée (2026-07-20) et soumise (2026-07-13) en démo. On ouvre
+        // chaque semaine explicitement : l'historique ne couvre que les 12 dernières
+        // semaines, ces dates en sortent avec le temps (test dépendant de la date).
         const statusTxt = await p.evaluate(() => {
-          S.tsCid = 'd1'; S.tsWeek = ''; render();
+          S.tsCid = 'd1'; S.tsWeek = '2026-07-20'; render();
+          return document.body.innerText;
+        });
+        const pendingTxt = await p.evaluate(() => {
+          S.tsCid = 'd1'; S.tsWeek = '2026-07-13'; render();
           return document.body.innerText;
         });
         check('Time Sheet : statut « Validé » affiché (semaine approuvée)', /Validé/.test(statusTxt));
-        check('Time Sheet : statut « En attente » affiché (semaine soumise)', /En attente/.test(statusTxt));
+        check('Time Sheet : statut « En attente » affiché (semaine soumise)', /En attente/.test(pendingTxt));
         // Cohérence congé : semaine 2026-07-13 de d1 (congés couverts par un congé validé)
         const okBadge = await p.evaluate(() => {
           S.tsCid = 'd1'; S.tsWeek = '2026-07-13'; render();
