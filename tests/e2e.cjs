@@ -1347,6 +1347,15 @@ async function newPage(browser) {
         return { logo: !!logo, ok: ok, tiles: tiles, nav: nav, u: u };
       });
       check('Accueil : le logo Konsilys est cliquable', home.logo);
+      /* Clic réel sur les 3 barres du logo et juste à côté (zone élargie) */
+      const barClicks = [];
+      for (const [dx, dy] of [[0, 0], [-6, 0], [0, 12]]) {
+        await p.evaluate(() => { S.tab = 'kpis'; render(); });
+        const r = await p.evaluate(() => { var b = document.querySelector('#sb [data-nav="home"]').firstElementChild.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2, l: b.left }; });
+        await p.mouse.click(dx < 0 ? r.l + dx : r.x + dx, r.y + dy);
+        barClicks.push(await p.evaluate(() => S.tab));
+      }
+      check('Accueil : clic sur les 3 barres du logo (et autour) → accueil', barClicks.every(function (t) { return t === 'home'; }), barClicks.join(','));
       check('Accueil : page d’accueil affichée (bienvenue, chiffres, accès rapide)', home.ok && home.tiles >= 5, 'tuiles=' + home.tiles);
       check('Accueil : un raccourci ouvre l’onglet', home.nav);
       check('Accueil : version Consultant (ses absences, pas de KPIs)', home.u);
