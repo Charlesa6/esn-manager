@@ -55,10 +55,23 @@ function render(){
     +'<a href="/login" style="color:#e9d5ff;font-size:12px;font-weight:600;background:rgba(255,255,255,.15);padding:4px 12px;border-radius:6px;text-decoration:none">'
     +'Cr\u00e9er un compte \u2192</a></div>'
     :'';
+  /* Bannière d'essai gratuit (admins) : jours restants + ajout du moyen de
+     paiement via le portail Stripe (sans moyen de paiement, l'accès est coupé
+     à la fin de l'essai). */
+  var _trialBanner='';
+  if(!S.demo&&S.subscription&&S.subscription.status==='trialing'&&(S.role==='admin'||S.role==='super_admin')){
+    var _te=S.subscription.current_period_end?new Date(S.subscription.current_period_end):null;
+    var _tl=_te&&!isNaN(_te)?Math.max(0,Math.ceil((_te-Date.now())/864e5)):null;
+    var _td=_te&&!isNaN(_te)?_te.toLocaleDateString('fr-FR',{day:'numeric',month:'long'}):'';
+    _trialBanner='<div style="background:#ecfccb;color:#1B2B3A;border-bottom:1px solid #bef264;text-align:center;padding:9px 16px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;flex-shrink:0">'
+      +'🎁 Essai gratuit'+(_tl!==null?' — '+(_tl<=1?'dernier jour':'encore '+_tl+' jours')+' (jusqu\u2019au '+_td+')':'')
+      +'<span style="font-weight:500">Ajoutez un moyen de paiement pour continuer sans interruption.</span>'
+      +'<button data-act="billing-open" style="background:#1B2B3A;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">Ajouter un moyen de paiement →</button></div>';
+  }
   var _topbar='<div class="topbar"><button class="topsearch" data-act="cmdk-open" title="Rechercher (⌘K)" aria-label="Rechercher (Ctrl+K)">'
     +'<span style="opacity:.7" aria-hidden="true">🔍</span><span class="tsp">Rechercher une fonctionnalité, une page…</span>'
     +'<span class="tsk">⌘K</span></button></div>';
-  document.getElementById('mc').innerHTML=_demoBanner+_topbar+'<div class="inn'+(_tabChanged?' vin':'')+'" style="position:relative">'+_pfBtn+v+'</div>';
+  document.getElementById('mc').innerHTML=_demoBanner+_trialBanner+_topbar+'<div class="inn'+(_tabChanged?' vin':'')+'" style="position:relative">'+_pfBtn+v+'</div>';
   document.getElementById('md').innerHTML=tModal()+(S.bizModal?tBizModal():'');
   /* Thème sombre : transforme les couleurs inline du contenu et des modales
      (la barre latérale reste sur son fond navy, déjà adapté au sombre). */

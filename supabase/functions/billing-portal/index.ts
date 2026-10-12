@@ -1,8 +1,11 @@
 // billing-portal : ouvre le Portail Client Stripe pour l'entreprise de
 // l'appelant (résilier, prolonger/réactiver, changer de carte, voir les
 // factures). Réservé aux rôles d'administration (propriétaire de la facturation).
-// Bootstrap : si aucune configuration de portail n'existe côté Stripe, on en
-// crée une (résiliation en fin de période) et on la marque par défaut.
+// Bootstrap : si le compte n'a pas de configuration de portail par défaut (jamais
+// enregistrée dans le Dashboard), on réutilise une configuration active créée
+// par l'API ou on en crée une (résiliation en fin de période), et on la passe
+// explicitement à la session (`is_default` n'est pas un paramètre de création :
+// une configuration créée par l'API ne devient jamais la configuration par défaut).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4?target=deno";
 
 const STRIPE_KEY = (Deno.env.get("STRIPE_SECRET_KEY") ?? "").trim();
@@ -37,8 +40,15 @@ async function stripe(path: string, form: URLSearchParams) {
   return { ok: r.ok, data: await r.json() };
 }
 
-// Crée (une fois) une configuration de portail et la définit par défaut.
-async function ensureConfig(): Promise<void> {
+// Configuration de portail à utiliser : une configuration active existante, sinon
+// une nouvelle. payment_method_update permet notamment d'ajouter une carte
+// pendant l'essai gratuit (abonnement « trialing » sans moyen de paiement).
+async function ensureConfig(): Promise<string | null> {
+  const l = await fetch("https://api.stripe.com/v1/billing_portal/configurations?active=true&limit=1", {
+    headers: { Authorization: `Bearer ${STRIPE_KEY}` },
+  });
+  const ld = await l.json();
+  if (l.ok && ld?.data?.[0]?.id) return ld.data[0].id;
   const f = new URLSearchParams();
   f.set("business_profile[headline]", "Konsilys — Gérez votre abonnement");
   f.set("default_return_url", "https://konsilys.fr/app");
@@ -50,8 +60,9 @@ async function ensureConfig(): Promise<void> {
   f.append("features[customer_update][allowed_updates][]", "tax_id");
   f.set("features[subscription_cancel][enabled]", "true");
   f.set("features[subscription_cancel][mode]", "at_period_end");
-  f.set("is_default", "true");
-  await stripe("billing_portal/configurations", f);
+  const c = await stripe("billing_portal/configurations", f);
+  if (!c.ok) console.error("billing portal config:", c.data?.error?.message);
+  return c.ok ? c.data.id : null;
 }
 
 Deno.serve(async (req) => {
@@ -85,18 +96,19 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const return_url = safeBack(body?.return_url, "https://konsilys.fr/app");
 
-    const mk = () => {
+    const mk = (configuration?: string | null) => {
       const f = new URLSearchParams();
       f.set("customer", String(customer));
       f.set("return_url", return_url);
+      if (configuration) f.set("configuration", configuration);
       return stripe("billing_portal/sessions", f);
     };
 
     let res = await mk();
-    // Si aucune configuration de portail n'existe encore, on la crée puis on réessaie.
+    // Pas de configuration par défaut : on en récupère/crée une et on réessaie avec.
     if (!res.ok && String(res.data?.error?.message || "").toLowerCase().includes("configuration")) {
-      await ensureConfig();
-      res = await mk();
+      const cfg = await ensureConfig();
+      if (cfg) res = await mk(cfg);
     }
     if (!res.ok) return json({ error: res.data?.error?.message || "Erreur Stripe" }, 502);
     return json({ url: res.data.url });

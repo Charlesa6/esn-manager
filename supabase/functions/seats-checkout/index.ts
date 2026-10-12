@@ -7,6 +7,12 @@
 //   • Ajout de sièges : une entreprise déjà active achète des licences pour
 //     d'autres personnes. → pas de licence Admin requise.
 //
+// Essai gratuit (body.trial = true) : uniquement à la 1re inscription d'une
+// entreprise qui n'a jamais eu d'abonnement. L'abonnement Stripe est créé en
+// statut « trialing » (14 jours, sans carte bancaire) : le webhook active
+// l'entreprise comme pour un paiement. Sans moyen de paiement ajouté à la fin de
+// l'essai, Stripe annule l'abonnement → le webhook coupe l'accès (données gardées).
+//
 // L'appelant doit être authentifié (JWT). Les écritures DB passent par le
 // service role. Les comptes des collègues sont créés APRÈS paiement (webhook).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4?target=deno";
@@ -32,6 +38,8 @@ const OWNER_PRICES = new Set<string>([
   "price_1TqUYQA6guMn7iZUdOwh2sri", "price_1TqUYRA6guMn7iZU0VqsQlIt", // Admin
   "price_1TqUYTA6guMn7iZUVdiYjBhI", "price_1TqUYUA6guMn7iZUtB7aYGuq", // Super Admin
 ]);
+const TRIAL_DAYS = 14;
+const TRIAL_MAX_SEATS = 25; // garde-fou anti-abus des invitations pendant l'essai
 const SEAT_ROLES = new Set<string>([
   "utilisateur", "recruteur", "sales", "gestionnaire", "admin", "super_admin",
 ]);
@@ -72,7 +80,7 @@ Deno.serve(async (req) => {
       .select("company_id, role").eq("id", user.id).maybeSingle();
     if (!prof?.company_id) return json({ error: "Profil introuvable" }, 400);
     const { data: co } = await svc.from("companies")
-      .select("id, active").eq("id", prof.company_id).maybeSingle();
+      .select("id, active, canceled_at").eq("id", prof.company_id).maybeSingle();
 
     const body = await req.json();
     const items = (Array.isArray(body?.items) ? body.items : [])
@@ -100,6 +108,19 @@ Deno.serve(async (req) => {
       }))
       .filter((s: any) => s.email.includes("@") && SEAT_ROLES.has(s.role));
 
+    // Essai gratuit : 1re inscription, jamais abonnée (ni annulée) auparavant.
+    let trial = false;
+    if (body?.trial === true && initial && !co?.canceled_at) {
+      const { count } = await svc.from("subscriptions")
+        .select("stripe_subscription_id", { count: "exact", head: true })
+        .eq("company_id", prof.company_id);
+      trial = !count;
+      if (!trial) return json({ error: "L'essai gratuit a déjà été utilisé pour cette entreprise." }, 400);
+      if (seats.length > TRIAL_MAX_SEATS) {
+        return json({ error: `Pendant l'essai, invitez jusqu'à ${TRIAL_MAX_SEATS} personnes (vous pourrez en ajouter ensuite).` }, 400);
+      }
+    }
+
     const batchId = crypto.randomUUID();
     if (seats.length) {
       // invited_by_id = l'acheteur : il devient le N+1 de chaque personne provisionnée.
@@ -108,7 +129,7 @@ Deno.serve(async (req) => {
       if (seatErr) return json({ error: "Enregistrement des sièges impossible : " + seatErr.message }, 500);
     }
     // Mémoriser le panier pour permettre de finaliser un paiement abandonné.
-    await svc.from("companies").update({ pending_cart: { items, seats, batch_id: batchId } })
+    await svc.from("companies").update({ pending_cart: { items, seats, batch_id: batchId, trial } })
       .eq("id", prof.company_id);
 
     const form = new URLSearchParams();
@@ -123,6 +144,14 @@ Deno.serve(async (req) => {
     form.set("metadata[batch_id]", batchId);
     form.set("subscription_data[metadata][company_id]", prof.company_id);
     form.set("subscription_data[metadata][batch_id]", batchId);
+    if (trial) {
+      form.set("subscription_data[trial_period_days]", String(TRIAL_DAYS));
+      // Pas de carte demandée pour démarrer ; sans moyen de paiement à la fin
+      // de l'essai, l'abonnement est annulé (→ accès bloqué par le webhook).
+      form.set("payment_method_collection", "if_required");
+      form.set("subscription_data[trial_settings][end_behavior][missing_payment_method]", "cancel");
+      form.set("subscription_data[metadata][trial]", "1");
+    }
     items.forEach((it: any, i: number) => {
       form.set(`line_items[${i}][price]`, it.price_id);
       form.set(`line_items[${i}][quantity]`, String(it.quantity));
@@ -135,7 +164,7 @@ Deno.serve(async (req) => {
     });
     const d = await r.json();
     if (!r.ok) return json({ error: d?.error?.message || "Erreur Stripe" }, 502);
-    return json({ url: d.url });
+    return json({ url: d.url, trial });
   } catch (e) {
     return json({ error: String((e as any)?.message || e) }, 500);
   }

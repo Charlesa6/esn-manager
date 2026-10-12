@@ -84,10 +84,55 @@ async function newPage(browser) {
     await p.waitForTimeout(1200);
     const txt = await p.evaluate(() => document.body.innerText);
     check('la landing se charge (titre Konsilys présent)', /konsilys/i.test(txt));
-    check('tunnel d’abonnement présent', /abonnement|licence|s’abonner|abonner/i.test(txt));
+    check('appel à l’essai gratuit 14 jours présent', /14 jours/i.test(txt) && /essai gratuit/i.test(txt));
+    // Onglets « solution par métier » : un seul panneau visible à la fois.
+    const vis = await p.evaluate(() => [...document.querySelectorAll('[role=tabpanel]')].filter(e => getComputedStyle(e).display !== 'none').length);
+    check('onglets par métier : un seul panneau affiché', vis === 1, 'visibles=' + vis);
+    await p.click('#t-bm');
+    const bm = await p.evaluate(() => getComputedStyle(document.getElementById('p-bm')).display !== 'none');
+    check('onglets par métier : changement d’onglet au clic', bm);
     check('aucune erreur JS fatale', p._appErrors.length === 0, p._appErrors.join(' | '));
     await p.context().close();
   } catch (e) { check('landing charge sans exception', false, e.message); }
+
+  // ── 1b. Pages du site vitrine ─────────────────────────────────────────────
+  console.log('\n▶ Site vitrine — fonctionnalités, solutions, tarifs, essai, démo');
+  for (const [f, re] of [['fonctionnalites.html', /fonctionnalit/i], ['solutions.html', /métier/i],
+                         ['tarifs.html', /licence/i], ['essai-gratuit.html', /14 jours/i], ['demo.html', /démo/i]]) {
+    try {
+      const p = await newPage(browser);
+      await p.goto(fileUrl(f) + (f === 'essai-gratuit.html' ? '?email=test%40esn.fr' : ''), { waitUntil: 'load', timeout: 30000 });
+      await p.waitForTimeout(500);
+      const txt = await p.evaluate(() => document.body.innerText);
+      check(f + ' : se charge', re.test(txt));
+      if (f === 'tarifs.html') {
+        check('tarifs : abonnement / configurateur présent', /abonnement/i.test(txt) && !!(await p.$('#cfg-btn')));
+        await p.click('[data-billing=annual]');
+        const ann = await p.evaluate(() => document.getElementById('cfg-total').textContent);
+        check('tarifs : bascule annuelle (Admin 390 €)', /390/.test(ann), ann);
+        await p.click('#cfg-add');
+        check('tarifs : ajout d’un membre', !!(await p.$('[data-del="0"]')));
+      }
+      if (f === 'essai-gratuit.html') {
+        check('essai : email pré-rempli depuis l’URL', (await p.inputValue('#tf-em')) === 'test@esn.fr');
+        await p.click('#tf-btn');
+        const m = await p.evaluate(() => document.getElementById('tf-msg').textContent);
+        check('essai : validation du formulaire vide', /entreprise/i.test(m), m);
+      }
+      check(f + ' : aucune erreur JS fatale', p._appErrors.length === 0, p._appErrors.join(' | '));
+      await p.context().close();
+    } catch (e) { check(f + ' charge sans exception', false, e.message); }
+  }
+  // Menu mobile (≤ 960 px) : le burger ouvre la navigation.
+  try {
+    const p = await newPage(browser);
+    await p.setViewportSize({ width: 390, height: 800 });
+    await p.goto(fileUrl('index.html'), { waitUntil: 'load', timeout: 30000 });
+    await p.click('.burger');
+    const open = await p.evaluate(() => getComputedStyle(document.querySelector('.menu')).display !== 'none');
+    check('menu mobile : ouverture au clic sur le burger', open);
+    await p.context().close();
+  } catch (e) { check('menu mobile sans exception', false, e.message); }
 
   // ── 2. Login (esn_login.html) ─────────────────────────────────────────────
   console.log('\n▶ Login — esn_login.html');
@@ -488,13 +533,19 @@ async function newPage(browser) {
         const tsTxt = await p.evaluate(() => document.body.innerText);
         check('Time Sheet : en-tête hebdomadaire affiché', /Time Sheet/.test(tsTxt) && /hebdomadaire/.test(tsTxt));
         check('Time Sheet : navigation sans erreur JS', p._appErrors.length === before, p._appErrors.slice(before).join(' | '));
-        // d1 : semaine validée (2026-07-20) et soumise (2026-07-13) en démo → historique
+        // d1 : semaine validée (2026-07-20) et soumise (2026-07-13) en démo. On ouvre
+        // chaque semaine explicitement : l'historique ne couvre que les 12 dernières
+        // semaines, ces dates en sortent avec le temps (test dépendant de la date).
         const statusTxt = await p.evaluate(() => {
-          S.tsCid = 'd1'; S.tsWeek = ''; render();
+          S.tsCid = 'd1'; S.tsWeek = '2026-07-20'; render();
+          return document.body.innerText;
+        });
+        const pendingTxt = await p.evaluate(() => {
+          S.tsCid = 'd1'; S.tsWeek = '2026-07-13'; render();
           return document.body.innerText;
         });
         check('Time Sheet : statut « Validé » affiché (semaine approuvée)', /Validé/.test(statusTxt));
-        check('Time Sheet : statut « En attente » affiché (semaine soumise)', /En attente/.test(statusTxt));
+        check('Time Sheet : statut « En attente » affiché (semaine soumise)', /En attente/.test(pendingTxt));
         // Cohérence congé : semaine 2026-07-13 de d1 (congés couverts par un congé validé)
         const okBadge = await p.evaluate(() => {
           S.tsCid = 'd1'; S.tsWeek = '2026-07-13'; render();
