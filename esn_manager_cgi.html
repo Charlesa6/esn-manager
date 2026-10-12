@@ -335,6 +335,25 @@ tr[data-act]{transition:background .12s}
 .hm-row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px;color:#0f172a}
 .hm-row:last-child{border-bottom:none}
 .hm-muted{color:#64748b;font-size:12.5px}
+.hm-trial{padding:18px 20px;border:1px solid #d9f99d;background:#f7fee7}
+.hm-trial-h{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.hm-trial h3{font-size:15px;font-weight:800;color:#1B2B3A;margin:0 0 4px}
+.hm-trial p{font-size:13px;color:#475569;margin:0}
+.hm-pay{background:#1B2B3A;color:#fff;border:none;border-radius:999px;padding:10px 16px;font:inherit;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap}
+.hm-prog{height:8px;background:#ecfccb;border-radius:99px;margin:14px 0 10px;overflow:hidden}
+.hm-prog span{display:block;height:100%;background:#84CC16;border-radius:99px}
+.hm-steps{display:flex;flex-direction:column;gap:8px}
+.hm-step{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;font-size:13.5px}
+.hm-step b{flex:1;min-width:150px;color:#0f172a}
+.hm-step.ok b{color:#15803d}
+.hm-chk{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;background:#f1f5f9;color:#475569;flex-shrink:0}
+.hm-step.ok .hm-chk{background:#84CC16;color:#1B2B3A}
+.hm-sacts{display:flex;gap:6px;flex-wrap:wrap}
+.hm-tbtn{background:#f8fafc;border:1px solid #e2e8f0;border-radius:999px;padding:6px 12px;font:inherit;font-size:12.5px;font-weight:700;color:#1B2B3A;cursor:pointer}
+.hm-tbtn:hover{border-color:#84CC16}
+:root[data-theme="dark"] .hm-trial{background:#1a2a12;border-color:#365314}
+:root[data-theme="dark"] .hm-trial h3,:root[data-theme="dark"] .hm-step b{color:#e2e8f0}
+:root[data-theme="dark"] .hm-step,:root[data-theme="dark"] .hm-tbtn{background:#141d28;border-color:#27323f;color:#e2e8f0}
 :root[data-theme="dark"] .hm-stat,:root[data-theme="dark"] .hm-tile{background:#141d28;border-color:#27323f}
 :root[data-theme="dark"] .hm-stat b,:root[data-theme="dark"] .hm-tile b,:root[data-theme="dark"] .hm-card h3,:root[data-theme="dark"] .hm-row{color:#e2e8f0}
 :root[data-theme="dark"] .hm-row{border-color:#27323f}
