@@ -1218,6 +1218,48 @@ async function newPage(browser) {
       check('Assistant : disponible en mode démo', ai.demoVisible);
     }
 
+    // Assistant : création de consultants + guide de démarrage de l'essai gratuit
+    {
+      const ai2 = await p.evaluate(() => {
+        var save = { role: S.role, cons: S.cons, all: S._all, demo: S.demo, sub: S.subscription, cid: SB_CID };
+        S.role = 'admin'; S.ai = null;
+        var r1 = aiRespond('Ajoute le consultant Julie Durand, Data Engineer, SCR 450 €, julie.durand@esn.fr');
+        var c1 = r1.actions && r1.actions[0].input;
+        var parsed = !!c1 && c1.name === 'Julie Durand' && c1.title === 'Data Engineer' && c1.scr === 450 && c1.email === 'julie.durand@esn.fr';
+        aiState().msgs.push(r1);
+        var r2 = aiRespond('plutôt comme Product Owner');
+        var corr = r2.actions && r2.actions[0].input.title === 'Product Owner' && r2.actions[0].input.scr === 450;
+        var r3 = aiRespond('ajoute un consultant'); var r4 = aiRespond('Marc Leroy');
+        var ask = /nom/.test(r3.text) && r4.actions && r4.actions[0].input.name === 'Marc Leroy';
+        var n0 = S.cons.length;
+        var ok1 = aiApply({ tool: 'create_consultant', input: { name: 'Julie Durand', title: 'Data Engineer', scr: 450, email: '' } });
+        var created = ok1.ok && S.cons.length === n0 + 1 && S.cons[S.cons.length - 1].scr === 450;
+        var dup = aiApply({ tool: 'create_consultant', input: { name: 'julie durand', title: '', scr: null, email: '' } }).ok === false;
+        S.role = 'utilisateur';
+        var denied = aiApply({ tool: 'create_consultant', input: { name: 'X Y', title: '', scr: null, email: '' } }).ok === false;
+        /* Guide d'essai : ouverture automatique une seule fois pour un admin en essai */
+        S.role = 'admin'; S.demo = false; SB_CID = 'e2e-trial'; S.ai = null;
+        try { localStorage.removeItem('ks-ai-trial-e2e-trial'); } catch (e) {}
+        S.subscription = { status: 'trialing', current_period_end: new Date(Date.now() + 10 * 864e5).toISOString() };
+        aiMount();
+        var opened = aiState().open && /Essai gratuit/.test(document.getElementById('ai-panel').innerText) && /Démarrage/.test(document.getElementById('ai-panel').innerText);
+        var quick = document.querySelectorAll('#ai-panel [data-ai="quick"]').length >= 3;
+        aiState().open = false; aiRender(); aiMount();
+        var once = !aiState().open;
+        S.role = save.role; S.cons = save.cons; S._all = save.all; S.demo = save.demo; S.subscription = save.sub; SB_CID = save.cid; S.ai = null;
+        aiRender(); render();
+        return { parsed: parsed, corr: corr, ask: ask, created: created, dup: dup, denied: denied, opened: opened, quick: quick, once: once };
+      });
+      check('Assistant : fiche consultant comprise (nom, poste, SCR, email)', ai2.parsed);
+      check('Assistant : correction du poste d’un consultant proposé', ai2.corr);
+      check('Assistant : demande le nom manquant puis le reprend', ai2.ask);
+      check('Assistant : « Créer » ajoute le consultant', ai2.created);
+      check('Assistant : doublon de nom refusé', ai2.dup);
+      check('Assistant : création de consultant refusée au rôle Consultant', ai2.denied);
+      check('Essai gratuit : guide de démarrage ouvert automatiquement (admin en essai)', ai2.opened && ai2.quick);
+      check('Essai gratuit : le guide ne s’ouvre automatiquement qu’une fois', ai2.once);
+    }
+
     check('aucune erreur JS fatale sur tout le parcours app', p._appErrors.length === 0, p._appErrors.join(' | '));
     await p.context().close();
   } catch (e) { check('app démo charge sans exception', false, e.message); }
