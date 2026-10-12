@@ -274,6 +274,8 @@ function aiParse(text){
   var dates=aiParseDates(n);
   var money=aiParseMoney(n);
   var self=/\b(moi|me|m'|mon|ma|mes|je|j')\b|\bpose[\s-]?moi\b/.test(n);
+  var op=aiOp(n);
+  if(op)return aiParseOp(text,n,op,cli,cons,dates,money,self);
   var intent=aiIntent(n);
   if(intent==='consultant')return {intent:intent,nc:aiParseNewCons(text,n),cids:[],ambig:[],amounts:[],raw:text.trim(),help:false,ltype:null,self:false,cli:null,name:null,sd:null,ed:null,forfait:false,tmar:null};
   return {
@@ -330,6 +332,7 @@ function aiMerge(d,p){
 
 /* Évalue le brouillon : question à poser, ou action prête. */
 function aiEvaluate(d){
+  if(d.op)return aiEvaluateOp(d);
   var sAsk=function(field,msg,extra){d.ask=field;return {text:msg,choices:extra||null};};
   var personal=(S.role==='utilisateur'||S.role==='recruteur'||S.role==='sales');
   if(!d.intent)return {text:'Je sais créer des consultants, des missions et des absences. Essayez par exemple « Crée une mission pour Sophie Martin chez BNP Paribas du 3 au 28 novembre à 650 € ».',quick:aiStartQuick(),reset:true};
@@ -400,12 +403,14 @@ function aiConsCorrection(text){
 /* Traite un message utilisateur et renvoie la réponse de l'assistant. */
 function aiRespond(text){
   var st=aiState(),p=aiParse(text),n=aiN(text);
-  if(p.help)return {role:'assistant',text:'Je peux créer pour vous :\n• un consultant — « Ajoute le consultant Julie Martin, Data Engineer, SCR 450 € »\n• une mission — « Crée une mission pour Julie Martin chez BNP Paribas du 3 au 28 novembre à 650 € »\n• une absence — « Pose-moi un congé du 22 au 26 décembre », « RTT vendredi pour Thomas »\nJe vous demande ce qui manque, et rien n’est créé sans votre confirmation.',quick:aiStartQuick()};
+  if(p.help)return {role:'assistant',text:'Je peux créer pour vous :\n• un consultant — « Ajoute le consultant Julie Martin, Data Engineer, SCR 450 € »\n• une mission — « Crée une mission pour Julie Martin chez BNP Paribas du 3 au 28 novembre à 650 € »\n• une absence — « Pose-moi un congé du 22 au 26 décembre », « RTT vendredi pour Thomas »\nJe peux aussi modifier ou supprimer :\n• « Prolonge la mission de Julie Martin chez BNP jusqu’au 31 décembre », « Passe son TJM à 700 € »\n• « Transforme le congé de Thomas du 22 décembre en RTT », « Supprime l’absence de Thomas du 22 décembre »\n• « Change le SCR de Julie Martin à 480 », « Supprime le consultant Paul Durand »\nJe vous demande ce qui manque, et rien n’est créé sans votre confirmation.',quick:aiStartQuick()};
+  if(p.op){var dop=aiDraftFromOp(p);var rop=aiEvaluateOp(dop);return aiReply(st,dop,rop,null);}
+  if(st.draft&&st.draft.op&&!(p.intent&&AI_CREATE_RE.test(n))){aiMergeOp(st.draft,p);return aiReply(st,st.draft,aiEvaluateOp(st.draft),null);}
   var startNew=!!(p.intent&&(p.intent==='consultant'||p.cids.length||p.cli||p.sd||/\b(cree|creer|ajoute|ajouter|pose|poser|nouvelle?|staffe|staffer|place|placer)\b/.test(n)));
   var d=null,replaced=null,lp=null;
   if(startNew)d={cids:[],ambig:[]};
   else if(st.draft)d=st.draft;
-  else if((lp=aiLastPending())){
+  else if((lp=aiLastPending())&&/^create_/.test(lp.tool)){
     if(lp.tool==='create_consultant'){
       var c=aiConsCorrection(text);
       if(Object.keys(c).length){d=aiDraftFromAction(lp);replaced=lp;Object.keys(c).forEach(function(k){d.nc[k]=c[k];});p=null;}
@@ -519,7 +524,7 @@ function aiRender(){
     var h='<div class="ai-msg '+(m.role==='user'?'u':'a')+'">';
     if(m.text)h+='<div class="ai-b">'+esc(m.text).replace(/\n/g,'<br>')+'</div>';
     if(m.quick)h+='<div class="ai-choices">'+m.quick.map(function(q,k){return '<button class="ai-ex ai-q" data-ai="quick" data-i="'+i+'" data-k="'+k+'">'+esc(q.label)+'</button>';}).join('')+'</div>';
-    if(m.choices&&i===last)h+='<div class="ai-choices">'+m.choices.map(function(c){return '<button class="ai-ex" data-ai="pick" data-cid="'+esc(c.id)+'">'+esc(c.label)+'</button>';}).join('')+'</div>';
+    if(m.choices&&i===last)h+='<div class="ai-choices">'+m.choices.map(function(c){return '<button class="ai-ex" data-ai="'+(c.act||'pick')+'" data-cid="'+esc(c.id)+'">'+esc(c.label)+'</button>';}).join('')+'</div>';
     (m.actions||[]).forEach(function(ac,j){h+=aiCard(ac,i,j);});
     return h+'</div>';
   }).join('');
@@ -550,6 +555,8 @@ function aiCard(ac,i,j){
     rows.push(['SCR',x.scr!=null?Number(x.scr).toLocaleString('fr-FR')+' € / jour':'—']);
     rows.push(['Email',x.email||'—']);
     if(aiConsDup(x.name))rows.push(['⚠','Un consultant porte déjà ce nom']);
+  }else if(/^(delete|update)_/.test(ac.tool)){
+    return aiOpCard(ac,i,j);
   }else if(ac.tool==='create_leave'){
     title='🌴 Nouvelle absence';
     rows.push(['Consultant',cname(x.consultant_id)]);rows.push(['Type',x.type]);
@@ -577,6 +584,14 @@ function aiOnClick(e){
     var qm=st.msgs[+t.getAttribute('data-i')],q=qm&&qm.quick&&qm.quick[+t.getAttribute('data-k')];if(!q)return;
     if(q.go==='import-cons'){st.open=false;aiRender();if(typeof openImportCons==='function')openImportCons();}
     else if(q.prompt){var inp2=document.getElementById('ai-in');if(inp2){inp2.value=q.prompt;inp2.focus();}}
+  }
+  else if(a==='pick-item'||a==='pick-ent'){
+    var dd=st.draft;if(!dd||!dd.op)return;
+    var v=t.getAttribute('data-cid');
+    st.msgs.push({role:'user',text:t.textContent});
+    if(a==='pick-item')dd.targetId=v;else dd.ent=v;
+    st.msgs.push(aiReply(st,dd,aiEvaluateOp(dd),null));
+    aiRender();
   }
   else if(a==='pick'){
     var d=st.draft;if(!d)return;
@@ -617,6 +632,7 @@ function aiApply(ac){
     if(ac.tool==='create_mission')return aiApplyMission(ac.input||{});
     if(ac.tool==='create_leave')return aiApplyLeave(ac.input||{});
     if(ac.tool==='create_consultant')return aiApplyConsultant(ac.input||{});
+    if(/^(delete|update)_/.test(ac.tool))return aiApplyOp(ac);
     return {ok:false,msg:'Action non prise en charge.'};
   }catch(e){console.warn('assistant apply:',e);return {ok:false,msg:'Erreur inattendue.'};}
 }
@@ -702,4 +718,280 @@ function aiApplyConsultant(x){
   if(S._all&&S._all.cons&&S._all.cons!==S.cons)S._all.cons=S._all.cons.concat([nc]);
   try{var pr=sbUpsertCons(nc);if(pr&&pr.catch)pr.catch(function(e){console.warn('assistant consultant:',e);});}catch(e){console.warn('assistant consultant:',e);}
   return {ok:true,msg:'Consultant ajouté'+(scr?'':' — pensez à renseigner son SCR pour le calcul des marges')};
+}
+
+/* ═══════════════════════ MODIFIER / SUPPRIMER ═══════════════════════
+   « Supprime la mission de Julie chez BNP », « Prolonge la mission de Julie chez
+   BNP jusqu'au 31 décembre », « Transforme le congé de Thomas du 22/12 en RTT »,
+   « Change le SCR de Julie Martin à 480 », « Supprime le consultant Paul Durand ».
+   Ciblage : consultant (+ client pour une mission, + type / dates pour une
+   absence) ; plusieurs candidats → boutons de choix. Pour une MODIFICATION, les
+   dates et montants de la phrase sont les NOUVELLES valeurs (sauf changement de
+   type d'absence « … en RTT », où les dates servent à retrouver l'absence).
+   Application : mêmes règles que les boutons de l'app (droits, verrou Time
+   Sheet, validation N+1 pour un consultant, solde de congés). */
+var AI_LEAVE_RE='(?:un |une |le |la |en )?(?:rtt|formation|conges?|cp|maladie|arret|mission interne|inter[\\s-]?contrat|sans solde|maternite|absence)';
+var AI_CREATE_RE=/\b(cree[rz]?|creer|creation|ajoute[rz]?|pose[rz]?|nouvel(?:le)?|nouveau|staffe[rz]?|embauche[rz]?)\b/;
+function aiOp(n){
+  if(AI_CREATE_RE.test(n))return null; /* une demande de création n'est jamais une modification */
+  if(/\b(supprime[rz]?|efface[rz]?|retire[rz]?|enleve[rz]?|annule[rz]?|suppression|vire[rz]?)\b/.test(n))return 'delete';
+  if(/\b(modifie[rz]?|modification|change[rz]?|decale[rz]?|deplace[rz]?|prolonge[rz]?|raccourci[rstz]*|avance[rz]?|repousse[rz]?|corrige[rz]?|mets? a jour|mettre a jour|met a jour|transforme[rz]?|renomme[rz]?|augmente[rz]?|baisse[rz]?|passe[rz]? (?:le|la|les|son|sa|ses)|termine[rz]?|arrete[rz]?|stoppe[rz]?)\b/.test(n))return 'update';
+  return null;
+}
+function aiOpEntity(n){
+  if(/\bmissions?\b/.test(n)&&!/\bmission interne\b/.test(n))return 'mission';
+  if(aiLeaveType(n)||/\b(absences?|conges?)\b/.test(n))return 'leave';
+  if(/\b(consultante?s?|collaborat(?:eur|rice)s?|salariee?s?|fiche|scr|cjm|poste|email|e-mail)\b/.test(n))return 'consultant';
+  if(/\b(tjm|client)\b/.test(n))return 'mission';
+  return null;
+}
+function aiParseOp(text,n,op,cli,cons,dates,money,self){
+  var p={op:op,ent:aiOpEntity(n),cids:cons.ids,ambig:cons.ambig,cli:cli?cli.name:null,sd:dates.sd,ed:dates.ed,
+    amounts:money.amounts.map(function(a){return a.v;}),tmar:money.tmar,forfait:money.forfait,self:self,raw:text.trim(),
+    ltTarget:null,ltNew:null,consCh:null,endNow:/\b(termine[rz]?|arrete[rz]?|stoppe[rz]?)\b/.test(n)&&!dates.ed};
+  /* Type d'absence : « transforme le congé … en RTT » → cible = congé, nouveau type = RTT */
+  var sp=new RegExp('\\s(?:en|par)\\s+(?='+AI_LEAVE_RE+'\\b)').exec(n);
+  if(sp&&op==='update'){p.ltTarget=aiLeaveType(n.slice(0,sp.index));p.ltNew=aiLeaveType(n.slice(sp.index));}
+  else p.ltTarget=aiLeaveType(n);
+  if(p.ent==='consultant'&&op==='update')p.consCh=aiConsEdits(text,n);
+  return p;
+}
+/* Nouvelles valeurs d'une fiche consultant (poste, SCR, email, nom). */
+function aiConsEdits(text,n){
+  var c=aiConsCorrection(text);
+  if(c.scr==null&&/\b(scr|cjm|cout)\b/.test(n)){var m=/(\d+(?:[.,]\d+)?)\s*(?:€|euros?)?\s*$/.exec(n.replace(/[.!]+\s*$/,''))||/\b(?:a|de|en)\s+(\d+(?:[.,]\d+)?)/.exec(n.slice(n.search(/\b(scr|cjm|cout)\b/)));if(m)c.scr=parseFloat(m[1].replace(',','.'));}
+  if(!c.title){var t=/\bposte\b.*?\b(?:devient|en|par|a|:)\s+([^,;]+)$/.exec(n);if(t){var off=t.index+t[0].length-t[1].length;var v=text.substr(off,t[1].length).trim();if(v)c.title=v.charAt(0).toUpperCase()+v.slice(1);}}
+  if(!c.name){var r=/\brenomme[rz]?\b.*?\ben\s+(.+)$/.exec(n);if(r){var o2=r.index+r[0].length-r[1].length;c.name=text.substr(o2,r[1].length).trim();}}
+  return c;
+}
+function aiDraftFromOp(p){
+  var d={op:p.op,ent:p.ent,cids:p.cids.slice(),ambig:p.ambig.slice(),cli:p.cli,sd:p.sd,ed:p.ed,amounts:p.amounts.slice(),tmar:p.tmar,
+    forfait:p.forfait,ltTarget:p.ltTarget,ltNew:p.ltNew,consCh:p.consCh||{},endNow:p.endNow,targetId:null,ask:null};
+  if(!d.cids.length&&p.self&&S.consId)d.cids=[S.consId];
+  return d;
+}
+/* Réponse à une question posée pendant une modification/suppression. */
+function aiMergeOp(d,p){
+  if(p.op){return;}
+  if(p.cids&&p.cids.length){d.cids=p.cids.slice();d.ambig=p.ambig||[];d.targetId=null;}
+  else if(p.ambig&&p.ambig.length){d.ambig=p.ambig;}
+  if(p.cli)d.cli=p.cli;
+  if(d.ent==='consultant'&&d.op==='update'){var c=aiConsEdits(p.raw,aiN(p.raw));
+    if(!Object.keys(c).length&&d.ask==='consCh'&&p.raw.length<=60&&!/\d/.test(p.raw))c.title=p.raw.charAt(0).toUpperCase()+p.raw.slice(1);
+    Object.keys(c).forEach(function(k){d.consCh[k]=c[k];});}
+  if(p.sd)d.sd=p.sd;if(p.ed)d.ed=p.ed;
+  if(p.amounts&&p.amounts.length)d.amounts=p.amounts.slice();
+  if(p.tmar!=null)d.tmar=p.tmar;
+  if(p.ltype){if(d.op==='update'&&d.ask==='lchanges')d.ltNew=p.ltype;else if(!d.ltTarget)d.ltTarget=p.ltype;}
+  if(d.ask==='mchanges'&&!(p.amounts&&p.amounts.length)){var v=parseFloat(String(p.raw).replace(/\s/g,'').replace(',','.'));if(v>0)d.amounts=[v];}
+}
+function aiReply(st,d,r,replaced){
+  if(r.action){if(replaced){replaced.status='cancel';replaced.result='Remplacée par la version corrigée';}st.draft=null;
+    return {role:'assistant',text:r.text,actions:[{tool:r.action.tool,input:r.action.input,status:'pending'}]};}
+  st.draft=r.reset?null:d;
+  return {role:'assistant',text:r.text,choices:r.choices||null,quick:r.quick||null};
+}
+function aiAllCons(){return (S._all&&S._all.cons)||S.cons||[];}
+function aiMissLabel(m){return aiConsName(m.cid)+' · '+(m.cli||'—')+' · '+fDt(m.sd)+' → '+(m.ed?fDt(m.ed):'…')+(m.btype==='forfait'?' · forfait':(m.tjm?' · '+m.tjm+' €':''));}
+function aiLeaveLabel(l){return aiConsName(l.cid)+' · '+l.type+' · '+fDt(l.s)+(l.e&&l.e!==l.s?' → '+fDt(l.e):'');}
+function aiOverlap(s1,e1,s2,e2){return (s1||'0000')<=(e2||'9999')&&(s2||'0000')<=(e1||'9999');}
+function aiFindMissions(d,useDates){
+  var ids={};d.cids.forEach(function(c){ids[String(c)]=1;});
+  var k=d.cli?aiN(d.cli):null;
+  return (visibleData().miss||[]).filter(function(m){
+    if(d.cids.length&&!ids[String(m.cid)])return false;
+    if(k&&aiN(m.cli||'').indexOf(k)<0&&k.indexOf(aiN(m.cli||''))<0)return false;
+    if(useDates&&(d.sd||d.ed)&&!aiOverlap(m.sd,m.ed,d.sd||d.ed,d.ed||d.sd))return false;
+    return true;
+  }).sort(function(a,b){return (b.sd||'').localeCompare(a.sd||'');});
+}
+function aiFindLeaves(d,useDates){
+  var ids={};d.cids.forEach(function(c){ids[String(c)]=1;});
+  return (visibleData().lvs||[]).filter(function(l){
+    if(d.cids.length&&!ids[String(l.cid)])return false;
+    if(d.ltTarget&&l.type!==d.ltTarget&&!(d.ltTarget==='Congé payé'&&/cong/i.test(l.type)))return false;
+    if(useDates&&(d.sd||d.ed)&&!aiOverlap(l.s,l.e,d.sd||d.ed,d.ed||d.sd))return false;
+    return true;
+  }).sort(function(a,b){return (b.s||'').localeCompare(a.s||'');});
+}
+function aiPickList(items,label){return items.slice(0,6).map(function(x){return {id:x.id,label:label(x),act:'pick-item'};});}
+
+function aiEvaluateOp(d){
+  var ask=function(field,msg,choices){d.ask=field;return {text:msg,choices:choices||null};};
+  var verb=d.op==='delete'?'supprimer':'modifier';
+  var personal=(S.role==='utilisateur'||S.role==='recruteur'||S.role==='sales');
+  if(!d.ent){
+    if(d.cids.length||d.ambig.length)return ask('ent','Que voulez-vous '+verb+' ?',[{id:'consultant',label:'👤 Le consultant',act:'pick-ent'},{id:'mission',label:'💼 Une mission',act:'pick-ent'},{id:'leave',label:'🌴 Une absence',act:'pick-ent'}]);
+    return {text:'Que voulez-vous '+verb+' : un consultant, une mission ou une absence ? Par exemple « '+(d.op==='delete'?'Supprime la mission de Julie Martin chez BNP':'Prolonge la mission de Julie Martin chez BNP jusqu’au 31 décembre')+' ».',reset:true};
+  }
+  if(d.ambig&&d.ambig.length)return ask('cons','Plusieurs consultants correspondent. Lequel ?',d.ambig[0].map(function(id){return {id:id,label:aiConsName(id)};}));
+  /* ── Consultant ── */
+  if(d.ent==='consultant'){
+    if(!canEditTeam())return {text:'Votre rôle ne permet pas de '+verb+' des consultants.',reset:true};
+    if(!d.cids.length)return ask('cons','Quel consultant voulez-vous '+verb+' ?');
+    if(d.cids.length>1)return ask('cons','Lequel ?',d.cids.map(function(id){return {id:id,label:aiConsName(id)};}));
+    var cid=String(d.cids[0]);
+    if(d.op==='delete')return {action:{tool:'delete_consultant',input:{id:cid}},text:'Voici la fiche à supprimer. Vérifiez puis cliquez sur « Supprimer ».'};
+    var ch=d.consCh||{};
+    if(!Object.keys(ch).length)return ask('consCh','Que voulez-vous modifier pour '+aiConsName(cid)+' ? (ex. « poste Product Owner », « SCR 480 », « email julie@esn.fr »)');
+    return {action:{tool:'update_consultant',input:{id:cid,changes:ch}},text:'Voici la modification proposée. Vérifiez puis cliquez sur « Modifier ».'};
+  }
+  /* ── Mission ── */
+  if(d.ent==='mission'){
+    if(AI_MISSION_ROLES.indexOf(S.role)<0)return {text:'Votre rôle ne permet pas de '+verb+' des missions.',reset:true};
+    if(S.role==='utilisateur'&&!d.cids.length&&S.consId)d.cids=[S.consId];
+    var target=d.targetId?(S.miss||[]).find(function(m){return String(m.id)===String(d.targetId);}):null;
+    if(!target){
+      var ms=aiFindMissions(d,d.op==='delete');
+      if(!ms.length&&d.op==='delete'&&(d.sd||d.ed))ms=aiFindMissions(d,false);
+      if(!ms.length)return {text:'Je ne trouve aucune mission correspondante'+(d.cids.length?' pour '+d.cids.map(aiConsName).join(', '):'')+(d.cli?' chez '+d.cli:'')+'.',reset:true};
+      if(ms.length>1)return ask('item',ms.length+' missions correspondent. Laquelle ?',aiPickList(ms,aiMissLabel));
+      target=ms[0];d.targetId=target.id;
+    }
+    if(d.op==='delete')return {action:{tool:'delete_mission',input:{id:String(target.id)}},text:'Voici la mission à supprimer. Vérifiez puis cliquez sur « Supprimer ».'};
+    var mc={};
+    if(d.sd)mc.sd=d.sd;if(d.ed)mc.ed=d.ed;
+    if(d.endNow&&!d.ed)mc.ed=TODAY;
+    if(d.amounts&&d.amounts.length){if(target.btype==='forfait'){mc.deal=Math.max.apply(null,d.amounts);}else mc.tjm=d.amounts[0];}
+    if(d.tmar!=null&&target.btype==='forfait')mc.tmar=d.tmar;
+    if(!Object.keys(mc).length)return ask('mchanges','Que voulez-vous modifier pour cette mission ('+aiMissLabel(target)+') ? Les dates (« du 10 au 30 novembre », « jusqu’au 31 décembre ») ou le '+(target.btype==='forfait'?'montant':'TJM')+' (« 700 € ») ?');
+    return {action:{tool:'update_mission',input:{id:String(target.id),changes:mc}},text:'Voici la modification proposée. Vérifiez puis cliquez sur « Modifier ».'};
+  }
+  /* ── Absence ── */
+  if(!d.cids.length&&personal&&S.consId)d.cids=[S.consId];
+  var lvT=d.targetId?(S.lvs||[]).find(function(l){return String(l.id)===String(d.targetId);}):null;
+  /* Les dates identifient l'absence pour une suppression, ou pour un simple changement de type. */
+  var datesIdentify=d.op==='delete'||!!d.ltNew;
+  if(!lvT){
+    var ls=aiFindLeaves(d,datesIdentify);
+    if(!ls.length&&datesIdentify&&(d.sd||d.ed))ls=aiFindLeaves(d,false);
+    if(!ls.length)return {text:'Je ne trouve aucune absence correspondante'+(d.cids.length?' pour '+d.cids.map(aiConsName).join(', '):'')+'.',reset:true};
+    if(ls.length>1)return ask('item',ls.length+' absences correspondent. Laquelle ?',aiPickList(ls,aiLeaveLabel));
+    lvT=ls[0];d.targetId=lvT.id;
+  }
+  if(d.op==='delete')return {action:{tool:'delete_leave',input:{id:String(lvT.id)}},text:'Voici l’absence à supprimer. Vérifiez puis cliquez sur « Supprimer ».'};
+  var lc={};
+  if(d.ltNew&&d.ltNew!==lvT.type)lc.type=d.ltNew;
+  if(!datesIdentify){if(d.sd)lc.s=d.sd;if(d.ed)lc.e=d.ed;if(lc.s&&!lc.e&&lvT.e<lc.s)lc.e=lc.s;}
+  if(!Object.keys(lc).length)return ask('lchanges','Que voulez-vous modifier pour cette absence ('+aiLeaveLabel(lvT)+') ? Les dates (« du 29 au 31 décembre ») ou le type (« en RTT ») ?');
+  return {action:{tool:'update_leave',input:{id:String(lvT.id),changes:lc}},text:'Voici la modification proposée. Vérifiez puis cliquez sur « Modifier ».'};
+}
+
+/* Carte d'une suppression / modification : état actuel et, pour une modification, avant → après. */
+function aiOpCard(ac,i,j){
+  var x=ac.input||{},ch=x.changes||{},rows=[],title='',kind=ac.tool.split('_')[1],del=/^delete/.test(ac.tool);
+  var it=kind==='consultant'?aiAllCons().find(function(c){return String(c.id)===String(x.id);})
+    :kind==='mission'?(S.miss||[]).find(function(m){return String(m.id)===String(x.id);})
+    :(S.lvs||[]).find(function(l){return String(l.id)===String(x.id);});
+  var arrow=function(a,b){return b===undefined?a:(a+' → '+b);};
+  var eur=function(v){return v!=null&&v!==''?Number(v).toLocaleString('fr-FR')+' €':'—';};
+  if(!it&&ac.status!=='done')rows.push(['⚠','Élément introuvable (déjà supprimé ?)']);
+  else if(it&&kind==='consultant'){
+    title=del?'🗑 Supprimer le consultant':'✏️ Modifier le consultant';
+    rows.push(['Nom',arrow(it.name,ch.name)]);rows.push(['Poste',arrow(it.title||'—',ch.title)]);
+    rows.push(['SCR',arrow(eur(it.scr),ch.scr!=null?eur(ch.scr):undefined)]);rows.push(['Email',arrow(it.email||'—',ch.email)]);
+    if(del){var nm=(S.miss||[]).filter(function(m){return String(m.cid)===String(it.id);}).length;if(nm)rows.push(['⚠',nm+' mission(s) rattachée(s) à ce consultant']);}
+  }else if(it&&kind==='mission'){
+    title=del?'🗑 Supprimer la mission':'✏️ Modifier la mission';
+    rows.push(['Consultant',aiConsName(it.cid)]);rows.push(['Mission',it.name]);rows.push(['Client',it.cli]);
+    rows.push(['Début',arrow(fDt(it.sd),ch.sd?fDt(ch.sd):undefined)]);
+    rows.push(['Fin',arrow(it.ed?fDt(it.ed):'sans date de fin',ch.ed?fDt(ch.ed):undefined)]);
+    if(it.btype==='forfait')rows.push(['Forfait',arrow(eur(it.deal),ch.deal!=null?eur(ch.deal):undefined)+(ch.tmar!=null?' · marge '+ch.tmar+' %':'')]);
+    else rows.push(['TJM',arrow(eur(it.tjm),ch.tjm!=null?eur(ch.tjm):undefined)]);
+  }else if(it){
+    title=del?'🗑 Supprimer l’absence':'✏️ Modifier l’absence';
+    rows.push(['Consultant',aiConsName(it.cid)]);rows.push(['Type',arrow(it.type,ch.type)]);
+    rows.push(['Du',arrow(fDt(it.s),ch.s?fDt(ch.s):undefined)]);rows.push(['Au',arrow(fDt(it.e),ch.e?fDt(ch.e):undefined)]);
+  }
+  if(!title)title=del?'🗑 Suppression':'✏️ Modification';
+  var st=ac.status;
+  var foot=st==='done'?'<div class="ai-st ok">✓ '+esc(ac.result||'Fait')+'</div>'
+    :st==='cancel'?'<div class="ai-st">'+esc(ac.result||'Annulé')+'</div>'
+    :st==='error'?'<div class="ai-st err">⚠ '+esc(ac.result||'Erreur')+'</div>'
+      +'<div class="ai-act"><button class="ai-ok" data-ai="apply" data-i="'+i+'" data-j="'+j+'">Réessayer</button></div>'
+    :'<div class="ai-act"><button class="'+(del?'ai-del':'ai-ok')+'" data-ai="apply" data-i="'+i+'" data-j="'+j+'">'+(del?'Supprimer':'Modifier')+'</button><button class="ai-no" data-ai="cancel" data-i="'+i+'" data-j="'+j+'">Annuler</button></div>';
+  return '<div class="ai-card'+(del?' del':'')+'"><div class="ai-ct">'+title+'</div>'
+    +rows.map(function(r){return '<div class="ai-row"><span>'+esc(r[0])+'</span><b>'+esc(r[1]==null?'—':r[1])+'</b></div>';}).join('')
+    +foot+'</div>';
+}
+
+/* ── Application (mêmes règles que les boutons de l'app) ── */
+function aiApplyOp(ac){
+  var x=ac.input||{},id=String(x.id||''),ch=x.changes||{};
+  var inScope=function(cid){return aiConsList().some(function(c){return String(c.id)===String(cid);});};
+  if(ac.tool==='delete_consultant'||ac.tool==='update_consultant'){
+    if(!canEditTeam())return {ok:false,msg:'Votre rôle ne permet pas de modifier les consultants.'};
+    var c=aiAllCons().find(function(k){return String(k.id)===id;});
+    if(!c||!inScope(c.id))return {ok:false,msg:'Consultant introuvable ou hors de votre périmètre.'};
+    if(ac.tool==='delete_consultant'){
+      if(S.consId&&String(c.id)===String(S.consId))return {ok:false,msg:'Vous ne pouvez pas supprimer votre propre fiche.'};
+      S.cons=S.cons.filter(function(k){return String(k.id)!==id;});
+      if(S._all&&S._all.cons&&S._all.cons!==S.cons)S._all.cons=S._all.cons.filter(function(k){return String(k.id)!==id;});
+      try{var p1=sbDel('consultants',c.id);if(p1&&p1.catch)p1.catch(function(e){console.warn('assistant del cons:',e);});}catch(e){}
+      return {ok:true,msg:'Consultant supprimé'};
+    }
+    var f={};
+    if(ch.name!=null){var nn=String(ch.name).trim();if(!nn)return {ok:false,msg:'Nom invalide.'};
+      if(aiN(nn)!==aiN(c.name)&&aiConsDup(nn))return {ok:false,msg:'Un consultant porte déjà ce nom.'};f.name=nn;}
+    if(ch.title!=null)f.title=String(ch.title).trim().slice(0,120);
+    if(ch.scr!=null){var sc=Number(ch.scr);if(!(sc>=0))return {ok:false,msg:'SCR invalide.'};f.scr=sc;}
+    if(ch.email!=null){var em=String(ch.email).trim().toLowerCase();if(em&&!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em))return {ok:false,msg:'Email invalide.'};f.email=em;}
+    if(!Object.keys(f).length)return {ok:false,msg:'Aucune modification.'};
+    var nc;S.cons=S.cons.map(function(k){return String(k.id)===id?(nc=Object.assign({},k,f)):k;});
+    if(S._all&&S._all.cons&&S._all.cons!==S.cons)S._all.cons=S._all.cons.map(function(k){return String(k.id)===id?nc:k;});
+    if(nc){try{var p2=sbUpsertCons(nc);if(p2&&p2.catch)p2.catch(function(e){console.warn('assistant upd cons:',e);});}catch(e){}}
+    return {ok:true,msg:'Consultant modifié'};
+  }
+  if(ac.tool==='delete_mission'||ac.tool==='update_mission'){
+    if(AI_MISSION_ROLES.indexOf(S.role)<0)return {ok:false,msg:'Votre rôle ne permet pas de modifier les missions.'};
+    var m=(S.miss||[]).find(function(k){return String(k.id)===id;});
+    if(!m||!inScope(m.cid))return {ok:false,msg:'Mission introuvable ou hors de votre périmètre.'};
+    if(S.role==='utilisateur'&&String(m.cid)!==String(S.consId))return {ok:false,msg:'Vous pouvez seulement agir sur vos propres missions.'};
+    var lockedOld=(m.wmode==='man')?tsDaysLocked(m.cid,m.manualDays):tsRangeLocked(m.cid,m.sd,m.ed);
+    if(lockedOld)return {ok:false,msg:'Mission verrouillée par un Time Sheet approuvé.'};
+    if(ac.tool==='delete_mission'){
+      if(S.role==='utilisateur'){submitApproval('miss_del',{id:m.id,approver_id:resolveApprover(S._userId)},'Suppression de mission — '+esc(m.cli)+' · '+esc(m.name));return {ok:true,msg:'Demande de suppression envoyée à votre N+1'};}
+      S.miss=S.miss.filter(function(k){return String(k.id)!==id;});
+      try{var p3=sbDel('missions',m.id);if(p3&&p3.catch)p3.catch(function(e){console.warn('assistant del miss:',e);});}catch(e){}
+      return {ok:true,msg:'Mission supprimée'};
+    }
+    var nm2=Object.assign({},m);
+    if(ch.sd!=null){if(!aiIsDate(ch.sd))return {ok:false,msg:'Date de début invalide.'};nm2.sd=ch.sd;}
+    if(ch.ed!=null){if(!aiIsDate(ch.ed))return {ok:false,msg:'Date de fin invalide.'};nm2.ed=ch.ed;}
+    if(nm2.ed&&nm2.ed<nm2.sd)return {ok:false,msg:'La date de fin précède la date de début.'};
+    if(ch.tjm!=null){if(!(Number(ch.tjm)>0))return {ok:false,msg:'TJM invalide.'};nm2.tjm=Number(ch.tjm);}
+    if(ch.deal!=null){if(!(Number(ch.deal)>0))return {ok:false,msg:'Montant invalide.'};nm2.deal=Number(ch.deal);}
+    if(ch.tmar!=null)nm2.tmar=Number(ch.tmar);
+    if(nm2.wmode!=='man'&&tsRangeLocked(nm2.cid,nm2.sd,nm2.ed))return {ok:false,msg:'Nouvelle période verrouillée par un Time Sheet approuvé.'};
+    if(S.role==='utilisateur'){submitApproval('miss_edit',Object.assign({},nm2,{approver_id:resolveApprover(S._userId)}),'Modification de mission — '+esc(m.cli)+' · '+esc(m.name));return {ok:true,msg:'Demande de modification envoyée à votre N+1'};}
+    S.miss=S.miss.map(function(k){return String(k.id)===id?nm2:k;});
+    sbUpsertMiss(nm2).catch(function(e){console.warn('assistant upd miss:',e);});
+    return {ok:true,msg:'Mission modifiée'};
+  }
+  if(ac.tool==='delete_leave'||ac.tool==='update_leave'){
+    var l=(S.lvs||[]).find(function(k){return String(k.id)===id;});
+    if(!l||!inScope(l.cid))return {ok:false,msg:'Absence introuvable ou hors de votre périmètre.'};
+    if((S.role==='utilisateur'||S.role==='recruteur'||S.role==='sales')&&String(l.cid)!==String(S.consId))return {ok:false,msg:'Vous pouvez seulement agir sur vos propres absences.'};
+    if(tsRangeLocked(l.cid,l.s,l.e))return {ok:false,msg:'Absence verrouillée par un Time Sheet approuvé.'};
+    if(ac.tool==='delete_leave'){
+      if(S.role==='utilisateur'){submitApproval('leave_del',{id:l.id,approver_id:resolveApprover(S._userId)},'Suppression d’absence — '+esc(l.type)+' du '+fDt(l.s)+' au '+fDt(l.e));return {ok:true,msg:'Demande de suppression envoyée à votre N+1'};}
+      S.lvs=S.lvs.filter(function(k){return String(k.id)!==id;});
+      try{var p4=sbDel('leaves',l.id);if(p4&&p4.catch)p4.catch(function(e){console.warn('assistant del lv:',e);});}catch(e){}
+      return {ok:true,msg:'Absence supprimée'};
+    }
+    var nl=Object.assign({},l);
+    if(ch.type!=null){if(LTYPES.indexOf(ch.type)<0)return {ok:false,msg:'Type d’absence inconnu.'};nl.type=ch.type;}
+    if(ch.s!=null){if(!aiIsDate(ch.s))return {ok:false,msg:'Date invalide.'};nl.s=ch.s;}
+    if(ch.e!=null){if(!aiIsDate(ch.e))return {ok:false,msg:'Date invalide.'};nl.e=ch.e;}
+    if(nl.e<nl.s)return {ok:false,msg:'La date de fin précède la date de début.'};
+    if(tsRangeLocked(nl.cid,nl.s,nl.e))return {ok:false,msg:'Nouvelle période verrouillée par un Time Sheet approuvé.'};
+    var bal=checkLeaveBalance(nl.cid,nl.type,nl.s,nl.e,l.id);
+    if(bal.capped&&!bal.ok)return {ok:false,msg:'Solde insuffisant ('+bal.label+' : '+fmtJ(bal.remaining)+' restants, '+fmtJ(bal.need)+' demandés).'};
+    var approverId=resolveApprover(S._userId),isSelf=!!(S.consId&&String(nl.cid)===String(S.consId));
+    if(approverId&&isSelf){submitApproval('leave_edit',Object.assign({},nl,{approver_id:approverId}),'Modification d’absence — '+esc(nl.type)+' du '+fDt(nl.s)+' au '+fDt(nl.e));return {ok:true,msg:'Demande de modification envoyée à votre N+1'};}
+    S.lvs=S.lvs.map(function(k){return String(k.id)===id?nl:k;});
+    sbUpsertLeave(nl);
+    return {ok:true,msg:'Absence modifiée'};
+  }
+  return {ok:false,msg:'Action non prise en charge.'};
 }
