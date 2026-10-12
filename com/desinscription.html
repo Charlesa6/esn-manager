@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Désinscription — Konsilys</title>
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="/com/com.css">
+<!-- Lien de désinscription des emails de prospection : /desinscription?t=<jeton>.
+     Un simple affichage ne modifie rien (les antivirus de messagerie ouvrent les liens) : il faut cliquer le bouton. -->
+</head>
+<body>
+<header class="hdr"><div class="wrap hdr-in">
+  <a class="brand" href="/creation-site-internet" aria-label="Konsilys — accueil"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span class="brand-name">Konsilys</span></a>
+</div></header>
+<main class="page"><div class="wrap">
+  <h1>Ne plus recevoir nos messages</h1>
+  <div class="box" id="etat"><p>Chargement…</p></div>
+</div></main>
+<script>
+(function () {
+  var FN = 'https://hxxbhbfueqwsvwqrojea.supabase.co/functions/v1/unsubscribe';
+  var t = new URLSearchParams(location.search).get('t') || '';
+  var etat = document.getElementById('etat');
+  function msg(html) { etat.innerHTML = html; }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  if (!/^[a-f0-9]{36}$/.test(t)) return msg('<p>Ce lien de désinscription est incomplet. Écrivez-nous à <a href="mailto:contact@konsilys.com">contact@konsilys.com</a> : nous vous retirons de nos listes.</p>');
+  fetch(FN + '?t=' + t).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); }).then(function (res) {
+    if (!res.ok) return msg('<p>Ce lien n\'est plus valide. Écrivez-nous à <a href="mailto:contact@konsilys.com">contact@konsilys.com</a> : nous vous retirons de nos listes.</p>');
+    if (res.j.deja) return msg('<p><strong>C\'est déjà fait.</strong> Vous ne recevrez plus aucun message de notre part.</p>');
+    msg('<p>Vous ne souhaitez plus recevoir de messages de Konsilys' + (res.j.company ? ' pour <strong>' + esc(res.j.company) + '</strong>' : '') + ' ? La maquette préparée pour votre entreprise sera également supprimée.</p><p style="margin-top:18px"><button class="btn btn-navy btn-lg" id="ok" type="button">Me désinscrire</button></p>');
+    document.getElementById('ok').addEventListener('click', function () {
+      this.disabled = true;
+      fetch(FN + '?t=' + t, { method: 'POST' }).then(function (r) {
+        msg(r.ok ? '<p><strong>C\'est fait.</strong> Vous ne recevrez plus aucun message de notre part, et votre maquette sera supprimée sous 7 jours.</p>'
+                 : '<p>Une erreur est survenue. Écrivez-nous à <a href="mailto:contact@konsilys.com">contact@konsilys.com</a> : nous vous retirons de nos listes.</p>');
+      });
+    });
+  }).catch(function () { msg('<p>Connexion impossible. Réessayez, ou écrivez-nous à <a href="mailto:contact@konsilys.com">contact@konsilys.com</a>.</p>'); });
+})();
+</script>
+</body>
+</html>

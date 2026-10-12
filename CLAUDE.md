@@ -13,6 +13,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Server-side logic:** Supabase **Edge Functions** in **TypeScript / Deno** (`supabase/functions/`).
 - **Payments:** Stripe (livemode). **Hosting:** Vercel (front) + Supabase (data, in Europe).
 
+**Two domains, one Vercel project.** `konsilys.fr` = the SaaS (everything below). **`konsilys.com` = Konsilys's « création de sites internet pour le BTP » offer** (static pages in `com/`, own stylesheet `com/com.css`): on host `(www.)konsilys.com`, `/` redirects (307) to `/creation-site-internet` (`com/index.html`); host-conditioned rewrites serve `/mentions-legales`, `/apercu/<token>` (private prospect mock-up: `com/apercu.html` fetches the HTML from the `apercu` Edge Function of the separate Supabase project `hxxbhbfueqwsvwqrojea`, repo `facade` — no prospect data in this repo) and `/desinscription?t=` (prospecting unsubscribe, `unsubscribe` function of the same project). Those paths are noindex and 404 on konsilys.fr. SaaS routes (`/app`, `/login`…) keep working on both domains.
+
 Routes (`vercel.json`): `/`→`index.html` (marketing home), `/fonctionnalites`, `/solutions`, `/tarifs` (pricing + subscription configurator), `/essai-gratuit` (14-day free-trial signup), `/demo` (demo request → `leads` table), `/login`→`esn_login.html`, `/app`→`esn_manager_cgi.html` (the product), `/cgu`→`cgu.html`.
 
 ## Build / test / lint

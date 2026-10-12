@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Votre maquette — Konsilys</title>
+<!-- Maquette privée d'un prospect : /apercu/<jeton>. Le HTML est rendu par la fonction Supabase « apercu »
+     (dépôt facade) à partir du profil en base, puis affiché ici. Rien n'est stocké dans ce dépôt. -->
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1E293B;background:#F7F9FC;display:grid;place-items:center;min-height:100vh;text-align:center;padding:24px}
+.box{max-width:460px}.box h1{font-size:22px;margin:0 0 10px;color:#0F172A}.box p{color:#5B6B7F;line-height:1.6;margin:0 0 18px}
+.box a{display:inline-block;background:#84CC16;color:#1B2B3A;font-weight:700;padding:12px 22px;border-radius:12px;text-decoration:none}
+.spin{width:34px;height:34px;border:3px solid #E6EAF1;border-top-color:#84CC16;border-radius:50%;margin:0 auto 16px;animation:t 1s linear infinite}
+@keyframes t{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="box" id="etat"><div class="spin" aria-hidden="true"></div><p>Chargement de votre maquette…</p></div>
+<script>
+(function () {
+  var FN = 'https://hxxbhbfueqwsvwqrojea.supabase.co/functions/v1/apercu';
+  var m = location.pathname.match(/\/apercu\/([a-f0-9]{24})\/?$/);
+  function erreur(titre, texte) {
+    document.getElementById('etat').innerHTML = '<h1>' + titre + '</h1><p>' + texte + '</p><a href="/creation-site-internet">Découvrir Konsilys</a>';
+  }
+  if (!m) return erreur('Lien incomplet', 'Vérifiez que le lien de votre maquette a été copié en entier.');
+  var page = new URLSearchParams(location.search).get('page') === 'mentions' ? '&page=mentions' : '';
+  fetch(FN + '?t=' + m[1] + page)
+    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+    .then(function (res) {
+      if (!res.ok || !res.j.html) return erreur('Maquette indisponible', 'Cette maquette n\'existe pas ou a été supprimée. Vous pouvez nous écrire à contact@konsilys.com.');
+      document.open(); document.write(res.j.html); document.close();
+    })
+    .catch(function () { erreur('Connexion impossible', 'La maquette n\'a pas pu être chargée. Réessayez dans un instant.'); });
+})();
+</script>
+</body>
+</html>

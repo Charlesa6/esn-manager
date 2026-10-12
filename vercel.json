@@ -1,46 +1,275 @@
 {
   "redirects": [
-    { "source": "/pilotage-esn", "destination": "/", "permanent": true },
-    { "source": "/abonnement", "destination": "/tarifs", "permanent": true },
-    { "source": "/pricing", "destination": "/tarifs", "permanent": true },
-    { "source": "/trial", "destination": "/essai-gratuit", "permanent": true }
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.konsilys.com"
+        }
+      ],
+      "destination": "/creation-site-internet",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "konsilys.com"
+        }
+      ],
+      "destination": "https://www.konsilys.com/creation-site-internet",
+      "permanent": false
+    },
+    {
+      "source": "/pilotage-esn",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/abonnement",
+      "destination": "/tarifs",
+      "permanent": true
+    },
+    {
+      "source": "/pricing",
+      "destination": "/tarifs",
+      "permanent": true
+    },
+    {
+      "source": "/trial",
+      "destination": "/essai-gratuit",
+      "permanent": true
+    }
   ],
   "rewrites": [
-    { "source": "/",      "destination": "/index.html" },
-    { "source": "/fonctionnalites", "destination": "/fonctionnalites.html" },
-    { "source": "/solutions", "destination": "/solutions.html" },
-    { "source": "/tarifs", "destination": "/tarifs.html" },
-    { "source": "/essai-gratuit", "destination": "/essai-gratuit.html" },
-    { "source": "/demo", "destination": "/demo.html" },
-    { "source": "/admin-leads", "destination": "/admin-leads.html" },
-    { "source": "/login", "destination": "/esn_login.html" },
-    { "source": "/app",   "destination": "/esn_manager_cgi.html" },
-    { "source": "/postuler", "destination": "/postuler.html" },
-    { "source": "/cgu",   "destination": "/cgu.html" }
+    {
+      "source": "/creation-site-internet",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.konsilys.com"
+        }
+      ],
+      "destination": "/com/index.html"
+    },
+    {
+      "source": "/mentions-legales",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.konsilys.com"
+        }
+      ],
+      "destination": "/com/mentions-legales.html"
+    },
+    {
+      "source": "/apercu/:token",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.konsilys.com"
+        }
+      ],
+      "destination": "/com/apercu.html"
+    },
+    {
+      "source": "/desinscription",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.konsilys.com"
+        }
+      ],
+      "destination": "/com/desinscription.html"
+    },
+    {
+      "source": "/creation-site-internet",
+      "has": [
+        {
+          "type": "host",
+          "value": "konsilys.com"
+        }
+      ],
+      "destination": "/com/index.html"
+    },
+    {
+      "source": "/mentions-legales",
+      "has": [
+        {
+          "type": "host",
+          "value": "konsilys.com"
+        }
+      ],
+      "destination": "/com/mentions-legales.html"
+    },
+    {
+      "source": "/apercu/:token",
+      "has": [
+        {
+          "type": "host",
+          "value": "konsilys.com"
+        }
+      ],
+      "destination": "/com/apercu.html"
+    },
+    {
+      "source": "/desinscription",
+      "has": [
+        {
+          "type": "host",
+          "value": "konsilys.com"
+        }
+      ],
+      "destination": "/com/desinscription.html"
+    },
+    {
+      "source": "/",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/fonctionnalites",
+      "destination": "/fonctionnalites.html"
+    },
+    {
+      "source": "/solutions",
+      "destination": "/solutions.html"
+    },
+    {
+      "source": "/tarifs",
+      "destination": "/tarifs.html"
+    },
+    {
+      "source": "/essai-gratuit",
+      "destination": "/essai-gratuit.html"
+    },
+    {
+      "source": "/demo",
+      "destination": "/demo.html"
+    },
+    {
+      "source": "/admin-leads",
+      "destination": "/admin-leads.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/esn_login.html"
+    },
+    {
+      "source": "/app",
+      "destination": "/esn_manager_cgi.html"
+    },
+    {
+      "source": "/postuler",
+      "destination": "/postuler.html"
+    },
+    {
+      "source": "/cgu",
+      "destination": "/cgu.html"
+    }
   ],
   "headers": [
     {
+      "source": "/apercu/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
+      ]
+    },
+    {
+      "source": "/desinscription",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
+      ]
+    },
+    {
+      "source": "/com/(apercu|desinscription).html",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
+      ]
+    },
+    {
       "source": "/sw.js",
       "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
-        { "key": "Service-Worker-Allowed", "value": "/" }
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
       ]
     },
     {
       "source": "/manifest.webmanifest",
       "headers": [
-        { "key": "Content-Type", "value": "application/manifest+json; charset=utf-8" }
+        {
+          "key": "Content-Type",
+          "value": "application/manifest+json; charset=utf-8"
+        }
       ]
     },
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
-        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://alcdn.msauth.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://graph.microsoft.com https://login.microsoftonline.com https://*.sharepoint.com; frame-src https://buy.stripe.com https://js.stripe.com https://login.microsoftonline.com; worker-src 'self' blob:" }
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains; preload"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://alcdn.msauth.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://graph.microsoft.com https://login.microsoftonline.com https://*.sharepoint.com; frame-src https://buy.stripe.com https://js.stripe.com https://login.microsoftonline.com; worker-src 'self' blob:"
+        }
       ]
     }
   ]

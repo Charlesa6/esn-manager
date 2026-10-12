@@ -1,28 +1,52 @@
 # Konsilys — robots.txt
 User-agent: *
 Allow: /
+Disallow: /apercu/
+Disallow: /desinscription
 Disallow: /app
+Disallow: /com/apercu.html
+Disallow: /com/desinscription.html
 
 # Assistants IA / moteurs génératifs — explicitement autorisés à lire le contenu public
 User-agent: GPTBot
 Allow: /
+Disallow: /apercu/
+Disallow: /desinscription
 User-agent: OAI-SearchBot
 Allow: /
+Disallow: /apercu/
+Disallow: /desinscription
 User-agent: ChatGPT-User
 Allow: /
+Disallow: /apercu/
+Disallow: /desinscription
 User-agent: ClaudeBot
 Allow: /
+Disallow: /apercu/
+Disallow: /desinscription
 User-agent: Claude-Web
 Allow: /
+Disallow: /apercu/
+Disallow: /desinscription
 User-agent: anthropic-ai
 Allow: /
+Disallow: /apercu/
+Disallow: /desinscription
 User-agent: PerplexityBot
 Allow: /
+Disallow: /apercu/
+Disallow: /desinscription
 User-agent: Google-Extended
 Allow: /
+Disallow: /apercu/
+Disallow: /desinscription
 User-agent: Applebot-Extended
 Allow: /
+Disallow: /apercu/
+Disallow: /desinscription
 User-agent: Bytespider
 Allow: /
+Disallow: /apercu/
+Disallow: /desinscription
 
 Sitemap: https://konsilys.fr/sitemap.xml
