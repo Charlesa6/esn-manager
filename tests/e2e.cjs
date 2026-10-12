@@ -453,16 +453,16 @@ async function newPage(browser) {
       check('Modèle de rôles : « Fiche de poste » préremplit une vraie offre (Recrutement)', roles.jobPrefill);
       await p.evaluate(() => { S.tab = 'business'; S.bizTab = 'plans'; S.planView = null; render(); });
 
-      // PWA : balises d'installation + deep-link onglet
+      // Installation de l'app depuis le web désactivée : ni manifeste, ni bouton
+      // « Installer l'app » ; le deep-link d'onglet (?tab=) reste disponible.
       const pwa = await p.evaluate(() => ({
         manifest: !!document.querySelector('link[rel="manifest"]'),
-        theme: !!document.querySelector('meta[name="theme-color"]'),
-        appleIcon: !!document.querySelector('link[rel="apple-touch-icon"]'),
         installBtn: !!document.getElementById('pwa-install'),
+        theme: !!document.querySelector('meta[name="theme-color"]'),
         deepLink: typeof applyDeepLinkTab === 'function',
       }));
-      check('PWA : balises manifest + theme-color + apple-touch-icon', pwa.manifest && pwa.theme && pwa.appleIcon);
-      check('PWA : bouton d\'installation + deep-link onglet (?tab=)', pwa.installBtn && pwa.deepLink);
+      check('Installation web désactivée : pas de manifeste ni de bouton « Installer »', !pwa.manifest && !pwa.installBtn);
+      check('Thème + deep-link onglet (?tab=) conservés', pwa.theme && pwa.deepLink);
 
       // « Plans de compte » = sous-onglet du pôle Commercial (avec Opportunités + Intercontrats)
       const plansTab = await p.evaluate(() => {
@@ -1146,6 +1146,77 @@ async function newPage(browser) {
     check('KPIs paginé : top clients serveur affiché', /ClientAlphaXYZ/.test(paged));
     // Restaurer l'état par défaut (drapeau off, rôle initial).
     await p.evaluate(() => { window.KPI_SERVER_AGG = false; S.role = S._roleBak; S.kpiCards = null; S.calMode = '445'; render(); });
+
+    // Assistant (analyse 100 % locale) : phrase → carte → création via les règles de l'app
+    {
+      const ai = await p.evaluate(() => {
+        var save = { role: S.role, miss: S.miss, lvs: S.lvs, cons: S.cons, fetch: window.fetch };
+        var calls = 0; window.fetch = function () { calls++; return save.fetch.apply(window, arguments); };
+        S.role = 'super_admin'; S.ai = null;
+        var say = function (t) { var st = aiState(); st.msgs.push({ role: 'user', text: t }); var r = aiRespond(t); st.msgs.push(r); return r; };
+        var r1 = say('Crée une mission pour Sophie Martin chez BNP Paribas du 3 au 28 novembre 2026 à 650 €');
+        var m1 = r1.actions && r1.actions[0].input;
+        var mission = !!m1 && m1.consultant_ids[0] === 'd1' && m1.client === 'BNP Paribas' && m1.start_date === '2026-11-03' && m1.end_date === '2026-11-28' && m1.tjm === 650;
+        var r2 = say('plutôt à 700 €');
+        var corr = r2.actions && r2.actions[0].input.tjm === 700 && r1.actions[0].status === 'cancel';
+        var r3 = say('crée une mission pour Sophie Martin et Thomas Nguyen chez Orange à partir du 1er décembre 2026 pour 3 mois, tjm 720');
+        var m3 = r3.actions && r3.actions[0].input;
+        var multi = !!m3 && m3.consultant_ids.length === 2 && m3.end_date === '2027-02-28' && m3.tjm === 720;
+        var r4 = say('crée une mission pour Sophie Martin chez AXA du 3 au 28 novembre 2026');
+        var r5 = say('650');
+        var ask = /TJM/.test(r4.text) && !r4.actions && r5.actions && r5.actions[0].input.tjm === 650;
+        var r6 = say('crée une mission en forfait de 40 k€ pour Sophie Martin chez Thales du 3 au 28 novembre 2026 avec 25 % de marge');
+        var f6 = r6.actions && r6.actions[0].input;
+        var forfait = !!f6 && f6.billing_type === 'forfait' && f6.deal_amount === 40000 && f6.target_margin === 25;
+        var r7 = say('pose un congé pour Thomas Nguyen du 22 au 26 décembre 2026');
+        var r8 = say('plutôt RTT');
+        var leave = r7.actions && r7.actions[0].input.type === 'Congé payé' && r8.actions && r8.actions[0].input.type === 'RTT' && r8.actions[0].input.consultant_id === 'd7';
+        var r9 = say('formation pour Sophi Martn le 15/12/2026');
+        var fuzzy = r9.actions && r9.actions[0].input.consultant_id === 'd1' && r9.actions[0].input.start_date === '2026-12-15';
+        var r10 = say('crée une mission chez BNP Paribas jusqu\'au 31/12/2026 à 650 € pour Thomas Nguyen à partir du 01/11/2026');
+        var order = r10.actions && r10.actions[0].input.start_date === '2026-11-01' && r10.actions[0].input.end_date === '2026-12-31';
+        /* Homonymes : deux « Sophie » → choix proposé */
+        var _d1 = S.cons.find(function (c) { return c.id === 'd1'; }); var _sAll = S._all; S._all = null;
+        S.cons = S.cons.concat([Object.assign({}, _d1, { id: 'dx', name: 'Sophie Durand' })]);
+        var r11 = say('pose un RTT pour Sophie le 05/11/2026');
+        var ambig = !!(r11.choices && r11.choices.length === 2 && !r11.actions);
+        S.cons = save.cons; S._all = _sAll;
+        /* Création réelle via les cartes */
+        S.ai = null; aiMount(); document.getElementById('ai-fab').click();
+        var opened = getComputedStyle(document.getElementById('ai-panel')).display === 'flex';
+        document.getElementById('ai-in').value = 'Crée une mission pour Sophie Martin chez BNP Paribas du 3 au 28 novembre 2026 à 650 €';
+        aiSend();
+        var nMiss = S.miss.length;
+        document.querySelector('#ai-panel [data-ai="apply"]').click();
+        var created = S.miss.length === nMiss + 1 && S.miss[S.miss.length - 1].tjm === 650 && S.miss[S.miss.length - 1].cli === 'BNP Paribas';
+        var done = /Mission créée/.test(document.getElementById('ai-panel').innerText);
+        var refused = aiApply({ tool: 'create_mission', input: { consultant_ids: ['inconnu'], name: 'X', client: 'Y', start_date: '2026-11-03', end_date: null, billing_type: 'at', tjm: 500 } }).ok === false;
+        var nLv = S.lvs.length;
+        var lv = aiApply({ tool: 'create_leave', input: { consultant_id: 'd7', type: 'Formation', start_date: '2026-12-01', end_date: '2026-12-01' } });
+        var leaveCreated = lv.ok && (S.lvs.length === nLv + 1 || (S.approvals || []).some(function (x) { return x.type === 'leave_add'; }));
+        S.modal = null;
+        S.role = save.role; S.miss = save.miss; S.lvs = save.lvs; window.fetch = save.fetch; S.ai = null;
+        document.querySelector('#ai-panel [data-ai="close"]').click();
+        render();
+        var demoVisible = getComputedStyle(document.getElementById('ai-fab')).display !== 'none';
+        return { mission: mission, corr: corr, multi: multi, ask: ask, forfait: forfait, leave: leave, fuzzy: fuzzy, order: order, ambig: ambig,
+          opened: opened, created: created, done: done, refused: refused, leaveCreated: leaveCreated, calls: calls, demoVisible: demoVisible };
+      });
+      check('Assistant : mission comprise (consultant, client, dates, TJM)', ai.mission);
+      check('Assistant : correction « plutôt à 700 € » remplace la proposition', ai.corr);
+      check('Assistant : plusieurs consultants + durée « pour 3 mois »', ai.multi);
+      check('Assistant : demande l’information manquante (TJM) puis la reprend', ai.ask);
+      check('Assistant : forfait (montant 40 k€ + marge 25 %)', ai.forfait);
+      check('Assistant : absence + correction du type (RTT)', ai.leave);
+      check('Assistant : nom mal orthographié reconnu (Sophi Martn)', ai.fuzzy);
+      check('Assistant : « jusqu’au … à partir du … » dans le désordre', ai.order);
+      check('Assistant : homonymes → choix proposé', ai.ambig);
+      check('Assistant : panneau ouvert, « Créer » crée la mission', ai.opened && ai.created && ai.done);
+      check('Assistant : consultant hors périmètre refusé', ai.refused);
+      check('Assistant : absence créée (ou soumise au N+1)', ai.leaveCreated);
+      check('Assistant : aucune requête réseau (analyse locale)', ai.calls === 0, 'appels=' + ai.calls);
+      check('Assistant : disponible en mode démo', ai.demoVisible);
+    }
 
     check('aucune erreur JS fatale sur tout le parcours app', p._appErrors.length === 0, p._appErrors.join(' | '));
     await p.context().close();

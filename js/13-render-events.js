@@ -101,6 +101,7 @@ function render(){
   var _mdBody2=document.querySelector('#md .mody,#md .mbody');
   if(_mdBody2&&_mdBodyScroll)_mdBody2.scrollTop=_mdBodyScroll;
   S._lastTab=S.tab;
+  if(typeof aiMount==='function')aiMount(); /* assistant IA (js/18-assistant.js) */
 }
 
 /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
