@@ -150,3 +150,46 @@ h3{font-size:19px;color:var(--ink);margin-bottom:8px;line-height:1.3}
   .hdr-cta{padding:10px 14px;font-size:14px}
   .page dl{grid-template-columns:1fr}.page dt{margin-top:6px}
 }
+
+/* ── Onglets des professions (sous l'en-tête) ─────────────────────────────── */
+.hdr .hdr-tel{margin-left:auto}
+.tabs{border-top:1px solid var(--line);background:#fff}
+.tabs-in{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.tabs-in::-webkit-scrollbar{display:none}
+.tabs a{flex:none;padding:12px 14px;font-weight:700;font-size:15px;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap}
+.tabs a:hover{color:var(--navy)}
+.tabs a[aria-current=page]{color:var(--navy);border-bottom-color:var(--lime)}
+
+/* ── Grille des métiers (page d'accueil) ──────────────────────────────────── */
+.prof-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px}
+.prof{display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden;transition:transform .15s,box-shadow .15s}
+.prof:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(15,23,42,.10)}
+.prof img{aspect-ratio:4/5;object-fit:cover;object-position:top;width:100%;border-bottom:1px solid var(--line)}
+.prof span{padding:14px 16px;display:grid;gap:2px}
+.prof b{color:var(--navy);font-size:17px}
+.prof small{color:var(--muted);font-size:13px;line-height:1.4}
+
+/* ── Exemples : ordinateur + téléphone ────────────────────────────────────── */
+.example-one{max-width:980px;margin:0 auto}
+.pair{position:relative}
+.pair .mob{position:absolute;right:-10px;bottom:-26px;width:24%;border:6px solid var(--ink);border-radius:22px;overflow:hidden;box-shadow:var(--shadow);background:#fff}
+.example-one .ex{padding-bottom:20px}
+.lnk{color:var(--lime-dark);font-weight:700;border-bottom:2px solid var(--lime)}
+
+/* ── Qui suis-je ──────────────────────────────────────────────────────────── */
+.about{display:grid;grid-template-columns:auto 1fr;gap:36px;align-items:start;max-width:900px}
+.about-mark{width:96px;height:96px;border-radius:50%;background:var(--navy);color:var(--lime);display:grid;place-items:center;font-weight:800;font-size:32px;letter-spacing:-1px}
+.about p{color:#475569;font-size:17px;margin-top:10px}
+
+/* ── Formulaire & pied de page ────────────────────────────────────────────── */
+.form select{font:inherit;font-weight:400;border:1px solid #CBD5E1;border-radius:10px;padding:11px 13px;width:100%;background:#fff}
+.ftr-links{display:flex;flex-wrap:wrap;gap:8px 22px;padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid #1E293B}
+.ftr-links a{color:#CBD5E1;font-weight:600}
+
+@media (max-width:1000px){.prof-grid{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:900px){
+  .about{grid-template-columns:1fr;gap:18px}
+  .about-mark{width:72px;height:72px;font-size:24px}
+  .pair .mob{width:30%;right:-6px;border-width:4px;border-radius:16px}
+}
+@media (max-width:560px){.prof-grid{grid-template-columns:repeat(2,1fr)}.tabs a{padding:11px 10px;font-size:14px}}

@@ -55,6 +55,16 @@
       "destination": "/com/index.html"
     },
     {
+      "source": "/creation-site-internet/:metier(batiment|restaurant|coiffeur|fleuriste|boulangerie)",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.konsilys.com"
+        }
+      ],
+      "destination": "/com/:metier.html"
+    },
+    {
       "source": "/mentions-legales",
       "has": [
         {
@@ -93,6 +103,16 @@
         }
       ],
       "destination": "/com/index.html"
+    },
+    {
+      "source": "/creation-site-internet/:metier(batiment|restaurant|coiffeur|fleuriste|boulangerie)",
+      "has": [
+        {
+          "type": "host",
+          "value": "konsilys.com"
+        }
+      ],
+      "destination": "/com/:metier.html"
     },
     {
       "source": "/mentions-legales",
