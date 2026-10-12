@@ -68,3 +68,4 @@ Stripe price IDs are hardcoded and must stay consistent across three places: `as
 
 - Production deploys from the **`main`** branch (Vercel). Work happens on a feature branch; **changes are NOT live on konsilys.fr until merged to `main`** (Edge Functions & DB migrations, however, are deployed directly to prod via MCP and take effect immediately, independent of git).
 - The GitHub squash-merge commit will show as "Unverified" — this is expected and not something to fix.
+- **Owner preference: merge without asking.** Once a PR's CI (`checks`) is green and there is no conflict, squash-merge it to `main` directly — do not ask the owner for permission to merge (explicit instruction from the owner).
