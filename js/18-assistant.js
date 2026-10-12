@@ -173,6 +173,9 @@ function aiLeaveType(n){
 }
 function aiIntent(n){
   if(/\bmission interne\b/.test(n))return 'leave';
+  if(/\b(ajoute[rz]?|cree[rz]?|creation|nouvel(?:le)?|nouveau|embauche[rz]?|integre[rz]?|enregistre[rz]?|recrute[rz]?)\b/.test(n)
+    &&/\b(consultante?s?|collaborat(?:eur|rice)s?|salariee?s?|recrue|freelance)\b/.test(n)
+    &&!/\b(missions?|staff\w*|conges?|rtt|absences?)\b/.test(n))return 'consultant';
   if(/\b(missions?|staff(?:e|er|ing)?|placer?|positionne[rz]?)\b/.test(n))return 'mission';
   if(aiLeaveType(n)||/\b(absences?|absent|off|repos)\b/.test(n))return 'leave';
   return null;
@@ -234,6 +237,29 @@ function aiParseCons(n,mask){
   return {ids:ids.filter(function(id,i,arr){return arr.indexOf(id)===i;}),ambig:ambig};
 }
 
+/* Fiche consultant : « Ajoute le consultant Julie Martin, Data Engineer, SCR 450 €, julie@esn.fr » */
+function aiParseNewCons(text,n){
+  var r={name:null,title:null,scr:null,email:null};
+  var em=/[^\s@,;<>()]+@[^\s@,;<>()]+\.[a-z]{2,}/i.exec(text);if(em)r.email=em[0].toLowerCase();
+  var sc=/\b(?:scr|cjm|cout(?: de revient)?(?: journalier)?|salaire journalier)\s*(?:de|a|:|=)?\s*(\d+(?:[.,]\d+)?)|(\d+(?:[.,]\d+)?)\s*(?:€|euros?)?\s*(?:de\s+)?(?:scr|cjm)\b/.exec(n);
+  if(sc)r.scr=parseFloat((sc[1]||sc[2]).replace(',','.'));
+  var k=/\b(consultante?|collaborat(?:eur|rice)|salariee?|recrue|freelance)\s+(?:(?:nomme|appele|qui s'appelle)e?\s+)?/.exec(n);
+  if(k){
+    var start=k.index+k[0].length,rest=text.slice(start);
+    /* Nom : mots jusqu'à une virgule ou un mot-clé (poste, SCR, email…), 4 mots max. */
+    var cut=aiN(rest).search(/,|;|\(|\s(?:comme|en tant que|au poste|poste|scr|cjm|cout|email|e-mail|mail|avec|qui|chez|a|au|de scr)\b|\s\S+@|\s\d/);
+    var nm=(cut>=0?rest.slice(0,cut):rest).trim().split(/\s+/).slice(0,4).join(' ');
+    if(nm&&!/^\d/.test(nm))r.name=nm.split(' ').map(function(w){return /^(de|du|des|le|la|van|von|d'\S*)$/i.test(w)?w:w.charAt(0).toUpperCase()+w.slice(1);}).join(' ');
+    /* Poste : « comme … », « en tant que … », « poste … » ou segment après la virgule. */
+    var tm=/\b(?:comme|en tant que|au poste de|poste\s*(?:de|:)?)\s+([^,;]+)/.exec(aiN(rest));
+    var seg=null;
+    if(tm){var off=tm.index+tm[0].length-tm[1].length;seg=rest.substr(off,tm[1].length);}
+    else{var parts=rest.split(/[,;]/).slice(1);for(var i=0;i<parts.length;i++){var pp=parts[i].trim();if(pp&&!/\d|@/.test(pp)&&!/\b(scr|cjm|email|mail)\b/i.test(pp)){seg=pp;break;}}}
+    if(seg){seg=seg.replace(/\s+(?:avec|scr|cjm|email|e-mail|mail)\b.*$/i,'').trim();if(seg)r.title=seg.charAt(0).toUpperCase()+seg.slice(1);}
+  }
+  return r;
+}
+
 /* Intitulé explicite : texte entre guillemets ou « mission <nom> chez … ». */
 function aiParseName(text,n){
   var q=/[«"“]\s*([^»"”]{2,80}?)\s*[»"”]/.exec(text);if(q)return q[1].trim();
@@ -248,8 +274,10 @@ function aiParse(text){
   var dates=aiParseDates(n);
   var money=aiParseMoney(n);
   var self=/\b(moi|me|m'|mon|ma|mes|je|j')\b|\bpose[\s-]?moi\b/.test(n);
+  var intent=aiIntent(n);
+  if(intent==='consultant')return {intent:intent,nc:aiParseNewCons(text,n),cids:[],ambig:[],amounts:[],raw:text.trim(),help:false,ltype:null,self:false,cli:null,name:null,sd:null,ed:null,forfait:false,tmar:null};
   return {
-    intent:aiIntent(n),ltype:aiLeaveType(n),self:self,
+    intent:intent,ltype:aiLeaveType(n),self:self,
     cids:cons.ids,ambig:cons.ambig,
     cli:cli?cli.name:null,name:aiParseName(text,n),
     sd:dates.sd,ed:dates.ed,
@@ -265,6 +293,19 @@ function aiConsName(id){var c=aiConsList().find(function(k){return String(k.id)=
 /* Fusionne une analyse dans le brouillon (les nouvelles valeurs l'emportent). */
 function aiMerge(d,p){
   if(p.intent&&!d.intent)d.intent=p.intent;
+  if(d.intent==='consultant'){
+    d.nc=d.nc||{};
+    if(p.nc){['name','title','scr','email'].forEach(function(k){if(p.nc[k]!=null&&p.nc[k]!=='')d.nc[k]=p.nc[k];});}
+    else{
+      var raw=p.raw||'',e=/[^\s@,;<>()]+@[^\s@,;<>()]+\.[a-z]{2,}/i.exec(raw),num=parseFloat(raw.replace(',','.'));
+      if(e)d.nc.email=e[0].toLowerCase();
+      else if(d.ask==='name'&&raw.length<=60)d.nc.name=raw;
+      else if(/\bscr|cjm|cout\b/i.test(aiN(raw))&&p.amounts.length)d.nc.scr=p.amounts[0];
+      else if(!isNaN(num)&&/^\s*\d/.test(raw))d.nc.scr=num;
+      else if(raw.length<=60&&!/\d/.test(raw))d.nc.title=raw.charAt(0).toUpperCase()+raw.slice(1);
+    }
+    return d;
+  }
   if(p.ltype)d.ltype=p.ltype;
   if(p.cids.length){d.cids=d.multiAdd?d.cids.concat(p.cids):p.cids.slice();}
   if(p.ambig.length)d.ambig=p.ambig;else if(p.cids.length)d.ambig=[];
@@ -291,8 +332,16 @@ function aiMerge(d,p){
 function aiEvaluate(d){
   var sAsk=function(field,msg,extra){d.ask=field;return {text:msg,choices:extra||null};};
   var personal=(S.role==='utilisateur'||S.role==='recruteur'||S.role==='sales');
-  if(!d.intent)return {text:'Je sais créer des missions et des absences. Essayez par exemple « Crée une mission pour Sophie Martin chez BNP Paribas du 3 au 28 novembre à 650 € ».'};
+  if(!d.intent)return {text:'Je sais créer des consultants, des missions et des absences. Essayez par exemple « Crée une mission pour Sophie Martin chez BNP Paribas du 3 au 28 novembre à 650 € ».',quick:aiStartQuick(),reset:true};
+  if(d.intent==='consultant'){
+    if(!canEditTeam())return {text:'Votre rôle ne permet pas d’ajouter des consultants.',reset:true};
+    var nc=d.nc||{};
+    if(!nc.name)return sAsk('name','Quel est le nom du consultant à ajouter ?');
+    return {action:{tool:'create_consultant',input:{name:nc.name,title:nc.title||'',scr:nc.scr!=null?nc.scr:null,email:nc.email||''}},
+      text:'Voici la fiche que je vous propose'+(nc.title?'':' (vous pouvez préciser le poste : « comme Data Engineer »)')+'. Vérifiez puis cliquez sur « Créer ».'};
+  }
   if(d.intent==='mission'&&AI_MISSION_ROLES.indexOf(S.role)<0)return {text:'Votre rôle ne permet pas de créer des missions.',reset:true};
+  if(!aiConsList().length)return {text:'Vous n’avez pas encore de consultant. Commencez par en ajouter un — par exemple « Ajoute le consultant Julie Martin, Data Engineer, SCR 450 € » — ou importez votre fichier Excel.',quick:aiStartQuick(),reset:true};
   if(d.ambig&&d.ambig.length){
     var g=d.ambig[0];
     return sAsk('cons','Plusieurs consultants correspondent. Lequel ?',g.map(function(id){return {id:id,label:aiConsName(id)};}));
@@ -325,6 +374,7 @@ function aiEvaluate(d){
 /* Brouillon reconstitué depuis une carte en attente (pour les corrections). */
 function aiDraftFromAction(ac){
   var x=ac.input||{};
+  if(ac.tool==='create_consultant')return {intent:'consultant',cids:[],ambig:[],nc:{name:x.name,title:x.title,scr:x.scr,email:x.email}};
   if(ac.tool==='create_mission')return {intent:'mission',cids:(x.consultant_ids||[]).slice(),ambig:[],cli:x.client,name:x.name,sd:x.start_date,ed:x.end_date,bt:x.billing_type,tjm:x.tjm,deal:x.deal_amount,tmar:x.target_margin};
   return {intent:'leave',cids:[x.consultant_id],ambig:[],ltype:x.type,sd:x.start_date,ed:x.end_date};
 }
@@ -335,16 +385,34 @@ function aiLastPending(){
 }
 
 /* Traite un message utilisateur et renvoie la réponse de l'assistant. */
+/* Correction d'une fiche consultant proposée : « plutôt comme Product Owner »,
+   « SCR 480 », « email julie@esn.fr », « nom Julie Marin ». */
+function aiConsCorrection(text){
+  var n=aiN(text),c={};
+  var em=/[^\s@,;<>()]+@[^\s@,;<>()]+\.[a-z]{2,}/i.exec(text);if(em)c.email=em[0].toLowerCase();
+  var sc=/\b(?:scr|cjm|cout(?: de revient)?(?: journalier)?)\s*(?:de|a|:|=)?\s*(\d+(?:[.,]\d+)?)/.exec(n);if(sc)c.scr=parseFloat(sc[1].replace(',','.'));
+  var nm=/\bnom\s*(?::|=)?\s+(.+)$/.exec(n);if(nm){var off=nm.index+nm[0].length-nm[1].length;c.name=text.substr(off,nm[1].length).trim();}
+  var tm=/\b(?:comme|en tant que|au poste de|poste\s*(?:de|:)?)\s+([^,;]+)/.exec(n);
+  if(tm){var o2=tm.index+tm[0].length-tm[1].length,t=text.substr(o2,tm[1].length).replace(/\s+(?:avec|scr|cjm|email|e-mail|mail)\b.*$/i,'').trim();if(t)c.title=t.charAt(0).toUpperCase()+t.slice(1);}
+  return c;
+}
+
+/* Traite un message utilisateur et renvoie la réponse de l'assistant. */
 function aiRespond(text){
-  var st=aiState(),p=aiParse(text);
-  if(p.help)return {role:'assistant',text:'Je peux créer pour vous :\n• une mission — « Crée une mission pour Julie Martin chez BNP Paribas du 3 au 28 novembre à 650 € »\n• une absence — « Pose-moi un congé du 22 au 26 décembre », « RTT vendredi pour Thomas »\nJe vous demande ce qui manque, et rien n’est créé sans votre confirmation.'};
-  var startNew=!!(p.intent&&(p.cids.length||p.cli||p.sd||/\b(cree|creer|ajoute|ajouter|pose|poser|nouvelle?|staffe|staffer|place|placer)\b/.test(aiN(text))));
-  var d=null,replaced=null;
+  var st=aiState(),p=aiParse(text),n=aiN(text);
+  if(p.help)return {role:'assistant',text:'Je peux créer pour vous :\n• un consultant — « Ajoute le consultant Julie Martin, Data Engineer, SCR 450 € »\n• une mission — « Crée une mission pour Julie Martin chez BNP Paribas du 3 au 28 novembre à 650 € »\n• une absence — « Pose-moi un congé du 22 au 26 décembre », « RTT vendredi pour Thomas »\nJe vous demande ce qui manque, et rien n’est créé sans votre confirmation.',quick:aiStartQuick()};
+  var startNew=!!(p.intent&&(p.intent==='consultant'||p.cids.length||p.cli||p.sd||/\b(cree|creer|ajoute|ajouter|pose|poser|nouvelle?|staffe|staffer|place|placer)\b/.test(n)));
+  var d=null,replaced=null,lp=null;
   if(startNew)d={cids:[],ambig:[]};
   else if(st.draft)d=st.draft;
-  else{var lp=aiLastPending();if(lp&&(p.cids.length||p.cli||p.sd||p.ed||p.amounts.length||p.ltype||p.tmar!=null||p.forfait)){d=aiDraftFromAction(lp);replaced=lp;}}
+  else if((lp=aiLastPending())){
+    if(lp.tool==='create_consultant'){
+      var c=aiConsCorrection(text);
+      if(Object.keys(c).length){d=aiDraftFromAction(lp);replaced=lp;Object.keys(c).forEach(function(k){d.nc[k]=c[k];});p=null;}
+    }else if(p.cids.length||p.cli||p.sd||p.ed||p.amounts.length||p.ltype||p.tmar!=null||p.forfait){d=aiDraftFromAction(lp);replaced=lp;}
+  }
   if(!d)d={cids:[],ambig:[]};
-  aiMerge(d,p);
+  if(p)aiMerge(d,p);
   var r=aiEvaluate(d);
   if(r.action){
     if(replaced){replaced.status='cancel';replaced.result='Remplacée par la version corrigée';}
@@ -352,7 +420,55 @@ function aiRespond(text){
     return {role:'assistant',text:r.text,actions:[{tool:r.action.tool,input:r.action.input,status:'pending'}]};
   }
   st.draft=r.reset?null:d;
-  return {role:'assistant',text:r.text,choices:r.choices||null};
+  return {role:'assistant',text:r.text,choices:r.choices||null,quick:r.quick||null};
+}
+
+/* Raccourcis de démarrage (boutons) : exemples à envoyer ou actions de l'app. */
+function aiStartQuick(){
+  var q=[];
+  if(canEditTeam()){
+    q.push({label:'📥 Importer mes consultants (Excel)',go:'import-cons'});
+    q.push({label:'👤 Ajouter un consultant',prompt:'Ajoute le consultant Julie Martin, Data Engineer, SCR 450 €'});
+  }
+  if(AI_MISSION_ROLES.indexOf(S.role)>=0)q.push({label:'💼 Créer une mission',prompt:'Crée une mission pour '+(((aiConsList()[0]||{}).name)||'Julie Martin')+' chez BNP Paribas du 3 au 28 novembre à 650 €'});
+  q.push({label:'🌴 Poser une absence',prompt:'Pose-moi un congé payé du 22 au 26 décembre'});
+  return q;
+}
+
+/* ═══════════════════════ ESSAI GRATUIT : GUIDE DE DÉMARRAGE ═══════════════════════
+   Pour un administrateur dont l'abonnement est en essai (S.subscription.status
+   === 'trialing'), l'assistant s'ouvre une fois automatiquement avec un guide :
+   jours restants, étapes cochées au fur et à mesure, raccourcis. */
+function aiTrial(){
+  var sub=S.subscription;
+  if(S.demo||!sub||sub.status!=='trialing'||(S.role!=='admin'&&S.role!=='super_admin'))return null;
+  var te=sub.current_period_end?new Date(sub.current_period_end):null;
+  var left=te&&!isNaN(te)?Math.max(0,Math.ceil((te-Date.now())/864e5)):null;
+  return {left:left};
+}
+function aiTrialSteps(){
+  var all=(S._all&&S._all.cons)||S.cons||[],miss=(S._all&&S._all.miss)||S.miss||[],lvs=(S._all&&S._all.lvs)||S.lvs||[];
+  /* La fiche de l'administrateur est créée automatiquement : on compte au-delà. */
+  var others=all.filter(function(c){return String(c.id)!==String(S.consId);}).length;
+  return [
+    {done:others>0,label:'Ajouter vos consultants'},
+    {done:miss.length>0,label:'Créer une première mission'},
+    {done:lvs.length>0,label:'Poser une absence'}
+  ];
+}
+function aiTrialGuideHtml(t){
+  var steps=aiTrialSteps(),n=steps.filter(function(x){return x.done;}).length;
+  return '<div class="ai-guide"><div class="ai-guide-h">🎁 Essai gratuit'+(t.left!=null?' — '+(t.left<=1?'dernier jour':'encore '+t.left+' jours'):'')+'</div>'
+    +'<div class="ai-guide-p">Démarrage : '+n+'/'+steps.length+'</div>'
+    +steps.map(function(x){return '<div class="ai-step'+(x.done?' ok':'')+'">'+(x.done?'✓':'○')+' '+esc(x.label)+'</div>';}).join('')
+    +'</div>';
+}
+function aiTrialAutoOpen(){
+  var t=aiTrial();if(!t)return;
+  var key='ks-ai-trial-'+(SB_CID||'');
+  try{if(localStorage.getItem(key))return;localStorage.setItem(key,'1');}catch(e){return;}
+  var st=aiState();st.open=true;
+  if(!st.msgs.length)st.msgs.push({role:'assistant',text:'Bienvenue dans votre essai gratuit de Konsilys ! Je suis votre assistant : écrivez-moi ce que vous voulez faire, je prépare la fiche et vous n’avez plus qu’à confirmer.\nPour bien démarrer : ajoutez vos consultants (un par un ou par import Excel), créez une mission, puis posez une absence.',quick:aiStartQuick()});
 }
 
 /* ═══════════════════════ INTERFACE ═══════════════════════ */
@@ -373,8 +489,14 @@ function aiMount(){
       if(e.target&&e.target.id==='ai-in'&&e.key==='Enter'&&!e.shiftKey){e.preventDefault();aiSend();}
       else if(e.key==='Escape'&&aiState().open){aiState().open=false;aiRender();}
     });
-  }else{btn.style.display='';return;} /* déjà monté : on ne re-rend pas le panneau (évite de voler le focus) */
+  }else{
+    btn.style.display='';
+    /* déjà monté : on ne re-rend le panneau que s'il s'ouvre (guide d'essai) — évite de voler le focus */
+    var was=aiState().open;aiTrialAutoOpen();if(!was&&aiState().open)aiRender();
+    return;
+  }
   btn.style.display='';
+  aiTrialAutoOpen();
   aiRender();
 }
 
@@ -386,13 +508,17 @@ function aiRender(){
   if(!st.open)return;
   var keep=document.getElementById('ai-in'),draft=keep?keep.value:'';
   var ex1=(aiConsList()[0]||{}).name||'Julie Martin';
-  var intro='<div class="ai-msg a"><div class="ai-b">Bonjour ! Dites-moi ce que vous voulez créer, par exemple :'
-    +(AI_MISSION_ROLES.indexOf(S.role)>=0?'<button class="ai-ex" data-ai="ex">Crée une mission pour '+esc(ex1)+' chez BNP Paribas du 3 au 28 novembre à 650 €</button>':'')
-    +'<button class="ai-ex" data-ai="ex">Pose-moi un congé payé du 22 au 26 décembre</button></div></div>';
+  var trial=aiTrial();
+  var intro=(trial?'<div class="ai-msg a" style="max-width:100%;align-self:stretch">'+aiTrialGuideHtml(trial)+'</div>':'')
+    +(st.msgs.length?'':'<div class="ai-msg a"><div class="ai-b">Bonjour ! Dites-moi ce que vous voulez créer, par exemple :'
+    +(canEditTeam()?'<button class="ai-ex" data-ai="ex">Ajoute le consultant Julie Martin, Data Engineer, SCR 450 €</button>':'')
+    +(AI_MISSION_ROLES.indexOf(S.role)>=0&&aiConsList().length?'<button class="ai-ex" data-ai="ex">Crée une mission pour '+esc(ex1)+' chez BNP Paribas du 3 au 28 novembre à 650 €</button>':'')
+    +'<button class="ai-ex" data-ai="ex">Pose-moi un congé payé du 22 au 26 décembre</button></div></div>');
   var last=st.msgs.length-1;
   var body=st.msgs.map(function(m,i){
     var h='<div class="ai-msg '+(m.role==='user'?'u':'a')+'">';
     if(m.text)h+='<div class="ai-b">'+esc(m.text).replace(/\n/g,'<br>')+'</div>';
+    if(m.quick)h+='<div class="ai-choices">'+m.quick.map(function(q,k){return '<button class="ai-ex ai-q" data-ai="quick" data-i="'+i+'" data-k="'+k+'">'+esc(q.label)+'</button>';}).join('')+'</div>';
     if(m.choices&&i===last)h+='<div class="ai-choices">'+m.choices.map(function(c){return '<button class="ai-ex" data-ai="pick" data-cid="'+esc(c.id)+'">'+esc(c.label)+'</button>';}).join('')+'</div>';
     (m.actions||[]).forEach(function(ac,j){h+=aiCard(ac,i,j);});
     return h+'</div>';
@@ -418,6 +544,12 @@ function aiCard(ac,i,j){
     rows.push(['Période',fDt(x.start_date)+' → '+(x.end_date?fDt(x.end_date):'sans date de fin')]);
     if(x.billing_type==='forfait')rows.push(['Forfait',(x.deal_amount!=null?Number(x.deal_amount).toLocaleString('fr-FR')+' € HT':'—')+(x.target_margin!=null?' · marge '+x.target_margin+' %':'')]);
     else rows.push(['TJM',x.tjm!=null?Number(x.tjm).toLocaleString('fr-FR')+' € HT / jour':'—']);
+  }else if(ac.tool==='create_consultant'){
+    title='👤 Nouveau consultant';
+    rows.push(['Nom',x.name]);rows.push(['Poste',x.title||'—']);
+    rows.push(['SCR',x.scr!=null?Number(x.scr).toLocaleString('fr-FR')+' € / jour':'—']);
+    rows.push(['Email',x.email||'—']);
+    if(aiConsDup(x.name))rows.push(['⚠','Un consultant porte déjà ce nom']);
   }else if(ac.tool==='create_leave'){
     title='🌴 Nouvelle absence';
     rows.push(['Consultant',cname(x.consultant_id)]);rows.push(['Type',x.type]);
@@ -441,6 +573,11 @@ function aiOnClick(e){
   else if(a==='close'){st.open=false;aiRender();}
   else if(a==='send'){aiSend();}
   else if(a==='ex'){var inp=document.getElementById('ai-in');if(inp){inp.value=t.textContent;aiSend();}}
+  else if(a==='quick'){
+    var qm=st.msgs[+t.getAttribute('data-i')],q=qm&&qm.quick&&qm.quick[+t.getAttribute('data-k')];if(!q)return;
+    if(q.go==='import-cons'){st.open=false;aiRender();if(typeof openImportCons==='function')openImportCons();}
+    else if(q.prompt){var inp2=document.getElementById('ai-in');if(inp2){inp2.value=q.prompt;inp2.focus();}}
+  }
   else if(a==='pick'){
     var d=st.draft;if(!d)return;
     var cid=t.getAttribute('data-cid'),c=aiConsList().find(function(k){return String(k.id)===cid;});if(!c)return;
@@ -479,6 +616,7 @@ function aiApply(ac){
   try{
     if(ac.tool==='create_mission')return aiApplyMission(ac.input||{});
     if(ac.tool==='create_leave')return aiApplyLeave(ac.input||{});
+    if(ac.tool==='create_consultant')return aiApplyConsultant(ac.input||{});
     return {ok:false,msg:'Action non prise en charge.'};
   }catch(e){console.warn('assistant apply:',e);return {ok:false,msg:'Erreur inattendue.'};}
 }
@@ -539,4 +677,29 @@ function aiApplyLeave(x){
   }
   submitApproval('leave_add',Object.assign({},nl,{approver_id:approverId}),'Ajout d’absence — '+esc(x.type)+' du '+fDt(x.start_date)+' au '+fDt(x.end_date));
   return {ok:true,msg:'Demande envoyée à votre N+1 pour validation'};
+}
+
+/* ── Création d'un consultant (mêmes valeurs par défaut que le formulaire « Équipe ») ── */
+function aiConsDup(name){
+  var k=aiN(name||'').trim();if(!k)return false;
+  return ((S._all&&S._all.cons)||S.cons||[]).some(function(c){return aiN(c.name).trim()===k;});
+}
+function aiApplyConsultant(x){
+  if(!canEditTeam())return {ok:false,msg:'Votre rôle ne permet pas d’ajouter des consultants.'};
+  var name=String(x.name||'').trim();
+  if(!name||name.length>120)return {ok:false,msg:'Nom invalide.'};
+  if(aiConsDup(name))return {ok:false,msg:'Un consultant porte déjà ce nom.'};
+  var email=String(x.email||'').trim().toLowerCase();
+  if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))return {ok:false,msg:'Email invalide.'};
+  var scr=Number(x.scr);if(!(scr>0))scr=0;
+  /* Rattachement : un directeur crée dans son périmètre (comme le formulaire). */
+  var rdir=(S.role==='gestionnaire')?(S.dirName||''):'';
+  var mgr=rdir?mgrAccountByName(rdir):null;
+  var nc={id:uid(),name:name,title:String(x.title||'').trim().slice(0,120),scr:scr,email:email,dir:rdir,
+    managerId:mgr?mgr.id:(S.role==='gestionnaire'?S._userId||null:null),buId:(mgr&&mgr.bu_id)||null,
+    region:'',mobility:[],arrive:null,depart:null,expertise:[],sectors:[],contract:'salarie',grade:'',modalite:'MS',q2Days:0};
+  S.cons=S.cons.concat([nc]);
+  if(S._all&&S._all.cons&&S._all.cons!==S.cons)S._all.cons=S._all.cons.concat([nc]);
+  try{var pr=sbUpsertCons(nc);if(pr&&pr.catch)pr.catch(function(e){console.warn('assistant consultant:',e);});}catch(e){console.warn('assistant consultant:',e);}
+  return {ok:true,msg:'Consultant ajouté'+(scr?'':' — pensez à renseigner son SCR pour le calcul des marges')};
 }
