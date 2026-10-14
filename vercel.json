@@ -75,6 +75,16 @@
       "destination": "/com/mentions-legales.html"
     },
     {
+      "source": "/cgv",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.konsilys.com"
+        }
+      ],
+      "destination": "/com/cgv.html"
+    },
+    {
       "source": "/apercu/:token",
       "has": [
         {
@@ -123,6 +133,16 @@
         }
       ],
       "destination": "/com/mentions-legales.html"
+    },
+    {
+      "source": "/cgv",
+      "has": [
+        {
+          "type": "host",
+          "value": "konsilys.com"
+        }
+      ],
+      "destination": "/com/cgv.html"
     },
     {
       "source": "/apercu/:token",
