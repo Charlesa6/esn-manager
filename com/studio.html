@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#1B2B3A">
+<title>Studio — Konsilys</title>
+<!-- Outil interne de Charles (démarchage de rue) : créer et modifier sur place la maquette d'un commerçant.
+     Tout passe par la fonction Supabase « studio » (dépôt facade), protégée par un code d'accès gardé sur le téléphone.
+     La maquette est aussitôt en ligne sur /apercu/<jeton> : aucun nom de domaine à acheter avant la signature. -->
+<style>
+:root{--ink:#0F172A;--m:#5B6B7F;--line:#E2E8F0;--bg:#F5F7FA;--card:#fff;--navy:#1B2B3A;--lime:#84CC16;--red:#DC2626}
+@media (prefers-color-scheme:dark){:root{--ink:#F1F5F9;--m:#94A3B8;--line:#334155;--bg:#0B1220;--card:#111827}}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%}
+header{position:sticky;top:0;z-index:10;background:var(--navy);color:#fff;padding:12px 16px calc(12px);display:flex;align-items:center;gap:10px}
+header b{font-size:17px}header .sp{margin-left:auto;font-size:13px;opacity:.85}
+main{max-width:980px;margin:0 auto;padding:16px 16px 120px}
+h1{font-size:22px;margin:4px 0 12px}h2{font-size:17px;margin:22px 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
+label{display:block;font-weight:600;font-size:14px;margin:12px 0 4px}
+.hint{font-size:13px;color:var(--m);font-weight:400}
+input,select,textarea{width:100%;font:inherit;font-size:16px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+textarea{min-height:76px;resize:vertical}
+.row{display:flex;gap:10px}.row>*{flex:1;min-width:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:12px;padding:13px 16px;font:inherit;font-weight:700;cursor:pointer;text-decoration:none;color:var(--navy);background:var(--lime)}
+.btn.sec{background:transparent;border:1.5px solid var(--line);color:var(--ink)}
+.btn.danger{background:transparent;border:1.5px solid var(--red);color:var(--red)}
+.btn.block{width:100%}
+.res{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:6px 0;font:inherit;color:var(--ink);cursor:pointer}
+.res small{display:block;color:var(--m)}
+.liste a{display:block;color:inherit;text-decoration:none}
+.tabs{position:sticky;top:50px;z-index:9;display:flex;gap:6px;background:var(--bg);padding:8px 0}
+.tabs button{flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--card);font:inherit;font-weight:700;color:var(--ink)}
+.tabs button[aria-pressed=true]{background:var(--navy);color:#fff;border-color:var(--navy)}
+.ed{display:grid;grid-template-columns:1fr;gap:16px}
+.pv-wrap{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff}
+iframe{display:block;width:100%;height:72vh;border:0;background:#fff}
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--card);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px;justify-content:center}
+.bar .btn{flex:1;min-width:0;padding:11px 8px;font-size:15px;white-space:nowrap}
+.etat{font-size:13px;color:var(--m)}.etat.ok{color:#4D7C0F}.etat.err{color:var(--red)}
+.svc{border:1px dashed var(--line);border-radius:12px;padding:8px 10px;margin:8px 0}
+.svc .row{align-items:center}
+.x{background:none;border:0;color:var(--red);font-size:22px;line-height:1;cursor:pointer;flex:0 0 auto !important}
+.couleurs input[type=color]{height:46px;padding:4px}
+dialog{border:0;border-radius:16px;padding:20px;max-width:340px;width:calc(100% - 32px);text-align:center;background:var(--card);color:var(--ink)}
+dialog::backdrop{background:rgba(15,23,42,.6)}
+#qr svg,#qr img{width:240px;height:240px}
+[hidden]{display:none !important}
+@media (min-width:900px){.tabs{display:none}.ed{grid-template-columns:1fr 1fr;align-items:start}.ed>#vue-apercu{display:block !important;position:sticky;top:70px}#vue-fiche{display:block !important}}
+</style>
+</head>
+<body>
+<header><b>Konsilys · Studio</b><span class="sp" id="entete"></span></header>
+<main>
+
+<!-- 1. Code d'accès (une seule fois par téléphone) -->
+<section id="v-code" hidden>
+  <h1>Code d'accès</h1>
+  <p class="hint">Saisissez votre code une fois : il reste enregistré sur ce téléphone.</p>
+  <input id="code" type="password" autocomplete="current-password" autocapitalize="off" spellcheck="false">
+  <p><button class="btn block" id="b-code">Entrer</button></p>
+  <p class="etat err" id="e-code"></p>
+</section>
+
+<!-- 2. Accueil : mes maquettes -->
+<section id="v-accueil" hidden>
+  <button class="btn block" id="b-nouveau">＋ Nouvelle maquette</button>
+  <h2>Mes maquettes</h2>
+  <div id="liste" class="liste"><p class="hint">Chargement…</p></div>
+</section>
+
+<!-- 3. Recherche du commerce -->
+<section id="v-recherche" hidden>
+  <h1>Quel commerce ?</h1>
+  <label for="q">Nom du commerce (et la ville si besoin)</label>
+  <input id="q" placeholder="ex. Boulangerie du Marché Lyon" autocomplete="off">
+  <div id="resultats"></div>
+  <p><button class="btn sec block" id="b-sans">Continuer sans recherche</button></p>
+  <p><button class="btn sec block" data-go="accueil">← Retour</button></p>
+</section>
+
+<!-- 4. Éditeur -->
+<section id="v-editeur" hidden>
+  <div class="tabs"><button id="t-fiche" aria-pressed="true">Fiche</button><button id="t-apercu" aria-pressed="false">Aperçu</button></div>
+  <div class="ed">
+    <div id="vue-fiche">
+      <p class="etat" id="etat">Remplissez au moins le nom et le métier.</p>
+      <div class="card">
+        <label for="f-metier">Métier</label><select id="f-metier"></select>
+        <label for="f-nom">Nom du commerce</label><input id="f-nom" autocomplete="off">
+        <label for="f-accroche">Titre principal <span class="hint">(facultatif, sinon « Fleuriste à Lyon »…)</span></label><input id="f-accroche">
+        <label for="f-description">Présentation <span class="hint">(2-3 phrases ; vide = texte type à valider)</span></label><textarea id="f-description"></textarea>
+      </div>
+      <div class="card">
+        <label for="f-adresse">Adresse</label><input id="f-adresse" autocomplete="off">
+        <div class="row"><div><label for="f-cp">Code postal</label><input id="f-cp" inputmode="numeric" maxlength="5"></div><div><label for="f-ville">Ville</label><input id="f-ville"></div></div>
+        <label for="f-tel">Téléphone du commerce</label><input id="f-tel" type="tel">
+        <label for="f-email">Email du commerce <span class="hint">(affiché sur le site)</span></label><input id="f-email" type="email" autocapitalize="off">
+        <label for="f-horaires">Horaires</label><textarea id="f-horaires" placeholder="Du mardi au samedi, 9 h – 19 h ; dimanche 9 h – 13 h"></textarea>
+        <label for="f-zone">Zone d'intervention <span class="hint">(artisans : villes séparées par des virgules)</span></label><input id="f-zone">
+      </div>
+      <div class="card">
+        <label>Prestations / produits <span class="hint">(vide = prestations types du métier, surlignées « à valider »)</span></label>
+        <div id="services"></div>
+        <button class="btn sec block" id="b-svc">＋ Ajouter</button>
+        <label for="f-atouts">Points forts <span class="hint">(un par ligne)</span></label><textarea id="f-atouts" placeholder="Fait maison&#10;Produits locaux"></textarea>
+        <label for="f-histoire">L'histoire de la maison <span class="hint">(facultatif)</span></label><textarea id="f-histoire"></textarea>
+      </div>
+      <div class="card couleurs">
+        <label>Couleurs <span class="hint">(facultatif : couleurs de la devanture)</span></label>
+        <div class="row"><div><span class="hint">Principale</span><input type="color" id="f-c1"></div><div><span class="hint">Boutons</span><input type="color" id="f-c2"></div></div>
+        <p><button class="btn sec block" id="b-couleurs">Couleurs du métier</button></p>
+      </div>
+      <div class="card">
+        <label>Contact (pour moi, non affiché)</label>
+        <div class="row"><div><label for="c-nom">Gérant</label><input id="c-nom"></div><div><label for="c-tel">Portable</label><input id="c-tel" type="tel"></div></div>
+        <label for="c-email">Email du gérant</label><input id="c-email" type="email" autocapitalize="off">
+        <label for="c-notes">Notes</label><textarea id="c-notes" placeholder="Intéressé, rappeler jeudi…"></textarea>
+      </div>
+      <p><button class="btn danger block" id="b-archive" hidden>Supprimer cette maquette</button></p>
+      <p><button class="btn sec block" data-go="accueil">← Mes maquettes</button></p>
+    </div>
+    <div id="vue-apercu" hidden>
+      <div class="pv-wrap"><iframe id="pv" title="Aperçu de la maquette"></iframe></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<div class="bar" id="bar" hidden>
+  <a class="btn" id="a-ouvrir" target="_blank" rel="noopener">Plein écran</a>
+  <button class="btn sec" id="b-qr">QR code</button>
+  <button class="btn sec" id="b-partager">Envoyer</button>
+</div>
+
+<dialog id="d-qr"><div id="qr"></div><p class="hint">Le commerçant scanne avec son téléphone pour voir sa maquette.</p><button class="btn block" id="b-qr-fermer">Fermer</button></dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  var FN = 'https://hxxbhbfueqwsvwqrojea.supabase.co/functions/v1/studio';
+  var $ = function (id) { return document.getElementById(id); };
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+    del: function (k) { try { localStorage.removeItem(k); } catch (e) {} }
+  };
+  var cle = store.get('ks-studio-cle');
+  var METIERS = [];
+  var courant = null;      // jeton de la maquette ouverte
+  var siren = null, raison = null, annee = null;
+  var minuteur = null, enCours = false, aRefaire = false;
+
+  function api(action, data) {
+    return fetch(FN, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-studio-key': cle || '' },
+      body: JSON.stringify(Object.assign({ action: action }, data || {}))
+    }).then(function (r) {
+      return r.json().then(function (j) {
+        if (r.status === 401) { store.del('ks-studio-cle'); cle = null; vue('code'); throw new Error('Code d\'accès incorrect'); }
+        if (!r.ok) throw new Error(j.error || 'Erreur ' + r.status);
+        return j;
+      });
+    });
+  }
+
+  function vue(nom) {
+    ['code', 'accueil', 'recherche', 'editeur'].forEach(function (v) { $('v-' + v).hidden = v !== nom; });
+    $('bar').hidden = !(nom === 'editeur' && courant);
+    window.scrollTo(0, 0);
+    if (nom === 'accueil') charger();
+  }
+  document.addEventListener('click', function (e) { var g = e.target.closest('[data-go]'); if (g) vue(g.getAttribute('data-go')); });
+
+  // ── Code d'accès
+  $('b-code').onclick = function () {
+    cle = $('code').value.trim();
+    $('e-code').textContent = '';
+    api('init').then(function (j) { store.set('ks-studio-cle', cle); demarrer(j); }).catch(function (e) { $('e-code').textContent = e.message; vue('code'); });
+  };
+  $('code').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('b-code').click(); });
+
+  function demarrer(j) {
+    METIERS = j.metiers;
+    var sel = $('f-metier'); sel.innerHTML = '';
+    [['commerce', 'Commerces'], ['btp', 'Bâtiment']].forEach(function (g) {
+      var og = document.createElement('optgroup'); og.label = g[1];
+      METIERS.filter(function (m) { return m.famille === g[0]; }).forEach(function (m) { var o = document.createElement('option'); o.value = m.key; o.textContent = m.label; og.appendChild(o); });
+      sel.appendChild(og);
+    });
+    vue('accueil');
+  }
+
+  // ── Accueil
+  function charger() {
+    api('list').then(function (j) {
+      var l = $('liste');
+      if (!j.maquettes.length) { l.innerHTML = '<p class="hint">Aucune maquette pour l\'instant.</p>'; return; }
+      l.innerHTML = '';
+      j.maquettes.forEach(function (m) {
+        var a = document.createElement('a'); a.href = '#'; a.className = 'card';
+        var lab = (METIERS.filter(function (x) { return x.key === m.metier; })[0] || {}).label || m.metier;
+        a.innerHTML = '<b></b><small class="hint" style="display:block"></small>';
+        a.querySelector('b').textContent = m.company;
+        a.querySelector('small').textContent = lab + (m.city ? ' · ' + m.city : '') + ' · ' + new Date(m.updated_at).toLocaleDateString('fr-FR');
+        a.onclick = function (e) { e.preventDefault(); ouvrir(m.preview_token); };
+        l.appendChild(a);
+      });
+    }).catch(function (e) { $('liste').innerHTML = '<p class="etat err"></p>'; $('liste').firstChild.textContent = e.message; });
+  }
+  $('b-nouveau').onclick = function () { $('q').value = ''; $('resultats').innerHTML = ''; vue('recherche'); $('q').focus(); };
+
+  // ── Recherche dans l'annuaire officiel des entreprises
+  var tRech = null;
+  $('q').addEventListener('input', function () {
+    clearTimeout(tRech);
+    var q = this.value.trim();
+    if (q.length < 3) { $('resultats').innerHTML = ''; return; }
+    tRech = setTimeout(function () {
+      $('resultats').innerHTML = '<p class="hint">Recherche…</p>';
+      api('search', { q: q }).then(function (j) {
+        var r = $('resultats'); r.innerHTML = '';
+        if (!j.resultats.length) { r.innerHTML = '<p class="hint">Aucun résultat : continuez sans recherche.</p>'; return; }
+        j.resultats.forEach(function (e) {
+          var b = document.createElement('button'); b.className = 'res';
+          b.innerHTML = '<b></b><small></small><small></small>';
+          b.querySelector('b').textContent = e.nom;
+          b.querySelectorAll('small')[0].textContent = [e.adresse].filter(Boolean).join(' ');
+          b.querySelectorAll('small')[1].textContent = [e.activite, e.dirigeant].filter(Boolean).join(' · ');
+          b.onclick = function () { nouvelle(e); };
+          r.appendChild(b);
+        });
+      }).catch(function (e) { $('resultats').innerHTML = '<p class="etat err"></p>'; $('resultats').firstChild.textContent = e.message; });
+    }, 450);
+  });
+  $('b-sans').onclick = function () { nouvelle({ nom: $('q').value.trim() }); };
+
+  // ── Éditeur
+  function remplir(p, c) {
+    p = p || {}; c = c || {};
+    $('f-metier').value = p.metier || 'restaurant';
+    $('f-nom').value = p.nom_commercial || p.raison_sociale || '';
+    $('f-accroche').value = p.accroche || '';
+    $('f-description').value = p.description || '';
+    $('f-adresse').value = p.adresse || '';
+    $('f-cp').value = p.code_postal || '';
+    $('f-ville').value = p.ville || '';
+    $('f-tel').value = p.telephone || '';
+    $('f-email').value = p.email || '';
+    $('f-horaires').value = p.horaires || '';
+    $('f-zone').value = (p.zone_intervention || []).join(', ');
+    $('f-atouts').value = (p.atouts || []).join('\n');
+    $('f-histoire').value = p.histoire || '';
+    $('services').innerHTML = '';
+    (p.services || []).forEach(function (s) { ajouterService(s.titre, s.description); });
+    var pal = p.palette || {};
+    $('f-c1').dataset.defini = pal.primary ? '1' : ''; $('f-c2').dataset.defini = pal.accent ? '1' : '';
+    $('f-c1').value = pal.primary || '#1B2B3A'; $('f-c2').value = pal.accent || '#84CC16';
+    $('c-nom').value = c.nom || ''; $('c-tel').value = c.telephone || ''; $('c-email').value = c.email || ''; $('c-notes').value = c.notes || '';
+    siren = p.siren || null; raison = p.raison_sociale || null; annee = p.annee_creation || null;
+  }
+
+  function nouvelle(e) {
+    courant = null;
+    remplir({ metier: e.metier && METIERS.some(function (m) { return m.key === e.metier; }) ? e.metier : 'restaurant', nom_commercial: e.nom, raison_sociale: e.raison_sociale, siren: e.siren,
+      adresse: e.adresse, code_postal: e.code_postal, ville: e.ville, annee_creation: e.annee_creation }, { nom: e.dirigeant });
+    $('pv').srcdoc = ''; $('b-archive').hidden = true;
+    onglet('fiche'); vue('editeur');
+    if (e.nom) enregistrer();
+  }
+
+  function ouvrir(t) {
+    api('get', { token: t }).then(function (j) {
+      courant = t; remplir(j.profile, j.contact); $('b-archive').hidden = false;
+      onglet('fiche'); vue('editeur'); enregistrer();
+    }).catch(function (e) { alert(e.message); });
+  }
+
+  function ajouterService(titre, desc) {
+    var d = document.createElement('div'); d.className = 'svc';
+    d.innerHTML = '<div class="row"><input placeholder="Titre (ex. Bouquets)"><button class="x" type="button" aria-label="Retirer">×</button></div><input placeholder="Description courte" style="margin-top:6px">';
+    var ins = d.querySelectorAll('input'); ins[0].value = titre || ''; ins[1].value = desc || '';
+    d.querySelector('.x').onclick = function () { d.remove(); planifier(); };
+    $('services').appendChild(d);
+  }
+  $('b-svc').onclick = function () { ajouterService(); $('services').lastChild.querySelector('input').focus(); };
+  $('b-couleurs').onclick = function () { $('f-c1').dataset.defini = ''; $('f-c2').dataset.defini = ''; planifier(); };
+  ['f-c1', 'f-c2'].forEach(function (id) { $(id).addEventListener('input', function () { this.dataset.defini = '1'; }); });
+
+  function profil() {
+    var lignes = function (v) { return v.split('\n').map(function (s) { return s.trim(); }).filter(Boolean); };
+    var p = {
+      metier: $('f-metier').value, nom_commercial: $('f-nom').value, raison_sociale: raison || undefined, siren: siren || undefined, annee_creation: annee || undefined,
+      accroche: $('f-accroche').value, description: $('f-description').value, adresse: $('f-adresse').value, code_postal: $('f-cp').value.trim(), ville: $('f-ville').value,
+      telephone: $('f-tel').value, email: $('f-email').value, horaires: $('f-horaires').value, histoire: $('f-histoire').value,
+      zone_intervention: $('f-zone').value.split(',').map(function (s) { return s.trim(); }).filter(Boolean),
+      atouts: lignes($('f-atouts').value),
+      services: Array.prototype.map.call($('services').children, function (d) { var i = d.querySelectorAll('input'); return { titre: i[0].value, description: i[1].value }; })
+    };
+    var pal = {};
+    if ($('f-c1').dataset.defini) pal.primary = $('f-c1').value;
+    if ($('f-c2').dataset.defini) pal.accent = $('f-c2').value;
+    if (pal.primary || pal.accent) p.palette = pal;
+    return p;
+  }
+
+  function planifier() { clearTimeout(minuteur); minuteur = setTimeout(enregistrer, 1200); etat('Modifications en cours…'); }
+  function etat(t, cls) { var e = $('etat'); e.textContent = t; e.className = 'etat' + (cls ? ' ' + cls : ''); }
+
+  function enregistrer() {
+    if (!$('f-nom').value.trim()) return etat('Indiquez le nom du commerce.', 'err');
+    if (enCours) { aRefaire = true; return; }
+    enCours = true; etat('Enregistrement…');
+    api('save', { token: courant, profile: profil(), contact: { nom: $('c-nom').value, telephone: $('c-tel').value, email: $('c-email').value, notes: $('c-notes').value } })
+      .then(function (j) {
+        courant = j.token; $('b-archive').hidden = false;
+        $('pv').srcdoc = j.html;
+        $('a-ouvrir').href = j.url;
+        $('bar').hidden = false;
+        etat('Enregistré · en ligne sur ' + j.url.replace('https://', ''), 'ok');
+      })
+      .catch(function (e) { etat(e.message, 'err'); })
+      .then(function () { enCours = false; if (aRefaire) { aRefaire = false; enregistrer(); } });
+  }
+  document.querySelector('#vue-fiche').addEventListener('input', planifier);
+  document.querySelector('#vue-fiche').addEventListener('change', planifier);
+
+  function onglet(n) {
+    $('t-fiche').setAttribute('aria-pressed', n === 'fiche'); $('t-apercu').setAttribute('aria-pressed', n === 'apercu');
+    $('vue-fiche').hidden = n !== 'fiche'; $('vue-apercu').hidden = n !== 'apercu';
+  }
+  $('t-fiche').onclick = function () { onglet('fiche'); };
+  $('t-apercu').onclick = function () { onglet('apercu'); };
+
+  $('b-archive').onclick = function () {
+    if (!courant || !confirm('Supprimer cette maquette ? Le lien ne fonctionnera plus.')) return;
+    api('archive', { token: courant }).then(function () { courant = null; vue('accueil'); }).catch(function (e) { alert(e.message); });
+  };
+
+  // ── Partage
+  function lien() { return $('a-ouvrir').href; }
+  $('b-qr').onclick = function () {
+    var q = qrcode(0, 'M'); q.addData(lien()); q.make();
+    $('qr').innerHTML = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
+    $('d-qr').showModal();
+  };
+  $('b-qr-fermer').onclick = function () { $('d-qr').close(); };
+  $('b-partager').onclick = function () {
+    var nom = $('f-nom').value.trim();
+    var texte = 'Bonjour, voici la maquette du site ' + (nom ? 'de ' + nom : '') + ' : ' + lien() + ' — Charles Allouard, Konsilys · 06 71 58 20 74';
+    if (navigator.share) navigator.share({ title: 'Votre maquette', text: texte }).catch(function () {});
+    else if (navigator.clipboard) navigator.clipboard.writeText(texte).then(function () { alert('Message copié : collez-le dans un SMS ou WhatsApp.'); });
+    else prompt('Copiez ce message :', texte);
+  };
+
+  // ── Démarrage
+  if (!cle) { vue('code'); return; }
+  api('init').then(demarrer).catch(function () { vue('code'); });
+})();
+</script>
+</body>
+</html>
