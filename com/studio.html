@@ -49,6 +49,17 @@ dialog{border:0;border-radius:16px;padding:20px;max-width:340px;width:calc(100% 
 dialog::backdrop{background:rgba(15,23,42,.6)}
 #qr svg,#qr img{width:240px;height:240px}
 [hidden]{display:none !important}
+.ph-list{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.ph{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--line)}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph .x{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border-radius:50%;width:28px;height:28px;font-size:18px}
+.ph .main{position:absolute;left:4px;bottom:4px;font-size:11px;font-weight:700;background:var(--lime);color:var(--navy);border-radius:999px;padding:2px 7px;border:0}
+.ph .main.off{background:rgba(0,0,0,.55);color:#fff}
+.ph .g{position:absolute;left:4px;top:4px;font-size:10px;background:#fff;color:#1a73e8;border-radius:999px;padding:1px 6px;font-weight:700}
+.gfiche{border:1px solid var(--line);border-radius:12px;padding:10px;margin:8px 0}
+.gfiche .ph-list{grid-template-columns:repeat(4,1fr)}
+.gfiche .ph.sel{outline:3px solid var(--lime);outline-offset:-3px}
+.alerte{background:#FEF3C7;color:#92400E;border-radius:10px;padding:8px 10px;font-size:14px;margin:6px 0}
 @media (min-width:900px){.tabs{display:none}.ed{grid-template-columns:1fr 1fr;align-items:start}.ed>#vue-apercu{display:block !important;position:sticky;top:70px}#vue-fiche{display:block !important}}
 </style>
 </head>
@@ -93,6 +104,22 @@ dialog::backdrop{background:rgba(15,23,42,.6)}
         <label for="f-nom">Nom du commerce</label><input id="f-nom" autocomplete="off">
         <label for="f-accroche">Titre principal <span class="hint">(facultatif, sinon « Fleuriste à Lyon »…)</span></label><input id="f-accroche">
         <label for="f-description">Présentation <span class="hint">(2-3 phrases ; vide = texte type à valider)</span></label><textarea id="f-description"></textarea>
+      </div>
+      <div class="card">
+        <label>Photos <span class="hint">(la 1re est la photo principale ; touchez « principale » pour changer)</span></label>
+        <div class="ph-list" id="photos"></div>
+        <input type="file" id="f-photo" accept="image/*" multiple hidden>
+        <button class="btn sec block" id="b-photo" type="button">📷 Prendre ou choisir des photos</button>
+        <p class="etat" id="e-photo"></p>
+      </div>
+      <div class="card">
+        <label>Fiche Google</label>
+        <div id="g-zone">
+          <button class="btn sec block" id="b-google" type="button">Chercher sa fiche Google</button>
+          <p class="hint" id="g-off" hidden>Recherche automatique sur Google pas encore activée : collez le lien de la fiche ci-dessous.</p>
+          <div id="g-res"></div>
+        </div>
+        <label for="f-gmaps">Lien de la fiche Google <span class="hint">(ajoute « Nos avis Google » au site)</span></label><input id="f-gmaps" type="url" placeholder="https://maps.app.goo.gl/…" autocapitalize="off">
       </div>
       <div class="card">
         <label for="f-adresse">Adresse</label><input id="f-adresse" autocomplete="off">
@@ -153,6 +180,8 @@ dialog::backdrop{background:rgba(15,23,42,.6)}
   var METIERS = [];
   var courant = null;      // jeton de la maquette ouverte
   var siren = null, raison = null, annee = null;
+  var PHOTOS = [];          // [{ src, origine, apercu }] — apercu = miniature affichable (photos Google)
+  var GOOGLE = false, gInfo = {};
   var minuteur = null, enCours = false, aRefaire = false;
 
   function api(action, data) {
@@ -186,7 +215,7 @@ dialog::backdrop{background:rgba(15,23,42,.6)}
   $('code').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('b-code').click(); });
 
   function demarrer(j) {
-    METIERS = j.metiers;
+    METIERS = j.metiers; GOOGLE = !!j.google;
     var sel = $('f-metier'); sel.innerHTML = '';
     [['commerce', 'Commerces'], ['btp', 'Bâtiment']].forEach(function (g) {
       var og = document.createElement('optgroup'); og.label = g[1];
@@ -263,6 +292,11 @@ dialog::backdrop{background:rgba(15,23,42,.6)}
     $('f-c1').value = pal.primary || '#1B2B3A'; $('f-c2').value = pal.accent || '#84CC16';
     $('c-nom').value = c.nom || ''; $('c-tel').value = c.telephone || ''; $('c-email').value = c.email || ''; $('c-notes').value = c.notes || '';
     siren = p.siren || null; raison = p.raison_sociale || null; annee = p.annee_creation || null;
+    PHOTOS = (p.photos || []).map(function (ph) { return { src: ph.src, origine: ph.origine, apercu: ph.apercu || null }; });
+    gInfo = { google_place_id: p.google_place_id, google_note: p.google_note, google_avis: p.google_avis };
+    $('f-gmaps').value = p.google_maps_url || '';
+    $('g-res').innerHTML = ''; $('b-google').hidden = !GOOGLE; $('g-off').hidden = GOOGLE;
+    dessinerPhotos();
   }
 
   function nouvelle(e) {
@@ -292,6 +326,86 @@ dialog::backdrop{background:rgba(15,23,42,.6)}
   $('b-couleurs').onclick = function () { $('f-c1').dataset.defini = ''; $('f-c2').dataset.defini = ''; planifier(); };
   ['f-c1', 'f-c2'].forEach(function (id) { $(id).addEventListener('input', function () { this.dataset.defini = '1'; }); });
 
+  // ── Photos
+  function dessinerPhotos() {
+    var l = $('photos'); l.innerHTML = '';
+    PHOTOS.forEach(function (ph, i) {
+      var d = document.createElement('div'); d.className = 'ph';
+      var img = document.createElement('img'); img.alt = ''; img.src = ph.apercu || (ph.src.indexOf('google:') === 0 ? '' : ph.src); d.appendChild(img);
+      if (ph.src.indexOf('google:') === 0) { var g = document.createElement('span'); g.className = 'g'; g.textContent = 'Google'; d.appendChild(g); }
+      var m = document.createElement('button'); m.type = 'button'; m.className = 'main' + (i ? ' off' : ''); m.textContent = i ? 'principale ?' : '★ principale';
+      m.onclick = function () { PHOTOS.unshift(PHOTOS.splice(i, 1)[0]); dessinerPhotos(); planifier(); };
+      var x = document.createElement('button'); x.type = 'button'; x.className = 'x'; x.textContent = '×'; x.setAttribute('aria-label', 'Retirer');
+      x.onclick = function () { PHOTOS.splice(i, 1); dessinerPhotos(); planifier(); };
+      d.appendChild(m); d.appendChild(x); l.appendChild(d);
+    });
+  }
+  // Réduit la photo sur le téléphone (1600 px, JPEG) avant l'envoi : rapide même en 4G.
+  function reduire(fichier) {
+    return new Promise(function (ok, ko) {
+      var img = new Image(), url = URL.createObjectURL(fichier);
+      img.onload = function () {
+        var k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+        var c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+        ok(c.toDataURL('image/jpeg', 0.82).split(',')[1]);
+      };
+      img.onerror = function () { ko(new Error('Photo illisible')); };
+      img.src = url;
+    });
+  }
+  $('b-photo').onclick = function () { $('f-photo').click(); };
+  $('f-photo').onchange = function () {
+    var fichiers = Array.prototype.slice.call(this.files || []).slice(0, Math.max(0, 9 - PHOTOS.length)); this.value = '';
+    var n = 0;
+    (function suivant() {
+      if (n >= fichiers.length) { $('e-photo').textContent = fichiers.length ? '' : 'Maximum 9 photos.'; return planifier(); }
+      $('e-photo').textContent = 'Envoi de la photo ' + (n + 1) + '/' + fichiers.length + '…'; $('e-photo').className = 'etat';
+      reduire(fichiers[n++]).then(function (b64) { return api('upload', { data: b64, type: 'image/jpeg' }); })
+        .then(function (j) { PHOTOS.push({ src: j.src, origine: 'commercant' }); dessinerPhotos(); suivant(); })
+        .catch(function (e) { $('e-photo').textContent = e.message; $('e-photo').className = 'etat err'; });
+    })();
+  };
+
+  // ── Fiche Google (si la clé Google Places est configurée)
+  $('b-google').onclick = function () {
+    var q = [$('f-nom').value, $('f-adresse').value || $('f-ville').value].filter(Boolean).join(' ');
+    $('g-res').innerHTML = '<p class="hint">Recherche sur Google…</p>';
+    api('google', { q: q }).then(function (j) {
+      var r = $('g-res'); r.innerHTML = '';
+      if (!j.disponible) { $('g-off').hidden = false; $('b-google').hidden = true; return; }
+      if (!j.fiches.length) { r.innerHTML = '<p class="hint">Aucune fiche Google trouvée.</p>'; return; }
+      j.fiches.forEach(function (f) {
+        var d = document.createElement('div'); d.className = 'gfiche';
+        d.innerHTML = '<b></b><small class="hint" style="display:block"></small><div class="alerte" hidden></div><div class="ph-list"></div><button class="btn block" type="button">Utiliser cette fiche</button>';
+        d.querySelector('b').textContent = f.nom + (f.note ? ' · ' + String(f.note).replace('.', ',') + ' ★ (' + f.avis + ' avis)' : '');
+        d.querySelector('small').textContent = f.adresse || '';
+        var al = d.querySelector('.alerte');
+        if (f.site) { al.hidden = false; al.textContent = '⚠ Ce commerce a déjà un site : ' + f.site + ' — proposez plutôt une refonte.'; }
+        if (f.ferme) { al.hidden = false; al.textContent = '⚠ Google indique ce commerce comme fermé.'; }
+        var choisies = {};
+        var grille = d.querySelector('.ph-list');
+        f.photos.forEach(function (ph) {
+          if (!ph.miniature) return;
+          var c = document.createElement('div'); c.className = 'ph';
+          var im = document.createElement('img'); im.src = ph.miniature; im.alt = ''; c.appendChild(im);
+          c.onclick = function () { choisies[ph.ref] = !choisies[ph.ref]; c.classList.toggle('sel', !!choisies[ph.ref]); };
+          grille.appendChild(c);
+        });
+        if (f.photos.length) { var h = document.createElement('p'); h.className = 'hint'; h.textContent = 'Touchez les photos à reprendre dans la maquette.'; d.insertBefore(h, grille); }
+        d.querySelector('button').onclick = function () {
+          if (f.horaires && !$('f-horaires').value.trim()) $('f-horaires').value = f.horaires;
+          if (f.telephone && !$('f-tel').value.trim()) $('f-tel').value = f.telephone;
+          if (f.google_maps_url) $('f-gmaps').value = f.google_maps_url;
+          gInfo = { google_place_id: f.place_id, google_note: f.note, google_avis: f.avis };
+          f.photos.forEach(function (ph) { if (choisies[ph.ref] && PHOTOS.length < 9 && !PHOTOS.some(function (x) { return x.src === ph.ref; })) PHOTOS.push({ src: ph.ref, origine: 'google', apercu: ph.miniature }); });
+          dessinerPhotos(); r.innerHTML = '<p class="etat ok">Fiche Google reprise : horaires, téléphone, note et photos choisies.</p>'; planifier();
+        };
+        r.appendChild(d);
+      });
+    }).catch(function (e) { $('g-res').innerHTML = '<p class="etat err"></p>'; $('g-res').firstChild.textContent = e.message; });
+  };
+
   function profil() {
     var lignes = function (v) { return v.split('\n').map(function (s) { return s.trim(); }).filter(Boolean); };
     var p = {
@@ -302,6 +416,11 @@ dialog::backdrop{background:rgba(15,23,42,.6)}
       atouts: lignes($('f-atouts').value),
       services: Array.prototype.map.call($('services').children, function (d) { var i = d.querySelectorAll('input'); return { titre: i[0].value, description: i[1].value }; })
     };
+    p.photos = PHOTOS.map(function (ph) { return { src: ph.src }; });
+    p.google_maps_url = $('f-gmaps').value.trim();
+    if (gInfo.google_place_id) p.google_place_id = gInfo.google_place_id;
+    if (gInfo.google_note) p.google_note = gInfo.google_note;
+    if (gInfo.google_avis) p.google_avis = gInfo.google_avis;
     var pal = {};
     if ($('f-c1').dataset.defini) pal.primary = $('f-c1').value;
     if ($('f-c2').dataset.defini) pal.accent = $('f-c2').value;
