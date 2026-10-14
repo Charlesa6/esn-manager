@@ -150,7 +150,7 @@ function jsonLd(page, faq) {
     offers: [
       { '@type': 'Offer', name: 'Site', price: '39', priceCurrency: 'EUR', description: 'Abonnement mensuel HT, création offerte, domaine et hébergement compris' },
       { '@type': 'Offer', name: 'Site + Google', price: '45', priceCurrency: 'EUR', description: 'Abonnement mensuel HT : site et fiche Google tenus à jour ensemble' },
-      { '@type': 'Offer', name: 'Sérénité', price: '69', priceCurrency: 'EUR', description: 'Abonnement mensuel HT : site et fiche Google, suivi mensuel, photos et actualités' },
+      { '@type': 'Offer', name: 'Sérénité', price: '69', priceCurrency: 'EUR', description: 'Abonnement mensuel HT + 290 € HT de mise en ligne : site et fiche Google, suivi mensuel, photos et actualités' },
     ],
   };
   const crumbs = { '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Création de site internet à Lyon', item: url('') }].concat(page.slug ? [{ '@type': 'ListItem', position: 2, name: page.onglet, item: url(page.slug) }] : []) };
@@ -297,7 +297,7 @@ ${exemples(p)}
       <span class="badge" style="background:#F1F5F9;color:var(--navy)">Sans souci</span>
       <h3>Sérénité</h3>
       <div class="amt">69 € <small>HT / mois</small></div>
-      <p class="setup">Création offerte</p>
+      <p class="setup">+ 290 € HT de mise en ligne</p>
       <ul>
         <li>${CHECK}Tout l'offre Site + Google</li>
         <li>${CHECK}Suivi chaque mois du site et de la fiche Google</li>
