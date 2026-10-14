@@ -55,7 +55,7 @@
       "destination": "/com/index.html"
     },
     {
-      "source": "/creation-site-internet/:metier(batiment|restaurant|coiffeur|fleuriste|boulangerie)",
+      "source": "/creation-site-internet/:metier(batiment|restaurant|coiffeur|fleuriste|boulangerie|pharmacie|fromager|boucherie|poissonnerie)",
       "has": [
         {
           "type": "host",
@@ -105,7 +105,7 @@
       "destination": "/com/index.html"
     },
     {
-      "source": "/creation-site-internet/:metier(batiment|restaurant|coiffeur|fleuriste|boulangerie)",
+      "source": "/creation-site-internet/:metier(batiment|restaurant|coiffeur|fleuriste|boulangerie|pharmacie|fromager|boucherie|poissonnerie)",
       "has": [
         {
           "type": "host",

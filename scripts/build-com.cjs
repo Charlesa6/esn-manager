@@ -104,11 +104,71 @@ const PROFESSIONS = [
     ],
     faq: ['Je n\'ai pas de photos de mes produits.', 'Le site fonctionne très bien sans. Une photo prise au téléphone, envoyée par email, suffit pour en ajouter.'],
   },
+  {
+    slug: 'pharmacie', onglet: 'Pharmacies', nom: 'pharmacies', pour: 'pharmacie',
+    titre: 'Création de site internet pour pharmacie à Lyon',
+    description: 'Konsilys crée le site internet des pharmacies lyonnaises : vos services, vos horaires, votre adresse et votre numéro en un clic, dans le respect des règles de la profession. Maquette gratuite, dès 39 € HT/mois.',
+    eyebrow: 'Pharmacies et officines de quartier…',
+    h1: 'Le site de votre pharmacie, <em>déjà prêt</em>.',
+    lead: 'Vos services, vos horaires, votre adresse et un bouton « Appeler la pharmacie » : on prépare gratuitement la maquette du site de votre officine, sobre et informatif, elle est en ligne sous votre nom en 48 heures.',
+    exemples: [['pharmacie', 'Pharmacie']],
+    atouts: [
+      ['clock', 'Horaires toujours à jour', 'Horaires d\'été, jours fériés : vos patients savent quand vous trouver. Un message suffit, on met à jour.'],
+      ['phone', 'Joignable en un clic', 'Le bouton « Appeler la pharmacie » compose votre numéro directement depuis un téléphone.'],
+      ['shield', 'Sobre et informatif', 'Un site d\'information, sans promotion ni vente en ligne, conforme aux usages de la profession.'],
+    ],
+    faq: ['Un site de pharmacie a-t-il des règles particulières ?', 'Oui : le site d\'une officine est informatif (services, horaires, coordonnées), sans publicité ni promotion de médicaments. La maquette est conçue ainsi dès le départ.'],
+  },
+  {
+    slug: 'fromager', onglet: 'Fromagers', nom: 'fromageries', pour: 'fromagerie',
+    titre: 'Création de site internet pour fromagerie à Lyon',
+    description: 'Konsilys crée le site internet des fromagers lyonnais : vos fromages, vos plateaux sur commande, vos horaires et la commande par téléphone. Maquette gratuite, en ligne en 48 h, dès 39 € HT/mois.',
+    eyebrow: 'Fromagers, crémiers, fromagers-affineurs…',
+    h1: 'Le site de votre fromagerie, <em>déjà prêt</em>.',
+    lead: 'Votre sélection, vos plateaux pour les repas et les fêtes, vos horaires et un bouton « Passer commande » : on prépare gratuitement la maquette du site de votre fromagerie, elle est en ligne sous votre nom en 48 heures.',
+    exemples: [['fromager', 'Fromagerie']],
+    atouts: [
+      ['phone', 'Des commandes en un clic', 'Plateaux pour les fêtes et les réceptions : le bouton « Passer commande » appelle votre boutique directement.'],
+      ['camera', 'Vos fromages, en images', 'Ajoutez les photos de votre étal et de vos plateaux au fil des saisons.'],
+      ['pin', 'Facile à trouver', 'Votre adresse et l\'itinéraire, pour les habitués comme pour les clients de passage.'],
+    ],
+    faq: ['Je vends aussi sur les marchés.', 'Parfait : on indique vos jours et lieux de marché sur le site, à côté des horaires de la boutique.'],
+  },
+  {
+    slug: 'boucherie', onglet: 'Boucheries', nom: 'boucheries', pour: 'boucherie',
+    titre: 'Création de site internet pour boucherie à Lyon',
+    description: 'Konsilys crée le site internet des boucheries-charcuteries lyonnaises : vos viandes, votre traiteur, vos horaires et les commandes par téléphone. Maquette gratuite, en ligne en 48 h, dès 39 € HT/mois.',
+    eyebrow: 'Boucheries, charcuteries, boucheries-traiteurs…',
+    h1: 'Le site de votre boucherie, <em>déjà prêt</em>.',
+    lead: 'Vos viandes, votre charcuterie maison, votre traiteur et un bouton « Passer commande » pour les repas de fête : on prépare gratuitement la maquette du site de votre boucherie, elle est en ligne sous votre nom en 48 heures.',
+    exemples: [['boucher', 'Boucherie']],
+    atouts: [
+      ['phone', 'Des commandes en un clic', 'Colis, barbecues, repas de fête : le bouton « Passer commande » appelle votre boutique directement.'],
+      ['clock', 'Horaires toujours à jour', 'Fermetures, horaires des fêtes : un message suffit, on met à jour le site et votre fiche Google.'],
+      ['shield', 'Votre savoir-faire mis en avant', 'Origine des viandes, préparations maison : ce qui vous distingue de la grande surface.'],
+    ],
+    faq: ['Mes produits changent selon les saisons.', 'Envoyez-nous un message ou une photo quand vous le souhaitez : le site est à jour dans la journée.'],
+  },
+  {
+    slug: 'poissonnerie', onglet: 'Poissonneries', nom: 'poissonneries', pour: 'poissonnerie',
+    titre: 'Création de site internet pour poissonnerie à Lyon',
+    description: 'Konsilys crée le site internet des poissonneries lyonnaises : vos arrivages, vos plateaux de fruits de mer sur commande, vos horaires et la commande par téléphone. Maquette gratuite, dès 39 € HT/mois.',
+    eyebrow: 'Poissonniers, écaillers, traiteurs de la mer…',
+    h1: 'Le site de votre poissonnerie, <em>déjà prêt</em>.',
+    lead: 'Vos poissons et fruits de mer, vos plateaux sur commande, vos horaires et un bouton « Passer commande » : on prépare gratuitement la maquette du site de votre poissonnerie, elle est en ligne sous votre nom en 48 heures.',
+    exemples: [['poissonnier', 'Poissonnerie']],
+    atouts: [
+      ['phone', 'Des commandes en un clic', 'Plateaux de fruits de mer pour les fêtes : le bouton « Passer commande » appelle votre boutique directement.'],
+      ['clock', 'Horaires toujours à jour', 'Fermetures, horaires des fêtes : un message suffit, on met à jour.'],
+      ['pin', 'Facile à trouver', 'Votre adresse et l\'itinéraire, pour les habitués comme pour les nouveaux clients.'],
+    ],
+    faq: ['Mes arrivages changent tous les jours.', 'Le site présente votre maison et vos spécialités ; pour les arrivages du jour, on peut ajouter un lien vers votre page Facebook ou Instagram.'],
+  },
 ];
 
 const HUB = {
   slug: '', titre: 'Création de site internet à Lyon pour artisans et commerçants',
-  description: 'Konsilys crée à Lyon le site internet des artisans, commerçants et entreprises du bâtiment : maquette gratuite préparée pour vous, en ligne en 48 h, dès 39 € HT par mois, domaine et hébergement compris.',
+  description: 'Konsilys crée à Lyon le site internet des artisans, commerçants (restaurants, coiffeurs, boulangeries, fleuristes, pharmacies, boucheries, fromageries, poissonneries) et entreprises du bâtiment, et tient à jour leur fiche Google : maquette gratuite préparée pour vous, en ligne en 48 h, dès 39 € HT par mois, domaine et hébergement compris.',
   eyebrow: 'Création de sites internet à Lyon',
   h1: 'Votre site internet est <em>déjà prêt</em>. Il ne manque que votre accord.',
   lead: 'Je prépare gratuitement la maquette du site de votre entreprise. Vous la regardez, on l\'ajuste ensemble, et elle est en ligne sous votre nom en 48 heures. Vous n\'écrivez rien, vous ne gérez rien.',
@@ -265,6 +325,15 @@ ${exemples(p)}
   </ul>
 </div></section>
 
+<section class="sec sec-off" id="google"><div class="wrap">
+  <div class="center"><h2>Votre site et votre fiche Google, toujours d'accord</h2><p>Quand on vous cherche, on tombe d'abord sur votre fiche Google : adresse, horaires, avis. Le site présente le reste. Avec l'offre Site + Google, je m'occupe des deux.</p></div>
+  <div class="grid3">
+    <article class="card"><span class="ic">${icon('search')}</span><h3>Votre fiche Google prise en main</h3><p>Créée ou reprise avec vous, complétée (catégorie, description, horaires, photos) et reliée à votre site.</p></article>
+    <article class="card"><span class="ic">${icon('clock')}</span><h3>Les mêmes informations partout</h3><p>Nouveaux horaires, fermeture, nouveau numéro : un message, et le site comme la fiche sont à jour le jour même.</p></article>
+    <article class="card"><span class="ic">${icon('shield')}</span><h3>Plus d'avis de vrais clients</h3><p>Un QR code « Laissez-nous un avis » à poser ${p.slug === 'batiment' ? 'sur vos devis' : 'en caisse'} : vos clients satisfaits laissent un avis en dix secondes.</p></article>
+  </div>
+</div></section>
+
 <section class="sec" id="tarifs"><div class="wrap">
   <div class="center"><h2>Des tarifs simples</h2><p>Un abonnement mensuel, tout compris.</p></div>
   <div class="prices">
@@ -338,7 +407,7 @@ ${exemples(p)}
   </div>
   <form class="form" id="demande" novalidate>
     <label>Nom de votre ${p.slug ? esc(p.pour) : 'entreprise'}<input name="entreprise" required autocomplete="organization"></label>
-    <label>Votre métier<select name="metier">${['Bâtiment', 'Restaurant', 'Coiffure', 'Fleuriste', 'Boulangerie', 'Autre'].map((m) => `<option${(p.onglet || '').startsWith(m.slice(0, 5)) ? ' selected' : ''}>${m}</option>`).join('')}</select></label>
+    <label>Votre métier<select name="metier">${['Bâtiment', 'Restaurant', 'Coiffure', 'Fleuriste', 'Boulangerie', 'Pharmacie', 'Fromagerie', 'Boucherie', 'Poissonnerie', 'Autre'].map((m) => `<option${(p.onglet || '').startsWith(m.slice(0, 5)) ? ' selected' : ''}>${m}</option>`).join('')}</select></label>
     <label>Adresse ou arrondissement<input name="ville" autocomplete="street-address"></label>
     <label>Votre nom<input name="nom" autocomplete="name"></label>
     <label>Téléphone<input name="tel" type="tel" autocomplete="tel"></label>
