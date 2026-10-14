@@ -49,6 +49,15 @@ dialog{border:0;border-radius:16px;padding:20px;max-width:340px;width:calc(100% 
 dialog::backdrop{background:rgba(15,23,42,.6)}
 #qr svg,#qr img{width:240px;height:240px}
 [hidden]{display:none !important}
+dialog.kit{max-width:620px;max-height:90vh;overflow:auto;text-align:left;padding:16px}
+.kit h2{margin:4px 0 6px}
+.kit .bloc{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:10px 0}
+.kit .bloc b{display:block;font-size:14px}
+.kit .val{white-space:pre-wrap;font-size:15px;margin:6px 0;word-break:break-word}
+.kit .bloc .btn{padding:8px 12px;font-size:14px}
+.kit .bloc .ph-list{grid-template-columns:repeat(4,1fr)}
+.kit #kit-qr svg{width:180px;height:180px;display:block;margin:8px auto}
+.kit .fin{position:sticky;bottom:-16px;background:var(--card);padding:10px 0}
 .ph-list{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
 .ph{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--line)}
 .ph img{width:100%;height:100%;object-fit:cover;display:block}
@@ -122,6 +131,11 @@ dialog::backdrop{background:rgba(15,23,42,.6)}
         <label for="f-gmaps">Lien de la fiche Google <span class="hint">(ajoute « Nos avis Google » au site)</span></label><input id="f-gmaps" type="url" placeholder="https://maps.app.goo.gl/…" autocapitalize="off">
       </div>
       <div class="card">
+        <label>Kit fiche Google <span class="hint">(offres Site + Google et Sérénité)</span></label>
+        <p class="hint">Tout ce qu'il faut pour créer ou compléter sa fiche Google : textes prêts à copier, photos, QR code « Laissez-nous un avis » à imprimer.</p>
+        <button class="btn sec block" id="b-kit" type="button">Ouvrir le kit fiche Google</button>
+      </div>
+      <div class="card">
         <label for="f-adresse">Adresse</label><input id="f-adresse" autocomplete="off">
         <div class="row"><div><label for="f-cp">Code postal</label><input id="f-cp" inputmode="numeric" maxlength="5"></div><div><label for="f-ville">Ville</label><input id="f-ville"></div></div>
         <label for="f-tel">Téléphone du commerce</label><input id="f-tel" type="tel">
@@ -164,6 +178,20 @@ dialog::backdrop{background:rgba(15,23,42,.6)}
 </div>
 
 <dialog id="d-qr"><div id="qr"></div><p class="hint">Le commerçant scanne avec son téléphone pour voir sa maquette.</p><button class="btn block" id="b-qr-fermer">Fermer</button></dialog>
+
+<dialog class="kit" id="d-kit">
+  <h2>Kit fiche Google</h2>
+  <p class="hint">Avec le commerçant : sur son téléphone, Google Maps → sa fiche → « Revendiquer cette fiche » (ou « Ajouter votre établissement » si elle n'existe pas), puis la vérification demandée par Google. Ensuite, il vous ajoute comme gestionnaire (« Gérer les accès ») et vous copiez ces informations.</p>
+  <div id="kit-blocs"></div>
+  <div class="bloc">
+    <b>Lien « Laissez-nous un avis »</b>
+    <p class="hint" id="kit-avis-aide"></p>
+    <input id="kit-avis" type="url" placeholder="https://g.page/r/…/review" autocapitalize="off">
+    <div id="kit-qr"></div>
+    <div class="row"><button class="btn sec" type="button" id="b-kit-copier-avis">Copier le lien</button><button class="btn" type="button" id="b-kit-imprimer">Imprimer l'affichette</button></div>
+  </div>
+  <div class="fin"><button class="btn block" id="b-kit-fermer" type="button">Fermer</button></div>
+</dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script>
@@ -295,6 +323,7 @@ dialog::backdrop{background:rgba(15,23,42,.6)}
     PHOTOS = (p.photos || []).map(function (ph) { return { src: ph.src, origine: ph.origine, apercu: ph.apercu || null }; });
     gInfo = { google_place_id: p.google_place_id, google_note: p.google_note, google_avis: p.google_avis };
     $('f-gmaps').value = p.google_maps_url || '';
+    $('kit-avis').value = '';
     $('g-res').innerHTML = ''; $('b-google').hidden = !GOOGLE; $('g-off').hidden = GOOGLE;
     dessinerPhotos();
   }
@@ -459,6 +488,90 @@ dialog::backdrop{background:rgba(15,23,42,.6)}
   $('b-archive').onclick = function () {
     if (!courant || !confirm('Supprimer cette maquette ? Le lien ne fonctionnera plus.')) return;
     api('archive', { token: courant }).then(function () { courant = null; vue('accueil'); }).catch(function (e) { alert(e.message); });
+  };
+
+  // ── Kit fiche Google : contenus prêts à copier dans la fiche d'établissement Google du commerçant.
+  var CATEGORIES = {
+    maconnerie: ['Maçon', 'Entreprise de maçonnerie'], couverture: ['Couvreur', 'Zingueur'], electricite: ['Électricien', ''],
+    plomberie: ['Plombier', 'Chauffagiste'], menuiserie: ['Menuisier', 'Charpentier'], peinture: ['Peintre en bâtiment', 'Entreprise de ravalement de façades'],
+    paysage: ['Paysagiste', 'Jardinier'], terrassement: ['Entreprise de terrassement', 'Entreprise de démolition'], general: ['Entreprise de construction', 'Entreprise de rénovation'],
+    restaurant: ['Restaurant', 'Restaurant français'], coiffure: ['Salon de coiffure', 'Barbier'], fleuriste: ['Fleuriste', 'Décoration florale'],
+    boulangerie: ['Boulangerie', 'Pâtisserie'], pharmacie: ['Pharmacie', ''], fromager: ['Fromagerie', 'Crèmerie'], boucher: ['Boucherie', 'Charcuterie'],
+    poissonnier: ['Poissonnerie', 'Marchand de fruits de mer']
+  };
+  function texteDescription() {
+    var nom = $('f-nom').value.trim(), m = METIERS.filter(function (x) { return x.key === $('f-metier').value; })[0] || { label: '' };
+    var ville = $('f-ville').value.trim();
+    var d = $('f-description').value.trim() || (nom + ', ' + m.label.toLowerCase() + (ville ? ' à ' + ville : '') + '.');
+    var svc = Array.prototype.map.call($('services').children, function (x) { return x.querySelector('input').value.trim(); }).filter(Boolean);
+    if (svc.length) d += ' ' + (m.famille === 'commerce' ? 'Chez nous : ' : 'Nos prestations : ') + svc.join(', ').toLowerCase() + '.';
+    var at = $('f-atouts').value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+    if (at.length) d += ' ' + at.join(', ') + '.';
+    if ($('f-histoire').value.trim()) d += ' ' + $('f-histoire').value.trim();
+    return d.length > 750 ? d.slice(0, 747).replace(/\s+\S*$/, '') + '…' : d;   // Google : 750 caractères maximum
+  }
+  function bloc(titre, valeur, aide) {
+    var b = document.createElement('div'); b.className = 'bloc';
+    b.innerHTML = '<b></b><div class="val"></div><p class="hint"></p><button class="btn sec" type="button">Copier</button>';
+    b.querySelector('b').textContent = titre; b.querySelector('.val').textContent = valeur || '—'; b.querySelector('.hint').textContent = aide || '';
+    var bt = b.querySelector('button');
+    if (!valeur) bt.hidden = true;
+    bt.onclick = function () { copier(valeur, bt); };
+    return b;
+  }
+  function copier(t, bt) {
+    var fini = function () { var l = bt.textContent; bt.textContent = 'Copié ✓'; setTimeout(function () { bt.textContent = l; }, 1500); };
+    if (navigator.clipboard) navigator.clipboard.writeText(t).then(fini, function () { prompt('Copiez :', t); });
+    else prompt('Copiez :', t);
+  }
+  function lienAvis() {
+    var v = $('kit-avis').value.trim();
+    return /^https:\/\/\S+$/.test(v) ? v : '';
+  }
+  function dessinerQrAvis() {
+    var u = lienAvis();
+    if (!u) { $('kit-qr').innerHTML = ''; return; }
+    var q = qrcode(0, 'M'); q.addData(u); q.make();
+    $('kit-qr').innerHTML = q.createSvgTag({ cellSize: 5, margin: 2, scalable: true });
+  }
+  $('b-kit').onclick = function () {
+    var k = $('kit-blocs'); k.innerHTML = '';
+    var cat = CATEGORIES[$('f-metier').value] || ['', ''];
+    k.appendChild(bloc('Nom de l\'établissement', $('f-nom').value.trim(), 'Le nom exact de l\'enseigne, sans ville ni mot-clé ajouté (règle de Google).'));
+    k.appendChild(bloc('Catégorie principale', cat[0], 'Choisissez la plus proche dans la liste proposée par Google.' + (cat[1] ? ' Catégorie secondaire possible : ' + cat[1] + '.' : '')));
+    k.appendChild(bloc('Description (750 caractères maximum)', texteDescription(), 'À relire avec le commerçant. Pas de lien, de numéro ni de promotion dans la description (règles de Google).'));
+    k.appendChild(bloc('Adresse', [$('f-adresse').value.trim(), [$('f-cp').value.trim(), $('f-ville').value.trim()].filter(Boolean).join(' ')].filter(Boolean).join(', ')));
+    k.appendChild(bloc('Horaires', $('f-horaires').value.trim(), 'À saisir jour par jour dans Google. Pensez aux horaires exceptionnels (jours fériés, vacances).'));
+    k.appendChild(bloc('Téléphone', $('f-tel').value.trim()));
+    var svc = Array.prototype.map.call($('services').children, function (x) { var i = x.querySelectorAll('input'); return i[0].value.trim() + (i[1].value.trim() ? ' — ' + i[1].value.trim() : ''); }).filter(function (x) { return x && x.indexOf(' — ') !== 0; });
+    k.appendChild(bloc('Services / produits', svc.join('\n'), 'Rubrique « Services » ou « Produits » de la fiche.'));
+    k.appendChild(bloc('Site web', '', 'À renseigner le jour de la mise en ligne, avec le nom de domaine du commerçant (jamais le lien de la maquette, qui est privée).'));
+    var ph = PHOTOS.filter(function (x) { return x.origine === 'commercant'; });
+    var bp = document.createElement('div'); bp.className = 'bloc';
+    bp.innerHTML = '<b>Photos</b><p class="hint">' + (ph.length ? 'Touchez une photo pour l\'ouvrir, puis enregistrez-la et ajoutez-la à la fiche (vitrine en premier).' : 'Prenez des photos sur place (vitrine, intérieur, produits) : elles serviront au site et à la fiche.') + ' Les photos venant de Google sont déjà sur la fiche.</p><div class="ph-list"></div>';
+    ph.forEach(function (x) { var a = document.createElement('a'); a.className = 'ph'; a.href = x.src; a.target = '_blank'; a.rel = 'noopener'; var im = document.createElement('img'); im.src = x.src; im.alt = ''; a.appendChild(im); bp.querySelector('.ph-list').appendChild(a); });
+    k.appendChild(bp);
+    if (gInfo.google_place_id && !$('kit-avis').value) $('kit-avis').value = 'https://search.google.com/local/writereview?placeid=' + encodeURIComponent(gInfo.google_place_id);
+    $('kit-avis-aide').textContent = gInfo.google_place_id ? 'Lien généré à partir de sa fiche Google.' : 'Une fois la fiche revendiquée : dans la fiche, « Demander des avis » → copier le lien, puis collez-le ici.';
+    dessinerQrAvis();
+    $('d-kit').showModal();
+  };
+  $('kit-avis').addEventListener('input', dessinerQrAvis);
+  $('b-kit-fermer').onclick = function () { $('d-kit').close(); };
+  $('b-kit-copier-avis').onclick = function () { if (lienAvis()) copier(lienAvis(), this); };
+  $('b-kit-imprimer').onclick = function () {
+    var u = lienAvis(); if (!u) return alert('Collez d\'abord le lien « Demander des avis » de la fiche.');
+    var q = qrcode(0, 'M'); q.addData(u); q.make();
+    var esc = function (t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
+    var w = window.open('', '_blank'); if (!w) return alert('Autorisez l\'ouverture de fenêtres pour imprimer.');
+    w.document.write('<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Affichette avis Google</title>'
+      + '<style>@page{size:A5;margin:12mm}body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;text-align:center;color:#1f2937;margin:0;padding:24px}'
+      + 'h1{font-size:30px;margin:0 0 6px}.s{font-size:44px;color:#FBBC04;letter-spacing:6px;margin:10px 0}p{font-size:19px;margin:6px 0}svg{width:62mm;height:62mm;margin:14px auto;display:block}.n{font-weight:800;font-size:22px;margin-top:16px}.g{color:#5f6368;font-size:14px}</style></head><body>'
+      + '<div class="s">★★★★★</div><h1>Vous avez aimé&nbsp;?</h1><p>Laissez-nous un avis sur Google,<br>ça nous aide beaucoup&nbsp;!</p>'
+      + q.createSvgTag({ cellSize: 6, margin: 1, scalable: true })
+      + '<p class="g">Scannez avec l\'appareil photo de votre téléphone</p><p class="n">' + esc($('f-nom').value.trim()) + '</p>'
+      + '<script>window.onload=function(){setTimeout(function(){window.print()},300)}<\/script></body></html>');
+    w.document.close();
   };
 
   // ── Partage

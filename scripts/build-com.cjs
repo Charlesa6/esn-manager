@@ -124,6 +124,7 @@ const HUB = {
 const FAQ_COMMUNE = [
   ['Je n\'ai pas le temps de m\'en occuper.', 'C\'est précisément le principe : je prépare tout, textes compris. De votre côté, comptez un appel de quelques minutes pour valider la maquette.'],
   ['Comment avez-vous préparé une maquette sans me connaître ?', 'À partir des informations publiques de votre entreprise (registres officiels, annuaires professionnels) : nom, métier, adresse, coordonnées. Les textes génériques sont signalés comme « à valider » et vous les corrigez avant toute mise en ligne. La maquette est privée et n\'apparaît pas sur Google.'],
+  ['J\'ai déjà une fiche Google, à quoi sert un site ?', 'La fiche vous fait trouver ; le site vous présente en entier, à votre nom, et rassure ceux qui hésitent. Une fiche sans site affiche un bouton « Site web » vide. Avec l\'offre Site + Google, je relie les deux et je les garde à jour ensemble : mêmes horaires, même numéro, mêmes photos.'],
   ['Est-ce que je serai premier sur Google ?', 'Personne ne peut honnêtement le promettre. Votre site est construit pour être bien compris par Google (métier, quartier de Lyon, horaires), et c\'est ce qui compte pour être trouvé près de chez vous.'],
   ['Et si je veux arrêter ?', 'Après la première année, l\'abonnement est sans engagement. Le nom de domaine est à votre nom : vous le gardez, et vous pouvez récupérer votre site.'],
   ['Qui est derrière Konsilys ?', `Charles Allouard, consultant en informatique depuis plus de 5 ans, basé à Lyon (2e arrondissement). Vous avez un interlocuteur direct, joignable au ${TEL} ou par email.`],
@@ -146,7 +147,11 @@ function jsonLd(page, faq) {
   const service = {
     '@type': 'Service', name: page.titre, serviceType: 'Création de site internet', provider: { '@id': `${BASE}/#konsilys` },
     areaServed: { '@type': 'City', name: 'Lyon' }, url: url(page.slug),
-    offers: { '@type': 'Offer', price: '39', priceCurrency: 'EUR', description: 'Abonnement mensuel HT, création offerte, domaine et hébergement compris' },
+    offers: [
+      { '@type': 'Offer', name: 'Site', price: '39', priceCurrency: 'EUR', description: 'Abonnement mensuel HT, création offerte, domaine et hébergement compris' },
+      { '@type': 'Offer', name: 'Site + Google', price: '45', priceCurrency: 'EUR', description: 'Abonnement mensuel HT : site et fiche Google tenus à jour ensemble' },
+      { '@type': 'Offer', name: 'Sérénité', price: '69', priceCurrency: 'EUR', description: 'Abonnement mensuel HT : site et fiche Google, suivi mensuel, photos et actualités' },
+    ],
   };
   const crumbs = { '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Création de site internet à Lyon', item: url('') }].concat(page.slug ? [{ '@type': 'ListItem', position: 2, name: page.onglet, item: url(page.slug) }] : []) };
   const faqLd = { '@type': 'FAQPage', mainEntity: faq.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) };
@@ -263,29 +268,43 @@ ${exemples(p)}
 <section class="sec" id="tarifs"><div class="wrap">
   <div class="center"><h2>Des tarifs simples</h2><p>Un abonnement mensuel, tout compris.</p></div>
   <div class="prices">
-    <article class="price best">
-      <span class="badge">Le plus choisi</span>
-      <h3>Essentiel</h3>
+    <article class="price">
+      <span class="badge" style="background:#F1F5F9;color:var(--navy)">Le site</span>
+      <h3>Site</h3>
       <div class="amt">39 € <small>HT / mois</small></div>
       <p class="setup">Création offerte</p>
       <ul>
         <li>${CHECK}Site une page : présentation, ${p.slug === 'batiment' ? 'prestations, zone' : 'prestations, horaires, adresse'}, contact</li>
         <li>${CHECK}Nom de domaine et hébergement</li>
         <li>${CHECK}2 modifications par mois</li>
-        <li>${CHECK}Conseils pour votre fiche Google</li>
+      </ul>
+      <a class="btn btn-navy btn-lg" href="#contact">Recevoir ma maquette</a>
+    </article>
+    <article class="price best">
+      <span class="badge">Le plus choisi</span>
+      <h3>Site + Google</h3>
+      <div class="amt">45 € <small>HT / mois</small></div>
+      <p class="setup">Création offerte</p>
+      <ul>
+        <li>${CHECK}Tout l'offre Site</li>
+        <li>${CHECK}Création ou reprise de votre fiche Google, complétée et reliée au site</li>
+        <li>${CHECK}Toujours les mêmes informations : un changement d'horaires ou de numéro est reporté sur le site et la fiche, le jour même</li>
+        <li>${CHECK}QR code « Laissez-nous un avis » à poser ${p.slug === 'batiment' ? 'sur vos devis' : 'en caisse'}</li>
       </ul>
       <a class="btn btn-lime btn-lg" href="#contact">Recevoir ma maquette</a>
     </article>
     <article class="price">
-      <span class="badge" style="background:#F1F5F9;color:var(--navy)">Complet</span>
-      <h3>Pro</h3>
+      <span class="badge" style="background:#F1F5F9;color:var(--navy)">Sans souci</span>
+      <h3>Sérénité</h3>
       <div class="amt">69 € <small>HT / mois</small></div>
-      <p class="setup">+ 290 € HT de mise en ligne</p>
+      <p class="setup">Création offerte</p>
       <ul>
-        <li>${CHECK}Plusieurs pages, une par prestation</li>
-        <li>${CHECK}Galerie de photos (${p.slug === 'batiment' ? 'chantiers' : p.slug === 'restaurant' ? 'plats, salle' : p.slug === 'coiffeur' ? 'salon, réalisations' : p.slug === 'fleuriste' ? 'créations' : p.slug === 'boulangerie' ? 'produits' : 'chantiers, plats, créations…'})</li>
+        <li>${CHECK}Tout l'offre Site + Google</li>
+        <li>${CHECK}Suivi chaque mois du site et de la fiche Google</li>
+        <li>${CHECK}Nouvelles photos (${p.slug === 'batiment' ? 'chantiers' : p.slug === 'restaurant' ? 'plats, salle' : p.slug === 'coiffeur' ? 'salon, réalisations' : p.slug === 'fleuriste' ? 'créations' : p.slug === 'boulangerie' ? 'produits' : 'chantiers, plats, créations…'}) et actualités publiées pour vous</li>
+        <li>${CHECK}Horaires des jours fériés et des vacances mis à jour</li>
+        <li>${CHECK}Réponses à vos avis Google préparées pour vous</li>
         <li>${CHECK}Modifications illimitées</li>
-        <li>${CHECK}Création et optimisation de votre fiche Google</li>
       </ul>
       <a class="btn btn-navy btn-lg" href="#contact">En parler</a>
     </article>
