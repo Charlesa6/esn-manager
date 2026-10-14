@@ -164,11 +164,26 @@ const PROFESSIONS = [
     ],
     faq: ['Mes arrivages changent tous les jours.', 'Le site présente votre maison et vos spécialités ; pour les arrivages du jour, on peut ajouter un lien vers votre page Facebook ou Instagram.'],
   },
+  {
+    slug: 'salle-de-sport', onglet: 'Salles de sport', nom: 'salles de sport', pour: 'salle de sport',
+    titre: 'Création de site internet pour salle de sport à Lyon',
+    description: 'Konsilys crée le site internet des salles de sport lyonnaises : vos activités, vos cours collectifs, vos horaires et un contact direct. Maquette gratuite, en ligne en 48 h, dès 39 € HT/mois.',
+    eyebrow: 'Salles de sport, fitness, cross-training, studios de coaching…',
+    h1: 'Le site de votre salle de sport, <em>déjà prêt</em>.',
+    lead: 'Vos activités, vos cours collectifs, vos horaires et un bouton pour vous contacter : on prépare gratuitement la maquette du site de votre salle, elle est en ligne sous votre nom en 48 heures.',
+    exemples: [['sport', 'Salle de sport']],
+    atouts: [
+      ['phone', 'Des prospects qui vous contactent', 'Un bouton « Nous contacter » visible sur chaque page : les curieux vous appellent directement.'],
+      ['clock', 'Horaires et planning à jour', 'Nouveaux cours, horaires d\'été, fermetures : un message suffit, on met à jour le site et votre fiche Google.'],
+      ['camera', 'Votre salle, en images', 'Le plateau, les cours, l\'équipe : vos photos donnent envie de pousser la porte.'],
+    ],
+    faq: ['J\'utilise déjà une application de réservation.', 'Parfait : on ajoute un lien vers votre application ou votre planning en ligne, le site vous amène simplement plus de visiteurs.'],
+  },
 ];
 
 const HUB = {
   slug: '', titre: 'Création de site internet à Lyon pour artisans et commerçants',
-  description: 'Konsilys crée à Lyon le site internet des artisans, commerçants (restaurants, coiffeurs, boulangeries, fleuristes, pharmacies, boucheries, fromageries, poissonneries) et entreprises du bâtiment, et tient à jour leur fiche Google : maquette gratuite préparée pour vous, en ligne en 48 h, dès 39 € HT par mois, domaine et hébergement compris.',
+  description: 'Konsilys crée à Lyon le site internet des artisans, commerçants (restaurants, coiffeurs, boulangeries, fleuristes, pharmacies, boucheries, fromageries, poissonneries, salles de sport) et entreprises du bâtiment, et tient à jour leur fiche Google : maquette gratuite préparée pour vous, en ligne en 48 h, dès 39 € HT par mois, domaine et hébergement compris.',
   eyebrow: 'Création de sites internet à Lyon',
   h1: 'Votre site internet est <em>déjà prêt</em>. Il ne manque que votre accord.',
   lead: 'Je prépare gratuitement la maquette du site de votre entreprise. Vous la regardez, on l\'ajuste ensemble, et elle est en ligne sous votre nom en 48 heures. Vous n\'écrivez rien, vous ne gérez rien.',
@@ -226,6 +241,7 @@ function header(page) {
   <a class="btn btn-lime hdr-cta" href="#contact">Ma maquette gratuite</a>
 </div>
 <nav class="tabs" aria-label="Professions"><div class="wrap tabs-in">${tabs.map(([s, l]) => `<a href="${href(s)}"${s === page.slug ? ' aria-current="page"' : ''}>${esc(l)}</a>`).join('')}</div></nav>
+<script>(function(){var a=document.querySelector('.tabs a[aria-current]'),b=a&&a.parentNode;if(b&&b.scrollWidth>b.clientWidth)b.scrollLeft=a.offsetLeft-(b.clientWidth-a.offsetWidth)/2;})();</script>
 </header>`;
 }
 
@@ -407,7 +423,7 @@ ${exemples(p)}
   </div>
   <form class="form" id="demande" novalidate>
     <label>Nom de votre ${p.slug ? esc(p.pour) : 'entreprise'}<input name="entreprise" required autocomplete="organization"></label>
-    <label>Votre métier<select name="metier">${['Bâtiment', 'Restaurant', 'Coiffure', 'Fleuriste', 'Boulangerie', 'Pharmacie', 'Fromagerie', 'Boucherie', 'Poissonnerie', 'Autre'].map((m) => `<option${(p.onglet || '').startsWith(m.slice(0, 5)) ? ' selected' : ''}>${m}</option>`).join('')}</select></label>
+    <label>Votre métier<select name="metier">${['Bâtiment', 'Restaurant', 'Coiffure', 'Fleuriste', 'Boulangerie', 'Pharmacie', 'Fromagerie', 'Boucherie', 'Poissonnerie', 'Salle de sport', 'Autre'].map((m) => `<option${(p.onglet || '').startsWith(m.slice(0, 5)) ? ' selected' : ''}>${m}</option>`).join('')}</select></label>
     <label>Adresse ou arrondissement<input name="ville" autocomplete="street-address"></label>
     <label>Votre nom<input name="nom" autocomplete="name"></label>
     <label>Téléphone<input name="tel" type="tel" autocomplete="tel"></label>
