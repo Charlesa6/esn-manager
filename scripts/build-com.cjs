@@ -378,7 +378,7 @@ ${exemples(p)}
       <a class="btn btn-navy btn-lg" href="#contact">En parler</a>
     </article>
   </div>
-  <p class="fine">Engagement de 12 mois, puis sans engagement. Paiement annuel possible : 10 mois payés pour 12.</p>
+  <p class="fine">Engagement de 12 mois, puis sans engagement. Paiement annuel possible : 10 mois payés pour 12. <a class="lnk" href="/cgv">Conditions générales de vente</a></p>
 </div></section>
 
 <section class="sec sec-off" id="qui"><div class="wrap about">
@@ -425,6 +425,7 @@ ${exemples(p)}
     <a href="${TEL_HREF}">${TEL}</a>
     <a href="mailto:${MAIL}">${MAIL}</a>
     <a href="/mentions-legales">Mentions légales</a>
+    <a href="/cgv">CGV</a>
   </div>
 </div></footer>
 
@@ -453,6 +454,7 @@ fs.writeFileSync(path.join(ROOT, 'sitemap-com.xml'), `<?xml version="1.0" encodi
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${[''].concat(PROFESSIONS.map((p) => p.slug)).map((s) => `  <url><loc>${url(s)}</loc><lastmod>${today}</lastmod><priority>${s ? '0.8' : '1.0'}</priority></url>`).join('\n')}
   <url><loc>${BASE}/mentions-legales</loc><lastmod>${today}</lastmod><priority>0.2</priority></url>
+  <url><loc>${BASE}/cgv</loc><lastmod>${today}</lastmod><priority>0.2</priority></url>
 </urlset>
 `);
 console.log(`com/index.html + ${PROFESSIONS.length} pages métier + sitemap-com.xml`);
