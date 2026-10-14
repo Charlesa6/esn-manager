@@ -43,6 +43,9 @@ const PRICE_MAP: Record<string, Ent> = {
   price_1TqUYZA6guMn7iZUwngF93eZ: { kind: "module", ref: "recrutement", label: "Module Recrutement" },
 };
 
+// Abonnements de l'offre « sites internet » (liens de paiement Stripe, metadata category=site_internet) : ignorés ici.
+const SITES = "site_internet";
+
 Deno.serve(async (req) => {
   const sig = req.headers.get("stripe-signature");
   const body = await req.text();
@@ -72,6 +75,9 @@ Deno.serve(async (req) => {
     switch (evt.type) {
       case "checkout.session.completed": {
         const s = evt.data.object as Stripe.Checkout.Session;
+        // Offre « sites internet » (konsilys.com) vendue sur le même compte Stripe : rien à faire côté SaaS,
+        // et aucune donnée de ces clients ne doit entrer dans la base du SaaS.
+        if (s.metadata?.category === SITES) break;
         const companyId = s.metadata?.company_id || "";
         const batchId = s.metadata?.batch_id || "";
         if (s.subscription) {
@@ -95,6 +101,7 @@ Deno.serve(async (req) => {
           const sub = await stripe.subscriptions.retrieve(inv.subscription as string, {
             expand: ["items.data.price"],
           });
+          if (sub.metadata?.category === SITES) break;
           await recordSubscription(sub, sub.metadata?.company_id || "", inv.customer_email || "");
           await applyModules(sub, sub.metadata?.company_id || "", true);
         }
@@ -103,6 +110,7 @@ Deno.serve(async (req) => {
       case "customer.subscription.deleted":
       case "customer.subscription.updated": {
         const sub = evt.data.object as Stripe.Subscription;
+        if (sub.metadata?.category === SITES) break;
         if (evt.type === "customer.subscription.deleted" || sub.status === "canceled") {
           const cid = sub.metadata?.company_id || "";
           await recordSubscription(sub, cid, "");

@@ -53,7 +53,7 @@ No build step, no linter, no CI. There **is** a lightweight E2E suite:
 ## Edge Functions & deployment
 
 Functions in `supabase/functions/`:
-- `stripe-webhook` — activates companies, records subscriptions, provisions seats, cuts access on cancel. **⚠️ MUST be deployed with `verify_jwt=false`** (Stripe sends no JWT; it verifies the Stripe signature instead). Deploying with the default `verify_jwt=true` silently breaks all payments.
+- `stripe-webhook` — activates companies, records subscriptions, provisions seats, cuts access on cancel. It **ignores** checkouts/subscriptions with metadata `category=site_internet` (the konsilys.com « sites internet » offer, sold via Stripe Payment Links on the same Stripe account — products « Konsilys Sites — … », lookup keys `sites_*`): no data of those customers may enter the SaaS DB. **⚠️ MUST be deployed with `verify_jwt=false`** (Stripe sends no JWT; it verifies the Stripe signature instead). Deploying with the default `verify_jwt=true` silently breaks all payments.
 - `seats-checkout` — builds the Stripe Checkout session; validates prices against an allowlist; first signup requires an owner licence (Admin **or** Super Admin, `OWNER_PRICES`); `trial:true` → 14-day free trial (see invariants).
 - `billing-portal` — opens the Stripe Customer Portal (auto-creates the portal config if missing).
 - `retry-seats` — re-runs provisioning for pending/errored seats (admin only).
